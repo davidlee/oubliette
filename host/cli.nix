@@ -84,6 +84,33 @@
   # is: the one thing tying this program to this host is what a case suite has to
   # substitute, and `policyCases` in flake.nix is what does.
   moduleState ? "/var/lib/capsule",
+  # microvm.nix's state directory. A created VM tracks it rather than the flake
+  # (CLAUDE.md), and its `tap-up` is what both `microvm@<name>` and the tap unit
+  # are conditioned on — so its absence is what "never created here" looks like,
+  # and without asking, a start fails as a dependency error naming neither unit.
+  # The justfile used to spell this; it asks `capsule <name> created` now.
+  #
+  # An argument with a default for `moduleState`'s reason (SL-002 design sec-6):
+  # a suite reads `created` against a fixture root, and every real call site
+  # takes the default.
+  microvms ? "/var/lib/microvms",
+  # The root helper's store path (host/volume-root.nix, built once in
+  # host/programs.nix). Only `volumeControl`'s default reads it.
+  volumeRootHelper,
+  # What the volume verbs need from outside this program (SL-002 design sec-7):
+  # the root step, and the state of the slot's VMM unit that gates it. An
+  # argument for `proxyControl`'s reason — `sudo` prompts and `pkgs.systemd` is
+  # in `runtimeInputs`, so a sandbox can reach neither — and the query is here
+  # rather than only the root step because every refusal before that step turns
+  # on it. Which states count as stopped is the branch's text, not this one's.
+  #
+  # **`-k` is load-bearing** (design sec-3, `DEC-010`): it ignores a cached
+  # ticket, so the password prompt is the second keystroke even though the `stop`
+  # a reset requires ran `sudo` moments earlier.
+  volumeControl ? ''
+    volumeRoot() { sudo -k ${volumeRootHelper}/bin/capsule-volume-root "$@"; }
+    vmmState() { unitState "$(unitOf "$1")"; }
+  '',
   # Under which ref a capsule's *own* outbound state chain sits, on its volume
   # (host/state-snapshot.nix's `refPrefix`, which is where it is declared). Two
   # verbs here need the name: `handoff` clears the destination's chain before
@@ -193,7 +220,7 @@
   # one of them. Decision 3's rule: the front end's shape is not a function of
   # any target, and what a slot's document has no place for is a refusal that
   # names it.
-  ownVerbs = ["start" "stop" "created" "status" "ssh" "admin" "setup" "branches" "fetch" "record" "purpose" "policy" "unit" "handoff" "land"];
+  ownVerbs = ["start" "stop" "created" "volume" "status" "ssh" "admin" "setup" "branches" "fetch" "record" "purpose" "policy" "unit" "handoff" "land"];
 
   # Verbs `all` may be applied to. A question aggregates: N answers on one screen,
   # and a failure on one capsule is a row rather than a decision. An *action* does
@@ -211,13 +238,6 @@
   # one called `all`, would make it a guess, so it is an eval error instead, in the
   # same spirit as `capsules.nix`'s own refusals.
   collide = lib.intersectLists (verbs ++ ["all"]) names;
-
-  # microvm.nix's state directory. A created VM tracks it rather than the flake
-  # (CLAUDE.md), and its `tap-up` is what both `microvm@<name>` and the tap unit
-  # are conditioned on — so its absence is what "never created here" looks like,
-  # and without asking, a start fails as a dependency error naming neither unit.
-  # The justfile used to spell this; it asks `capsule <name> created` now.
-  microvms = "/var/lib/microvms";
 
   # A capsule's identity and its way in are the same thing (NOTES item 17), and
   # the path is a pure function of a name known only at run time — so these are
@@ -250,6 +270,7 @@ in
           echo
           echo "  capsules:  ''${declared[*]}   (omitted: the one that is up)"
           echo "  lifecycle: start | stop | created       (start injects too)"
+          echo "  volume:    <slot> volume reset | clone-from <src> [--identity]   (name required)"
           echo "  ask:       status | branches | fetch     (these take 'all')"
           echo "  assigned:  record | purpose [text…] | policy [<name>] | unit [<token>]"
           echo "  in:        ssh [cmd…] | admin [cmd…]"
@@ -277,11 +298,16 @@ in
         # once the helpers that can answer it exist — there is no declared
         # default any more, because a slot's name says nothing about what is in
         # it and a default is then a verb acting on a slot nobody chose.
+        #
+        # Where the name came from is kept (`argv`, `env` or `resolved`), because
+        # a destructive verb takes only the first (SL-002 `DEC-008`).
         name=""
+        nameFrom=""
         if [ "$#" -gt 0 ]; then
           for d in "''${declared[@]}" all; do
             if [ "$1" = "$d" ]; then
               name="$1"
+              nameFrom="argv"
               shift
               break
             fi
@@ -293,7 +319,10 @@ in
         # a typo is a refusal and not a capsule this host does not have.
         if [ -z "$name" ] && [ -n "''${CAPSULE_NAME:-}" ]; then
           for d in "''${declared[@]}"; do
-            [ "$CAPSULE_NAME" = "$d" ] && name="$CAPSULE_NAME"
+            if [ "$CAPSULE_NAME" = "$d" ]; then
+              name="$CAPSULE_NAME"
+              nameFrom="env"
+            fi
           done
           if [ -z "$name" ]; then
             echo "capsule: CAPSULE_NAME='$CAPSULE_NAME' is not a capsule on this host." >&2
@@ -322,7 +351,37 @@ in
 
         sockOf() { printf '%s' ${sockOfArg}; }
         unitOf() { printf 'microvm@%s' "$1"; }
-        created() { [ -x "${microvms}/$1/current/bin/tap-up" ]; }
+        created() { [ -x ${microvms}/"$1"/current/bin/tap-up ]; }
+        isDeclared() {
+          local d
+          for d in "''${declared[@]}"; do
+            [ "$1" = "$d" ] && return 0
+          done
+          return 1
+        }
+
+        # The volume verbs' two refusals that need no root (SL-002 design sec-2).
+        # "Stopped" here is only the cheap early answer, read off the unit: the
+        # helper asks `fuser` of the image itself, in the process that then acts
+        # on it. So a failed unit counts as stopped, and `--`, a unit this host
+        # has not loaded, does not.
+        volumeUsage() {
+          echo "  capsule <slot> volume reset | clone-from <src> [--identity]" >&2
+        }
+        volumeCreated() {
+          created "$1" && return 0
+          echo "capsule '$1' has never been created on this host, so it has no volume." >&2
+          return 1
+        }
+        volumeStopped() {
+          local state
+          state=$(vmmState "$1")
+          case "$state" in
+            inactive | failed) return 0 ;;
+          esac
+          echo "capsule $1: microvm@$1 is '$state', and $2 needs it stopped — capsule $1 stop" >&2
+          return 1
+        }
 
         # The host operator's declared choice for a slot nobody has assigned
         # (capsules.nix). Every declared slot has one — `capsules.nix` refuses at
@@ -845,6 +904,7 @@ in
 
         ${proxyControl}
         ${guestControl}
+        ${volumeControl}
 
         # What the guest says about itself: one round trip, one line, the field
         # order defined in host/observe.nix and nowhere else. This *is* the
@@ -1375,7 +1435,10 @@ in
             fi
           done
           case "''${#up[@]}" in
-            1) name="''${up[0]}" ;;
+            1)
+              name="''${up[0]}"
+              nameFrom="resolved"
+              ;;
             0)
               echo "capsule: no capsule is up, so an unnamed '$verb' means nothing here." >&2
               echo "  Name one — ''${declared[*]} — or set CAPSULE_NAME." >&2
@@ -1417,6 +1480,25 @@ in
               echo "  'sudo microvm -c $name -f <flake>'." >&2
               exit 1
             }
+            # One volume operation at a time on this host (SL-002 design sec-7). The
+            # helper holds this lock exclusively from its `fuser` to its act, so a
+            # start taking it shared cannot land in that window, and two starts do
+            # not exclude each other. Held across the start and the stays-up check,
+            # and released before the inject, which touches no image. Refused rather
+            # than waited on. No file means this host's module predates the helper,
+            # so no helper built with it can be running through this front end.
+            volumeLock=${capsules.volumeLock}
+            lockfd=""
+            if [ -e "$volumeLock" ]; then
+              exec {lockfd}<"$volumeLock"
+              if ! flock -s -n "$lockfd"; then
+                echo "capsule $name: a volume operation is running on this host; try again when it finishes." >&2
+                exit 1
+              fi
+            else
+              echo "capsule $name: no volume lock at $volumeLock, so this host's module predates" >&2
+              echo "  the volume verbs; starting without it." >&2
+            fi
             unit=$(unitOf "$name")
             # A host rebuild that changes this unit's drop-ins does not reach a unit
             # that is already running or mid-restart: systemd keeps the loaded
@@ -1456,6 +1538,7 @@ in
               unitTail "$unit" "$asked" 15
               exit 1
             fi
+            [ -z "$lockfd" ] || exec {lockfd}<&-
             # A running VMM is not the promise. Credentials and secrets are a push
             # over ssh (host/inject.nix) and `$HOME` is on the volume that
             # freshness deletes, so a capsule that has only been *started* is one
@@ -1472,6 +1555,85 @@ in
             fi
             work "$name" inject
             journalctl -u capsule-perimeter-guard -n 1 --no-pager -o cat 2>/dev/null || true
+            ;;
+
+          # A slot's volume, host-initiated (SL-002 design sec-7). The front end
+          # checks what needs no root and composes; `volumeRoot` is the only step
+          # that touches an image, and its message and status are the verb's.
+          volume)
+            # Destructive, so the slot is named on this command line or not at all
+            # (`DEC-008`). `CAPSULE_NAME` is ambient to a shell working in one
+            # capsule, which is where a volume command meaning another gets typed,
+            # and the one that is up is a guess.
+            if [ "$nameFrom" != argv ]; then
+              if [ "$nameFrom" = env ]; then
+                why="CAPSULE_NAME named '$name'"
+              else
+                why="'$name' is only the capsule that is up"
+              fi
+              echo "capsule: 'volume' needs its slot named on the command line, and $why." >&2
+              volumeUsage
+              exit 1
+            fi
+            sub="''${1-}"
+            [ "$#" -eq 0 ] || shift
+            case "$sub" in
+              reset)
+                if [ "$#" -gt 0 ]; then
+                  echo "capsule $name: volume reset takes no arguments." >&2
+                  exit 1
+                fi
+                volumeCreated "$name" || exit 1
+                volumeStopped "$name" "a volume reset" || exit 1
+                volumeRoot reset "$name"
+                ;;
+              clone-from)
+                src="''${1-}"
+                [ "$#" -eq 0 ] || shift
+                identity=()
+                for arg in ''${1+"$@"}; do
+                  if [ "$arg" = --identity ]; then
+                    identity=(--identity)
+                  else
+                    echo "capsule $name: volume clone-from does not take '$arg'." >&2
+                    volumeUsage
+                    exit 1
+                  fi
+                done
+                if [ -z "$src" ]; then
+                  echo "capsule $name: volume clone-from needs a source slot." >&2
+                  volumeUsage
+                  exit 1
+                fi
+                if ! isDeclared "$src"; then
+                  echo "capsule $name: '$src' is not a capsule on this host: ''${declared[*]}" >&2
+                  exit 1
+                fi
+                if [ "$src" = "$name" ]; then
+                  echo "capsule $name: a volume cannot be cloned from itself." >&2
+                  exit 1
+                fi
+                volumeCreated "$src" || exit 1
+                volumeCreated "$name" || exit 1
+                volumeStopped "$src" "a clone from it" || exit 1
+                volumeStopped "$name" "a clone onto it" || exit 1
+                # The record directory is the operator's, and the helper refuses
+                # rather than make it as root (design sec-3), so it is made here,
+                # once every check has passed.
+                mkdir -p "$(slotDir "$name")"
+                volumeRoot clone "$src" "$name" ''${identity[@]+"''${identity[@]}"}
+                ;;
+              "")
+                echo "capsule $name: volume needs a sub-verb." >&2
+                volumeUsage
+                exit 1
+                ;;
+              *)
+                echo "capsule $name: '$sub' is not a volume sub-verb." >&2
+                volumeUsage
+                exit 1
+                ;;
+            esac
             ;;
 
           stop)
@@ -1787,11 +1949,7 @@ in
               echo "  Capsules here: ''${declared[*]}" >&2
               exit 1
             fi
-            srcKnown=no
-            for d in "''${declared[@]}"; do
-              [ "$src" = "$d" ] && srcKnown=yes
-            done
-            if [ "$srcKnown" = no ]; then
+            if ! isDeclared "$src"; then
               echo "capsule: '$src' is not a capsule on this host, and a handoff is" >&2
               echo "  between two of them: ''${declared[*]}" >&2
               exit 1

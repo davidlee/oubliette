@@ -33,6 +33,7 @@
   programVerbs,
   profileVerbs,
   stateRefPrefix,
+  volumeRootHelper,
 }: let
   # Three slots, none of them this host's, each one a shape `capsules.nix`
   # itself would refuse: a set of one, a slot with no set at all, and a slot
@@ -58,7 +59,7 @@
     };
   cli = import ./cli.nix {
     inherit pkgs lib net policies guestSsh;
-    inherit observe observeFragment programVerbs profileVerbs stateRefPrefix;
+    inherit observe observeFragment programVerbs profileVerbs stateRefPrefix volumeRootHelper;
     capsules = fixture;
     moduleState = ''"$CASE_STATE"'';
     # NOTES item 41's branch and its failure, made reachable from a sandbox

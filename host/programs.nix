@@ -232,6 +232,13 @@ in {
   # spelled at two call sites is two things to keep true.
   stateRefPrefix = stateSnapshot.refPrefix;
 
+  # The one root program on the volume path (host/volume-root.nix), which the
+  # front end reaches by store path and never off `PATH`. No transport and no
+  # target, so both of this file's callers build the same store path; it is
+  # here for `observe`'s reason, that a thing built at each of `capsule-cli`'s
+  # call sites is a thing one of them can build differently.
+  volumeRootHelper = import ./volume-root.nix {inherit pkgs lib capsules;};
+
   # Everything the front end needs to *build* that program's command line, as one
   # fragment (NOTES item 51 step 4): the profile reader, the record convention
   # and the argument order, each from the file that owns it. One opaque splice to

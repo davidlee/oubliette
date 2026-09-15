@@ -450,7 +450,7 @@
     # of them can be missing.
     capsule-cli = import ./host/cli.nix {
       inherit pkgs lib net capsules policies guestSsh;
-      inherit (hostPrograms) observe observeFragment programVerbs profileVerbs stateRefPrefix;
+      inherit (hostPrograms) observe observeFragment programVerbs profileVerbs stateRefPrefix volumeRootHelper;
     };
 
     # The third kind of check (CLAUDE.md): a host-side program's own text, run
@@ -545,7 +545,7 @@
 
     policyCases = import ./host/policy-cases.nix {
       inherit pkgs lib net capsules policies guestSsh;
-      inherit (hostPrograms) observe observeFragment programVerbs profileVerbs stateRefPrefix;
+      inherit (hostPrograms) observe observeFragment programVerbs profileVerbs stateRefPrefix volumeRootHelper;
     };
 
     # The one root program on the volume path (SL-002). Handed a fixture pool and
@@ -554,6 +554,17 @@
     # which is exactly what stops the shipped store path running in a sandbox
     # (host/volume-root-cases.nix).
     volumeRootCases = import ./host/volume-root-cases.nix {inherit pkgs lib capsules;};
+
+    # The front end's half of the volume path (SL-002): where the name came from,
+    # the checks that need no root, and the lock a start shares with the helper.
+    # A fixture pool and its own render, for `policyCases`' reason, plus the
+    # shipped front end for the one line the fixture replaces
+    # (host/volume-cases.nix).
+    volumeCases = import ./host/volume-cases.nix {
+      inherit pkgs lib net capsules policies guestSsh;
+      inherit (hostPrograms) observe observeFragment programVerbs profileVerbs stateRefPrefix volumeRootHelper;
+      shipped = capsule-cli;
+    };
 
     # The guest's one deleting program (SL-002), and the first suite whose subject
     # ships in the image rather than on this host. A fixture home, for the same
@@ -1343,7 +1354,7 @@
         # The checks that need no root and no host: what the module says, what the
         # guard decides, and which policy a slot resolves to.
         inherit hostModuleUnits hostModulePrograms guardCases policyCases observeCases;
-        inherit profileCases gitChannelCases vmCases wrapCases volumeRootCases resetHomeCases;
+        inherit profileCases gitChannelCases vmCases wrapCases volumeRootCases resetHomeCases volumeCases;
         # The rendered run-time half of `target.nix`, so a human can read what a
         # program will resolve (host/profile.nix). `nix build .#capsule-profiles`.
         capsule-profiles = hostProfile.dir;
