@@ -1,0 +1,33 @@
+schema = "doctrine.knowledge"
+version = 1
+
+id = 5
+slug = "one-root-helper-does-the-check-and-the-act-invoked-through-a-password-prompting-sudo"
+title = "One root helper does the check and the act, invoked through a password-prompting sudo"
+record_kind = "decision"
+status = "accepted"
+created = "2026-09-15"
+updated = "2026-09-15"
+tags = []
+
+[facet]                         # every field typed; seeded empty (captured later)
+context = "SL-002 after DEC-004: the privileged step is a sequence (refuse if the image is open, then delete or sparse-copy with the right ownership). The image is microvm:kvm and the human is not in kvm."
+choice = "capsule-volume-root <reset|clone> <slot> [<source>]: validates slots against the declared pool, resolves image paths itself, runs the open-file check and acts, in one root process. The front end runs `sudo <helper>`, prompting like start. The state-directory root is a build-time argument with a default, never a run-time one; the suite builds it against a fixture root. A NOPASSWD grant is a follow-up, not this slice."
+alternatives = ["Inline sudo fuser / sudo rm / sudo cp from the front end: check and act are separate root calls, the path is shell-escaped text, and no single spelling exists for a grant to name (NOTES item 44)", "Helper plus a NOPASSWD grant now: a grant is not an access until a non-owner call proves it, ISS-005 is open, and it needs a host rebuild"]
+rationale = "Check and act share one root process; slot names are validated where they are used; a root program never accepts a path from its caller, so a later grant cannot be pointed elsewhere. Same one-spelling shape as host/proxy-restart.nix."
+consequences = ["A new program and its case suite (host/volume-root-cases.nix or folded into volume-cases), wired into just cases and just build", "Devshell and module copies both prompt; no rebuild or rule is needed to use it", "Follow-up backlog: a NOPASSWD grant naming the helper, module path only, proven by a non-owner call"]
+decided_by = "user"
+decided_on = "2026-09-15"
+
+[evidence]                      # free-text citations (supports / contradicts / notes)
+supports    = []
+contradicts = []
+notes       = []
+
+[relationships]                 # verb-written edges (set by doctrine supersede)
+supersedes    = []   # record ids this one replaces (set by doctrine supersede)
+superseded_by = []   # set on superseded predecessor (verb-written, ADR-004 §5)
+
+[[relation]]
+label = "shapes"
+target = "SL-002"

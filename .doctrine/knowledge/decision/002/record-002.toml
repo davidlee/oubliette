@@ -1,0 +1,33 @@
+schema = "doctrine.knowledge"
+version = 1
+
+id = 2
+slug = "reset-home-is-all-of-home-removed-by-a-guest-side-program-the-host-names"
+title = "reset-home is all of $HOME, removed by a guest-side program the host names"
+record_kind = "decision"
+status = "accepted"
+created = "2026-09-15"
+updated = "2026-09-15"
+tags = []
+
+[facet]                         # every field typed; seeded empty (captured later)
+context = "SL-002 reset-home after DEC-001 (deletes go through the admin door). $HOME is contract-defined as <volumePath>/home (docs/contract-target.md:274) and already derived in vm/capsule.nix and setup.nix:38; research F4's 'no host-side declaration' was wrong."
+choice = "reset-home removes all of $HOME. vm/capsule.nix ships capsule-reset-home, built from the guest module's own `home` binding, which deletes $HOME and restarts capsule-seed; the host runs `admin capsule-reset-home` and then inject. .env, the checkout, caches and /work/baseline survive."
+alternatives = ["Host composes `admin rm -rf <volumePath>/home` from the profile document: a third spelling of the /home suffix and a path escaped across two shells", "Everything on the volume except checkout and caches: also deletes /work/baseline, .env and host keys, so it is not reset-home"]
+rationale = "No new spelling of a contract path (POL-003); a guest-filesystem act stays on the guest's side of the door, and the host names a guest program the way capsule-halt names `systemctl reboot`. The program lives in the read-only store image, so the agent cannot alter it."
+consequences = ["An image change: each slot restarts onto the new image before the verb works there", "capsule-reset-home is where an open agent session is refused (inq-5)", "Research F4 is corrected: $HOME is contract-derived from volumePath"]
+decided_by = "user"
+decided_on = "2026-09-15"
+
+[evidence]                      # free-text citations (supports / contradicts / notes)
+supports    = []
+contradicts = []
+notes       = []
+
+[relationships]                 # verb-written edges (set by doctrine supersede)
+supersedes    = []   # record ids this one replaces (set by doctrine supersede)
+superseded_by = []   # set on superseded predecessor (verb-written, ADR-004 §5)
+
+[[relation]]
+label = "shapes"
+target = "SL-002"

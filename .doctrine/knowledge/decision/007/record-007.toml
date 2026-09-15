@@ -1,0 +1,33 @@
+schema = "doctrine.knowledge"
+version = 1
+
+id = 7
+slug = "any-stopped-declared-slot-is-a-clone-source-clean-source-is-stated-as-unenforced"
+title = "Any stopped declared slot is a clone source; clean-source is stated as unenforced"
+record_kind = "decision"
+status = "accepted"
+created = "2026-09-15"
+updated = "2026-09-15"
+tags = []
+
+[facet]                         # every field typed; seeded empty (captured later)
+context = "SL-002 clone-from. docs/contract-assignment.md:277 says a valid source is baselined and not dirty, but DEC-004 requires the source stopped and every clean/dirty signal is read through the guest; DEC-001 rules out reading them by mounting the image."
+choice = "Source and destination are distinct declared slots, both stopped. The verb reports the source's allocated size and refuses if it exceeds free space on the filesystem (no margin unless one is declared). contract-assignment.md:277 is amended in the same commit: the clean-source rule is not enforced yet and stays with IMP-001."
+alternatives = ["Observe then stop then copy: a volume verb acting on a sibling slot's lifecycle, and it reopens the Q3 predicate the slice excluded", "Refuse until the predicate exists: drops S5, half the slice, to wait on unscheduled work"]
+rationale = "Delivers the warm start with protections checkable on a stopped slot (declared, stopped, fits), and keeps the contract honest rather than claiming an unenforced rule."
+consequences = ["A dirty source can be cloned; the scrub removes identity and $HOME, but checkout commits and the state chain cross, and the next setup needs --force (DEC-006)", "contract-assignment.md changes in the same commit as the verb"]
+decided_by = "user"
+decided_on = "2026-09-15"
+
+[evidence]                      # free-text citations (supports / contradicts / notes)
+supports    = []
+contradicts = []
+notes       = []
+
+[relationships]                 # verb-written edges (set by doctrine supersede)
+supersedes    = []   # record ids this one replaces (set by doctrine supersede)
+superseded_by = []   # set on superseded predecessor (verb-written, ADR-004 §5)
+
+[[relation]]
+label = "shapes"
+target = "SL-002"

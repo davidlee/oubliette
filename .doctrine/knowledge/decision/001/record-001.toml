@@ -1,0 +1,33 @@
+schema = "doctrine.knowledge"
+version = 1
+
+id = 1
+slug = "volume-internal-deletes-go-through-the-guests-admin-door-never-a-host-mount"
+title = "Volume-internal deletes go through the guest's admin door, never a host mount"
+record_kind = "decision"
+status = "accepted"
+created = "2026-09-15"
+updated = "2026-09-15"
+tags = []
+
+[facet]                         # every field typed; seeded empty (captured later)
+context = "SL-002 reset-home and the clone scrub must delete paths inside a stopped-or-running ext4 volume image; reset and clone-from only touch the image file."
+choice = "Delete inside the volume via `capsule <slot> admin` on a running slot, then re-run capsule-seed and inject. reset and clone-from stay host file operations refusing while running."
+alternatives = ["Host loop-mount as root: host kernel parses a guest-authored filesystem, widening what the confined party reaches (POL-001)", "Userspace debugfs -w: no recursive delete, orphaned inodes need e2fsck, a hand-rolled filesystem editor"]
+rationale = "Only option that parses nothing guest-authored on the host and composes existing capabilities (admin door, capsule-seed, inject) instead of a new root capability or a parallel implementation."
+consequences = ["The volume noun carries two preconditions: stopped for reset/clone-from, running for reset-home/scrub; each refusal names the state it needs and the command to reach it", "The clone's scrub happens on its first boot, so the source identity sits on the clone's disk for that boot", "reset-home must decide what to do about an open agent session (inq-5)"]
+decided_by = "user"
+decided_on = "2026-09-15"
+
+[evidence]                      # free-text citations (supports / contradicts / notes)
+supports    = []
+contradicts = []
+notes       = []
+
+[relationships]                 # verb-written edges (set by doctrine supersede)
+supersedes    = []   # record ids this one replaces (set by doctrine supersede)
+superseded_by = []   # set on superseded predecessor (verb-written, ADR-004 §5)
+
+[[relation]]
+label = "shapes"
+target = "SL-002"

@@ -1,0 +1,33 @@
+schema = "doctrine.knowledge"
+version = 1
+
+id = 3
+slug = "a-clone-scrubs-all-of-home-plus-every-declared-identity-path-derived-rather-than-listed"
+title = "A clone scrubs all of $HOME plus every declared identity path, derived rather than listed"
+record_kind = "decision"
+status = "accepted"
+created = "2026-09-15"
+updated = "2026-09-15"
+tags = []
+
+[facet]                         # every field typed; seeded empty (captured later)
+context = "SL-002 clone-from and Plan D D4: a cloned volume carries the source's ssh host keys, injected credentials, .env and agent state. Caches live outside $HOME (target.nix cachePaths under /work), so a $HOME scrub keeps the warm start."
+choice = "The scrub is capsule-reset-home (DEC-002) plus every `dest` in setup.nix plus every path in services.openssh.hostKeys, assembled by a guest program at eval. --identity keeps everything."
+alternatives = ["Declared identity files only: keeps the source agent's sessions and history, which D4 names input from a different principal", "A hand-listed guest program: a third spelling of .env, and a new setup.nix injection would silently escape the scrub"]
+rationale = "One authority per half: setup.nix owns what was injected, openssh.hostKeys owns what the guest identifies as. A future injection is scrubbed with no edit, and D4's trust boundary is kept without losing the cache."
+consequences = ["vm/capsule.nix imports setup.nix for dest strings only; the image depends on those strings, not on produce fragments", "A removed host key takes effect only when sshd restarts (NixOS regenerates it then), so the scrub ends in an sshd restart or reboot; guestSsh already ignores host-key changes"]
+decided_by = "user"
+decided_on = "2026-09-15"
+
+[evidence]                      # free-text citations (supports / contradicts / notes)
+supports    = []
+contradicts = []
+notes       = []
+
+[relationships]                 # verb-written edges (set by doctrine supersede)
+supersedes    = []   # record ids this one replaces (set by doctrine supersede)
+superseded_by = []   # set on superseded predecessor (verb-written, ADR-004 §5)
+
+[[relation]]
+label = "shapes"
+target = "SL-002"

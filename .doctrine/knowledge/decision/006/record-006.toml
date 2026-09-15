@@ -1,0 +1,33 @@
+schema = "doctrine.knowledge"
+version = 1
+
+id = 6
+slug = "no-volume-verb-writes-the-assignment-record-setup-stays-the-only-assigning-act"
+title = "No volume verb writes the assignment record; setup stays the only assigning act"
+record_kind = "decision"
+status = "accepted"
+created = "2026-09-15"
+updated = "2026-09-15"
+tags = []
+
+[facet]                         # every field typed; seeded empty (captured later)
+context = "SL-002 clone-from. docs/contract-assignment.md keeps the assignment record (desired: base, unit, policy, profile, generation) apart from observed status (head_oid, dirty, baseline, disk). A clone changes bytes on the volume, which is observed state."
+choice = "reset, reset-home, clone-from and df never read-modify-write the record. The warm start is two acts: `volume clone-from <m>` then `setup <ref> ...`."
+alternatives = ["Write nothing but refuse when the destination is assigned: no unassign verb exists and nearly every created slot has a base, so it refuses nearly every clone", "Copy the source's assignment into the destination: a volume verb does an assigner's act implicitly, needs setup's policy-set validation duplicated, and two slots claim one unit"]
+rationale = "Keeps desired and observed apart as the contract requires, one rule for every volume verb, and no second copy of setup's validation."
+consequences = ["Between a clone or reset and the next setup, status shows record base != volume head, which is true and reads as dirty/ahead", "A clone carries the source's checkout commits and refs/capsule/state chain, so the next setup may meet ISS-009's pre-flight refusal and need --force; inq-10's source rule bears on how often"]
+decided_by = "user"
+decided_on = "2026-09-15"
+
+[evidence]                      # free-text citations (supports / contradicts / notes)
+supports    = []
+contradicts = []
+notes       = []
+
+[relationships]                 # verb-written edges (set by doctrine supersede)
+supersedes    = []   # record ids this one replaces (set by doctrine supersede)
+superseded_by = []   # set on superseded predecessor (verb-written, ADR-004 §5)
+
+[[relation]]
+label = "shapes"
+target = "SL-002"
