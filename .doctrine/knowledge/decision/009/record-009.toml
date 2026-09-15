@@ -1,0 +1,33 @@
+schema = "doctrine.knowledge"
+version = 1
+
+id = 9
+slug = "no-volume-df-status-gains-a-host-side-allocation-column-and-a-free-space-line"
+title = "No volume df: status gains a host-side allocation column and a free-space line"
+record_kind = "decision"
+status = "accepted"
+created = "2026-09-15"
+updated = "2026-09-15"
+tags = []
+
+[facet]                         # every field typed; seeded empty (captured later)
+context = "SL-002 OQ-2. Status's `disk` column is the guest's df /work use% and is `-` for a stopped slot. The image's allocated size (its high-water mark, the price of cloning it) and /var/lib free space are readable host-side without root or the guest, for stopped slots too."
+choice = "Drop `volume df`. `capsule all status` gains an allocation column (host-side, no round trip) and a free-space line beneath the table beside `perimeter:`. clone-from prints its own cost when it runs. volume has three sub-verbs: reset, reset-home, clone-from."
+alternatives = ["A `volume df` sub-verb: a fleet question answered one slot at a time, and DEC-008 refuses `all volume`", "Both a sub-verb and a column: two homes for one number (POL-003)"]
+rationale = "Status is the one table over N slots, and this number is most useful across slots and for stopped ones; it costs no root and no guest round trip. Every remaining volume sub-verb is an act."
+consequences = ["Status grows one column; its header must not be confusable with the guest-side `disk` %", "docs/probes.md's disk row (2026-08-13, 166 GiB) is refreshed by this slice under ADR-003", "Status width is already a legibility problem, filed separately"]
+decided_by = "user"
+decided_on = "2026-09-15"
+
+[evidence]                      # free-text citations (supports / contradicts / notes)
+supports    = []
+contradicts = []
+notes       = []
+
+[relationships]                 # verb-written edges (set by doctrine supersede)
+supersedes    = []   # record ids this one replaces (set by doctrine supersede)
+superseded_by = []   # set on superseded predecessor (verb-written, ADR-004 §5)
+
+[[relation]]
+label = "shapes"
+target = "SL-002"

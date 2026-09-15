@@ -1,0 +1,33 @@
+schema = "doctrine.knowledge"
+version = 1
+
+id = 11
+slug = "a-clone-leaves-a-scrub-pending-marker-that-start-honours-before-it-injects"
+title = "A clone leaves a scrub-pending marker that start honours before it injects"
+record_kind = "decision"
+status = "accepted"
+created = "2026-09-15"
+updated = "2026-09-15"
+tags = []
+
+[facet]                         # every field typed; seeded empty (captured later)
+context = "SL-002. DEC-001 put the clone scrub on first boot without deciding who runs it. start runs inject, which skips any destination that already exists (host/inject.nix:131), and a cloned volume holds the source's credentials and .env, so a plain start after a clone, or after a clone that failed midway, would keep the source's identity against DEC-003."
+choice = "Unless --identity, the root helper writes `scrub-pending` into /var/lib/capsule/slot/<dest>/ (beside the assignment record, not in it). While the marker exists, start runs the scrub before inject and removes the marker only when the scrub succeeds. clone-from may then call start itself so the warm start reads as one command."
+alternatives = ["clone-from boots, scrubs and injects in one run, with start split into boot and boot-plus-inject: any failure after the copy leaves an identity-bearing volume that the next plain start silently keeps"]
+rationale = "Fail-safe by construction: no path through start injects onto an unscrubbed clone, however the clone ended. The ordering constraint lives in start, which already owns the order of boot and inject."
+consequences = ["start gains one branch and reads one marker; the scrub runs over the admin door per DEC-001/DEC-003", "The marker is per-slot state with one writer (the root helper) and one reader (start); DEC-006 holds because the assignment record is untouched", "The marker lives under the module path's record root, consistent with volumes being module-path slots"]
+decided_by = "user"
+decided_on = "2026-09-15"
+
+[evidence]                      # free-text citations (supports / contradicts / notes)
+supports    = []
+contradicts = []
+notes       = []
+
+[relationships]                 # verb-written edges (set by doctrine supersede)
+supersedes    = []   # record ids this one replaces (set by doctrine supersede)
+superseded_by = []   # set on superseded predecessor (verb-written, ADR-004 §5)
+
+[[relation]]
+label = "shapes"
+target = "SL-002"

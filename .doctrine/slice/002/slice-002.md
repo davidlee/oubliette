@@ -27,127 +27,146 @@ them.
 
 ## Scope & Objectives
 
-**One noun, four verbs, host-side:**
-`capsule <slot> volume {df,reset,reset-home,clone-from <m>}`.
+**One noun, three verbs, host-initiated, each needing an explicit slot name**
+(`DEC-008`): `capsule <slot> volume {reset,reset-home,clone-from <m>}`.
+`volume` is one entry in `ownVerbs`, and its branch parses the sub-verb. A bare
+`capsule volume …` never resolves to the slot that is up, and `all volume` is
+refused.
 
-- **`reset`** — discard the whole volume: checkout, `$HOME`, caches,
-  `/work/baseline`, and the guest's ssh host keys with them. This is S4 without
-  the hand-typed `rm -rf`. **A reset is delete-and-recreate**, because the size is
-  a `truncate` the runner applies only when the image is absent (`§5`) — which is
-  also why there is no `resize` here and never will be one.
-- **`reset-home`** — the `/work/home` half alone: the previous agent's own state,
-  which a checkout reset does not reach. Coarse by construction — the mechanism
-  recreates a directory and **may not know what a `.doctrine/` is** (`POL-002`),
-  which is the same reason `reset` is coarse one level up.
-- **`clone-from <m>`** — S5. A sparse copy of a stopped source's volume image, so
-  a new slot starts warm instead of paying a cold build.
-- **`df`** — what the volume costs on this host.
+- **`reset`**: discard the whole volume, meaning the checkout, `$HOME`, caches,
+  `/work/baseline` and the guest's ssh host keys. This is S4 without the
+  hand-typed `rm -rf`. **A reset is a delete.** The runner recreates the image
+  (`truncate` plus `mkfs`) when it is absent (`§5`), and `capsule-seed` re-seeds
+  `/work` on every boot, so there is no re-seed logic here and never a `resize`.
+  Needs the slot **stopped**.
+- **`reset-home`**: all of `$HOME` (`<volumePath>/home`,
+  `docs/contract-target.md`) and nothing else. `.env`, the checkout, caches and
+  `/work/baseline` survive (`DEC-002`). It is done **inside the guest** by a new
+  program in the image, `capsule-reset-home`, built from `vm/capsule.nix`'s own
+  `home` binding. The program deletes `$HOME` and restarts `capsule-seed`; the
+  host runs `admin capsule-reset-home` and then `inject` (`DEC-001`). Needs the
+  slot **running** with no agent process outside the serial console.
+- **`clone-from <m>`**: S5. A sparse copy of a stopped source's image onto a
+  stopped destination, so a slot starts warm. **Any stopped declared slot other
+  than the destination is a source** (`DEC-007`). The verb prints the source's
+  allocated size and refuses if it exceeds free space.
 
-**And D4's identity half, which belongs with the clone rather than after it.** A
-copied volume carries the source's ssh host keys, injected credentials and `.env`.
-**Scrub by default, `--identity` to keep** — the safe default is the plain one and
-the convenience is one flag.
+**D4's identity half comes with the clone** (`DEC-003`, `DEC-011`). Scrubbing is
+the default and `--identity` keeps everything. The scrub is `capsule-reset-home`,
+plus every `dest` in `setup.nix`, plus every path in `services.openssh.hostKeys`,
+and a guest program derives that list at eval. The host key takes effect at the
+next `sshd` restart. **The scrub is fail-safe:** the root helper writes
+`scrub-pending` into `/var/lib/capsule/slot/<dest>/`, and while that marker
+exists `start` runs the scrub *before* `inject`, removing the marker only on
+success. So no `start` can inject onto an unscrubbed clone, however the clone
+ended.
 
-**Gates, each of which is a thing already decided elsewhere:**
+**And status gains a cost column instead of a `df` verb** (`DEC-009`).
+`capsule all status` gets a host-side allocation column (the image's allocated
+bytes, which is its high-water mark and needs no root or guest), and a
+free-space line under the table. `docs/probes.md`'s disk row is refreshed.
 
-- **Refuses while the VM runs**, and *running* is a question about a **namespace,
-  never a process name** — every capsule is `microvm@capsule` from the same store
-  path, so `vm_running`/`any_vm_running` are the shape and `pkill -f` is a power
-  cut for the siblings (`mem.fact.oubliette.dead-guest-is-not-a-dead-vm`).
-- **The name must be a declared slot.** Resolution is the front end's act and
-  never a program's (`POL-003`), and a destructive verb is the last place to grow
-  a second answer to *which capsule*.
-- **The fresh host keys have a home already** — `just reset-known-hosts <slot>`
-  (`mem.fact.oubliette.fresh-capsule-fresh-host-keys`). This slice points at it
-  and does not copy it.
-- **The image is root-owned**, so the privileged step goes through **one spelling
-  of the command as `sudo` will see it**, in the shape `host/proxy-restart.nix`
-  already uses, with its rule beside the others in `host/services.nix`. A rule
-  that names a path while the program invokes a different string is
-  `NOTES item 44`.
-- **Both transports keep working.** The devshell path must need no rebuild and no
-  installed rule — it prompts for a password, exactly as `capsule <slot> start`
-  does today — and the module path gets the grant. They will refuse in different
-  orders and that is known rather than discovered
-  (`mem.fact.oubliette.two-copies-refuse-in-different-orders`).
+**Gates:**
 
-**Verification is a suite of the third kind**, since every interesting branch is
-one a live host can only reach destructively: `host/volume-cases.nix`, one file
-beside the program, a function of `pkgs`, `lib` and **the store path the program
-ships**, taking as an argument the one thing that ties it to this host — wired
-into `just cases` **and** `just build`, because a suite left out of the build is
-`NOTES item 51` step 3.
+- **The name must be a declared slot, given explicitly** (`POL-003`,
+  `DEC-008`). `/var/lib/microvms/capsule` and `capsule-b` exist and are refused
+  as undeclared (`CHR-013`).
+- **"Stopped" means the image is not open** (`DEC-004`). The front end refuses
+  unless `microvm@<slot>` is `inactive` or `failed`, which is cheap and needs no
+  root. The root helper then refuses if anything has the image open (`fuser`)
+  immediately before it acts. This identifies the file rather than a process name
+  (`mem.fact.oubliette.dead-guest-is-not-a-dead-vm`).
+- **"Running and idle" means no agent process outside the serial console's
+  session** (`DEC-004`). The console autologins `agent` and a baseline runs as a
+  detached `setsid` process. The refusal names stop-then-start as the way out,
+  and there is no `--force`.
+- **One root helper, one spelling** (`DEC-005`):
+  `capsule-volume-root <reset|clone> <slot> [<source>]` validates slots against
+  the declared pool, resolves image paths, checks and acts in one root process,
+  and writes the scrub marker. The front end runs it through `sudo`, which
+  prompts for a password on both copies of the front end, so no rule and no
+  rebuild are needed. Its state root is a **build-time** argument with a default,
+  never a run-time one. A password-less grant is `IMP-010`.
+- **No confirmation step** (`DEC-010`). The password prompt is the second
+  keystroke for `reset` and `clone-from`. `IMP-010` must reopen this if it
+  removes that prompt.
+- **No volume verb writes the assignment record** (`DEC-006`). The warm start is
+  `volume clone-from <m>` then `setup <ref> …`. A clone carries the source's
+  checkout commits and state chain, so that `setup` may need `--force`
+  (`ISS-009` step 1's pre-flight).
+- **Fresh host keys already have a home**: `just reset-known-hosts <slot>`
+  (`mem.fact.oubliette.fresh-capsule-fresh-host-keys`).
+
+**Documents that move in the same commit as the verbs:**
+`docs/contract-assignment.md:277` (the clean-source rule is stated as not
+enforced, and stays with `IMP-001`), `docs/probes.md` (the disk row), and
+`docs/contract-target.md` only if the guest programs change what a target may
+rely on.
+
+**Verification is suites of the third kind**, because every interesting branch
+is one a live host can only reach destructively. One file per program, beside
+it, a function of `pkgs`, `lib` and the shipped store path, wired into
+`just cases` **and** `just build` (`NOTES item 51` step 3):
+- the root helper against a fixture state root;
+- the front end's `volume` parsing, name requirement and refusals, with the
+  helper and door substituted;
+- `start`'s scrub-before-inject ordering against a marker.
+
+The two guest programs are image text. What a suite can reach there is their
+refusals over a fixture `$HOME`, and anything beyond that is a live exercise.
 
 ## Non-Goals
 
-- **D4's reuse-refusal on a non-clean volume**, and with it **Q3's
-  `unassigned → provisioned(sha) → baselined(sha) → dirty` predicate**. Two of its
-  four signals (`$HOME` touched, an interactive session opened) exist only inside
-  the guest, so a stopped slot cannot be asked — and the *policy* about what may
-  be reused is the target's, not this repo's. The dev-host waiver declaration goes
-  with it.
-- **`ISS-009` step 2's composition.** That item's fresh-per-unit half *consumes*
-  `volume reset` and `volume reset-home`; whether it is a flag or a host
-  declaration is open there (`POL-003` forbids the implicit default) and is not
-  decided here. This slice's job is that the verbs exist and are safe to call.
-- **`resize`.** Not deferred — refused. `§5` makes it delete-and-recreate, which
-  `reset` already is.
-- **The residue question itself.** A repurpose still inherits the last unit's
-  untracked and ignored files until something composes these verbs
-  (`mem.fact.oubliette.a-provision-resets-tracked-files-only`).
-- **Any `microvm.vms.<slot>` in `~/flakes`.** Named because it must stay absent,
-  not because this slice touches it.
+- **D4's reuse-refusal on a non-clean volume**, and with it the
+  `unassigned → provisioned → baselined → dirty` predicate, the enforcement of
+  the clean-source rule (`DEC-007`), and the dev-host waiver. Stays with
+  `IMP-001`. The host-readable half of *is this source clean* is `IMP-008`.
+- **`ISS-009` step 2's composition.** Fresh-per-unit consumes `volume reset` and
+  `volume reset-home`; whether that is a flag or a host declaration is decided
+  there. This slice makes the verbs exist and be safe to call.
+- **`resize`.** Refused rather than deferred: `§5` makes it delete-and-recreate,
+  which `reset` already is.
+- **`volume df`.** Replaced by the status column (`DEC-009`). Status's overall
+  width is `IMP-009`.
+- **A password-less grant** (`IMP-010`), and **removing the pre-slot state
+  directories** (`CHR-013`).
+- **Any `microvm.vms.<slot>` in `~/flakes`.** Named because it must stay absent.
 
 ## Summary
 
-Open questions for `/design` — each is a real fork, not a detail:
-
-- **OQ-1: is `reset-home` host-side or guest-side?** D3 says host-side, refusing
-  while the VM runs, which means loop-mounting a stopped ext4 image as root — not
-  forbidden by Firecracker's floor, since that floor is about mounting a *host*
-  directory *into a guest*
-  (`mem.fact.oubliette.firecracker-constraints`), but it is a new capability for
-  this repo. Guest-side is cheaper and uses the door that already exists, but then
-  the *refuses while running* gate inverts into *requires running*, and one noun
-  would carry two opposite preconditions.
-- **OQ-2: what does `df` answer that `capsule all status` does not?** The status
-  column is the guest's `df /work`; a host-side answer is the sparse image's
-  allocated-versus-apparent size. Two different questions, and if the verb only
-  restates the column it should not exist.
-- **OQ-3: where does the scrub happen, and what exactly is in it?** Offline on the
-  copied image (which needs OQ-1's answer) or on the clone's first boot. The
-  identity set wants one authority rather than a list retyped here — `capsule
-  <slot> inject` is what knows what was injected.
-- **OQ-4: does `clone-from` write the target's record?** The record is
-  front-end-written (`NOTES item 29`); a clone changes what is on the volume, and
-  `base`/`generation` describe an assignment. Cloning bytes and then being
-  `setup` is one story; a clone that also inherits an assignment is another.
-- **OQ-5: how wide is the sudoers grant?** `rm` under `/var/lib/microvms/*` is a
-  much broader thing to hand out than `systemctl restart <unit>`. A small root
-  helper taking a slot name and validating it against the declared pool bounds it
-  to what the pool contains; the alternative is a path pattern in the rule.
+The design run's inquiry closed with eleven accepted decisions, `DEC-001` to
+`DEC-011`, which replace this document's former `OQ-1` to `OQ-5`. Research
+finding F4 was wrong: `$HOME` is contract-derived, which is what made `DEC-002`
+cheap.
 
 Risks and assumptions:
 
-- **A destructive verb with a name argument is unrecoverable when the name is
-  wrong.** The declared-slot gate and the running gate are the two cheap
-  protections; whether a confirmation is a third is a design call.
-- The cost the verb makes legible — a discarded cache — is priced in
-  [probes](../../../docs/probes.md) and must be linked, never copied.
-- Assumed: nothing else on this host writes `/var/lib/microvms/<slot>` while a
-  volume verb runs, which is true only because the units are ours and the slot is
-  stopped.
+- **A wrong name is unrecoverable.** Mitigated by explicit declared names, state
+  refusals and the password prompt. There is no undo.
+- **A clone costs the source's high-water mark and stays that high** (research
+  F6). The allocation column makes it visible, and the fit refusal bounds it.
+  Figures live in [probes](../../../docs/probes.md).
+- **`capsule-reset-home` exists only in a new image.** A slot running the old
+  image fails the door call. The front end must refuse that by reason
+  (`command not found` read as *restart onto the new image*), not pass it
+  through as a bare error.
+- Assumed: nothing else writes `/var/lib/microvms/<slot>` while a verb runs.
+  That holds because the units are ours, the helper checks the image is not
+  open, and volumes are module-path slots (the devshell capsule's volume is
+  `.vm/capsule/`).
 
-Closure intent: `volume-cases.nix` green inside `just build`, with each refusal
-asserted **by reason** and not by exit status, and the suite checked for its
-ability to fail by mutating the behaviour it pins. Plus one live exercise per
-destructive verb on a finished slot — a real `reset` and a real `clone-from`,
-which is the part no suite can reach, since what ties these to this host is root
-and a real image.
+Closure intent: every suite green inside `just build`, each refusal asserted
+**by reason**, and each suite checked for its ability to fail by mutating the
+behaviour it pins. Plus live exercises no suite can reach, on finished slots:
+a real `reset`; a real `reset-home` on a running idle slot; and a real
+`clone-from`, followed by a `start` that shows the scrub ran before `inject`
+and that the clone's credentials are this host's rather than the source's.
 
 ## Follow-Ups
 
 - `ISS-009` step 2, which is filed `after` `IMP-001` for exactly this reason.
+- `IMP-008` (status shows a clean clone source), `IMP-009` (status width),
+  `IMP-010` (password-less grant), `CHR-013` (pre-slot state directories).
 - D4's reuse-refusal and Q3's state model, whenever a second principal makes it
   urgent.
 - `CHR-002` is unrelated but adjacent: `handoff`'s own live path is still

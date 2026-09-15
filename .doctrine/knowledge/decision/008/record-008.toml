@@ -1,0 +1,33 @@
+schema = "doctrine.knowledge"
+version = 1
+
+id = 8
+slug = "volume-is-one-verb-that-parses-its-own-sub-verb-and-it-requires-an-explicit-slot-name"
+title = "volume is one verb that parses its own sub-verb, and it requires an explicit slot name"
+record_kind = "decision"
+status = "accepted"
+created = "2026-09-15"
+updated = "2026-09-15"
+tags = []
+
+[facet]                         # every field typed; seeded empty (captured later)
+context = "SL-002 surface. host/cli.nix:268-318 reads the first token as a declared slot or `all`, else a single-token verb from ownVerbs ++ programVerbs; an omitted name resolves to the slot that is up. Plan D writes `capsule <slot> volume {df,reset,reset-home,clone-from <m>}`."
+choice = "`volume` joins ownVerbs and its branch parses df | reset | reset-home | clone-from <m>; usage gains one volume line. Every volume sub-verb refuses an omitted name (no resolution to the up slot), and `all volume ...` is refused."
+alternatives = ["Four top-level verbs (reset, reset-home, clone-from, df): reset does not say what it resets, df is meaningless without the noun, four more tokens for collide to guard", "A general two-level verb table: machinery for one caller"]
+rationale = "Groups the verbs under Plan D's noun with no new machinery and keeps collide's single-token guarantee. A destructive, unrecoverable verb must not have its target chosen by resolution: a bare `capsule volume reset-home` would pick the running slot. Same rule POL-003 already applies to lifecycle recipes."
+consequences = ["The first sub-verb in the CLI; parsing and its refusals are case-suite material", "`all volume` stays refused unless inq-13 finds df belongs in status"]
+decided_by = "user"
+decided_on = "2026-09-15"
+
+[evidence]                      # free-text citations (supports / contradicts / notes)
+supports    = []
+contradicts = []
+notes       = []
+
+[relationships]                 # verb-written edges (set by doctrine supersede)
+supersedes    = []   # record ids this one replaces (set by doctrine supersede)
+superseded_by = []   # set on superseded predecessor (verb-written, ADR-004 §5)
+
+[[relation]]
+label = "shapes"
+target = "SL-002"

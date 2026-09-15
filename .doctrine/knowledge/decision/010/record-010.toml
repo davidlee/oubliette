@@ -1,0 +1,33 @@
+schema = "doctrine.knowledge"
+version = 1
+
+id = 10
+slug = "no-confirmation-step-on-volume-verbs-the-password-prompt-is-the-second-keystroke"
+title = "No confirmation step on volume verbs; the password prompt is the second keystroke"
+record_kind = "decision"
+status = "accepted"
+created = "2026-09-15"
+updated = "2026-09-15"
+tags = []
+
+[facet]                         # every field typed; seeded empty (captured later)
+context = "SL-002. Protections already decided: an explicit declared slot name (DEC-008), state refusals (DEC-004), and reset/clone-from running through password-prompting sudo (DEC-005). reset-home runs over the admin door and prompts for nothing."
+choice = "No --yes flag and no typed-name prompt. reset-home destroys only the agent's $HOME, which a repurpose exists to discard; inject restores credentials."
+alternatives = ["A required --yes: typed by reflex, and every ISS-009 composition carries it", "A typed-name prompt: breaks scripted composition for a one-letter name"]
+rationale = "The existing protections catch the real accidents (wrong slot, live slot, occupied slot); another keystroke mostly taxes the composition ISS-009 step 2 builds."
+consequences = ["A NOPASSWD grant for the root helper removes the implicit confirmation from reset and clone-from, so that item must reopen this decision"]
+decided_by = "user"
+decided_on = "2026-09-15"
+
+[evidence]                      # free-text citations (supports / contradicts / notes)
+supports    = []
+contradicts = []
+notes       = []
+
+[relationships]                 # verb-written edges (set by doctrine supersede)
+supersedes    = []   # record ids this one replaces (set by doctrine supersede)
+superseded_by = []   # set on superseded predecessor (verb-written, ADR-004 §5)
+
+[[relation]]
+label = "shapes"
+target = "SL-002"
