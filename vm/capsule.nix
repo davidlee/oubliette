@@ -1,4 +1,5 @@
 {
+  config,
   pkgs,
   lib,
   inputs,
@@ -32,6 +33,23 @@
   # $HOME lives on the volume, so ~/.claude, credentials and shell history
   # survive reboots.
   home = "${work}/home";
+
+  # The only code that deletes inside a volume, run by the host's `volume
+  # reset-home` over the admin door (vm/reset-home.nix, SL-002 `DEC-001`). What a
+  # scrub removes besides `$HOME` is read from the two declarations that put an
+  # identity on the volume, never listed here (`DEC-003`): every payload
+  # `setup.nix` injects and every host key sshd is told to keep. A destination
+  # under `$HOME` is dropped because the reset already removes it; only the `dest`
+  # strings reach the program, so editing a payload's `produce` does not change
+  # the image.
+  resetHome = import ./reset-home.nix {
+    inherit pkgs lib home;
+    agentUid = config.users.users.agent.uid;
+    scrubPaths =
+      builtins.filter (p: !lib.hasPrefix "${home}/" p)
+      (map (i: i.dest) (import ../setup.nix {volumePath = work;}))
+      ++ lib.concatMap (k: [k.path "${k.path}.pub"]) config.services.openssh.hostKeys;
+  };
 
   # Static configuration the capsule renders from its own declared reservation
   # (target.nix's `guestConfig`), rather than carrying one in from a machine
@@ -129,9 +147,10 @@ in {
     [
       # The guest's own requirement, not the target's — and the guest's whole
       # part in the git channel: it commits locally and answers the host's
-      # `upload-pack` and `receive-pack`. There are no capsule helpers in here
-      # any more, because there is nothing for the guest to initiate.
+      # `upload-pack` and `receive-pack`. The one capsule helper in here is
+      # `resetHome`, and the host initiates that too.
       pkgs.git
+      resetHome
     ]
     # `compose(floor, extras)` — the whole of what this guest can do, and the
     # two halves have different owners (docs/contract-flavour.md). The agent

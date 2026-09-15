@@ -555,6 +555,16 @@
     # (host/volume-root-cases.nix).
     volumeRootCases = import ./host/volume-root-cases.nix {inherit pkgs lib capsules;};
 
+    # The guest's one deleting program (SL-002), and the first suite whose subject
+    # ships in the image rather than on this host. A fixture home, for the same
+    # reason as the helper's roots; and the scrub list is read off the evaluated
+    # capsule, which puts a guest *eval* (not a build) into `just build`
+    # (vm/reset-home-cases.nix).
+    resetHomeCases = import ./vm/reset-home-cases.nix {
+      inherit pkgs lib target;
+      guest = capsuleVm.config;
+    };
+
     # The host module has no build of its own — it is a NixOS module, and this
     # repo cannot rebuild someone's host to try it. So *evaluate* it: a text
     # file naming the units it generates drags the whole module through the
@@ -1333,7 +1343,7 @@
         # The checks that need no root and no host: what the module says, what the
         # guard decides, and which policy a slot resolves to.
         inherit hostModuleUnits hostModulePrograms guardCases policyCases observeCases;
-        inherit profileCases gitChannelCases vmCases wrapCases volumeRootCases;
+        inherit profileCases gitChannelCases vmCases wrapCases volumeRootCases resetHomeCases;
         # The rendered run-time half of `target.nix`, so a human can read what a
         # program will resolve (host/profile.nix). `nix build .#capsule-profiles`.
         capsule-profiles = hostProfile.dir;
