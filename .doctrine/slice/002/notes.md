@@ -48,6 +48,32 @@ exercise already in sec-8, and 2 is a read of sec-3 against its crash table.
 Neither is likely to move a decision. Lock after the user has read the revised
 sec-2..8; run item 2 as part of that read rather than as a separate pass.
 
+## PHASE-01 — 2026-09-15
+
+The helper and `volumeRootCases` are built as sec-3 specifies and are green, but
+**a finding against sec-3 holds the phase open**.
+
+- **Root does path work in a directory the `microvm` uid can write.** Read on this
+  host: `/var/lib/microvms` is `microvm:kvm 0775`, each `/var/lib/microvms/<slot>`
+  is `root:kvm 0775`, and `microvm` (uid 970) is in `kvm`. Every running VMM is
+  that uid, whichever slot it serves. Sec-3's `clone` does `rm` then `cp`,
+  `chown` and `chmod` on the fixed name `capsule-work.img.clone`, and `cp` reads
+  `img(src)`, all by path, as root. A VMM on another slot can swap either name
+  for a symlink between steps. Root would then `chown` an arbitrary file to
+  `microvm:kvm`, `chmod` one `0644`, overwrite one, or copy a file `microvm`
+  cannot read into an image it can. `reset`'s `rm -f` and the trap's `rm -f`
+  unlink a fixed basename, so at worst they delete a file of that name elsewhere.
+  Nothing calls the helper yet, and no sudo rule or `PATH` entry reaches it.
+- **`notHeld` fails open if `fuser` errors.** `fuser` exits 1 both for "nothing
+  holds it" and for errors. The existence check before it removes the common
+  error. What remains is `/proc` unreadable to root, which is not a state this
+  host is in.
+- **Mutation practice:** a mutation that leaves a variable unused dies at
+  shellcheck, before any case runs, which can read as "the suite caught it".
+  And `cp` refuses an unreadable source before creating anything, so the
+  planned copy-failure case could not see the EXIT trap. A post-copy failure (a
+  `chown` a non-root sandbox is refused) replaced it.
+
 ## Harvest
 <!-- single-copy: updated in place each harvest; ids only, never restated content -->
 fresh-as-of: 2026-09-15 · ready (design locked at run revision 53; plan PHASE-01..06 materialised)

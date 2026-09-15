@@ -131,6 +131,20 @@ let
   # an instance and must not invent a second convention for the same path.
   socketOf = name: "/run/capsule/${name}/ssh.sock";
 
+  # One volume operation at a time on this host (SL-002 design sec-2). The root
+  # helper holds it exclusively for its whole run and `capsule <slot> start`
+  # takes it shared, so a start cannot land between the helper's `fuser` and its
+  # act. Host-wide rather than per slot: a clone takes seconds, and per-slot
+  # locks would buy that back with ordering rules. Beside `socketOf` because both
+  # live under `/run/capsule`.
+  volumeLock = "/run/capsule/volume.lock";
+
+  # Bytes a clone must leave free for non-root writers. The running VMMs are
+  # `microvm`, and they grow their sparse images into `df`'s `avail`, so a clone
+  # that spent it to zero would stop every running guest's writes. It bounds the
+  # clone only; growth of images already here is `RSK-007`.
+  volumeReserve = 20 * 1024 * 1024 * 1024;
+
   # `policy` and `policies` are optional *here* and required of a real slot by the
   # assertion below, so the one caller that constructs instances which are not
   # slots — `guardCases`'s fixture, which is about namespaces and knows nothing
@@ -195,7 +209,7 @@ in
   assert undeclared
   == []
   || throw "capsules.nix: slot '${builtins.head undeclared}' names no policy, or names one policies.nix does not declare, or one outside its own `policies` set"; {
-    inherit uplinkNet socketOf;
+    inherit uplinkNet socketOf volumeLock volumeReserve;
 
     instances = instancesOf declared;
 

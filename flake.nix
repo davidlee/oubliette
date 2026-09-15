@@ -548,6 +548,13 @@
       inherit (hostPrograms) observe observeFragment programVerbs profileVerbs stateRefPrefix;
     };
 
+    # The one root program on the volume path (SL-002). Handed a fixture pool and
+    # rendering its own subject, like `policyCases`: the helper's roots are
+    # build-time arguments so that a root program cannot be pointed elsewhere,
+    # which is exactly what stops the shipped store path running in a sandbox
+    # (host/volume-root-cases.nix).
+    volumeRootCases = import ./host/volume-root-cases.nix {inherit pkgs lib capsules;};
+
     # The host module has no build of its own — it is a NixOS module, and this
     # repo cannot rebuild someone's host to try it. So *evaluate* it: a text
     # file naming the units it generates drags the whole module through the
@@ -1326,7 +1333,7 @@
         # The checks that need no root and no host: what the module says, what the
         # guard decides, and which policy a slot resolves to.
         inherit hostModuleUnits hostModulePrograms guardCases policyCases observeCases;
-        inherit profileCases gitChannelCases vmCases wrapCases;
+        inherit profileCases gitChannelCases vmCases wrapCases volumeRootCases;
         # The rendered run-time half of `target.nix`, so a human can read what a
         # program will resolve (host/profile.nix). `nix build .#capsule-profiles`.
         capsule-profiles = hostProfile.dir;

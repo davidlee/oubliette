@@ -45,8 +45,8 @@ evaluates). `just` (default) runs the build, units, and fmt.
 `just check` parses and formats without evaluating. `hostModuleUnits` *evaluates*
 the NixOS module — what it says, including its programs, since a unit graph does
 not mention them. `guardCases`, `briefCases`, `snapshotCases`, `refreshCases`, `observeCases`,
-`baselineCases`, `policyCases`, `profileCases`, `vmCases` and `gitChannelCases`
-*run* a host-side
+`baselineCases`, `policyCases`, `profileCases`, `vmCases`, `gitChannelCases` and
+`volumeRootCases` *run* a host-side
 program's own text with a substitute for the one thing tying it to this host
 (`just cases`), and are the answer whenever the interesting branches are ones a
 live host can only reach destructively or expensively — the guard's by unnaming a
@@ -58,7 +58,8 @@ can be asked to fail, the status's by catching an unprovisioned volume or a run
 in flight before it leaves that state, the front end's by editing the declared
 pool and writing the live record of a slot somebody is using, the profile's by
 holding two targets at once and by handing the render a target no host declares,
-and the git channel's by confining a second project. **That last is the only one
+the git channel's by confining a second project, and the volume root helper's by
+deleting and overwriting a real slot's image as root. **The git channel is the only one
 over a program that talks to a guest, and what it can reach is everything
 upstream of the door** — `pkgs.openssh` is in its subjects' `runtimeInputs`, so
 nothing in a sandbox can stub `ssh`, and that is a boundary to respect rather
@@ -84,10 +85,11 @@ written, wired into `just cases`, and left out of `just build` for a session
 (NOTES item 51 step 3). **One suite per file, beside the program it pins** —
 `host/<name>-cases.nix`, a function of `pkgs`, `lib` and **the store path the
 program ships**, with a short `import` in `flake.nix` (NOTES item 51 step 0).
-Four of them are handed a fixture instead and say so in their headers: the
+Five of them are handed a fixture instead and say so in their headers: the
 guard's stubbed kernel, the front end's pool that is not this host's, the
-profile's target that is nobody's, and the wrapper's five directories that are
-no host's. A new suite goes in
+profile's target that is nobody's, the wrapper's five directories that are
+no host's, and the volume root helper's sandbox roots, since a root program's
+paths are fixed at build and its shipped store path cannot be aimed anywhere else. A new suite goes in
 its own file and takes its subject as an argument — never a second render of the
 text it claims to pin. **A suite whose subject is a *library* rather than a
 program** takes the fragment its callers get and splices it into the smallest

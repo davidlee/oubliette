@@ -732,6 +732,12 @@ in {
           # no guest closure knows about.
           "d ${builtins.dirOf cfg.stopKey} 0755 root root -"
           "z ${cfg.stopKey} 0400 microvm kvm -"
+          # The volume lock, made before anything takes it. The front end opens it
+          # for reading to take it shared around a start, and must never create a
+          # file under `/run` as the operator. Readable by everyone because a
+          # shared `flock` needs only a descriptor; only the root helper takes it
+          # exclusively (host/volume-root.nix). tmpfiles makes the missing parent.
+          "f ${capsules.volumeLock} 0644 root root -"
         ]
         # A slot's record directory, and — in the other directory entirely, see
         # `allowlistOf` — its policy as declared by the host operator.
