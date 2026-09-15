@@ -1,9 +1,9 @@
 id = 2
 slug = "volume-verbs-and-a-scrubbed-clone"
 title = "Volume verbs, and a clone that does not carry an identity"
-status = "design"
+status = "plan"
 created = "2026-08-17"
-updated = "2026-08-17"
+updated = "2026-09-15"
 tags = ["area:cli"]
 
 [relationships]
