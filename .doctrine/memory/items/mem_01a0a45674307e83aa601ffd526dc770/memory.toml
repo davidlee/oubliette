@@ -1,0 +1,46 @@
+memory_uid = "mem_01a0a45674307e83aa601ffd526dc770"
+memory_key = "mem.fact.oubliette.image-directories-are-vmm-writable"
+schema_version = 1
+memory_type = "fact"
+status = "active"
+title = "An image directory is writable by every VMM, so root acts in it only as the image owner"
+summary = "Every /var/lib/microvms/<slot> is writable by the uid all VMMs run as, so root must never act on a path in there"
+created = "2026-09-15"
+updated = "2026-09-15"
+
+[scope]
+paths = ["host/volume-root.nix", "host/"]
+globs = []
+commands = []
+tags = ["gotcha"]
+workspace = "default"
+repo = "github.com/davidlee/oubliette"
+repo_id_kind = "remote"
+repo_id_confidence = "high"
+
+[git]
+anchor_kind = "commit"
+commit = "661c13cf4dae3400d46871688b35981e54a4bfe4"
+tree = "5e8ce355ef6975b91d9e330b913df233447da74e"
+ref_name = "refs/heads/main"
+checkout_state_id = ""
+base_commit = "661c13cf4dae3400d46871688b35981e54a4bfe4"
+verified_sha = ""
+normalizer = ""
+
+[review]
+verification_state = "unverified"
+reviewed = ""
+review_by = ""
+
+[trust]
+trust_level = "high"
+
+[ranking]
+severity = "high"
+weight = 0
+
+[[source]]
+kind = "review"
+ref = "RV-003"
+

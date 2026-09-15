@@ -1,0 +1,42 @@
+memory_uid = "mem_01a0a45674477f8098521791c4e1ed8f"
+memory_key = "mem.pattern.oubliette.a-mutation-must-reach-the-case"
+schema_version = 1
+memory_type = "pattern"
+status = "active"
+title = "A mutation that fails the build at shellcheck proves nothing about the suite"
+summary = "A mutation that leaves a shell variable unused dies at shellcheck before any case runs; check which cases went red, not just the exit status"
+created = "2026-09-15"
+updated = "2026-09-15"
+
+[scope]
+paths = []
+globs = ["host/*-cases.nix", "vm/*-cases.nix"]
+commands = []
+tags = ["gotcha"]
+workspace = "default"
+repo = "github.com/davidlee/oubliette"
+repo_id_kind = "remote"
+repo_id_confidence = "high"
+
+[git]
+anchor_kind = "checkout_state"
+commit = ""
+tree = "5e8ce355ef6975b91d9e330b913df233447da74e"
+ref_name = "refs/heads/main"
+checkout_state_id = "e02188d643d069df35cd1086f6c068d482a2849c278944456ea96bf0296a735b"
+base_commit = "661c13cf4dae3400d46871688b35981e54a4bfe4"
+verified_sha = ""
+normalizer = "forget.checkout.v1"
+
+[review]
+verification_state = "unverified"
+reviewed = ""
+review_by = ""
+
+[trust]
+trust_level = "high"
+
+[ranking]
+severity = "medium"
+weight = 0
+

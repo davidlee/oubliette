@@ -77,12 +77,13 @@ shipped render for its `setpriv` line. That `setpriv --reuid=microvm
 - **Mutation practice:** a mutation that leaves a variable unused dies at
   shellcheck, before any case runs, which can read as "the suite caught it".
   And `cp` refuses an unreadable source before creating anything, so the
-  planned copy-failure case could not see the EXIT trap. A post-copy failure (a
-  `chown` a non-root sandbox is refused) replaced it.
+  planned copy-failure case could not see the EXIT trap. A post-copy failure (at
+  first a `chown` a non-root sandbox is refused, and after `F-1` the owner stub
+  refusing the `chmod`) was added beside it.
 
 ## Harvest
 <!-- single-copy: updated in place each harvest; ids only, never restated content -->
-fresh-as-of: 2026-09-15 · ready (design locked at run revision 53; plan PHASE-01..06 materialised)
+fresh-as-of: 2026-09-15 · started (PHASE-01 complete; design re-locked at run revision 60 over `RV-003` `F-1`)
 
 ### Produced
 - `design.md` sec-1..sec-8 — materialised from run `dr-01a0a2ae…`; all eight walked with the user, sec-3/4/5/7/8 revised for `RV-001` `F-1`..`F-5` (`075ead9`)
@@ -92,13 +93,19 @@ fresh-as-of: 2026-09-15 · ready (design locked at run revision 53; plan PHASE-0
 - `RSK-007`, `IMP-011` — filed while disposing `F-9` and `F-7`
 - `RV-001` `F-11` — found while planning (the user manager is a logind session); sec-2/4/8 revised through a reopened run, `RV-002` is that pass
 - `plan.toml`, `plan.md` — six phases; commits `95ccff1`, `c21a391`, `3a07fe7`
+- PHASE-01: `host/volume-root.nix`, `host/volume-root-cases.nix`, `capsules.nix` `volumeLock`/`volumeReserve`, the lock's tmpfiles rule — commits `6f33e38`, `661c13c`
+- `RV-003` `F-1` — found executing PHASE-01; sec-1/3/8 revised (`0bd060f`); PHASE-01 `EX-7`/`VT-5`/`VA-3` and PHASE-06 `VH-6` appended
 
 ### Learned
 - mem.fact.oubliette.design-apply-disposes-through-checkpoints — how the run takes dispositions
 - mem.fact.oubliette.guest-autologins-agent-on-every-getty — tty1 and ttyS0, and the user manager is a session too; quiesce by the user slice
 - mem.fact.oubliette.nologin-is-pams-job-under-sshd — `/etc/nologin` blocks no ssh login on the guest
+- mem.fact.oubliette.image-directories-are-vmm-writable — root acts in an image directory only as the image owner
+- mem.pattern.oubliette.a-mutation-must-reach-the-case — read which cases went red, not the exit status
 
 ### Open
 - `ASM-001` — a detached baseline keeps its logind session (live exercise 2, PHASE-06)
 - `Service`/`Class` of an `agent` ssh login and of a detached baseline — unread (live exercise 2)
 - `ASM-002` — restarting guest sshd keeps the admin session (live exercise 3, PHASE-06)
+- the `setpriv` drop under `sudo -k` on this host — no suite reaches it (PHASE-06 `VH-6`)
+- `notHeld` fails open if `fuser` itself errors — noted in `## PHASE-01`, not filed
