@@ -50,10 +50,16 @@ sec-2..8; run item 2 as part of that read rather than as a separate pass.
 
 ## PHASE-01 — 2026-09-15
 
-The helper and `volumeRootCases` are built as sec-3 specifies and are green, but
-**a finding against sec-3 holds the phase open**.
+The helper and `volumeRootCases` are built as sec-3 specifies and are green. A
+finding against sec-3 held the phase open until the design was revised: it is
+`RV-003` `F-1`, fixed at run revision 55 (`0bd060f`) and built in the commit
+after it. **What no suite reaches** is the drop itself: no sandbox has a second
+uid, so the suite logs which acts went through `asImageOwner` and greps the
+shipped render for its `setpriv` line. That `setpriv --reuid=microvm
+--regid=kvm --init-groups` works under `sudo -k` on this host is PHASE-06
+`VH-6`.
 
-- **Root does path work in a directory the `microvm` uid can write.** Read on this
+- **Root does path work in a directory the `microvm` uid can write** (as found). Read on this
   host: `/var/lib/microvms` is `microvm:kvm 0775`, each `/var/lib/microvms/<slot>`
   is `root:kvm 0775`, and `microvm` (uid 970) is in `kvm`. Every running VMM is
   that uid, whichever slot it serves. Sec-3's `clone` does `rm` then `cp`,

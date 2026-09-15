@@ -20,10 +20,21 @@
 # renders its own copy against a sandbox rather than running this store path
 # (host/volume-root-cases.nix).
 #
-# `tools` is the guard's seam (host/guard.nix) for the two steps a sandbox cannot
-# provoke: a filesystem small enough to refuse a clone, and a failure between two
-# lines. `df` and `mv` come from `runtimeInputs`, so a suite cannot shadow them on
-# `PATH`.
+# **Root does no path-based act inside an image directory** (`RV-003` `F-1`).
+# Each `/var/lib/microvms/<slot>` is `root:kvm 0775`, and `microvm`, the uid of
+# every VMM whichever slot it serves, is in `kvm`. A root `cp`, `chmod` or `rm` by
+# path in there is a symlink race any running VMM can win. So everything that
+# creates, modifies, renames or removes a file there goes through `asImageOwner`:
+# as that owner a won race gains nothing the VMM does not already have, a copy
+# the owner makes needs no ownership change, and a swapped source it cannot read
+# fails the copy. Root keeps what writes nothing through that directory: the
+# lock, `fuser`, the fit check's `stat`, and the marker, which sits in the
+# operator's record directory where `microvm` cannot write.
+#
+# `tools` is the guard's seam (host/guard.nix) for the three steps a sandbox
+# cannot provoke: a filesystem small enough to refuse a clone, a second uid, and
+# a failure between two lines. `df`, `setpriv` and `mv` come from
+# `runtimeInputs`, so a suite cannot shadow them on `PATH`.
 {
   pkgs,
   lib,
@@ -33,11 +44,15 @@
   microvms ? "/var/lib/microvms",
   # Where the assignment records live; the scrub marker sits in a slot's one.
   moduleState ? "/var/lib/capsule",
-  # What a copied image is owned by, matching the runner's own images.
-  imageOwner ? "microvm:kvm",
+  # Who acts inside an image directory: the runner's own images' owner.
+  imageOwner ? {
+    user = "microvm";
+    group = "kvm";
+  },
   tools ? ''
     freeBytes() { df --output=avail -B1 "$1" | tail -n 1; }
-    commitImage() { mv -T -- "$1" "$2"; }
+    asImageOwner() { setpriv --reuid=${imageOwner.user} --regid=${imageOwner.group} --init-groups -- "$@"; }
+    commitImage() { asImageOwner mv -T -- "$1" "$2"; }
   '',
 }:
 pkgs.writeShellApplication {
@@ -91,7 +106,7 @@ pkgs.writeShellApplication {
         return 0
       fi
       notHeld "$image"
-      rm -f -- "$image"
+      asImageOwner rm -f -- "$image"
       # A cold volume has no identity to scrub. A crash between these two lines
       # leaves a marker over no image, whose only effect is a scrub of the cold
       # volume the next start makes.
@@ -133,11 +148,10 @@ pkgs.writeShellApplication {
       # After a successful commit the name no longer exists, so the trap removes
       # only a copy that never became the image.
       tmp="''${to%/*}/capsule-work.img.clone"
-      trap 'rm -f -- "$tmp"' EXIT
-      rm -f -- "$tmp"
-      cp --sparse=always -- "$from" "$tmp"
-      chown ${imageOwner} -- "$tmp"
-      chmod 0644 -- "$tmp"
+      trap 'asImageOwner rm -f -- "$tmp"' EXIT
+      asImageOwner rm -f -- "$tmp"
+      asImageOwner cp --sparse=always -- "$from" "$tmp"
+      asImageOwner chmod 0644 -- "$tmp"
 
       # The marker invariant: it exists whenever the destination's image may carry
       # another slot's identity that nobody chose to keep. So it is written before

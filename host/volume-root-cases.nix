@@ -5,18 +5,22 @@
 # volume as root, so the suite is where they get exercised at all.
 #
 # **Handed a fixture pool, and it renders its own subject on purpose**, as
-# `host/policy-cases.nix` does. The helper's roots, its image owner and its lock
-# are *build-time* arguments, never run-time ones, because it runs as root and a
-# later password-less grant (`IMP-010`) must not be pointable at `/`. So the
-# shipped store path cannot be aimed at a sandbox, and a render against one is
-# the only way to run the text. The render differs from the shipped one in those
-# values and in `tools` alone.
+# `host/policy-cases.nix` does. The helper's roots and its lock are *build-time*
+# arguments, never run-time ones, because it runs as root and a later
+# password-less grant (`IMP-010`) must not be pointable at `/`. So the shipped
+# store path cannot be aimed at a sandbox, and a render against one is the only
+# way to run the text. The render differs from the shipped one in those values
+# and in `tools` alone; the shipped render is built too, and read for the one
+# line the fixture's `tools` replaces.
 #
-# `tools` is the two steps a sandbox cannot provoke: a filesystem small enough to
-# refuse a clone (`freeBytes`), and a failure between two lines (`commitImage`).
-# The commit stub also logs whether the marker was already there when it ran,
-# because the marker's ordering against the commit is the invariant sec-3's crash
-# table rests on, and only the moment of the commit can see it.
+# `tools` is the three steps a sandbox cannot provoke: a filesystem small enough
+# to refuse a clone (`freeBytes`), a second uid (`asImageOwner`), and a failure
+# between two lines (`commitImage`). The owner stub runs its command as the build
+# user and logs it, so a case asserts *which* acts went through the drop — the
+# whole of `RV-003` `F-1`'s fix, since no sandbox has a VMM racing a symlink. The
+# commit stub logs whether the marker was already there when it ran, because the
+# marker's ordering against the commit is the invariant sec-3's crash table rests
+# on, and only the moment of the commit can see it.
 #
 # Both rules for writing a case apply: each refusal asserts its reason as well as
 # its status, and nothing a refusal should not have made is left behind. Each case
@@ -24,8 +28,9 @@
 # was applied to `host/volume-root.nix` and watched turning exactly its own cases
 # red (SL-002 PHASE-01): the marker written after the commit; a failed commit
 # removing a marker it did not write; the EXIT trap dropped; the lock not taken;
-# a leftover copy not removed first. The trap's first case passed with the trap
-# gone, which is why the copy now also fails *after* the temporary image exists.
+# a leftover copy not removed first; the copy run as root rather than as the
+# owner. The trap's first case passed with the trap gone, which is why the copy
+# now also fails *after* the temporary image exists.
 {
   pkgs,
   lib,
@@ -51,10 +56,6 @@
     capsules = fixture;
     microvms = ''"$CASE_ROOT/microvms"'';
     moduleState = ''"$CASE_ROOT/state"'';
-    # The build user, since a sandbox cannot `chown` to `microvm` — and a variable
-    # so one case can name an owner the sandbox is refused, which is the only
-    # failure it can provoke *after* the temporary image exists.
-    imageOwner = ''"''${CASE_OWNER:-$(id -u):$(id -g)}"'';
     tools = ''
       freeBytes() {
         if [ -n "''${CASE_FREE:-}" ]; then echo "$CASE_FREE"
@@ -66,10 +67,20 @@
         if [ -e "$m" ]; then echo "marker present" >> "$CASE_LOG"
         else echo "marker absent" >> "$CASE_LOG"; fi
         [ -z "''${CASE_COMMIT_FAIL:-}" ] || return 1
-        mv -T -- "$1" "$2"
+        asImageOwner mv -T -- "$1" "$2"
+      }
+      # The command and the name it acts on, which is enough to tell the copy's
+      # temporary image from the image and from the marker. Refusing one command
+      # by name is the only failure a sandbox can put after the copy exists.
+      asImageOwner() {
+        echo "$1 $(basename "''${*: -1}")" >> "$CASE_OWNER_LOG"
+        [ "$1" != "''${CASE_OWNER_FAIL:-}" ] || return 1
+        "$@"
       }
     '';
   };
+  # This host's values and the real `tools`, for the lines a fixture replaces.
+  shipped = import ./volume-root.nix {inherit pkgs lib capsules;};
 in
   pkgs.runCommand "capsule-volume-root-cases" {nativeBuildInputs = [pkgs.util-linux];} ''
     fail=0
@@ -84,7 +95,7 @@ in
     log=$PWD/log
     : >"$log"
 
-    export CASE_ROOT=$PWD/root CASE_LOG=$PWD/commits
+    export CASE_ROOT=$PWD/root CASE_LOG=$PWD/commits CASE_OWNER_LOG=$PWD/owner
     helper=${helper}/bin/capsule-volume-root
     size=$((64 * 1024 * 1024))
     reserve=${toString fixture.volumeReserve}
@@ -94,6 +105,7 @@ in
     marker() { echo "$CASE_ROOT/state/slot/$1/scrub-pending"; }
     alloc() { echo $(($(stat -c '%b * %B' "$1"))); }
     run() { rc=0; "$helper" "$@" >out 2>err || rc=$?; }
+    owned() { tr '\n' ',' <"$CASE_OWNER_LOG" | sed 's/,$//'; }
 
     # Every slot but `never` created; record directories for `src` and `dst`
     # only; a sparse source with bytes at both ends so a copy that lost either is
@@ -111,7 +123,8 @@ in
       printf head | dd of="$(img src)" conv=notrunc status=none
       printf tail | dd of="$(img src)" bs=1 seek=$((size - 4)) conv=notrunc status=none
       : >"$CASE_LOG"
-      unset CASE_FREE CASE_COMMIT_FAIL
+      : >"$CASE_OWNER_LOG"
+      unset CASE_FREE CASE_COMMIT_FAIL CASE_OWNER_FAIL
     }
     # An old destination image the operator would lose, distinguishable from a copy.
     oldDest() { printf old >"$(img dst)"; }
@@ -178,6 +191,7 @@ in
     ck "reset of a slot with no image succeeds" 0 "$rc"
     ckt "  saying it was already fresh" grep -q 'already fresh' out
     ckt "  and clears a stale marker" test ! -e "$(marker dst)"
+    ck "  as root, since the record directory is not the image owner's" "" "$(owned)"
 
     fresh
     oldDest
@@ -186,6 +200,7 @@ in
     ck "reset deletes an image nothing holds" 0 "$rc"
     ckt "  the image is gone" test ! -e "$(img dst)"
     ckt "  and so is the marker, since a cold volume has no identity" test ! -e "$(marker dst)"
+    ck "  the image was removed as its owner, and the marker as root" "rm capsule-work.img" "$(owned)"
     ckt "  and no other slot's image was touched" test -e "$(img src)"
 
     # ---------------------------------------------------------------------- lock
@@ -285,6 +300,7 @@ in
     ckt "  as not fitting" grep -q 'does not fit' err
     ckt "  naming the reserve" grep -q "$reserve" err
     ckt "  and copied nothing" test ! -e "$(img dst)" -a ! -e "$(tmp dst)" -a ! -e "$(marker dst)"
+    ck "  and acted on nothing" "" "$(owned)"
 
     fresh
     export CASE_FREE=$need
@@ -301,14 +317,15 @@ in
 
     # `cp` refuses an unreadable source before it creates anything, so the case
     # above cannot see the trap: it passed with the trap removed. A step that
-    # fails once the temporary image exists can, and a chown to root is one a
-    # sandbox that is not root is always refused.
+    # fails once the temporary image exists can.
     fresh
-    export CASE_OWNER=0:0
+    export CASE_OWNER_FAIL=chmod
     run clone src dst
-    unset CASE_OWNER
     ckt "a copy that fails after the temporary image exists exits non-zero" test "$rc" -ne 0
     ckt "  and the trap removed the temporary image" test ! -e "$(tmp dst)"
+    ck "  as the owner too" \
+      "rm capsule-work.img.clone,cp capsule-work.img.clone,chmod capsule-work.img.clone,rm capsule-work.img.clone" \
+      "$(owned)"
     ckt "  and wrote no marker" test ! -e "$(marker dst)"
     ckt "  and no destination image" test ! -e "$(img dst)"
 
@@ -322,11 +339,15 @@ in
     ck "clone succeeds over a leftover copy from a killed run" 0 "$rc"
     ckt "  the destination is the source, byte for byte" cmp -s "$(img src)" "$(img dst)"
     ckt "  and still sparse" test "$(alloc "$(img dst)")" -lt "$size"
-    ck "  owned by the image owner" "$(id -u):$(id -g)" "$(stat -c '%u:%g' "$(img dst)")"
     ck "  mode 0644, as the runner's own images" 644 "$(stat -c '%a' "$(img dst)")"
     ckt "  the temporary name is gone" test ! -e "$(tmp dst)"
     ckt "  a marker naming the source was written" grep -q '^source=src ' "$(marker dst)"
     ck "  and it existed when the image was committed" "marker present" "$(cat "$CASE_LOG")"
+    # `RV-003` `F-1`: root does no path-based act in a directory a VMM's uid can
+    # write. Every one of them is here, in order, and the marker is not.
+    ck "  every act in the image directory ran as the image owner" \
+      "rm capsule-work.img.clone,cp capsule-work.img.clone,chmod capsule-work.img.clone,mv capsule-work.img,rm capsule-work.img.clone" \
+      "$(owned)"
 
     # ------------------------------------------------------------ failed commit
     fresh
@@ -370,6 +391,16 @@ in
     run clone src dst --identity
     ck "clone --identity whose commit fails refuses" 1 "$rc"
     ckt "  and the earlier clone stays marked" cmp -s before "$(marker dst)"
+
+    # ---------------------------------------------------------- shipped render
+    #
+    # The one line every case above replaces, read from the store path a host
+    # would run. Comments are dropped first so a sentence cannot satisfy it.
+    code=$(grep -v '^[[:space:]]*#' ${shipped}/bin/capsule-volume-root)
+    ckt "the shipped helper drops to microvm:kvm for acts in an image directory" \
+      grep -qF 'setpriv --reuid=microvm --regid=kvm --init-groups -- "$@"' <<<"$code"
+    ckt "  and its commit goes through the drop" grep -qF 'asImageOwner mv -T' <<<"$code"
+    ckt "  and it chowns nothing" test -z "$(grep -wE 'chown' <<<"$code")"
 
     [ "$fail" = 0 ] || exit 1
     cp "$log" $out
