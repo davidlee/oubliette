@@ -10,7 +10,7 @@
 # password-less grant (`IMP-010`) must not be pointable at `/`. So the shipped
 # store path cannot be aimed at a sandbox, and a render against one is the only
 # way to run the text. The render differs from the shipped one in those values
-# and in `tools` alone; the shipped render is built too, and read for the one
+# and in `tools` alone; the shipped helper is handed in too, and read for the one
 # line the fixture's `tools` replaces.
 #
 # `tools` is the three steps a sandbox cannot provoke: a filesystem small enough
@@ -35,6 +35,10 @@
   pkgs,
   lib,
   capsules,
+  # The helper every real call site runs (host/programs.nix), for the lines a
+  # fixture's `tools` replaces. Handed in rather than built again here, so the
+  # text read is the text shipped and not a second construction of it.
+  shipped,
 }: let
   # Four slots, none of them this host's, one per precondition: a source, a
   # destination with everything, one that was created but has no record
@@ -79,8 +83,6 @@
       }
     '';
   };
-  # This host's values and the real `tools`, for the lines a fixture replaces.
-  shipped = import ./volume-root.nix {inherit pkgs lib capsules;};
 in
   pkgs.runCommand "capsule-volume-root-cases" {nativeBuildInputs = [pkgs.util-linux];} ''
     fail=0

@@ -553,7 +553,10 @@
     # build-time arguments so that a root program cannot be pointed elsewhere,
     # which is exactly what stops the shipped store path running in a sandbox
     # (host/volume-root-cases.nix).
-    volumeRootCases = import ./host/volume-root-cases.nix {inherit pkgs lib capsules;};
+    volumeRootCases = import ./host/volume-root-cases.nix {
+      inherit pkgs lib capsules;
+      shipped = hostPrograms.volumeRootHelper;
+    };
 
     # The front end's half of the volume path (SL-002): where the name came from,
     # the checks that need no root, and the lock a start shares with the helper.
