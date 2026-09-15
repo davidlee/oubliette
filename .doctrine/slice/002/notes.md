@@ -19,9 +19,9 @@ Exploring-stage triage, superseded by the design run's decisions
 ## Review passes — 2026-09-15
 
 **Pass 1** was the user's walk of sec-1..8 with the agent checking each claim
-against code and the pinned nixpkgs. It found five faults (commit `075ead9`
-lists them) and all five were revised through the run. Fault A, a failed clone
-unmarking an earlier unscrubbed clone, is the kind a second pass exists to find:
+against code and the pinned nixpkgs: `RV-001` `F-1`..`F-5`, all fixed in
+`075ead9`. `F-1`, a failed clone unmarking an earlier unscrubbed clone, is the
+kind a second pass exists to find:
 an ordering argument that read as sound until a *pre-existing* state was put in
 front of it.
 
@@ -37,7 +37,7 @@ front of it.
    (the console session starts `user@1000.service`) is in no session, so sec-4's
    idle test does not see it, and it may write into `$HOME` while that is being
    deleted or reseeded.
-3. **Pre-existing state generally**, which is Fault A's class: a leftover marker
+3. **Pre-existing state generally**, which is `F-1`'s class: a leftover marker
    under `reset` after a crash, a `capsule-work.img.clone` left while a slot is
    running, a marker whose content names a source other than the current clone's.
 4. Checked and not a defect: `setup` on a marked slot provisions, then stops at
@@ -53,7 +53,7 @@ reviewer should be aimed at items 1–3 rather than the whole document.
 fresh-as-of: 2026-09-15 · design (reviewing; review.scope and review.selectors discharged) · 075ead9
 
 ### Produced
-- `design.md` sec-1..sec-8 — materialised from run `dr-01a0a2ae…`; all eight walked with the user, sec-3/4/5/7/8 revised for faults A–E (`075ead9`)
+- `design.md` sec-1..sec-8 — materialised from run `dr-01a0a2ae…`; all eight walked with the user, sec-3/4/5/7/8 revised for `RV-001` `F-1`..`F-5` (`075ead9`)
 - `DEC-001`..`DEC-011` — the design's rulings, all accepted
 - `IMP-008`, `IMP-009`, `IMP-010`, `CHR-013` — follow-ups filed during inquiry
 - commits `78a6460`, `10d277b`, `4379895`, `075ead9` — nothing built or run
