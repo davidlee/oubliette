@@ -46,7 +46,7 @@ evaluates). `just` (default) runs the build, units, and fmt.
 the NixOS module — what it says, including its programs, since a unit graph does
 not mention them. `guardCases`, `briefCases`, `snapshotCases`, `refreshCases`, `observeCases`,
 `baselineCases`, `policyCases`, `profileCases`, `vmCases`, `gitChannelCases`,
-`volumeRootCases` and `resetHomeCases` *run* a
+`volumeRootCases`, `resetHomeCases` and `volumeCases` *run* a
 program's own text with a substitute for the one thing tying it to this host
 (`just cases`), and are the answer whenever the interesting branches are ones a
 live host can only reach destructively or expensively — the guard's by unnaming a
@@ -59,8 +59,9 @@ in flight before it leaves that state, the front end's by editing the declared
 pool and writing the live record of a slot somebody is using, the profile's by
 holding two targets at once and by handing the render a target no host declares,
 the git channel's by confining a second project, and the volume root helper's by
-deleting and overwriting a real slot's image as root, and the guest's reset of
-`$HOME` by deleting one under a real agent. `resetHomeCases` is the one whose
+deleting and overwriting a real slot's image as root, the guest's reset of
+`$HOME` by deleting one under a real agent, and the volume verb's by typing a
+destructive command at a slot nobody named and racing a start against a clone. `resetHomeCases` is the one whose
 subject ships in the *guest* (`vm/`), and it also reads the scrub list off the
 evaluated capsule, so `just build` evaluates the guest. **The git channel is the only one
 over a program that talks to a guest, and what it can reach is everything
@@ -88,8 +89,9 @@ written, wired into `just cases`, and left out of `just build` for a session
 (NOTES item 51 step 3). **One suite per file, beside the program it pins** —
 `host/<name>-cases.nix`, or `vm/<name>-cases.nix` for a guest program, a function of `pkgs`, `lib` and **the store path the
 program ships**, with a short `import` in `flake.nix` (NOTES item 51 step 0).
-Six of them are handed a fixture instead and say so in their headers: the
-guard's stubbed kernel, the front end's pool that is not this host's, the
+Seven of them are handed a fixture instead and say so in their headers: the
+guard's stubbed kernel, the front end's pool that is not this host's (twice,
+once for policy and once for the volume verb), the
 profile's target that is nobody's, the wrapper's five directories that are
 no host's, the volume root helper's sandbox roots, since a root program's
 paths are fixed at build and its shipped store path cannot be aimed anywhere else,

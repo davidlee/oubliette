@@ -109,9 +109,49 @@ shipped scrub list is `/work/.env` and the ed25519 host key and its `.pub`.
   `stdenv.isLinux is deprecated` warning. The warning predates this phase (HEAD
   `410e840` prints it too); it is not this repo's code.
 
+## PHASE-03 — 2026-09-15
+
+`capsule <slot> volume reset` and `volume clone-from <src> [--identity]` are in
+the front end, and `start` holds the volume lock shared across its
+`systemctl start` and stays-up check (`2bd3ddd`). `volumeCases` has 95 checks,
+all green, inside `just build`.
+
+- **Deviation from sec-7's seam table, for audit.** `volumeControl` carries
+  `vmmState` (the slot's `microvm@` unit state) as well as `volumeRoot`.
+  `pkgs.systemd` is in the front end's `runtimeInputs`, so in a sandbox
+  `unitState` reads every unit as `--`. Every `reset` and `clone-from` would then
+  refuse before the root step, and VT-2 could not be reached. Which states count
+  as stopped (`inactive`, `failed`) stays in the branch's text. The precedent is
+  `proxyControl`'s `proxyActive`. Sec-7's table should list the second function
+  at reconcile.
+- **`sudo` is not in the front end's `runtimeInputs`**, so the suite's stub `sudo`
+  is what `start` runs. The stub records whether the lock was held at the moment
+  of `systemctl start`. This is the host-side instance of
+  `mem.pattern.oubliette.fake-guest-tools-on-path`, and it is appended there.
+- **`reset-home` is not parsed yet** (PHASE-04). The name gate runs before the
+  sub-verb parse, so its `CAPSULE_NAME` refusal is pinned already. An argv-named
+  `reset-home` refuses as an unknown sub-verb until its branch lands, and the
+  usage line leaves it out until then.
+- `microvms` is spliced as a shell word (`${microvms}/"$1"/…`), like
+  `moduleState`, because a fixture's quoted expression inside a quoted string
+  fails shellcheck (SC2086).
+- handoff's inline "source is declared" loop became `isDeclared`, shared with
+  clone-from. `volumeRootCases` now reads `hostPrograms.volumeRootHelper` rather
+  than a second render of it (`refactor`, after green).
+- **Mutations** (VA-1 plus four), each turning exactly its named cases red:
+  `-k` dropped (the shipped-render case); a `CAPSULE_NAME` name accepted; a
+  resolved name accepted; `mkdir` after the root step; the lock released before
+  `systemctl start`; a held lock ignored. Two of them still exit 1 for another
+  reason (`reset-home` as an unknown sub-verb, and a start failing later in the
+  sandbox). Only the reason checks caught those.
+- Not exercised: the password prompt, real unit states, and whether the module
+  copy of the front end is one store path with the devshell's. The same
+  arguments are threaded at both sites, and `hostModulePrograms` evaluates, but
+  nothing compares the two store paths.
+
 ## Harvest
 <!-- single-copy: updated in place each harvest; ids only, never restated content -->
-fresh-as-of: 2026-09-15 · started (PHASE-01 and PHASE-02 complete; design locked at run revision 61)
+fresh-as-of: 2026-09-15 · started (PHASE-01..03 complete; design locked at run revision 61)
 
 ### Produced
 - `design.md` sec-1..sec-8 — materialised from run `dr-01a0a2ae…`; all eight walked with the user, sec-3/4/5/7/8 revised for `RV-001` `F-1`..`F-5` (`075ead9`)
@@ -124,6 +164,7 @@ fresh-as-of: 2026-09-15 · started (PHASE-01 and PHASE-02 complete; design locke
 - PHASE-01: `host/volume-root.nix`, `host/volume-root-cases.nix`, `capsules.nix` `volumeLock`/`volumeReserve`, the lock's tmpfiles rule — commits `6f33e38`, `661c13c`
 - `RV-003` `F-1` — found executing PHASE-01; sec-1/3/8 revised (`0bd060f`); PHASE-01 `EX-7`/`VT-5`/`VA-3` and PHASE-06 `VH-6` appended
 - PHASE-02: `vm/reset-home.nix`, `vm/reset-home-cases.nix`, `vm/capsule.nix` `resetHome` + `scrubPaths` — commit `87e682b`
+- PHASE-03: `host/cli.nix` `volume` verb, `nameFrom`, start lock, `microvms`/`volumeControl`; `host/volume-cases.nix`; `hostPrograms.volumeRootHelper` — commits `2bd3ddd` and the `refactor:` after it
 
 ### Learned
 - mem.fact.oubliette.design-apply-disposes-through-checkpoints — how the run takes dispositions
@@ -132,12 +173,13 @@ fresh-as-of: 2026-09-15 · started (PHASE-01 and PHASE-02 complete; design locke
 - mem.fact.oubliette.image-directories-are-vmm-writable — root acts in an image directory only as the image owner
 - mem.pattern.oubliette.a-mutation-must-reach-the-case — read which cases went red, not the exit status; a mutant can also die at Nix eval
 - mem.fact.oubliette.errexit-skips-a-captured-function — a failed listing inside `$(...)` reads as empty; `|| return`
-- mem.pattern.oubliette.fake-guest-tools-on-path — tools left out of `runtimeInputs` let a suite run the shipped store path
+- mem.pattern.oubliette.fake-guest-tools-on-path — tools left out of `runtimeInputs` let a suite run the shipped store path; a stub `sudo` for host/cli.nix (PHASE-03)
 
 ### Open
 - `ASM-001` — a detached baseline keeps its logind session (live exercise 2, PHASE-06)
 - `Service`/`Class` of an `agent` ssh login and of a detached baseline — unread (live exercise 2)
 - `ASM-002` — restarting guest sshd keeps the admin session (live exercise 3, PHASE-06)
 - the `setpriv` drop under `sudo -k` on this host — no suite reaches it (PHASE-06 `VH-6`)
+- sec-7's seam table lacks `vmmState` — deviation recorded in `## PHASE-03`, for reconcile
 - `notHeld` fails open if `fuser` itself errors — noted in `## PHASE-01`, not filed
 - the real `loginctl` output against `agentSessions`'s parser — the suite's fake is an assumed shape (live exercise 2)
