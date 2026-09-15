@@ -61,7 +61,8 @@ holding two targets at once and by handing the render a target no host declares,
 the git channel's by confining a second project, and the volume root helper's by
 deleting and overwriting a real slot's image as root, the guest's reset of
 `$HOME` by deleting one under a real agent, and the volume verb's by typing a
-destructive command at a slot nobody named and racing a start against a clone. `resetHomeCases` is the one whose
+destructive command at a slot nobody named, racing a start against a clone, and
+injecting into a clone whose scrub failed. `resetHomeCases` is the one whose
 subject ships in the *guest* (`vm/`), and it also reads the scrub list off the
 evaluated capsule, so `just build` evaluates the guest. **The git channel is the only one
 over a program that talks to a guest, and what it can reach is everything

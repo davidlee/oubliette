@@ -149,9 +149,59 @@ all green, inside `just build`.
   arguments are threaded at both sites, and `hostModulePrograms` evaluates, but
   nothing compares the two store paths.
 
+## PHASE-04 — 2026-09-15
+
+`capsule <slot> volume reset-home` is in the front end. So is the gate that keeps
+credentials off a clone until it has been scrubbed, and the clone's closing
+lines. `volumeCases` now has 162 checks, all green, inside `just build`.
+
+- **The gate is `scrubPending`, called in `work()` just before it execs the
+  program, and only for `inject`.** sec-7 says "at the top of `work()`" and
+  sec-5 says "just before it runs `capsule-inject`". The call is below the
+  `--capsule` refusal, so a command refused for its arguments deletes nothing
+  first. One case pins that, and mutant (c) below turns it red.
+- **Deviation for audit, beside PHASE-03's `vmmState`.** `reset-home` checks
+  that a door exists (`door "$name" probe`, a `-S` test on the socket), not that
+  the guest *answers* (`answers`, which runs ssh). `pkgs.openssh` is in
+  `runtimeInputs`, so `answers` always fails in a sandbox and no case could get
+  past it. A guest that does not answer behind the door fails the ssh call, and
+  that failure is reported with its status. The flowchart's "admin door
+  answers?" should read "has a door" at reconcile.
+- **Every `reset-home` failure exits 1**, and the message names the guest's
+  status. A front end exiting 127 would read as a missing `capsule`.
+- **The clone's cost line is the helper's.** The front end does not stat the
+  image a second time. The helper measured the figure under its lock and ran its
+  fit check on it. `volumeRootCases` now pins that the line carries the source's
+  allocation. After a successful `volumeRoot clone`, the front end adds three
+  things: what the first inject will scrub (or, under `--identity`, what was
+  kept), that the source was not checked for cleanliness plus `IMP-008`'s
+  manual recipe, and the next commands (`just reset-known-hosts`, `start`,
+  `setup`, which may need `--force`).
+- `docs/contract-assignment.md` now says the clean-source rule is not enforced
+  (`DEC-007`), leaves enforcement with `IMP-001`, and names the scrub marker.
+- **VA-2** (the gate has no bypass inside `capsule`). `grep -n inject
+  host/cli.nix` with comments stripped finds one exec, `"$prog" --capsule`
+  inside `work()`. It is reached from `start`, `setup`, `reset-home` and the
+  `*) work "$name" "$verb"` fallthrough. Every other mention of `capsule-inject`
+  under `host/` is a comment. Running `capsule-inject` straight off `PATH` is
+  the boundary sec-5 states.
+- **Mutations.** Each turned only its named cases red, and each reached the
+  suite (`FAIL` lines, no bare `error:`). (a) Marker removed before the scrub:
+  "keeps the marker", the success order, and the marked `reset-home`. (b) Gate
+  only in `start`: every inject-onto-a-clone case. (c) Gate above the
+  `--capsule` refusal: "refused before any scrub". (d) No 127 arm: both
+  "predates" reasons. (e) `reset-home` without its inject: both `reset-home`
+  success orders. (f) The helper printing `need` rather than the allocation: the
+  new `volumeRootCases` case.
+- Not exercised: a real root ssh to the guest, and whether a non-interactive
+  root command finds `capsule-reset-home` on `PATH` (a missing one would show as
+  127, "predates"; PHASE-06 exercise 2). Also not exercised: `start` and `setup`
+  reaching the gate on a live host (the sandbox's `start` fails before its
+  inject), and the module copy.
+
 ## Harvest
 <!-- single-copy: updated in place each harvest; ids only, never restated content -->
-fresh-as-of: 2026-09-15 · started (PHASE-01..03 complete; design locked at run revision 61)
+fresh-as-of: 2026-09-15 · started (PHASE-01..04 complete; design locked at run revision 61)
 
 ### Produced
 - `design.md` sec-1..sec-8 — materialised from run `dr-01a0a2ae…`; all eight walked with the user, sec-3/4/5/7/8 revised for `RV-001` `F-1`..`F-5` (`075ead9`)
@@ -165,6 +215,7 @@ fresh-as-of: 2026-09-15 · started (PHASE-01..03 complete; design locked at run 
 - `RV-003` `F-1` — found executing PHASE-01; sec-1/3/8 revised (`0bd060f`); PHASE-01 `EX-7`/`VT-5`/`VA-3` and PHASE-06 `VH-6` appended
 - PHASE-02: `vm/reset-home.nix`, `vm/reset-home-cases.nix`, `vm/capsule.nix` `resetHome` + `scrubPaths` — commit `87e682b`
 - PHASE-03: `host/cli.nix` `volume` verb, `nameFrom`, start lock, `microvms`/`volumeControl`; `host/volume-cases.nix`; `hostPrograms.volumeRootHelper` — commits `2bd3ddd`, `814970d`
+- PHASE-04: `host/cli.nix` `reset-home`, `scrubPending` in `work()`, `guestResetHome`, clone output; `docs/contract-assignment.md` clean-source line — see `## PHASE-04`
 
 ### Learned
 - mem.fact.oubliette.design-apply-disposes-through-checkpoints — how the run takes dispositions
@@ -181,5 +232,7 @@ fresh-as-of: 2026-09-15 · started (PHASE-01..03 complete; design locked at run 
 - `ASM-002` — restarting guest sshd keeps the admin session (live exercise 3, PHASE-06)
 - the `setpriv` drop under `sudo -k` on this host — no suite reaches it (PHASE-06 `VH-6`)
 - sec-7's seam table lacks `vmmState` — deviation recorded in `## PHASE-03`, for reconcile
+- sec-2's flowchart asks "door answers?"; the front end asks "has a door" — deviation in `## PHASE-04`, for reconcile
+- a non-interactive root ssh finds `capsule-reset-home` on `PATH` — else 127 misreads as "predates" (live exercise 2)
 - `notHeld` fails open if `fuser` itself errors — noted in `## PHASE-01`, not filed
 - the real `loginctl` output against `agentSessions`'s parser — the suite's fake is an assumed shape (live exercise 2)

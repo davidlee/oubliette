@@ -341,6 +341,9 @@ in
     ck "clone succeeds over a leftover copy from a killed run" 0 "$rc"
     ckt "  the destination is the source, byte for byte" cmp -s "$(img src)" "$(img dst)"
     ckt "  and still sparse" test "$(alloc "$(img dst)")" -lt "$size"
+    # The front end prints no cost of its own (volumeCases): this is the line.
+    ckt "  saying what the source allocates, the figure the fit was checked with" \
+      grep -qF "($(alloc "$(img src)") bytes allocated)" out
     ck "  mode 0644, as the runner's own images" 644 "$(stat -c '%a' "$(img dst)")"
     ckt "  the temporary name is gone" test ! -e "$(tmp dst)"
     ckt "  a marker naming the source was written" grep -q '^source=src ' "$(marker dst)"

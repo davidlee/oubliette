@@ -274,9 +274,15 @@ specify. So:
 - a dev host may waive that by declaration, which is Plan D §0's two-modes rule
   again;
 - a clone's identity is scrubbed by default and kept only under an explicit flag
-  (Plan D D4), and a slot is a valid clone *source* while it is `baselined` and
-  not yet `dirty` — which is also the cheapest source, since a volume's
-  allocation is its high-water mark and never its current usage (Plan D L8).
+  (Plan D D4): `capsule <dest> volume clone-from <src>` leaves a marker, and the
+  front end scrubs before any inject while it is there (`--identity` to keep);
+- a slot is a valid clone *source* while it is `baselined` and not yet `dirty` —
+  which is also the cheapest source, since a volume's allocation is its
+  high-water mark and never its current usage (Plan D L8). **This rule is not
+  enforced.** `clone-from` needs the source stopped, and every signal behind the
+  rule is read through the guest, so it takes any stopped declared slot
+  (`DEC-007`), says it did not check, and prints the recipe for checking by hand.
+  Enforcing it stays with `IMP-001`; showing it in status is `IMP-008`.
 
 **One refusal, two different reasons, and they should not be conflated even
 though the behaviour is currently the same.** A change of `profile` or `policy`

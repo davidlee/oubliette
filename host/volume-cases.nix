@@ -77,10 +77,26 @@
       }
       vmmState() { cat "$CASE_ROOT/unit/$1" 2> /dev/null || echo inactive; }
     '';
+    # The guest program is logged rather than run, with whether the slot's scrub
+    # marker existed at the moment of the call, into the log `capsule-inject`'s
+    # stub writes too, so the order of scrub and inject is one file. Nothing
+    # here reaches the other three.
+    guestControl = ''
+      guestHead() { return 1; }
+      guestStages() { return 1; }
+      guestDropState() { return 1; }
+      guestResetHome() {
+        local m=absent
+        [ ! -e "$CASE_ROOT/state/slot/$1/scrub-pending" ] || m=present
+        echo "reset-home $* marker=$m" >> "$CASE_GUEST_LOG"
+        return "''${CASE_GUEST_RC:-0}"
+      }
+    '';
   };
 in
   pkgs.runCommand "capsule-volume-cases" {nativeBuildInputs = [pkgs.util-linux pkgs.python3];} ''
     export CASE_ROOT=$PWD/root CASE_ROOT_LOG=$PWD/root.log CASE_SUDO_LOG=$PWD/sudo.log
+    export CASE_GUEST_LOG=$PWD/guest.log
     capsule=${lib.getExe cli}
     lock=$CASE_ROOT/run/volume.lock
 
@@ -93,7 +109,15 @@ in
     else held=held; fi
     echo "$held $*" >> "$CASE_SUDO_LOG"
     EOF
-    chmod +x stub/sudo
+    # Not in the front end's `runtimeInputs`, and `program` answers the bare name
+    # when this host has no module copy, so this is what `work` execs.
+    cat > stub/capsule-inject <<'EOF'
+    #!/bin/sh
+    m=absent
+    [ ! -e "$CASE_ROOT/state/slot/$2/scrub-pending" ] || m=present
+    echo "inject $* marker=$m" >> "$CASE_GUEST_LOG"
+    EOF
+    chmod +x stub/sudo stub/capsule-inject
     export PATH=$PWD/stub:$PATH
 
     log=$PWD/log
@@ -113,7 +137,10 @@ in
     rootLog() { tr '\n' ',' < "$CASE_ROOT_LOG" | sed 's/,$//'; }
     quietRoot() { [ ! -s "$CASE_ROOT_LOG" ]; }
     quietSudo() { [ ! -s "$CASE_SUDO_LOG" ]; }
+    guestLog() { tr '\n' ',' < "$CASE_GUEST_LOG" | sed 's/,$//'; }
+    quietGuest() { [ ! -s "$CASE_GUEST_LOG" ]; }
     absent() { [ ! -e "$1" ]; }
+    present() { [ -e "$1" ]; }
 
     # Every case starts here, so none inherits the last one's record directory,
     # unit state or lock holder (NOTES item 37).
@@ -128,9 +155,16 @@ in
       : > "$lock"
       : > "$CASE_ROOT_LOG"
       : > "$CASE_SUDO_LOG"
-      unset CAPSULE_NAME CASE_ROOT_FAIL
+      : > "$CASE_GUEST_LOG"
+      unset CAPSULE_NAME CASE_ROOT_FAIL CASE_GUEST_RC
     }
     unit() { echo "$2" > "$CASE_ROOT/unit/$1"; }
+    # What the root helper leaves on a clone without --identity (design sec-5).
+    markerOf() { printf '%s/state/slot/%s/scrub-pending' "$CASE_ROOT" "$1"; }
+    mark() {
+      mkdir -p "$CASE_ROOT/state/slot/$1"
+      echo "source=src at=2026-09-15T00:00:00Z" > "$(markerOf "$1")"
+    }
     # A bound socket file stays after its process exits, which is all `-S` asks.
     up() {
       mkdir -p "$CASE_ROOT/run/$1"
@@ -264,6 +298,111 @@ in
     fresh
     refuses "an argument it does not know" "'--force'" dst volume clone-from src --force
 
+    # What a clone leaves the operator to do. The cost is the helper's own line
+    # (volumeRootCases), measured under its lock; the rest is the front end's.
+    fresh
+    run dst volume clone-from src
+    ckt "a clone says its first inject scrubs the source's identity" saw "scrubs src's credentials"
+    ckt "  that nobody checked the source was clean" saw "not checked: whether src was a clean source"
+    ckt "  how to check that by hand" saw "capsule src record"
+    ckt "  that the human's door needs its host key forgotten" saw "just reset-known-hosts dst"
+    ckt "  and the commands that come next" saw "capsule dst start"
+    ckt "  including the setup a clone's commits may force" saw "--force"
+
+    fresh
+    run dst volume clone-from src --identity
+    ckt "a clone with --identity says the source's identity was kept" saw "kept src's credentials"
+    ckt "  and not that anything will scrub it" unsaw "scrubs"
+
+    fresh
+    CASE_ROOT_FAIL="capsule-volume-root: another volume operation is running" run dst volume clone-from src
+    ck "a clone the root step refused fails" 1 "$rc"
+    ckt "  and tells nobody what to do next" unsaw "reset-known-hosts"
+
+    # ------------------------------------------------------------ reset-home
+    # The guest decides and the front end names the way out. The door here is the
+    # fixture's socket; whether a guest answers behind it is ssh's to report.
+    fresh
+    up dst
+    run dst volume reset-home
+    ck "reset-home on a slot with a door runs" 0 "$rc"
+    ckt "  the guest program, then an inject, and nothing else" \
+      test "$(guestLog)" = "reset-home dst marker=absent,inject --capsule dst marker=absent"
+    ckt "  and never the root step" quietRoot
+
+    # homeRefuses <guest status> <what the guest found> <reason>…
+    homeRefuses() {
+      local status="$1" what="$2" why
+      shift 2
+      fresh
+      up dst
+      CASE_GUEST_RC=$status run dst volume reset-home
+      ck "reset-home refuses when the guest $what (status $status)" 1 "$rc"
+      for why in "$@"; do
+        ckt "  saying $why" saw "$why"
+      done
+      ckt "  and injects nothing" test "$(guestLog)" = "reset-home dst marker=absent"
+    }
+    homeRefuses 127 "has no capsule-reset-home" "image predates" "capsule dst stop, then start"
+    homeRefuses 3 "finds the agent working" "busy" "capsule dst stop, then start"
+    homeRefuses 4 "sees a login arrive" "login arrived" "run it again"
+    homeRefuses 1 "fails otherwise" "exited 1"
+
+    fresh
+    run dst volume reset-home
+    ck "reset-home refuses a slot with no door" 1 "$rc"
+    ckt "  naming the start" saw "capsule dst start"
+    ckt "  and asks the guest nothing" quietGuest
+
+    fresh
+    up dst
+    run dst volume reset-home now
+    ck "reset-home refuses an argument" 1 "$rc"
+    ckt "  and asks the guest nothing" quietGuest
+
+    # ------------------------------------------------------------ the scrub gate
+    # Every inject the front end runs passes `work()`, and `scrubPending` there is
+    # the one place a cloned volume is kept from receiving credentials before its
+    # scrub (sec-5).
+    fresh
+    mark dst
+    run dst inject
+    ck "inject onto a cloned volume runs" 0 "$rc"
+    ckt "  scrubbing first, then injecting once the marker is gone" \
+      test "$(guestLog)" = "reset-home dst --scrub marker=present,inject --capsule dst marker=absent"
+    ckt "  and says why" saw "scrubbing before inject"
+    ckt "  leaving no marker" absent "$(markerOf dst)"
+
+    for status in 1 3 4 127; do
+      fresh
+      mark dst
+      CASE_GUEST_RC=$status run dst inject
+      ck "inject onto a cloned volume whose scrub fails ($status) refuses" 1 "$rc"
+      ckt "  saying the marker stays" saw "marker stays"
+      ckt "  and injects nothing" test "$(guestLog)" = "reset-home dst --scrub marker=present"
+      ckt "  and keeps the marker" present "$(markerOf dst)"
+    done
+
+    fresh
+    run dst inject
+    ck "inject onto an unmarked volume runs" 0 "$rc"
+    ckt "  without scrubbing" test "$(guestLog)" = "inject --capsule dst marker=absent"
+
+    fresh
+    mark dst
+    run dst inject --capsule dst
+    ck "an inject refused for its arguments" 1 "$rc"
+    ckt "  is refused before any scrub" quietGuest
+    ckt "  and keeps the marker" present "$(markerOf dst)"
+
+    fresh
+    up dst
+    mark dst
+    run dst volume reset-home
+    ck "reset-home on a cloned volume runs" 0 "$rc"
+    ckt "  and its inject passes the gate too" \
+      test "$(guestLog)" = "reset-home dst marker=present,reset-home dst --scrub marker=present,inject --capsule dst marker=absent"
+
     # ------------------------------------------------------------ start's lock
     # A start past the lock goes on to a unit no sandbox has and fails there, so
     # these read what reached `sudo`, not the exit status.
@@ -306,6 +445,8 @@ in
     grep -v '^[[:space:]]*#' ${shipped}/bin/capsule > shipped.txt
     ckt "the shipped front end runs the helper through sudo -k" \
       grep -qF 'sudo -k ${volumeRootHelper}/bin/capsule-volume-root "$@"' shipped.txt
+    ckt "the shipped front end runs the guest's reset of \$HOME as root" \
+      grep -qF '"root@${net.guest}" capsule-reset-home "$@"' shipped.txt
 
     [ "$fail" = 0 ] || exit 1
     cp "$log" $out
