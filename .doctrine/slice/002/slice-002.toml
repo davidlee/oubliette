@@ -12,7 +12,8 @@ after = []                      # slice→work soft sequence: { to, rank }
 
 [[selector]]
 selector = "host/cli.nix"
-intent = "scope-relevant"
+intent = "design-target"
+note = "SL-002 design sec-8 code impact"
 
 [[selector]]
 selector = "host/services.nix"
@@ -28,11 +29,63 @@ intent = "scope-relevant"
 
 [[selector]]
 selector = "flake.nix"
-intent = "scope-relevant"
+intent = "design-target"
+note = "SL-002 design sec-8 code impact"
 
 [[selector]]
 selector = "justfile"
-intent = "scope-relevant"
+intent = "design-target"
+note = "SL-002 design sec-8 code impact"
+
+[[selector]]
+selector = "host/volume-root.nix"
+intent = "design-target"
+note = "SL-002 design sec-8 code impact"
+
+[[selector]]
+selector = "host/volume-root-cases.nix"
+intent = "design-target"
+note = "SL-002 design sec-8 code impact"
+
+[[selector]]
+selector = "vm/reset-home.nix"
+intent = "design-target"
+note = "SL-002 design sec-8 code impact"
+
+[[selector]]
+selector = "vm/reset-home-cases.nix"
+intent = "design-target"
+note = "SL-002 design sec-8 code impact"
+
+[[selector]]
+selector = "vm/capsule.nix"
+intent = "design-target"
+note = "SL-002 design sec-8 code impact"
+
+[[selector]]
+selector = "host/volume-cases.nix"
+intent = "design-target"
+note = "SL-002 design sec-8 code impact"
+
+[[selector]]
+selector = "host/programs.nix"
+intent = "design-target"
+note = "SL-002 design sec-8 code impact"
+
+[[selector]]
+selector = "docs/contract-assignment.md"
+intent = "design-target"
+note = "SL-002 design sec-8 code impact"
+
+[[selector]]
+selector = "docs/probes.md"
+intent = "design-target"
+note = "SL-002 design sec-8 code impact"
+
+[[selector]]
+selector = "CLAUDE.md"
+intent = "design-target"
+note = "SL-002 design sec-8 code impact"
 
 [[relation]]
 label = "governed_by"
