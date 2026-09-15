@@ -11,7 +11,7 @@ updated = "2026-09-15"
 
 [scope]
 paths = []
-globs = ["vm/*-cases.nix", "vm/*.nix", "host/*-cases.nix"]
+globs = ["vm/*-cases.nix", "vm/*.nix", "host/*-cases.nix", "host/cli.nix"]
 commands = []
 tags = ["testing"]
 workspace = "default"
@@ -26,12 +26,12 @@ tree = "11c8a1cac85f7b6cda356980834c609d61d05cb8"
 ref_name = "refs/heads/main"
 checkout_state_id = "316a19e83c44b7ab558297baecf81906c5853dd15e6b1306276e4e2cafa5b6c0"
 base_commit = "87e682b6fa68c597b33840f2eda44c754a01dbe2"
-verified_sha = "659b9c122795aee58acd4c0ef8f9f7164e315db8"
+verified_sha = ""
 normalizer = "forget.checkout.v1"
 
 [review]
-verification_state = "verified"
-reviewed = "2026-09-15"
+verification_state = "unverified"
+reviewed = ""
 review_by = ""
 
 [trust]

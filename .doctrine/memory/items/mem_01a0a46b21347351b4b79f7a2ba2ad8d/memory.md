@@ -28,3 +28,17 @@ PATH="$fakes/bin:$PATH" ${shipped}/bin/capsule-reset-home
 - Does not apply to a program whose `runtimeInputs` carry the tool (e.g.
   `pkgs.openssh` in the git channel). That is still a `tools` seam, or a
   boundary.
+
+**The same on the host side, for `sudo` (SL-002 PHASE-03, `host/volume-cases.nix`).**
+`host/cli.nix` calls `sudo`, and `sudo` is not in its `runtimeInputs`, because it
+must be the setuid wrapper in `/run/wrappers`. So a stub `sudo` on the suite's
+`PATH` is what `capsule <slot> start` runs. The stub can also check host state
+*at the moment of the call*: `flock -n -x` on the volume lock fails while the
+front end holds the lock shared. That is the only way a suite can show the lock
+is held *around* `systemctl start` and not merely taken beside it. Moving the
+release above `sudo systemctl start` turned exactly that case red.
+
+`systemctl` is the counter-example in the same program. It **is** in the front
+end's `runtimeInputs`, so in a sandbox every unit reads as `--`. The unit query
+the volume verb gates on is therefore a function in its `volumeControl` seam
+(`vmmState`), the way `proxyControl` carries `proxyActive`.
