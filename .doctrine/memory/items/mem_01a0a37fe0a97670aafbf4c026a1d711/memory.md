@@ -4,9 +4,23 @@ sessions for `agent` on `ttyS0` (`serial-getty@ttyS0.service`) and on `seat0`/`t
 `user-1000.slice`. `vm/capsule.nix` sets `services.getty.autologinUser`, and
 NixOS applies it to every getty, not only the serial console.
 
+`loginctl show-session -p Service -p Class` on each, same boot:
+
+| session | TTY | Service | Class |
+| --- | --- | --- | --- |
+| agent autologin | tty1 | `login` | `user` |
+| agent autologin | ttyS0 | `login` | `user` |
+| agent's user manager | - | `systemd-user` | `manager` |
+| root over the admin door | - | `sshd` | `user` |
+| root's user manager | - | `systemd-user` | `manager-early` |
+
 - **Any test that excludes "the console's session" by naming one tty always
-  finds another.** Exclude getty autologins by the session's logind `Service`
-  instead (SL-002 RV-001 F-10).
+  finds another.** Exclude getty autologins by `Service=login`, not by tty
+  (SL-002 RV-001 F-10).
+- **The user manager is a logind session too.** "Every agent session whose
+  `Service` is not `login`" still lists it, on every guest, so that test also
+  always refuses. It has `Service=systemd-user` and `Class=manager`; a test for
+  "someone is working" has to exclude it as well.
 - **Stopping one getty does not keep agent out.** After `systemctl stop
   user-1000.slice` with only the ttyS0 getty stopped, `getty@tty1` logged agent
   back in within five seconds. Stop both: `system-getty.slice` and
