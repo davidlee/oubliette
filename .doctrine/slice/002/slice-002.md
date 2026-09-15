@@ -44,8 +44,8 @@ refused.
   `/work/baseline` survive (`DEC-002`). It is done **inside the guest** by a new
   program in the image, `capsule-reset-home`, built from `vm/capsule.nix`'s own
   `home` binding. The program deletes `$HOME` and restarts `capsule-seed`; the
-  host runs `admin capsule-reset-home` and then `inject` (`DEC-001`). Needs the
-  slot **running** with no agent process outside the serial console.
+  host runs it over the admin door and then `inject` (`DEC-001`). Needs the
+  slot **running** with no `agent` login session other than the serial console's.
 - **`clone-from <m>`**: S5. A sparse copy of a stopped source's image onto a
   stopped destination, so a slot starts warm. **Any stopped declared slot other
   than the destination is a source** (`DEC-007`). The verb prints the source's
@@ -54,12 +54,14 @@ refused.
 **D4's identity half comes with the clone** (`DEC-003`, `DEC-011`). Scrubbing is
 the default and `--identity` keeps everything. The scrub is `capsule-reset-home`,
 plus every `dest` in `setup.nix`, plus every path in `services.openssh.hostKeys`,
-and a guest program derives that list at eval. The host key takes effect at the
-next `sshd` restart. **The scrub is fail-safe:** the root helper writes
-`scrub-pending` into `/var/lib/capsule/slot/<dest>/`, and while that marker
-exists `start` runs the scrub *before* `inject`, removing the marker only on
-success. So no `start` can inject onto an unscrubbed clone, however the clone
-ended.
+and a guest program derives that list at eval. The scrub regenerates the host key
+itself (`sshd-keygen`, then an `sshd` restart). **The scrub is fail-safe:** the
+root helper writes `scrub-pending` into `/var/lib/capsule/slot/<dest>/` (a
+directory the front end makes as the operator), and while that marker exists
+every inject the front end runs (`start`, `setup`, `inject`, `reset-home`) runs
+the scrub first, removing the marker only on success. A failed clone never
+removes a marker it did not write. So no inject through `capsule` can reach an
+unscrubbed clone, however the clone ended.
 
 **And status gains a cost column instead of a `df` verb** (`DEC-009`).
 `capsule all status` gets a host-side allocation column (the image's allocated
@@ -76,17 +78,19 @@ free-space line under the table. `docs/probes.md`'s disk row is refreshed.
   root. The root helper then refuses if anything has the image open (`fuser`)
   immediately before it acts. This identifies the file rather than a process name
   (`mem.fact.oubliette.dead-guest-is-not-a-dead-vm`).
-- **"Running and idle" means no agent process outside the serial console's
-  session** (`DEC-004`). The console autologins `agent` and a baseline runs as a
-  detached `setsid` process. The refusal names stop-then-start as the way out,
-  and there is no `--force`.
+- **"Running and idle" means no `agent` logind session other than the serial
+  console's** (`DEC-004`). The console autologins `agent`, so "any agent process"
+  cannot be the test; a baseline runs detached (`setsid`) and is assumed to keep
+  its ssh session listed until it exits (`ASM-001`). The refusal names
+  stop-then-start as the way out, and there is no `--force`.
 - **One root helper, one spelling** (`DEC-005`):
-  `capsule-volume-root <reset|clone> <slot> [<source>]` validates slots against
-  the declared pool, resolves image paths, checks and acts in one root process,
-  and writes the scrub marker. The front end runs it through `sudo`, which
-  prompts for a password on both copies of the front end, so no rule and no
-  rebuild are needed. Its state root is a **build-time** argument with a default,
-  never a run-time one. A password-less grant is `IMP-010`.
+  `capsule-volume-root reset <slot>` and `capsule-volume-root clone <src> <dest>
+  [--identity]` validate slots against the declared pool, resolve image paths,
+  check and act in one root process, and write the scrub marker. The front end
+  runs it through `sudo`, which prompts for a password on both copies of the
+  front end, so no rule and no rebuild are needed. Its state roots, image owner
+  and the two steps a suite substitutes are **build-time** arguments with
+  defaults, never run-time ones. A password-less grant is `IMP-010`.
 - **No confirmation step** (`DEC-010`). The password prompt is the second
   keystroke for `reset` and `clone-from`. `IMP-010` must reopen this if it
   removes that prompt.
@@ -99,21 +103,24 @@ free-space line under the table. `docs/probes.md`'s disk row is refreshed.
 
 **Documents that move in the same commit as the verbs:**
 `docs/contract-assignment.md:277` (the clean-source rule is stated as not
-enforced, and stays with `IMP-001`), `docs/probes.md` (the disk row), and
-`docs/contract-target.md` only if the guest programs change what a target may
-rely on.
+enforced, and stays with `IMP-001`), `docs/probes.md` (the disk row), `CLAUDE.md`
+(the suite list names the three new suites), and `docs/contract-target.md` only
+if the guest program changes what a target may rely on.
 
 **Verification is suites of the third kind**, because every interesting branch
 is one a live host can only reach destructively. One file per program, beside
 it, a function of `pkgs`, `lib` and the shipped store path, wired into
 `just cases` **and** `just build` (`NOTES item 51` step 3):
-- the root helper against a fixture state root;
-- the front end's `volume` parsing, name requirement and refusals, with the
-  helper and door substituted;
-- `start`'s scrub-before-inject ordering against a marker.
+- the root helper against a fixture state root, including the marker's
+  ordering and ownership across a failed commit;
+- the guest program against a fixture `$HOME` and fixture scrub paths, with
+  sessions and units substituted;
+- the front end's `volume` parsing, name requirement and refusals, and the
+  scrub-before-inject gate against a marker, with the helper and door
+  substituted.
 
-The two guest programs are image text. What a suite can reach there is their
-refusals over a fixture `$HOME`, and anything beyond that is a live exercise.
+What a suite cannot reach in the guest (real logind sessions, a real `sshd`
+restart) is a live exercise.
 
 ## Non-Goals
 
@@ -150,6 +157,12 @@ Risks and assumptions:
   image fails the door call. The front end must refuse that by reason
   (`command not found` read as *restart onto the new image*), not pass it
   through as a bare error.
+- **Assumed, and checked live:** a detached baseline keeps its login session
+  listed until it exits (`ASM-001`), and restarting the guest's `sshd` keeps the
+  admin session that runs the scrub (`ASM-002`).
+- **Known boundary:** `capsule-inject` run straight off `PATH` does not pass the
+  front end's gate, so it does not see a scrub marker. `capsule` is the human's
+  route; the programs do not know where the record lives, by design.
 - Assumed: nothing else writes `/var/lib/microvms/<slot>` while a verb runs.
   That holds because the units are ours, the helper checks the image is not
   open, and volumes are module-path slots (the devshell capsule's volume is
@@ -159,8 +172,9 @@ Closure intent: every suite green inside `just build`, each refusal asserted
 **by reason**, and each suite checked for its ability to fail by mutating the
 behaviour it pins. Plus live exercises no suite can reach, on finished slots:
 a real `reset`; a real `reset-home` on a running idle slot; and a real
-`clone-from`, followed by a `start` that shows the scrub ran before `inject`
-and that the clone's credentials are this host's rather than the source's.
+`clone-from`, followed by a `start` that shows the scrub ran before `inject`,
+that the clone's credentials and host key are its own rather than the source's,
+and that the admin session survived the `sshd` restart.
 
 ## Follow-Ups
 

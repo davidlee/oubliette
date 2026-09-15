@@ -11,10 +11,10 @@ updated = "2026-09-15"
 tags = []
 
 [facet]                         # every field typed; seeded empty (captured later)
-claim = "systemctl restart sshd in the guest regenerates a removed host key and leaves established sessions, including the admin session running capsule-reset-home --scrub, in place (sshd KillMode=process)."
+claim = "systemctl restart sshd in the guest leaves established sessions, including the admin session running capsule-reset-home --scrub, in place. Read from the pinned nixpkgs sshd module (ef34387): KillMode=process, Type=notify-reload, Restart=always. Key regeneration is not part of this claim: it is sshd-keygen.service, which the scrub starts by name."
 confidence = "medium"
 basis = "prior-art"
-validation_plan = "SL-002 live exercise 3: clone, start, observe the scrub completes over the admin door and inject then runs in the same front-end invocation."
+validation_plan = "SL-002 live exercise 3: clone, start, observe the scrub completes over the admin door, the host key fingerprint differs from the source's, and inject then runs in the same front-end invocation."
 validated_by    = ""
 validated_on    = ""
 invalidated_by  = ""
