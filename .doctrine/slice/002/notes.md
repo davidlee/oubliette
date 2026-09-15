@@ -223,9 +223,21 @@ and tests go red and then green against the revised text, each `RV-004` finding
 is verified as it lands, and PHASE-05 starts only after that, since it edits
 `host/cli.nix` and `host/volume-cases.nix` too.
 
+**Relocked at revision 74** (materialised at 75). The user read and accepted the
+revised sec-2 (127's remedy is `just refresh-build <slot>`, with why), sec-5
+(`resetHomeRefusal <slot> <rc>` in the front end's main body, called by
+`scrubPending` and the `reset-home` branch; 255 read as ssh's own), sec-7 (a
+successful `reset` prints `next: just reset-known-hosts <slot>; capsule <slot>
+start`) and sec-8 (per-status reason-and-remedy cases at both call sites, and two
+mutations). `slice-002.md`'s risk line was edited directly. `RV-005` records the
+pass with no new findings and is concluded. `F-1`, `F-2` and `F-6` stay
+*answered* on `RV-004` until the code lands and each is verified there. A
+further design pass is not needed for these: what is left to probe is whether
+the code matches the text, which the mutations in sec-8 are for.
+
 ## Harvest
 <!-- single-copy: updated in place each harvest; ids only, never restated content -->
-fresh-as-of: 2026-09-15 · started (PHASE-01..04 complete; design run reopened at revision 62 for RV-004 F-1/F-2)
+fresh-as-of: 2026-09-15 · started (PHASE-01..04 complete; design relocked at revision 74 over RV-004 F-1/F-2)
 
 ### Produced
 - `design.md` sec-1..sec-8 — materialised from run `dr-01a0a2ae…`; all eight walked with the user, sec-3/4/5/7/8 revised for `RV-001` `F-1`..`F-5` (`075ead9`)
@@ -252,7 +264,7 @@ fresh-as-of: 2026-09-15 · started (PHASE-01..04 complete; design run reopened a
 - mem.pattern.oubliette.fake-guest-tools-on-path — tools left out of `runtimeInputs` let a suite run the shipped store path; a stub `sudo` for host/cli.nix (PHASE-03)
 
 ### Open
-- `RV-004` `F-1`..`F-6` — dispositioned, not yet fixed; design run in `reviewing` (revision 62) until sec-2/5/7/8 are revised and relocked
+- `RV-004` `F-1`..`F-6` — dispositioned, not yet fixed; the design text for `F-1`/`F-2`/`F-6` is locked (revision 74), the code is next
 - `ASM-001` — a detached baseline keeps its logind session (live exercise 2, PHASE-06)
 - `Service`/`Class` of an `agent` ssh login and of a detached baseline — unread (live exercise 2)
 - `ASM-002` — restarting guest sshd keeps the admin session (live exercise 3, PHASE-06)

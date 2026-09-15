@@ -171,7 +171,7 @@ flowchart TD
   S -- reset-home --> A{"admin door<br/>answers?"}
   A -- no --> RA["refuse: capsule &lt;slot&gt; start"]
   A -- yes --> G{"guest has<br/>capsule-reset-home?"}
-  G -- no --> RG["refuse: image predates this verb, stop then start"]
+  G -- no --> RG["refuse: image predates this verb,<br/>just refresh-build &lt;slot&gt;"]
   G -- yes --> B{"agent idle?"}
   B -- no --> RB["refuse: sessions listed, stop then start"]
   B -- yes --> Q["quiesce: stop gettys and<br/>the agent's user slice"]
@@ -197,6 +197,14 @@ flowchart TD
   state: slot names against the pool it was built with, and `src ≠ dest`. It is a
   root program, and it must not trust an argument because a well-behaved caller
   checked it first.
+- **An image that predates `capsule-reset-home` is not fixed by a restart.** A
+  slot boots the guest closure `/var/lib/microvms/<slot>/current` points at.
+  `capsule <slot> start` never moves that link; only `microvm -u` does, and
+  `just refresh-build <slot>` runs it between a stop and a start
+  (`justfile`, `refresh-build`), keeping the volume. So the refusal for a missing
+  guest program names `just refresh-build <slot>`. Stop then start would boot the
+  same image and meet the same refusal. The busy refusal keeps stop then start,
+  because ending sessions is what a busy agent needs.
 - **"A login arrived" is detected, not prevented.** Blocking agent logins for the
   duration needs `pam_nologin` in the guest's sshd PAM stack, which it does not
   have (`IMP-011`).
@@ -485,31 +493,67 @@ sequenceDiagram
     FE->>FE: remove marker
     FE->>INJ: capsule-inject --capsule d
     INJ->>G: write credentials (nothing exists, so none skipped)
-  else busy (3), a login arrived (4), missing (127) or failed
-    G-->>FE: status
-    FE-->>Op: refuse inject, marker kept, reason named
+  else any other status
+    G-->>FE: 3 busy · 4 a login arrived · 127 missing · 255 ssh failed · other
+    FE->>FE: resetHomeRefusal d status
+    FE-->>Op: reason and remedy · nothing injected · marker kept
   end
 ```
 
 **The gate, as a front-end function** (`scrubPending`, called at the top of
-`work()` when the verb is `inject`):
+`work()` when the verb is `inject`). It shares with the `reset-home` branch one
+function that turns the guest program's status into a reason and a way out, so
+the two paths cannot tell the operator different things about the same failure:
 
 ```bash
+# The guest program's status, as a reason and a remedy. It prints and returns;
+# each caller says what it did not do, and exits or returns on its own.
+resetHomeRefusal() {
+  local n="$1" rc="$2"
+  case "$rc" in
+    127) echo "capsule $n: this slot's image predates capsule-reset-home (status 127)."
+         echo "  just refresh-build $n moves the slot onto the current image and keeps the volume." ;;
+    3)   echo "capsule $n: the agent is busy (sessions above), so nothing was reset."
+         echo "  capsule $n stop, then start, ends every session." ;;
+    4)   echo "capsule $n: an agent login arrived during the reset, so \$HOME may be partial;"
+         echo "  run it again." ;;
+    255) echo "capsule $n: ssh to the admin door failed (status 255), so what the guest did is unknown;"
+         echo "  run it again once capsule $n status shows the door." ;;
+    *)   echo "capsule $n: capsule-reset-home exited $rc." ;;
+  esac >&2
+}
+
 scrubPending() {
-  local n="$1" m
+  local n="$1" m rc=0
   m="$(slotDir "$n")/scrub-pending"
   [ -e "$m" ] || return 0
   echo "capsule $n: this volume was cloned ($(cat "$m")) — scrubbing before inject"
-  guestResetHome "$n" --scrub || {
-    echo "capsule $n: scrub did not complete, so nothing was injected; the marker stays." >&2
+  guestResetHome "$n" --scrub || rc=$?
+  if [ "$rc" -ne 0 ]; then
+    resetHomeRefusal "$n" "$rc"
+    echo "capsule $n: nothing was injected; the marker stays." >&2
     return 1
-  }
+  fi
   rm -f -- "$m"
 }
 ```
 
-`guestResetHome` is a new function in the existing `guestControl` argument, so a
-suite substitutes it exactly as it substitutes `guestHead` today.
+- **255 is read as ssh's, not the program's.** ssh exits 255 when its own
+  connection fails, and `capsule-reset-home` defines only 3 and 4, beside a usage
+  error's 2 and whatever status a failing step returns. So 255 means the admin
+  connection failed, before the program ran or during it (sec-4's `sshd` restart
+  is the moment `ASM-002` bets on). The outcome is unknown either way, and both
+  paths are safe to run again: the marker stays, and a reset repeated from any
+  point deletes and reseeds the same things.
+- **The gate is where 127 is most likely.** `clone-from` needs both slots
+  created, not refreshed, so a clone onto a slot whose image predates this slice
+  meets 127 at its first `start`. `just refresh-build` restarts a running slot
+  through `capsule start`, so the scrub runs again from there by itself.
+- `guestResetHome` is a new function in the existing `guestControl` argument, so a
+  suite substitutes it exactly as it substitutes `guestHead` today.
+  `resetHomeRefusal` is **not** in that argument: it is in the front end's main
+  body, because a suite substitutes the guest's status and asserts what the front
+  end makes of it.
 
 **Why the inject still connects after the scrub:** the scrub gives the guest a new
 ssh host key at the same address. The admin door does not check host keys
@@ -539,12 +583,13 @@ marker. The programs do not know where the record lives, by design
 it.
 
 **`reset-home` uses the same pieces without a marker:** the front end checks the
-door answers, calls `guestResetHome "$n"`, maps 127, 3 and 4 to their refusals, and
-on 0 runs `work "$n" inject`. That call also passes the gate, so a clone that was
-never scrubbed gets scrubbed here too. On a marked slot that means `$HOME` is
-deleted twice, once by `reset-home` and once by the scrub. The second deletion
-removes only what the seed just made, so it is left as is rather than given a
-branch of its own.
+door answers and calls `guestResetHome "$n"`. On 0 it runs `work "$n" inject`;
+on anything else it calls `resetHomeRefusal "$n" "$rc"` and exits 1, never the
+guest's status, since a front end exiting 127 reads as a missing `capsule`. That
+call also passes the gate, so a clone that was never scrubbed gets scrubbed here
+too. On a marked slot that means `$HOME` is deleted twice, once by `reset-home`
+and once by the scrub. The second deletion removes only what the seed just made,
+so it is left as is rather than given a branch of its own.
 
 <!-- doctrine:section sec-6 -->
 ## Status: what a volume costs
@@ -628,10 +673,18 @@ end refers to by store path. `observe` is the precedent.
 sub-verb; run the checks from sec-2 that need no root (`created`, `unitState`,
 the door); then exactly one of `volumeRoot reset …`, `mkdir -p "$(slotDir
 "$dest")"` followed by `volumeRoot clone …`, or `guestResetHome` followed by
-`work "$name" inject`. The `mkdir` is the front end's because the record
-directory is the operator's, and the helper refuses rather than make it as root
-(sec-3). `scrubPending` goes at the
-top of `work()` for `inject`, as sec-5 shows.
+`work "$name" inject` or `resetHomeRefusal` (sec-5). The `mkdir` is the front
+end's because the record directory is the operator's, and the helper refuses
+rather than make it as root (sec-3). `scrubPending` goes at the top of `work()`
+for `inject`, as sec-5 shows.
+
+**A reset names what a fresh volume breaks.** The guest's ssh host key lives on
+the volume, so after a reset the next start has a new key at the same address,
+and the operator's own door checks host keys strictly
+(`mem.fact.oubliette.fresh-capsule-fresh-host-keys`). So once `volumeRoot reset`
+succeeds, the branch prints `next: just reset-known-hosts <slot>; capsule <slot>
+start`, as `clone-from` prints its next steps. When the root step refuses, it
+prints nothing more.
 
 **`start` takes the volume lock.** Around its existing `sudo systemctl start` and
 two-second stays-up check, the `start` branch opens `capsules.volumeLock` for
@@ -668,7 +721,7 @@ not put on `PATH`: it is reached only through the front end's store path.
 | `vm/capsule.nix` | builds `scrubPaths` from `setup.nix` and `openssh.hostKeys`, passes `agentUid`; adds the program to `systemPackages` |
 | `capsules.nix` | **two values**: `volumeLock` and `volumeReserve` (sec-3) |
 | `host/services.nix` | one tmpfiles rule for `volumeLock` |
-| `host/cli.nix` | `volume` verb; `nameFrom`; `microvms`, `volumeControl` (`sudo -k`), `guestResetHome`; `scrubPending` in `work()`; shared volume lock in `start`; `alloc` column and free line with the reserve |
+| `host/cli.nix` | `volume` verb; `nameFrom`; `microvms`, `volumeControl` (`sudo -k`), `guestResetHome`; `resetHomeRefusal`, called by `scrubPending` in `work()` and by the `reset-home` branch; `reset`'s next-step line; shared volume lock in `start`; `alloc` column and free line with the reserve |
 | `host/volume-cases.nix` | **new**: the front end's volume branch against a fixture pool, rendered the way `host/policy-cases.nix` renders its own |
 | `host/programs.nix` | builds `volumeRootHelper` and threads it to the front end |
 | `flake.nix` | the three suites as outputs, each a short `import` |
@@ -712,10 +765,13 @@ watching the named case go red.
 - every sub-verb refuses a resolved name and a `CAPSULE_NAME` name, and accepts an argv name
 - `all volume` refused; unknown sub-verb refused
 - `reset` refuses a running unit before calling `volumeRoot` (the stub's log stays empty)
-- `reset-home` maps guest status 127 to "image predates this verb", 3 to "busy" and 4 to "a login arrived, run it again"
+- `reset` that succeeds prints `just reset-known-hosts dst`; one whose root step refuses does not
+- `reset-home` refuses by reason **and remedy** for each guest status, and exits 1 for each: 127 names `just refresh-build dst` and not `stop, then start`; 3 names busy and `capsule dst stop`; 4 names a login arrived and run it again; 255 names ssh and the door; any other status is named
 - `start` refuses, by reason and before `systemctl`, while the fixture `volumeLock` is held exclusively; two starts do not exclude each other; an absent lock file starts with a warning
 - **eval-level:** the shipped `volumeControl` default invokes the helper with `sudo -k`
-- `inject` with a marker: scrub called first, then marker removed, then inject; with a failing scrub, inject is not called and the marker stays
+- `inject` with a marker: scrub called first, then marker removed, then inject
+- `inject` with a marker and a scrub that fails with 127, 3, 4, 255 or another status: inject is not called, the marker stays, and the refusal carries the same reason and remedy as `reset-home`'s for that status
+- **mutation:** drop the `resetHomeRefusal` call from `scrubPending`; the gate's per-status cases go red and `reset-home`'s stay green. Put stop then start back as 127's remedy; both 127 cases go red
 - `clone-from` makes the destination's record directory before calling `volumeRoot`, and makes nothing when an earlier check refuses
 - `alloc` and the free line against a fixture root, including the "outside the pool" parenthesis
 

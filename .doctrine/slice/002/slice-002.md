@@ -174,8 +174,10 @@ Risks and assumptions:
   Figures live in [probes](../../../docs/probes.md).
 - **`capsule-reset-home` exists only in a new image.** A slot running the old
   image fails the door call. The front end must refuse that by reason
-  (`command not found` read as *restart onto the new image*), not pass it
-  through as a bare error.
+  (`command not found` read as *`just refresh-build <slot>`*, the only thing
+  that moves a slot onto the new image; a restart boots the same one), at
+  `reset-home` and at the clone's scrub gate alike, not pass it through as a
+  bare error.
 - **Assumed, and checked live:** a detached baseline keeps its login session
   listed until it exits (`ASM-001`), and restarting the guest's `sshd` keeps the
   admin session that runs the scrub (`ASM-002`).
