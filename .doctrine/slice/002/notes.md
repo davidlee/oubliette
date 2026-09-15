@@ -81,9 +81,37 @@ shipped render for its `setpriv` line. That `setpriv --reuid=microvm
   first a `chown` a non-root sandbox is refused, and after `F-1` the owner stub
   refusing the `chmod`) was added beside it.
 
+## PHASE-02 — 2026-09-15
+
+`capsule-reset-home` and `resetHomeCases` are built as sec-4 specifies and are
+green, and the guest closure builds with the program in it (`87e682b`). The
+shipped scrub list is `/work/.env` and the ed25519 host key and its `.pub`.
+
+- **The suite runs the shipped store path as well as a render.** `loginctl` and
+  `systemctl` are deliberately not in the program's `runtimeInputs` (they must be
+  the running guest's), so a suite can fake them on `PATH`
+  (`mem.pattern.oubliette.fake-guest-tools-on-path`). That reached the real
+  session listing, which a fixture render replaces, and found a fail-open in it: a
+  failed `loginctl list-sessions` inside a captured function read as "nobody is
+  working" (`mem.fact.oubliette.errexit-skips-a-captured-function`). Fixed before
+  commit. The same case written against the fixture had passed with the bug
+  present.
+- **The fake's output shape is assumed.** It is logind's `show-session -p` form
+  as the program parses it. Whether a real guest prints that, and what an `agent`
+  ssh login and a detached baseline report, is still PHASE-06 live exercise 2.
+- **Mutations** (VA-1 plus two): the trap without the getty restart, the slice
+  stop after the `rm`, the `manager` exclusion dropped, a trailing slash on the
+  `rm` (it followed the symlink and deleted its target), and the listing's
+  `|| return` removed. Each turned its named cases red. The trailing-slash mutant
+  first died at Nix eval, which a narrow grep of the output hid; the lesson is
+  appended to `mem.pattern.oubliette.a-mutation-must-reach-the-case`.
+- `just build` now evaluates the guest, and so prints nixpkgs'
+  `stdenv.isLinux is deprecated` warning. The warning predates this phase (HEAD
+  `410e840` prints it too); it is not this repo's code.
+
 ## Harvest
 <!-- single-copy: updated in place each harvest; ids only, never restated content -->
-fresh-as-of: 2026-09-15 · started (PHASE-01 complete; design re-locked at run revision 60 over `RV-003` `F-1`)
+fresh-as-of: 2026-09-15 · started (PHASE-01 and PHASE-02 complete; design locked at run revision 61)
 
 ### Produced
 - `design.md` sec-1..sec-8 — materialised from run `dr-01a0a2ae…`; all eight walked with the user, sec-3/4/5/7/8 revised for `RV-001` `F-1`..`F-5` (`075ead9`)
@@ -95,13 +123,16 @@ fresh-as-of: 2026-09-15 · started (PHASE-01 complete; design re-locked at run r
 - `plan.toml`, `plan.md` — six phases; commits `95ccff1`, `c21a391`, `3a07fe7`
 - PHASE-01: `host/volume-root.nix`, `host/volume-root-cases.nix`, `capsules.nix` `volumeLock`/`volumeReserve`, the lock's tmpfiles rule — commits `6f33e38`, `661c13c`
 - `RV-003` `F-1` — found executing PHASE-01; sec-1/3/8 revised (`0bd060f`); PHASE-01 `EX-7`/`VT-5`/`VA-3` and PHASE-06 `VH-6` appended
+- PHASE-02: `vm/reset-home.nix`, `vm/reset-home-cases.nix`, `vm/capsule.nix` `resetHome` + `scrubPaths` — commit `87e682b`
 
 ### Learned
 - mem.fact.oubliette.design-apply-disposes-through-checkpoints — how the run takes dispositions
 - mem.fact.oubliette.guest-autologins-agent-on-every-getty — tty1 and ttyS0, and the user manager is a session too; quiesce by the user slice
 - mem.fact.oubliette.nologin-is-pams-job-under-sshd — `/etc/nologin` blocks no ssh login on the guest
 - mem.fact.oubliette.image-directories-are-vmm-writable — root acts in an image directory only as the image owner
-- mem.pattern.oubliette.a-mutation-must-reach-the-case — read which cases went red, not the exit status
+- mem.pattern.oubliette.a-mutation-must-reach-the-case — read which cases went red, not the exit status; a mutant can also die at Nix eval
+- mem.fact.oubliette.errexit-skips-a-captured-function — a failed listing inside `$(...)` reads as empty; `|| return`
+- mem.pattern.oubliette.fake-guest-tools-on-path — tools left out of `runtimeInputs` let a suite run the shipped store path
 
 ### Open
 - `ASM-001` — a detached baseline keeps its logind session (live exercise 2, PHASE-06)
@@ -109,3 +140,4 @@ fresh-as-of: 2026-09-15 · started (PHASE-01 complete; design re-locked at run r
 - `ASM-002` — restarting guest sshd keeps the admin session (live exercise 3, PHASE-06)
 - the `setpriv` drop under `sudo -k` on this host — no suite reaches it (PHASE-06 `VH-6`)
 - `notHeld` fails open if `fuser` itself errors — noted in `## PHASE-01`, not filed
+- the real `loginctl` output against `agentSessions`'s parser — the suite's fake is an assumed shape (live exercise 2)

@@ -17,3 +17,13 @@ creating the temporary file, so dropping the EXIT trap left the case green. Only
 a failure *after* the temporary file exists can see the trap. This is CLAUDE.md's
 "check the suite can fail by mutating the behaviour it claims to pin", applied to
 every case rather than to the suite as a whole.
+
+**A third way, seen mutating `vm/reset-home.nix` (SL-002 PHASE-02):** a mutant can
+die at *eval*, one step before shellcheck. `rm -rf -- "${home:?}/"` inside a Nix
+`''` string is Nix interpolation (here a "URL literals are deprecated" error), and
+the build printed `error:` with no `builder for` line. Filtering the output for
+`FAIL|error: builder` hid it completely, and the run read as **"no case went red"**,
+the opposite misreading of the shellcheck one. Escape shell `${` as `''${` in the
+mutant, and grep a mutant's output for plain `error` as well as `FAIL`. Once
+escaped, that mutant turned the symlinked-`$HOME` cases red: with the trailing
+slash, `rm -rf` followed the link and deleted what it pointed at.

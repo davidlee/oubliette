@@ -1,0 +1,43 @@
+memory_uid = "mem_01a0a46b211a70c3a33abbe7b88c6e62"
+memory_key = "mem.fact.oubliette.errexit-skips-a-captured-function"
+schema_version = 1
+lifespan = "semantic"
+memory_type = "fact"
+status = "active"
+title = "errexit does not reach a failure inside a function whose output is captured or piped"
+summary = "x=$(cmd) failing inside a function run under $(...) or a pipe continues silently; a failed listing reads as an empty one"
+created = "2026-09-15"
+updated = "2026-09-15"
+
+[scope]
+paths = []
+globs = ["host/*.nix", "vm/*.nix"]
+commands = []
+tags = ["gotcha"]
+workspace = "default"
+repo = "github.com/davidlee/oubliette"
+repo_id_kind = "remote"
+repo_id_confidence = "high"
+
+[git]
+anchor_kind = "commit"
+commit = "87e682b6fa68c597b33840f2eda44c754a01dbe2"
+tree = "11c8a1cac85f7b6cda356980834c609d61d05cb8"
+ref_name = "refs/heads/main"
+checkout_state_id = ""
+base_commit = "87e682b6fa68c597b33840f2eda44c754a01dbe2"
+verified_sha = ""
+normalizer = ""
+
+[review]
+verification_state = "unverified"
+reviewed = ""
+review_by = ""
+
+[trust]
+trust_level = "high"
+
+[ranking]
+severity = "high"
+weight = 0
+

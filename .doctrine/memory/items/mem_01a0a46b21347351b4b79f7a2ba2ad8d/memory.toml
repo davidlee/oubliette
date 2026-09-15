@@ -1,0 +1,43 @@
+memory_uid = "mem_01a0a46b21347351b4b79f7a2ba2ad8d"
+memory_key = "mem.pattern.oubliette.fake-guest-tools-on-path"
+schema_version = 1
+lifespan = "procedural"
+memory_type = "pattern"
+status = "active"
+title = "A guest program's systemd tools come from PATH, so its suite can run the shipped store path"
+summary = "Leave the running system's own systemctl/loginctl out of runtimeInputs; a suite then fakes them on PATH and runs the real store path, not a render"
+created = "2026-09-15"
+updated = "2026-09-15"
+
+[scope]
+paths = []
+globs = ["vm/*-cases.nix", "vm/*.nix", "host/*-cases.nix"]
+commands = []
+tags = ["testing"]
+workspace = "default"
+repo = "github.com/davidlee/oubliette"
+repo_id_kind = "remote"
+repo_id_confidence = "high"
+
+[git]
+anchor_kind = "checkout_state"
+commit = ""
+tree = "11c8a1cac85f7b6cda356980834c609d61d05cb8"
+ref_name = "refs/heads/main"
+checkout_state_id = "316a19e83c44b7ab558297baecf81906c5853dd15e6b1306276e4e2cafa5b6c0"
+base_commit = "87e682b6fa68c597b33840f2eda44c754a01dbe2"
+verified_sha = ""
+normalizer = "forget.checkout.v1"
+
+[review]
+verification_state = "unverified"
+reviewed = ""
+review_by = ""
+
+[trust]
+trust_level = "high"
+
+[ranking]
+severity = "medium"
+weight = 0
+
