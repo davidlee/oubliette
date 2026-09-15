@@ -50,7 +50,7 @@ sec-2..8; run item 2 as part of that read rather than as a separate pass.
 
 ## Harvest
 <!-- single-copy: updated in place each harvest; ids only, never restated content -->
-fresh-as-of: 2026-09-15 · design (reviewing; RV-001 F-1..F-10 disposed, F-6..F-10 integrated) · pending commit
+fresh-as-of: 2026-09-15 · ready (design locked at run revision 53; plan PHASE-01..06 materialised)
 
 ### Produced
 - `design.md` sec-1..sec-8 — materialised from run `dr-01a0a2ae…`; all eight walked with the user, sec-3/4/5/7/8 revised for `RV-001` `F-1`..`F-5` (`075ead9`)
@@ -58,12 +58,15 @@ fresh-as-of: 2026-09-15 · design (reviewing; RV-001 F-1..F-10 disposed, F-6..F-
 - `IMP-008`, `IMP-009`, `IMP-010`, `CHR-013` — follow-ups filed during inquiry
 - commits `78a6460`, `10d277b`, `4379895`, `075ead9`, `e3a4a90` — nothing built; one spike on slot `b` (stopped and restored its gettys and agent slice)
 - `RSK-007`, `IMP-011` — filed while disposing `F-9` and `F-7`
+- `RV-001` `F-11` — found while planning (the user manager is a logind session); sec-2/4/8 revised through a reopened run, `RV-002` is that pass
+- `plan.toml`, `plan.md` — six phases; commits `95ccff1`, `c21a391`, `3a07fe7`
 
 ### Learned
 - mem.fact.oubliette.design-apply-disposes-through-checkpoints — how the run takes dispositions
-- mem.fact.oubliette.guest-autologins-agent-on-every-getty — tty1 and ttyS0; quiesce by the user slice
+- mem.fact.oubliette.guest-autologins-agent-on-every-getty — tty1 and ttyS0, and the user manager is a session too; quiesce by the user slice
 - mem.fact.oubliette.nologin-is-pams-job-under-sshd — `/etc/nologin` blocks no ssh login on the guest
 
 ### Open
-- `ASM-001` — a detached baseline keeps its logind session (live exercise 2)
-- `ASM-002` — restarting guest sshd keeps the admin session (live exercise 3)
+- `ASM-001` — a detached baseline keeps its logind session (live exercise 2, PHASE-06)
+- `Service`/`Class` of an `agent` ssh login and of a detached baseline — unread (live exercise 2)
+- `ASM-002` — restarting guest sshd keeps the admin session (live exercise 3, PHASE-06)

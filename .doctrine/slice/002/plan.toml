@@ -27,7 +27,7 @@ values in capsules.nix, the tmpfiles rule for the lock, the helper as a
 build-time-parameterised writeShellApplication, and volumeRootCases wired into
 both `just build` and `just cases`. Nothing calls it yet."""
 entrance_criteria = [
-  { id = "EN-1", text = "SL-002 design locked (run revision 45) and the slice at `ready`" },
+  { id = "EN-1", text = "SL-002 design locked (run revision 53) and the slice at `ready`" },
   { id = "EN-2", text = "`just` green on the starting commit" },
 ]
 exit_criteria = [

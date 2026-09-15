@@ -105,7 +105,7 @@ response = "The idle test no longer names a TTY: it excludes agent sessions whos
 
 [[finding]]
 id = "F-11"
-status = "answered"
+status = "verified"
 severity = "blocker"
 title = "sec-2/sec-4: the agent's user manager is a logind session, so the idle check still always refuses"
 detail = "Found while planning (2026-09-15), read-only on slot b with loginctl show-session -p Service -p Class: agent has three sessions with nobody connected, the tty1 and ttyS0 autologins (Service=login, Class=user) and the user manager (Service=systemd-user, Class=manager). F-10's fix excludes only Service=login, so workingSessions lists the manager session on every guest and reset-home, and with it every clone's scrub, refuses. sec-8's cases stub the getty sessions but not the manager's, so no suite would have caught it."
