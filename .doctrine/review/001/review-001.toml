@@ -103,5 +103,14 @@ detail = "Found by the F-7 spike on slot b (2026-09-15). services.getty.autologi
 disposition = "fix-now"
 response = "The idle test no longer names a TTY: it excludes agent sessions whose logind Service is the getty login, whichever tty they are on, and refuses on any other (ssh sessions, and a detached baseline's per ASM-001). The quiesce stops both getty slices rather than one unit, so no autologin can respawn a session during the reset. To integrate into sec-2, sec-4, sec-8, with a live exercise reading the Service property of each session kind."
 
+[[finding]]
+id = "F-11"
+status = "answered"
+severity = "blocker"
+title = "sec-2/sec-4: the agent's user manager is a logind session, so the idle check still always refuses"
+detail = "Found while planning (2026-09-15), read-only on slot b with loginctl show-session -p Service -p Class: agent has three sessions with nobody connected, the tty1 and ttyS0 autologins (Service=login, Class=user) and the user manager (Service=systemd-user, Class=manager). F-10's fix excludes only Service=login, so workingSessions lists the manager session on every guest and reset-home, and with it every clone's scrub, refuses. sec-8's cases stub the getty sessions but not the manager's, so no suite would have caught it."
+disposition = "fix-now"
+response = "sec-2 states the rule with slot b's session table: an agent session is working unless Service=login or Class is manager/manager-early, and anything else refuses. sec-4's tools now list sessions (agentSessions) and the program's own text filters them (workingSessions), so the suite runs the rule rather than a stubbed answer. sec-8 feeds the three-session table (no refusal), adds sshd and background sessions (refusal), and a mutation dropping the manager exclusion. Live exercise 2 reads Service/Class/State for an agent ssh login and a detached baseline, which were not read. Scope and plan reconciled. Run revision 49."
+
 # Findings are append-only `[[finding]]` tables, added by `review raise` (PHASE-03).
 # Empty here at creation — a fresh review is Active, awaiting the raiser (D-C8).

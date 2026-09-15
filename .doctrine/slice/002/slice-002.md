@@ -46,7 +46,7 @@ refused.
   `home` binding. The program deletes `$HOME` and restarts `capsule-seed`; the
   host runs it over the admin door and then `inject` (`DEC-001`). Needs the
   slot **running** with no `agent` login session other than the gettys'
-  autologins; the program then stops the gettys and the agent's user slice
+  autologins and the agent's own user manager; the program then stops the gettys and the agent's user slice
   before it deletes, and fails loudly if a login arrives meanwhile.
 - **`clone-from <m>`**: S5. A sparse copy of a stopped source's image onto a
   stopped destination, so a slot starts warm. **Any stopped declared slot other
@@ -83,8 +83,10 @@ free-space line under the table. `docs/probes.md`'s disk row is refreshed.
   immediately before it acts. This identifies the file rather than a process name
   (`mem.fact.oubliette.dead-guest-is-not-a-dead-vm`).
 - **"Running and idle" means no `agent` logind session except the gettys'
-  autologins** (`DEC-004`). The guest autologins `agent` on every getty (`ttyS0`
-  and `tty1`), so "any agent process" cannot be the test; a baseline runs
+  autologins and the user manager** (`DEC-004`). The guest autologins `agent` on
+  every getty (`ttyS0` and `tty1`), and the user manager is a session of its own
+  (`Class=manager`), so "any agent process" cannot be the test and neither can
+  "any session but the autologins"; a baseline runs
   detached (`setsid`) and is assumed to keep its ssh session listed until it exits
   (`ASM-001`). After that check the program quiesces: it stops the gettys and
   `user-<uid>.slice`, which holds every agent session and the user manager, and

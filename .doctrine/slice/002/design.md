@@ -91,19 +91,36 @@ the image open*. It is checked twice, on purpose:
    `mem.fact.oubliette.dead-guest-is-not-a-dead-vm` states for process names.
 
 **Running and idle**, for `reset-home` and the clone's scrub, means *the admin
-door answers and `agent` has no logind session except the gettys' own
-autologins*.
+door answers and `agent` has no logind session except the gettys' autologins
+and its own user manager*.
 
-- `services.getty.autologinUser` logs `agent` in on **every** getty, which on this
-  guest is `serial-getty@ttyS0` and `getty@tty1` (seen on slot `b`: two sessions
-  before anyone connected). So "any `agent` process", and any test that names one
-  console, always refuses. The test excludes sessions whose logind `Service` is
-  the getty login, whatever tty they are on.
-- An ssh login is a session with `Service=sshd`. A baseline is started detached
-  (`setsid`) from one, and **assumed** to keep that session in `closing` until it
-  exits, because NixOS leaves `KillUserProcesses` off (`ASM-001`). The `Service`
-  values and that assumption are checked by a live exercise, not a suite (see
-  Verification).
+With nobody connected, a running guest already has three `agent` sessions. This
+is what `loginctl show-session` reported on slot `b`, beside the admin door's own
+login:
+
+| session | TTY | `Service` | `Class` |
+| --- | --- | --- | --- |
+| `agent` autologin | `tty1` | `login` | `user` |
+| `agent` autologin | `ttyS0` | `login` | `user` |
+| `agent`'s user manager | - | `systemd-user` | `manager` |
+| root over the admin door | - | `sshd` | `user` |
+
+- `services.getty.autologinUser` logs `agent` in on **every** getty, not only the
+  serial console. So "any `agent` process", and any test that names one console,
+  always refuses.
+- The `systemd --user` manager is a logind session of its own, present whenever
+  any `agent` session is. A test that excludes only the autologins still lists
+  it on every guest.
+- **The rule:** an `agent` session is *working* unless its `Service` is `login`
+  or its `Class` is `manager` or `manager-early`. Everything else refuses,
+  including a class nobody has seen on this guest, so an unexpected session errs
+  towards a refusal. What the user manager runs is not inspected here: the
+  quiesce stops it (sec-4).
+- An ssh login is a session with `Service=sshd` (the admin door's, above). A
+  baseline is started detached (`setsid`) from one, and **assumed** to keep that
+  session in `closing` until it exits, because NixOS leaves `KillUserProcesses`
+  off (`ASM-001`). That assumption, and the values for an `agent` ssh login, are
+  checked by a live exercise (see Verification).
 - Idle is checked **before** the guest program quiesces the agent: it refuses on
   evidence that someone is working, then stops what that test cannot see (the
   gettys and the agent's user manager) before deleting anything. sec-4 has the
@@ -330,7 +347,7 @@ image. New file `vm/reset-home.nix`, called from `vm/capsule.nix` and added to
   agentUid,      # config.users.users.agent.uid, so the slice is user-<uid>.slice
   scrubPaths,    # absolute paths removed only under --scrub (below)
   tools ? ''     # the one thing tying it to a running guest
-    workingSessions() { ... }   # agent's sessions whose logind Service is not "login"
+    agentSessions() { ... }     # one line per agent session: id, tty, service, class, state
     activeGettys() { systemctl list-units --state=active --no-legend --plain \
       'getty@*' 'serial-getty@*' | awk '{print $1}'; }
     startUnit() { systemctl start "$@"; }
@@ -362,10 +379,11 @@ the agent's sessions and its user manager in. What was seen on slot `b` with a
 running guest and nobody connected: sessions on `ttyS0` and `tty1` plus the
 `systemd --user` manager, all in that slice.
 
-1. **Refuse on evidence of work.** `workingSessions`. If it prints anything,
-   refuse with exit status **3** and list the sessions (id, TTY, service, state).
-   Getty autologins are excluded by their `Service`, not by naming a tty
-   (sec-2).
+1. **Refuse on evidence of work.** `workingSessions` filters `agentSessions` by
+   sec-2's rule. If it prints anything, refuse with exit status **3** and list
+   the sessions (id, TTY, service, class, state). The filter is the program's own
+   text and only the listing is in `tools`, so a suite runs the rule against the
+   sessions a real guest reports rather than stubbing the answer.
 2. **Quiesce what that test cannot see.** Record `activeGettys`, `trap` on `EXIT`
    to `startUnit` them again, then `stopUnit` them. Stopping only the ttyS0 getty
    is not enough: on slot `b`, `getty@tty1` logged `agent` back in within five
@@ -661,7 +679,8 @@ watching the named case go red.
 - **mutation:** move the marker write after `commitImage`; the "marker exists when the image is committed" case goes red. Make step 6 remove the marker unconditionally; the "keeps a marker it did not write" case goes red
 
 `resetHomeCases`:
-- refuses with status 3 and lists sessions while a working session exists (`workingSessions` stubbed to print one); getty autologins on both `ttyS0` and `tty1` alone do not refuse, and a refusal stops nothing
+- with `agentSessions` stubbed to print sec-2's table (the two autologins and the user manager), nothing refuses; adding an `sshd` session, or a session of any other class such as `background`, refuses with status 3 and lists it; a refusal stops nothing
+- **mutation:** drop the `manager` exclusion from the filter; the three-session case goes red
 - in order: stop the recorded gettys, stop the agent's slice, remove `$HOME`, restart `capsule-seed`, then start the recorded gettys again
 - exits 4 when the slice is still active after its stop, and when it becomes active during the reset (`unitActive` stubbed per call); the gettys are started again on both, and on any other failure after they were stopped
 - a `$HOME` that is a symlink: the link goes, and its target survives
@@ -682,7 +701,7 @@ watching the named case go red.
 **Live exercises, which no suite can reach** (`STD-001`: root, a real image, a real guest):
 
 1. `volume reset` on a finished slot: the image is gone, `start` makes a cold volume, and the `fuser` refusal fires with the unit stopped but the image held.
-2. `volume reset-home` on a running idle slot, then with an ssh session open (refused), then with a detached baseline running. First read `loginctl show-session -p Service -p TTY` for the `ttyS0` and `tty1` autologins and for an ssh session, which is what `workingSessions` filters on. After the idle run, both gettys are back and have logged `agent` in again. **This confirms or refutes `ASM-001`, sec-2's session assumption.**
+2. `volume reset-home` on a running idle slot, then with an `agent` ssh session open (refused), then with a detached baseline running. Before each, read `loginctl show-session -p Service -p Class -p State` for every `agent` session, and compare with sec-2's table: the autologins and the user manager were read on slot `b`, but an `agent` ssh login and a detached baseline's session were not. After the idle run, both gettys are back and have logged `agent` in again. **This confirms or refutes `ASM-001`, sec-2's session assumption.**
 3. `volume clone-from` a stopped slot, then `start`. Read back that the scrub ran before inject, that `.env` and the credential files on the clone are this host's, that the host key's fingerprint differs from the source's, and that `sshd` restarted without dropping the admin session. **This confirms or refutes `ASM-002`.**
 4. `capsule all status` shows `alloc` for stopped slots and the free line.
 5. With a `volume clone-from` running, `capsule <other> start` refuses naming the volume operation, and succeeds once the clone finishes. A second `volume reset` run at the same time refuses the same way.

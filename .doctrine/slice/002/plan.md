@@ -72,8 +72,10 @@ PHASE-02's EN-2 and clear three plan risks):
 
 - **The user manager is a logind session.** A filter of "`Service` is not
   `login`" lists it on every guest, so `reset-home` would always refuse. That
-  contradicts design sec-2 and sec-4 as locked, and is taken back to the design
-  rather than fixed here.
+  contradicted design sec-2 and sec-4 as first locked. It went back to the design
+  as `RV-001` `F-11`: the rule now also excludes `Class` `manager` and
+  `manager-early`, and only the session listing is stubbed, so the suite runs
+  the filter itself.
 - **Cleared:** `/etc/pam.d/runuser` has no `pam_systemd`, so `capsule-seed`'s
   `runuser` opens no session and cannot trip sec-4 step 7. `sshd` has
   `KillMode=process` and `Wants=sshd-keygen.service`, and `sshd-keygen` has
