@@ -1,0 +1,26 @@
+id    = 3
+slug  = "design-review-of-sl-002"
+title = "design review of SL-002"
+# no status — a review's status is DERIVED from its findings (ADR-007 D-C8), so
+# it is never stored (the storage rule forbids derived data in authored files).
+
+[review]
+facet     = "design"     # scope|design|plan|phase-plan|implementation|code-review|reconciliation
+raiser    = "raiser"
+responder = "responder"
+concluded = true
+
+[target]                   # the outbound `reviews` edge (ADR-004): RV-NNN ──reviews──▶ <ref>
+ref   = "SL-002"
+
+[[finding]]
+id = "F-1"
+status = "verified"
+severity = "blocker"
+title = "sec-3: root does path-based rm/cp/chown/chmod in an image directory the microvm uid can write"
+detail = "Found executing PHASE-01 (2026-09-15), read on this host: /var/lib/microvms is microvm:kvm 0775, each /var/lib/microvms/<slot> is root:kvm 0775, and microvm (uid 970, every VMM whichever slot it serves) is in kvm. sec-3's clone runs rm, cp --sparse, chown and chmod on the fixed name capsule-work.img.clone, and cp reads img(src), all by path and as root. A VMM on another slot can swap either name for a symlink between steps: root then chowns an arbitrary file to microvm:kvm, chmods one 0644, overwrites one, or copies a file microvm cannot read into an image it can. The suite cannot see it: no sandbox has a second uid racing the helper. Nothing calls the helper yet (commit 6f33e38)."
+disposition = "fixed"
+response = "User ruled 2026-09-15: every act that creates, modifies, renames or removes a file in an image directory runs through asImageOwner (setpriv --reuid=microvm --regid=kvm --init-groups), including commitImage and the trap; no chown; root keeps the lock, fuser, the fit stat and the marker. sec-1, sec-3 and sec-8 revised at run revision 55; plan PHASE-01 EX-7/VT-5/VA-3 and PHASE-06 VH-6 appended."
+
+# Findings are append-only `[[finding]]` tables, added by `review raise` (PHASE-03).
+# Empty here at creation — a fresh review is Active, awaiting the raiser (D-C8).

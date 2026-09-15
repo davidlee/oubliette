@@ -41,7 +41,7 @@ flowchart LR
     VOL[("/work: $HOME · .env · ssh host key")]
   end
   FE -- "sudo, password prompt" --> RH
-  RH -- "delete / sparse copy" --> IMG
+  RH -- "delete / sparse copy,<br/>as the image owner" --> IMG
   RH -- "writes marker" --> REC
   FE -- "reads marker, removes it" --> REC
   FE -. "admin ssh" .-> GRH
@@ -53,9 +53,9 @@ flowchart LR
   checks the cheap preconditions, and composes the steps. It never deletes
   anything itself.
 - **The root helper** (`capsule-volume-root`, new) is the only code that runs as
-  root. It is the only code that touches an image file, and it writes the clone's
-  scrub marker. Its two state roots, `/var/lib/microvms` and `/var/lib/capsule`,
-  are fixed when it is built, so a caller cannot point it anywhere else
+  root. It is the only code that touches an image file, and it does so only as
+  the image's owner (sec-3). It also writes the clone's scrub marker. Its two
+  state roots, `/var/lib/microvms` and `/var/lib/capsule`, are fixed when it is built, so a caller cannot point it anywhere else
   (`DEC-005`).
 - **The guest program** (`capsule-reset-home`, new, in the image) is the only
   code that deletes inside a volume. It runs in the guest's own kernel against
@@ -213,10 +213,11 @@ image file** (`DEC-005`). New file `host/volume-root.nix`:
   capsules,                          # the pool: slot names, volumeLock, volumeReserve
   microvms ? "/var/lib/microvms",    # image root, fixed at build
   moduleState ? "/var/lib/capsule",  # record root, where the marker goes
-  imageOwner ? "microvm:kvm",        # what a copied image is chowned to
-  tools ? ''                         # the two steps a sandbox cannot provoke
+  imageOwner ? {user = "microvm"; group = "kvm";},  # who acts inside the image directory
+  tools ? ''                         # the three steps a sandbox cannot provoke
     freeBytes() { df --output=avail -B1 "$1" | tail -n 1; }
-    commitImage() { mv -T -- "$1" "$2"; }
+    asImageOwner() { setpriv --reuid=${imageOwner.user} --regid=${imageOwner.group} --init-groups -- "$@"; }
+    commitImage() { asImageOwner mv -T -- "$1" "$2"; }
   '',
 }: pkgs.writeShellApplication { name = "capsule-volume-root"; ... }
 ```
@@ -236,16 +237,32 @@ own directory, as `host/policy-cases.nix` does for `moduleState`. A tmpfiles rul
 in `host/services.nix` makes the lock file (`0644 root`) at boot, so the front end
 can open it for reading without creating anything under `/run`. **None of them may be a run-time argument**: this program runs as root,
 and a later password-less grant (`IMP-010`) must not be pointable at `/`.
-`imageOwner` exists because a sandbox cannot `chown` to `microvm`. `tools` is a
-shell fragment of functions, the shape `host/cli.nix`'s `guestControl` already
-takes, because `df` and `mv` come from `runtimeInputs` and a suite cannot shadow
-them on `PATH`: a sandbox can neither mount a filesystem small enough to force the
-free-space refusal nor crash the program between two lines.
+`tools` is a shell fragment of functions, the shape `host/cli.nix`'s
+`guestControl` already takes, because `df`, `setpriv` and `mv` come from
+`runtimeInputs` and a suite cannot shadow them on `PATH`: a sandbox can neither
+mount a filesystem small enough to force the free-space refusal, nor drop to a
+second uid, nor crash the program between two lines.
+
+**Root does no path-based act inside an image directory** (`RV-003` `F-1`).
+Read on this host on 2026-09-15: `/var/lib/microvms` is `microvm:kvm 0775`, each
+`/var/lib/microvms/<slot>` is `root:kvm 0775`, and `microvm`, the uid every VMM
+runs as whichever slot it serves, is in `kvm`. A root `cp`, `chown` or `chmod` by
+path in there is a symlink race that any running VMM can win: root would change
+the owner or mode of an arbitrary file, overwrite one, or copy one `microvm`
+cannot read into an image it can. So every act that creates, modifies, renames
+or removes a file in an image directory goes through `asImageOwner`, and
+`imageOwner` is who it runs as. As that owner, a won race gains nothing: the
+owner already owns every image, and a swapped source it cannot read fails the
+copy. No `chown` is needed, because the owner creates the copy. Root keeps what
+writes nothing through that directory: the lock, `fuser`, the fit check's `stat`,
+and the marker, which sits in the operator's `0750` record directory where
+`microvm` cannot write.
 
 **Usage:** `capsule-volume-root reset <slot>` and
 `capsule-volume-root clone <src> <dest> [--identity]`.
 
-**Names used below:** `img(s)` is `${microvms}/<s>/capsule-work.img`;
+**Names used below:** `owner …` is `asImageOwner …`;
+`img(s)` is `${microvms}/<s>/capsule-work.img`;
 `created(s)` is `${microvms}/<s>/current/bin/tap-up` being executable, the same
 test as `host/cli.nix`'s `created`; `marker(s)` is
 `${moduleState}/slot/<s>/scrub-pending`.
@@ -264,7 +281,7 @@ its last file descriptor.
 2. If `img(slot)` is absent, say "already fresh", remove any `marker(slot)`, and
    exit 0.
 3. `fuser` on `img(slot)`: if anything holds it, refuse and print the pids.
-4. `rm -f -- img(slot)`, then remove `marker(slot)` if present. A fresh volume has
+4. `owner rm -f -- img(slot)`, then remove `marker(slot)` (as root) if present. A fresh volume has
    no identity to scrub. A crash between the two leaves a marker over no image,
    whose only effect is a scrub of the cold volume the next start makes.
 
@@ -287,13 +304,14 @@ its last file descriptor.
    headroom, declared. It bounds this clone only: growth of existing images is
    `RSK-007`.
 4. `tmp=${microvms}/<dest>/capsule-work.img.clone`, a **fixed name in the
-   destination directory**. `rm -f` any leftover from an earlier run that was
-   killed mid-copy; the lock means no other helper is writing it, and step 2
-   showed the destination is not in use. Install `trap` on `EXIT` that removes
-   `tmp` unless step 6 committed it, so a copy that fails (`ENOSPC`, a read
-   error) leaves nothing behind. Then `cp --sparse=always img(src) tmp` (the move
-   below is then a same-filesystem rename); `chown ${imageOwner}`; `chmod 0644`,
-   matching the runner's own images.
+   destination directory**. Install `trap` on `EXIT` that runs
+   `owner rm -f tmp`, which after a successful step 6 names nothing, so a copy
+   that fails (`ENOSPC`, a read error) leaves nothing behind. Then
+   `owner rm -f tmp` for a leftover from an earlier run killed mid-copy (the
+   lock means no other helper is writing it, and step 2 showed the destination
+   is not in use), `owner cp --sparse=always img(src) tmp` (the move below is
+   then a same-filesystem rename), and `owner chmod 0644 tmp`, matching the
+   runner's own images.
 5. Unless `--identity`: if `marker(dest)` is absent, write it (content: the
    source slot name and a UTC timestamp, for a human reading it) and remember
    that **this run created it**. A marker already present belongs to an earlier
@@ -644,7 +662,7 @@ not put on `PATH`: it is reached only through the front end's store path.
 | path | change |
 | --- | --- |
 | `host/volume-root.nix` | **new**: the root helper (sec-3) |
-| `host/volume-root-cases.nix` | **new**: its suite, built against a sandbox root with `imageOwner` set to the build user and `tools` substituted |
+| `host/volume-root-cases.nix` | **new**: its suite, built against a sandbox root with `tools` substituted, the drop to the image owner included |
 | `vm/reset-home.nix` | **new**: the guest program (sec-4) |
 | `vm/reset-home-cases.nix` | **new**: its suite, with a fixture `home`, fixture `scrubPaths`, and `tools` stubbed |
 | `vm/capsule.nix` | builds `scrubPaths` from `setup.nix` and `openssh.hostKeys`, passes `agentUid`; adds the program to `systemPackages` |
@@ -670,13 +688,16 @@ watching the named case go red.
 - reset of an absent image succeeds, says "already fresh", and removes a stale marker
 - clone refuses `src = dest`, a missing source image, a destination that was never created, and a destination with no record directory, and **creates no record directory** when it refuses
 - clone refuses when the source's allocation plus the fixture's `volumeReserve` exceeds `freeBytes` by one byte, and proceeds when they are equal
-- clone whose copy fails (an unreadable fixture source) exits non-zero and leaves no `capsule-work.img.clone` and no marker it wrote
-- clone produces a sparse destination with the fixture owner and mode `0644`, and removes a leftover `capsule-work.img.clone` before copying
+- clone whose copy cannot read its source (an unreadable fixture source) exits non-zero and writes no marker; `cp` refuses before creating anything, so this case cannot see the trap
+- clone produces a sparse destination with mode `0644`, and removes a leftover `capsule-work.img.clone` before copying
+- **every act inside an image directory goes through `asImageOwner`** (the stub logs what it runs): a clone's `rm`, `cp`, `chmod` and `mv`, the trap's `rm`, and reset's `rm`; the marker's write and removal do not
+- a copy that fails after the temporary image exists (the stub refusing the `chmod`) leaves no `capsule-work.img.clone`
+- **the shipped render** (this host's values) calls `setpriv --reuid=microvm --regid=kvm --init-groups`
 - clone writes the marker unless `--identity`; **the marker exists when the image is committed** (`commitImage` stubbed to fail unless the marker is present, then move)
 - clone whose commit fails removes the marker it wrote and the temporary file
 - **clone whose commit fails keeps a marker it did not write** (a pre-existing marker, `commitImage` stubbed to fail): the earlier clone stays marked
 - clone with `--identity` over a pre-existing marker removes it after the commit, and keeps it when the commit fails
-- **mutation:** move the marker write after `commitImage`; the "marker exists when the image is committed" case goes red. Make step 6 remove the marker unconditionally; the "keeps a marker it did not write" case goes red
+- **mutation:** move the marker write after `commitImage`; the "marker exists when the image is committed" case goes red. Make step 6 remove the marker unconditionally; the "keeps a marker it did not write" case goes red. Run the `cp` as root rather than through `asImageOwner`; the drop case goes red
 
 `resetHomeCases`:
 - with `agentSessions` stubbed to print sec-2's table (the two autologins and the user manager), nothing refuses; adding an `sshd` session, or a session of any other class such as `background`, refuses with status 3 and lists it; a refusal stops nothing
@@ -702,7 +723,7 @@ watching the named case go red.
 
 1. `volume reset` on a finished slot: the image is gone, `start` makes a cold volume, and the `fuser` refusal fires with the unit stopped but the image held.
 2. `volume reset-home` on a running idle slot, then with an `agent` ssh session open (refused), then with a detached baseline running. Before each, read `loginctl show-session -p Service -p Class -p State` for every `agent` session, and compare with sec-2's table: the autologins and the user manager were read on slot `b`, but an `agent` ssh login and a detached baseline's session were not. After the idle run, both gettys are back and have logged `agent` in again. **This confirms or refutes `ASM-001`, sec-2's session assumption.**
-3. `volume clone-from` a stopped slot, then `start`. Read back that the scrub ran before inject, that `.env` and the credential files on the clone are this host's, that the host key's fingerprint differs from the source's, and that `sshd` restarted without dropping the admin session. **This confirms or refutes `ASM-002`.**
+3. `volume clone-from` a stopped slot, then `start`. Before the start, the destination image is `microvm:kvm` with no `chown` having run; and with the source image replaced by a symlink to a root-only file on a stopped slot, the clone fails at the copy and leaves no `capsule-work.img.clone`. Read back that the scrub ran before inject, that `.env` and the credential files on the clone are this host's, that the host key's fingerprint differs from the source's, and that `sshd` restarted without dropping the admin session. **This confirms or refutes `ASM-002`.**
 4. `capsule all status` shows `alloc` for stopped slots and the free line.
 5. With a `volume clone-from` running, `capsule <other> start` refuses naming the volume operation, and succeeds once the clone finishes. A second `volume reset` run at the same time refuses the same way.
 

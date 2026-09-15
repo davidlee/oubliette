@@ -37,6 +37,7 @@ exit_criteria = [
   { id = "EX-4", text = "host/volume-root-cases.nix is one suite beside its program, a function of pkgs, lib and a fixture pool, with every sec-8 `volumeRootCases` case asserted by reason as well as status" },
   { id = "EX-5", text = "`volumeRootCases` is in flake.nix and in both `build` and `cases` in the justfile; CLAUDE.md's suite list names it" },
   { id = "EX-6", text = "`just` green (build, units, fmt) and `just check` clean" },
+  { id = "EX-7", text = "every act that creates, modifies, renames or removes a file in an image directory runs through `asImageOwner` (setpriv to `imageOwner`); root does no path-based act there and no chown (RV-003 F-1)" },
 ]
 verification = [
   { id = "VT-1", expects = "reset: undeclared name, image held open (pid printed), lock held, absent image says 'already fresh' and clears a stale marker", test_file = "host/volume-root-cases.nix", keywords = ["already fresh", "another volume operation", "flock", "scrub-pending"], waived = false },
@@ -45,6 +46,8 @@ verification = [
   { id = "VT-4", expects = "the helper takes its roots at build time and holds the volume lock for its whole run", test_file = "host/volume-root.nix", keywords = ["capsule-volume-root", "flock -n 9", "moduleState ?", "imageOwner ?", "trap"], waived = false },
   { id = "VA-1", expects = "mutation: move the marker write after commitImage and make step 6 remove the marker unconditionally, each on a scratch copy; the two named cases go red and nothing else does; restored" },
   { id = "VA-2", expects = "the helper's text has no run-time argument that names a path (POL-001, IMP-010's precondition)" },
+  { id = "VT-5", expects = "the owner stub's log: a clone's rm, cp, chmod and mv, the trap's rm and reset's rm go through asImageOwner, the marker does not; a copy failing after the temporary image exists leaves none; the shipped render calls setpriv --reuid=microvm --regid=kvm --init-groups", test_file = "host/volume-root-cases.nix", keywords = ["asImageOwner", "setpriv --reuid=microvm --regid=kvm --init-groups"], waived = false },
+  { id = "VA-3", expects = "mutation: run the cp as root rather than through asImageOwner; the drop case goes red; restored" },
 ]
 specs        = []
 requirements = []
@@ -185,6 +188,7 @@ verification = [
   { id = "VH-3", expects = "exercise 3: clone-from then start: scrub before inject, clone's .env and credentials are this host's, host key fingerprint differs, admin session survived sshd restart (ASM-002)" },
   { id = "VH-4", expects = "exercise 4: status shows alloc for stopped slots and the free line" },
   { id = "VH-5", expects = "exercise 5: a start and a second reset refuse while a clone holds the lock, and succeed after" },
+  { id = "VH-6", expects = "exercise 3, before the start: the clone's image is microvm:kvm with no chown run, and a source image swapped for a symlink to a root-only file fails the copy and leaves no capsule-work.img.clone (RV-003 F-1)" },
 ]
 specs        = []
 requirements = []
