@@ -141,6 +141,8 @@ in
     ck "two arguments are a usage error" 2 "$rc"
 
     # ------------------------------------------------------------------ sessions
+    #
+    # The program's `workingSessions` (sec-2's rule) over a stubbed listing.
     fresh
     run
     ck "the gettys' autologins and the agent's user manager are not work" 0 "$rc"
