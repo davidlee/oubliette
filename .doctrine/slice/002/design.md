@@ -167,59 +167,92 @@ image file** (`DEC-005`). New file `host/volume-root.nix`:
   microvms ? "/var/lib/microvms",    # image root, fixed at build
   moduleState ? "/var/lib/capsule",  # record root, where the marker goes
   imageOwner ? "microvm:kvm",        # what a copied image is chowned to
+  tools ? ''                         # the two steps a sandbox cannot provoke
+    freeBytes() { df --output=avail -B1 "$1" | tail -n 1; }
+    commitImage() { mv -T -- "$1" "$2"; }
+  '',
 }: pkgs.writeShellApplication { name = "capsule-volume-root"; ... }
 ```
 
-All four host-specific values are **build-time arguments with defaults**, so
+All five host-specific values are **build-time arguments with defaults**, so
 every real call site gets one store path and a suite builds its own against a
 sandbox. **None of them may be a run-time argument**: this program runs as root,
 and a later password-less grant (`IMP-010`) must not be pointable at `/`.
-`imageOwner` exists because a sandbox cannot `chown` to `microvm`.
+`imageOwner` exists because a sandbox cannot `chown` to `microvm`. `tools` is a
+shell fragment of functions, the shape `host/cli.nix`'s `guestControl` already
+takes, because `df` and `mv` come from `runtimeInputs` and a suite cannot shadow
+them on `PATH`: a sandbox can neither mount a filesystem small enough to force the
+free-space refusal nor crash the program between two lines.
 
 **Usage:** `capsule-volume-root reset <slot>` and
 `capsule-volume-root clone <src> <dest> [--identity]`.
 
+**Names used below:** `img(s)` is `${microvms}/<s>/capsule-work.img`;
+`created(s)` is `${microvms}/<s>/current/bin/tap-up` being executable, the same
+test as `host/cli.nix`'s `created`; `marker(s)` is
+`${moduleState}/slot/<s>/scrub-pending`.
+
 **Algorithm, `reset`:**
 
 1. Refuse unless `<slot>` is in the pool it was built with.
-2. `img=${microvms}/<slot>/capsule-work.img`. If absent, say "already fresh",
-   remove any marker, and exit 0.
-3. `fuser "$img"`: if anything holds it, refuse and print the pids.
-4. `rm -f -- "$img"`, then remove `${moduleState}/slot/<slot>/scrub-pending` if
-   present. A fresh volume has no identity to scrub.
+2. If `img(slot)` is absent, say "already fresh", remove any `marker(slot)`, and
+   exit 0.
+3. `fuser` on `img(slot)`: if anything holds it, refuse and print the pids.
+4. `rm -f -- img(slot)`, then remove `marker(slot)` if present. A fresh volume has
+   no identity to scrub. A crash between the two leaves a marker over no image,
+   whose only effect is a scrub of the cold volume the next start makes.
 
 **Algorithm, `clone`:**
 
-1. Refuse unless both names are in the pool and differ, the source image exists,
-   and the destination's state directory exists.
+1. Refuse unless both names are in the pool and differ, `img(src)` exists,
+   `created(dest)`, and `${moduleState}/slot/<dest>/` exists. **The helper never
+   creates that directory**: it belongs to the operator (`0750`, the record
+   writer's), and one made by root would refuse every later record write. The
+   front end makes it, as the operator, before calling the helper (sec-7).
 2. `fuser` on both images (the destination's only if present). Refuse if either
    is held.
 3. Refuse unless the source's **allocated** bytes (`stat -c '%b * %B'`) are at
-   most the free bytes on the destination directory's filesystem
-   (`df --output=avail -B1`). There is no margin: a margin is a number with no
-   declared home (`POL-003`).
-4. `cp --sparse=always --reflink=never` to `capsule-work.img.clone-$$` **in the
-   destination directory**, so the later move is a same-filesystem rename;
-   `chown ${imageOwner}`; `chmod 0644`, matching the runner's own images.
-5. Unless `--identity`: write `${moduleState}/slot/<dest>/scrub-pending`
-   (content: the source slot name and a UTC timestamp, for a human reading it).
-6. `mv -T` the temporary file over the destination image. If the move fails,
-   remove the marker and the temporary file, then exit non-zero.
+   most `freeBytes` of the destination directory. There is no margin: a margin is
+   a number with no declared home (`POL-003`).
+4. `tmp=${microvms}/<dest>/capsule-work.img.clone`, a **fixed name in the
+   destination directory**. `rm -f` any leftover from an earlier run that
+   crashed mid-copy; nothing else writes that name and step 2 showed the
+   destination is not in use. Then `cp --sparse=always img(src) tmp` (the move
+   below is then a same-filesystem rename); `chown ${imageOwner}`; `chmod 0644`,
+   matching the runner's own images.
+5. Unless `--identity`: if `marker(dest)` is absent, write it (content: the
+   source slot name and a UTC timestamp, for a human reading it) and remember
+   that **this run created it**. A marker already present belongs to an earlier
+   clone that has not been scrubbed yet, and it is left exactly as it is.
+6. `commitImage tmp img(dest)`. If that fails: remove `tmp`, remove
+   `marker(dest)` **only if this run created it**, and exit non-zero.
+7. Under `--identity`, after a successful move: remove any `marker(dest)`. The
+   destination now carries the source's identity on purpose, so an earlier
+   clone's marker would scrub what the operator asked to keep.
 
-**Why the marker is written before the move (step 5 before 6):** the marker must
-exist whenever the destination image carries another slot's identity. Writing it
-first means the only window where it exists without the new image is a failed
-`mv`, and step 6 closes that. A crash between 5 and 6 leaves a marker over the
-destination's *own* volume, whose next injection then scrubs its own `$HOME`.
-That loses data but can never leak identity, which is the direction to fail in.
+**The marker invariant:** `marker(dest)` exists whenever `img(dest)` may carry
+another slot's identity that nobody chose to keep. Each step is ordered so a
+crash or failure errs towards a marker that is not needed, never towards a
+missing one:
+
+| interrupted | what is left | effect |
+| --- | --- | --- |
+| during step 4 | `tmp`, old image, old marker state | next clone removes `tmp`; nothing else changed |
+| between 5 and 6 | new marker over the destination's *own* image | next inject scrubs its own `$HOME`: data lost, no identity leaked |
+| step 6 fails, marker pre-existed | earlier clone's image and its marker | still scrubbed, as before this run |
+| between 6 and 7 (`--identity`) | an earlier clone's marker over the new image | a scrub the operator did not ask for: fail-safe |
+
+A failed move that removed a marker it did not write would leave an earlier,
+unscrubbed clone with no marker, and that is an identity leak. That is why
+step 6 removes only what step 5 wrote.
 
 **Exit statuses:** 0 done; 1 refused (reason on stderr); 2 usage. The front end
 passes the message through unchanged.
 
 **How it is invoked:** the front end runs `sudo <store path>/bin/capsule-volume-root …`,
-which prompts for a password on either copy of the front end. No sudoers rule is
-added. A future grant would follow `host/proxy-restart.nix`'s one-spelling shape
-(`IMP-010`).
+which prompts for a password on either copy of the front end, as `capsule <slot>
+start`'s `sudo systemctl start` already does. No sudoers rule is added. A future
+grant would follow `host/proxy-restart.nix`'s one-spelling shape (`IMP-010`).
 
 <!-- doctrine:section sec-4 -->
 ## The guest program: `capsule-reset-home`
@@ -235,6 +268,7 @@ image. New file `vm/reset-home.nix`, called from `vm/capsule.nix` and added to
   scrubPaths,    # absolute paths removed only under --scrub (below)
   tools ? ''     # the one thing tying it to a running guest
     agentSessions() { loginctl list-sessions --no-legend ... }  # sessions of agent, TTY != ttyS0
+    startUnit() { systemctl start "$1"; }
     restartUnit() { systemctl restart "$1"; }
   '',
 }: pkgs.writeShellApplication { name = "capsule-reset-home"; ... }
@@ -265,11 +299,17 @@ declarations the list is `/work/.env` plus the ed25519 host key and its `.pub`.
 3. `restartUnit capsule-seed`. It is a `RemainAfterExit` oneshot, so a restart
    re-runs the seed, which recreates `$HOME` owned by `agent` and re-links the
    config files.
-4. Under `--scrub`: `rm -f --` each of `scrubPaths`, then `restartUnit sshd`.
-   NixOS's `sshd` regenerates a missing host key when it starts. Restarting it
-   leaves established sessions, including the admin session running this
-   program, in place. This is **assumed** from `sshd`'s `KillMode=process` and
-   checked live.
+4. Under `--scrub`: `rm -f --` each of `scrubPaths`, then
+   `startUnit sshd-keygen`, then `restartUnit sshd`. **`sshd` does not make host
+   keys itself.** On the pinned nixpkgs a separate `sshd-keygen.service` does. It
+   is a oneshot with no `RemainAfterExit`, so it is inactive again after the
+   boot that ran it, and it runs only while a declared key is missing
+   (`ConditionFileNotEmpty`). A restart of `sshd` would probably pull it in
+   through `sshd`'s `wants`, but that is implicit, so the program starts it by
+   name first. Restarting `sshd` leaves established sessions in place, including
+   the admin session running this program: the unit has `KillMode=process`, so
+   only the listener is replaced. That is **assumed** (`ASM-002`) and checked
+   live.
 
 **Exit statuses:** 0 done; 3 busy; anything else is a failure the front end
 reports as-is. The front end reads **127** (command not found) as "this slot's
@@ -302,10 +342,11 @@ sequenceDiagram
 
   Op->>FE: capsule d volume clone-from b
   FE->>FE: names explicit, declared, created; both units stopped
+  FE->>FE: mkdir -p slot/d (as the operator)
   FE->>RH: sudo … clone b d
   RH->>RH: fuser both · fits · cp sparse · chown
-  RH->>RH: write slot/d/scrub-pending
-  RH->>RH: mv into place
+  RH->>RH: write slot/d/scrub-pending, unless one is already there
+  RH->>RH: commitImage (mv into place)
   FE-->>Op: cost, "clean source not checked", next steps
 
   Op->>FE: capsule d start
@@ -313,7 +354,7 @@ sequenceDiagram
   FE->>FE: work d inject → marker present?
   FE->>G: capsule-reset-home --scrub
   alt exit 0
-    G-->>FE: $HOME, .env, host key gone · seed, sshd restarted
+    G-->>FE: $HOME, .env, host key gone · seed, keygen, sshd restarted
     FE->>FE: remove marker
     FE->>INJ: capsule-inject --capsule d
     INJ->>G: write credentials (nothing exists, so none skipped)
@@ -343,6 +384,13 @@ scrubPending() {
 `guestResetHome` is a new function in the existing `guestControl` argument, so a
 suite substitutes it exactly as it substitutes `guestHead` today.
 
+**Why the inject still connects after the scrub:** the scrub gives the guest a new
+ssh host key at the same address. The admin door does not check host keys
+(`StrictHostKeyChecking=no`, `UserKnownHostsFile=/dev/null`,
+`host/guest-ssh.nix:48-50`), so `capsule-inject` connects straight after. The
+human's own door does check them, which is why the clone's output names
+`just reset-known-hosts`.
+
 **Choices this section makes:**
 
 - **`clone-from` does not start the destination.** It prints the next commands
@@ -366,7 +414,10 @@ it.
 **`reset-home` uses the same pieces without a marker:** the front end checks the
 door answers, calls `guestResetHome "$n"`, maps 127 and 3 to their refusals, and
 on 0 runs `work "$n" inject`. That call also passes the gate, so a clone that was
-never scrubbed gets scrubbed here too.
+never scrubbed gets scrubbed here too. On a marked slot that means `$HOME` is
+deleted twice, once by `reset-home` and once by the scrub. The second deletion
+removes only what the seed just made, so it is left as is rather than given a
+branch of its own.
 
 <!-- doctrine:section sec-6 -->
 ## Status: what a volume costs
@@ -443,8 +494,11 @@ end refers to by store path. `observe` is the precedent.
 
 **Inside the branch, in order:** check where the name came from; check the
 sub-verb; run the checks from sec-2 that need no root (`created`, `unitState`,
-the door); then exactly one of `volumeRoot reset …`, `volumeRoot clone …`, or
-`guestResetHome` followed by `work "$name" inject`. `scrubPending` goes at the
+the door); then exactly one of `volumeRoot reset …`, `mkdir -p "$(slotDir
+"$dest")"` followed by `volumeRoot clone …`, or `guestResetHome` followed by
+`work "$name" inject`. The `mkdir` is the front end's because the record
+directory is the operator's, and the helper refuses rather than make it as root
+(sec-3). `scrubPending` goes at the
 top of `work()` for `inject`, as sec-5 shows.
 
 **Module path:** `host/services.nix` installs the front end already, and its
@@ -461,7 +515,7 @@ not put on `PATH`: it is reached only through the front end's store path.
 | path | change |
 | --- | --- |
 | `host/volume-root.nix` | **new**: the root helper (sec-3) |
-| `host/volume-root-cases.nix` | **new**: its suite, built against a sandbox root with `imageOwner` set to the build user |
+| `host/volume-root-cases.nix` | **new**: its suite, built against a sandbox root with `imageOwner` set to the build user and `tools` substituted |
 | `vm/reset-home.nix` | **new**: the guest program (sec-4) |
 | `vm/reset-home-cases.nix` | **new**: its suite, with a fixture `home`, fixture `scrubPaths`, and `tools` stubbed |
 | `vm/capsule.nix` | builds `scrubPaths` from `setup.nix` and `openssh.hostKeys`; adds the program to `systemPackages` |
@@ -482,17 +536,20 @@ watching the named case go red.
 - reset refuses an undeclared name, such as `capsule`
 - reset refuses an image held open (a background `exec 3<` on the fixture image) and prints the pid
 - reset of an absent image succeeds, says "already fresh", and removes a stale marker
-- clone refuses `src = dest`, a missing source image, and a destination with no state directory
-- clone refuses when the source's allocation exceeds free space (a fixture filesystem sized to force it)
-- clone produces a sparse destination with the fixture owner and mode `0644`
-- clone writes the marker unless `--identity`, and removes it again when the final move fails
-- **mutation:** move the marker write after `mv` and inject a crash between the two; the "marker before image" case goes red
+- clone refuses `src = dest`, a missing source image, a destination that was never created, and a destination with no record directory, and **creates no record directory** when it refuses
+- clone refuses when the source's allocation exceeds free space (`freeBytes` stubbed to one byte less than the source's allocation)
+- clone produces a sparse destination with the fixture owner and mode `0644`, and removes a leftover `capsule-work.img.clone` before copying
+- clone writes the marker unless `--identity`; **the marker exists when the image is committed** (`commitImage` stubbed to fail unless the marker is present, then move)
+- clone whose commit fails removes the marker it wrote and the temporary file
+- **clone whose commit fails keeps a marker it did not write** (a pre-existing marker, `commitImage` stubbed to fail): the earlier clone stays marked
+- clone with `--identity` over a pre-existing marker removes it after the commit, and keeps it when the commit fails
+- **mutation:** move the marker write after `commitImage`; the "marker exists when the image is committed" case goes red. Make step 6 remove the marker unconditionally; the "keeps a marker it did not write" case goes red
 
 `resetHomeCases`:
 - refuses with status 3 and lists sessions while a non-console session exists; the console session alone does not refuse
 - removes `$HOME` and restarts `capsule-seed`, in that order
 - a `$HOME` that is a symlink: the link goes, and its target survives
-- `--scrub` removes exactly `scrubPaths` and restarts `sshd`; without `--scrub`, neither happens
+- `--scrub` removes exactly `scrubPaths`, then starts `sshd-keygen`, then restarts `sshd`, in that order; without `--scrub`, none of those happens
 - **eval-level:** `scrubPaths` for this host contains no path under `$HOME`, and contains `/work/.env` and the host key
 
 `volumeCases`:
@@ -501,13 +558,14 @@ watching the named case go red.
 - `reset` refuses a running unit before calling `volumeRoot` (the stub's log stays empty)
 - `reset-home` maps guest status 127 to "image predates this verb" and 3 to "busy"
 - `inject` with a marker: scrub called first, then marker removed, then inject; with a failing scrub, inject is not called and the marker stays
+- `clone-from` makes the destination's record directory before calling `volumeRoot`, and makes nothing when an earlier check refuses
 - `alloc` and the free line against a fixture root, including the "outside the pool" parenthesis
 
 **Live exercises, which no suite can reach** (`STD-001`: root, a real image, a real guest):
 
 1. `volume reset` on a finished slot: the image is gone, `start` makes a cold volume, and the `fuser` refusal fires with the unit stopped but the image held.
-2. `volume reset-home` on a running idle slot, then with an ssh session open (refused), then with a detached baseline running. **This confirms or refutes sec-2's session assumption.**
-3. `volume clone-from` a stopped slot, then `start`. Read back that the scrub ran before inject, that `.env` and the credential files on the clone are this host's, and that `sshd` restarted without dropping the admin session.
+2. `volume reset-home` on a running idle slot, then with an ssh session open (refused), then with a detached baseline running. **This confirms or refutes `ASM-001`, sec-2's session assumption.**
+3. `volume clone-from` a stopped slot, then `start`. Read back that the scrub ran before inject, that `.env` and the credential files on the clone are this host's, that the host key's fingerprint differs from the source's, and that `sshd` restarted without dropping the admin session. **This confirms or refutes `ASM-002`.**
 4. `capsule all status` shows `alloc` for stopped slots and the free line.
 
 **What this design does not verify:** the password-less grant (`IMP-010`), the
