@@ -199,9 +199,33 @@ lines. `volumeCases` now has 162 checks, all green, inside `just build`.
   reaching the gate on a live host (the sandbox's `start` fails before its
   inject), and the module copy.
 
+## RV-004 — code review of PHASE-02..04 — 2026-09-15
+
+Review over `410e840..97de336` (code and suites), on `RV-004` (`a9d1396`). Every
+finding's **disposition holds the fix plan**, with file, line, test and mutation:
+`doctrine review show RV-004`. Summary, so the order is clear:
+
+| finding | severity | disposition | touches the design? |
+| --- | --- | --- | --- |
+| `F-1` 127's remedy says stop then start, which re-boots the same `current`; only `microvm -u` (`just refresh-build <slot>`) moves it | major | design-wrong | sec-2 node RG, and `slice-002.md`'s risk line (a direct edit) |
+| `F-2` `scrubPending` collapses 127/3/4 into one message; the mapping is only in the `reset-home` branch | major | fix-now | sec-5 block and diagram, sec-8 `volumeCases` bullets |
+| `F-3` the `manager-early` case is satisfied by `Service=login` | minor | fix-now | no |
+| `F-4` target-derived `home`/`scrubPaths` spliced raw into a root `rm`; no eval guard | minor | fix-now | no |
+| `F-5` `start`'s `answers()` and `setup`'s provision open an `agent@` session just before the scrub, and closing sessions count as work | minor | fix-now (PHASE-06 exercise 3, not code) | only if the live read shows it |
+| `F-6` `volume reset` does not name `just reset-known-hosts` | minor | fix-now | sec-7, one sentence |
+| `F-7` `vmmState` in a volume-named seam | nit | tolerated, verified | reconcile, with the PHASE-03 deviation |
+
+**The design run was reopened for `F-1` and `F-2`** at revision 62 (locked →
+reviewing), and it made `RV-005`, empty, as the earlier reopen made `RV-002`.
+The relock follows the revision-60 precedent: revise sec-2, sec-5, sec-7 and
+sec-8; re-attest them; conclude `RV-005`; the user accepts; lock. Then the code
+and tests go red and then green against the revised text, each `RV-004` finding
+is verified as it lands, and PHASE-05 starts only after that, since it edits
+`host/cli.nix` and `host/volume-cases.nix` too.
+
 ## Harvest
 <!-- single-copy: updated in place each harvest; ids only, never restated content -->
-fresh-as-of: 2026-09-15 · started (PHASE-01..04 complete; design locked at run revision 61)
+fresh-as-of: 2026-09-15 · started (PHASE-01..04 complete; design run reopened at revision 62 for RV-004 F-1/F-2)
 
 ### Produced
 - `design.md` sec-1..sec-8 — materialised from run `dr-01a0a2ae…`; all eight walked with the user, sec-3/4/5/7/8 revised for `RV-001` `F-1`..`F-5` (`075ead9`)
@@ -215,6 +239,7 @@ fresh-as-of: 2026-09-15 · started (PHASE-01..04 complete; design locked at run 
 - `RV-003` `F-1` — found executing PHASE-01; sec-1/3/8 revised (`0bd060f`); PHASE-01 `EX-7`/`VT-5`/`VA-3` and PHASE-06 `VH-6` appended
 - PHASE-02: `vm/reset-home.nix`, `vm/reset-home-cases.nix`, `vm/capsule.nix` `resetHome` + `scrubPaths` — commit `87e682b`
 - PHASE-03: `host/cli.nix` `volume` verb, `nameFrom`, start lock, `microvms`/`volumeControl`; `host/volume-cases.nix`; `hostPrograms.volumeRootHelper` — commits `2bd3ddd`, `814970d`
+- `RV-004` — code review of PHASE-02..04, seven findings with fix plans in their dispositions; `RV-005` is the reopened run's ledger — see `## RV-004`
 - PHASE-04: `host/cli.nix` `reset-home`, `scrubPending` in `work()`, `guestResetHome`, clone output; `docs/contract-assignment.md` clean-source line — see `## PHASE-04`
 
 ### Learned
@@ -227,6 +252,7 @@ fresh-as-of: 2026-09-15 · started (PHASE-01..04 complete; design locked at run 
 - mem.pattern.oubliette.fake-guest-tools-on-path — tools left out of `runtimeInputs` let a suite run the shipped store path; a stub `sudo` for host/cli.nix (PHASE-03)
 
 ### Open
+- `RV-004` `F-1`..`F-6` — dispositioned, not yet fixed; design run in `reviewing` (revision 62) until sec-2/5/7/8 are revised and relocked
 - `ASM-001` — a detached baseline keeps its logind session (live exercise 2, PHASE-06)
 - `Service`/`Class` of an `agent` ssh login and of a detached baseline — unread (live exercise 2)
 - `ASM-002` — restarting guest sshd keeps the admin session (live exercise 3, PHASE-06)

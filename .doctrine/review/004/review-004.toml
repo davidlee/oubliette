@@ -14,52 +14,66 @@ ref   = "SL-002"
 
 [[finding]]
 id = "F-1"
-status = "open"
+status = "answered"
 severity = "major"
 title = "expected the status-127 refusal to name a remedy that moves a slot onto a newer image; observed it names stop-then-start, which re-runs the same one"
 detail = "host/cli.nix:1693-1694 answers status 127 with 'capsule <slot> stop, then start, onto an image that has it'. On this host a slot's guest closure is whatever /var/lib/microvms/<slot>/current points at, set by 'microvm -c' and moved only by 'microvm -u' (README.md:181, 224; justfile:182-199 'refresh-build'). The start branch (host/cli.nix:1509-1591) runs 'systemctl start microvm@<slot>' and never updates 'current', so a stop and start boots the same pre-verb image and the verb fails again with the same advice: a loop. host/volume-cases.nix:346 pins the wrong text ('capsule dst stop, then start'). The advice originates in the design: sec-2's flowchart node RG ('image predates this verb, stop then start', design.md:174) and the slice's risk ('restart onto the new image'). Expected remedy: 'just refresh-build <slot>' (stops, 'microvm -u', restarts). The 3 (busy) remedy, stop then start, is correct and unaffected."
+disposition = "design-wrong"
+response = "Fix in the design first, then in code; the user decided on 2026-09-15 to reopen SL-002's design run for F-1 and F-2 together. The remedy for status 127 is 'just refresh-build <slot>', run in the checkout: justfile:182-199 stops a running slot, runs 'sudo microvm -u <slot>' (which moves 'current' onto the guest closure the flake builds now), then 'just up', which is 'capsule start' and so injects. The volume is state and is kept. The front end already names 'just up' in a refusal (host/cli.nix ~1513), so naming a recipe is established practice. Steps: (1) design sec-2 flowchart node RG (design.md:174) says refresh-build, not stop then start; (2) slice-002.md's risk line 'restart onto the new image' changes the same way, as a direct edit because it is not a run section; (3) host/cli.nix:1693-1694 message; (4) host/volume-cases.nix:346 expects 'just refresh-build dst' (red first). The busy (3) remedy stays stop then start."
 
 [[finding]]
 id = "F-2"
-status = "open"
+status = "answered"
 severity = "major"
 title = "expected the scrub gate to refuse by reason and name the way out, as reset-home does; observed every scrub failure collapses to one message, and the status mapping lives only in the reset-home branch"
 detail = "scrubPending (host/cli.nix:556-566) prints 'the scrub did not complete, so nothing was injected; the marker stays' for every non-zero status. The 127/3/4 mapping to reason and remedy exists only inline in the reset-home branch (host/cli.nix:1689-1711). volume-cases.nix:376-384 asserts only 'marker stays' for 1, 3, 4 and 127, so the suite pins the collapse. The design asks for more in two places: sec-5's sequence diagram ('refuse inject, marker kept, reason named') and the slice's risk that the front end 'must refuse [a pre-verb image] by reason, not pass it through as a bare error'. The gate is also the path most likely to meet 127: clone-from requires both slots created, not refreshed, so 'capsule d volume clone-from b; capsule d start' on a slot whose 'current' predates PHASE-02 fails at start with ssh's 'command not found' and no remedy, leaving the slot running and marked. Suggestion: one function from the guest's status to its refusal, called by both scrubPending and the reset-home branch. The same function would stop the '*' arm reporting ssh's own 255 as 'capsule-reset-home exited 255' (host/cli.nix:1708)."
+disposition = "fix-now"
+response = "Design and code together, in the same reopen as F-1. Design: sec-5's scrubPending block and its sequence diagram's else-branch name a shared status-to-refusal function, and sec-8's volumeCases list asserts reason and remedy per status at the gate. Code: extract one function in host/cli.nix's main body (not guestControl, which is the substituted seam), e.g. resetHomeRefusal <slot> <rc>, that prints the 127/3/4/other reason and remedy. The reset-home branch (1689-1711) and scrubPending (556-566) both call it. scrubPending keeps its 'marker stays' line. The '*' arm should tell 255 (ssh could not reach the guest) apart from the program's own status. Tests: in volume-cases.nix:376-384, assert each status's reason and remedy at the gate, and keep 'marker stays' and 'injects nothing'. Mutation check: drop the call in scrubPending and watch those cases go red."
 
 [[finding]]
 id = "F-3"
-status = "open"
+status = "answered"
 severity = "minor"
 title = "expected the manager-early case to be satisfied only by the manager-early exclusion; observed its row has Service=login, so the login exclusion passes it regardless"
 detail = """vm/reset-home-cases.nix:171-174 appends '7 - login manager-early active' and expects 0. workingSessions (vm/reset-home.nix, awk '$3 != "login" && $4 != "manager" && $4 != "manager-early"') excludes the row on $3 alone, so deleting '&& $4 != "manager-early"' leaves the case green. That breaks CLAUDE.md's rule that a suite be checked by mutating the behaviour it names. A real manager-early session has Service=systemd-user (plan.md's slot-b table: root's user manager). Fix: '7 - systemd-user manager-early active'."""
+disposition = "fix-now"
+response = "Code only. vm/reset-home-cases.nix:172 row becomes '7 - systemd-user manager-early active'. Mutation check: delete the manager-early clause in vm/reset-home.nix's workingSessions and confirm the case goes red, then restore."
 
 [[finding]]
 id = "F-4"
-status = "open"
+status = "answered"
 severity = "minor"
 title = "expected target-derived paths spliced into a root program's text to be guarded against shell-significant characters; observed a raw splice with no eval-time check"
 detail = """vm/reset-home.nix:78 'home=${home}' and :80 'scrubPaths=(${lib.concatStringsSep " " scrubPaths})' splice unquoted, so the fixture can pass '"$CASE_ROOT/..."'. The values are target-derived: setup.nix's dests and home both come from target.nix's volumePath (setup.nix header; vm/capsule.nix:45-52). A volumePath with a space or glob character would still build and shellcheck, and would word-split inside 'rm -f -- "${scrubPaths[@]}"' into other paths, removed as root (a relative fragment resolves against root's cwd over ssh). Under POL-002 a different target should need only a different value, and this value silently changes which files are deleted. The guest is not the perimeter (POL-001), which is why this is minor. The header states the raw splice but not the hazard; capsule-seed's splice of home is the precedent and has the same gap. Suggestion: a throw in vm/capsule.nix (not in reset-home.nix, so the fixture still passes shell expressions) unless every path matches a conservative character class."""
+disposition = "fix-now"
+response = """Code only; the design's scrubPaths block in sec-4 is unchanged. In vm/capsule.nix, where resetHome is built, throw at eval unless home and every scrubPaths entry match a conservative class such as ^/[A-Za-z0-9._/@+-]+$. Name the offending path in the throw. Leave vm/reset-home.nix taking raw shell expressions, so the fixture still passes "$CASE_ROOT/...". Update reset-home.nix's header sentence on the raw splice to say where the guard lives. Proof, since a throw is not a program: an eval test in resetHomeCases' let, using builtins.tryEval on the guard over a bad path, with the verdict asserted in the shell (CLAUDE.md, hostModuleUnits' arrangement). Or, if the guard is a small function, over that function."""
 
 [[finding]]
 id = "F-5"
-status = "open"
+status = "answered"
 severity = "minor"
 title = "expected the idle rule's evidence to cover the sessions the front end itself opens just before a scrub; observed start and setup each open an agent ssh session immediately before, and the rule counts closing sessions as work"
 detail = "Open question, not a demonstrated failure. start runs waitAnswers, which is answers(), which is 'ssh agent@guest true' (host/cli.nix:620-624, 1584), then 'work inject', which is scrubPending, which is 'capsule-reset-home --scrub'. setup runs provisionSlot (an agent@ push through the git channel, host/cli.nix:1945) directly before 'work inject'. workingSessions filters on Service and Class only, and by design counts a session in State=closing (sec-2, ASM-001: a detached baseline is detected by exactly that). If logind still lists the probe's session when the scrub reads, every start of a cloned slot refuses as busy (3), the gate collapses that to 'scrub did not complete' (the gate-collapse finding above), and the slot stays running and marked. The evidence table (design sec-2) was read with nobody connected, so it does not settle this. PHASE-06 exercise 3 (clone-from then start) would show it. Its sheet should say to look for this, and to read loginctl at the moment of the scrub if start refuses."
+disposition = "fix-now"
+response = "No code change; this is a verification gap. Add to PHASE-06's live exercise 3, in plan.toml's PHASE-06 criteria and its phase sheet: if 'capsule <dest> start' after a clone refuses the scrub as busy, read 'loginctl list-sessions' and 'show-session -p Name -p Service -p Class -p State' at once, and check for a closing agent sshd session left by the front end's own waitAnswers probe (or, on setup, by provisionSlot's push). If it is there, it is a design change (reopen): the rule would need to ignore State=closing sessions younger than the probe, or the front end would need to scrub before its own agent@ traffic, and ASM-001 bears on both. Do not pre-empt that in code now."
 
 [[finding]]
 id = "F-6"
-status = "open"
+status = "answered"
 severity = "minor"
 title = "expected a volume reset's success to name what a fresh volume breaks for the operator, as clone-from does; observed it prints only the helper's line"
 detail = """The reset branch (host/cli.nix:1616-1623) ends at 'volumeRoot reset "$name"'. A reset deletes the guest's ssh host key with the volume, so the next start has a new key at the same address, and the operator's own door, which checks host keys, refuses (mem.fact.oubliette.fresh-capsule-fresh-host-keys; design scope 'Fresh host keys already have a home: just reset-known-hosts <slot>'). clone-from prints 'next: just reset-known-hosts <dest>; capsule <dest> start' (host/cli.nix:1671). The same need goes unmentioned for reset, which is S4, the more frequent of the two."""
+disposition = "fix-now"
+response = "Code only; sec-7 needs one sentence if the reopen is open anyway. After a successful 'volumeRoot reset', the reset branch (host/cli.nix:1616-1623) prints 'next: just reset-known-hosts <slot>; capsule <slot> start'. It stays silent when the root step refuses, as clone-from does. Tests in volume-cases.nix: the success case sees 'just reset-known-hosts dst'; the CASE_ROOT_FAIL case does not."
 
 [[finding]]
 id = "F-7"
-status = "open"
+status = "verified"
 severity = "nit"
 title = "expected the seam to be named for what it holds; observed volumeControl carries a generic unit-state query that only the volume branch can substitute"
 detail = """host/cli.nix:98-113: vmmState() { unitState "$(unitOf "$1")"; } sits in volumeControl beside volumeRoot, because pkgs.systemd in runtimeInputs makes unitState unstubbable. PHASE-03's sheet records this as a deviation from design sec-7's seam table. The cost is cohesion. The same question is asked unsubstituted by start (NeedDaemonReload, SubState), status and stop, so the next suite needing a unit state either adds a third seam or reaches into volumeControl for something that is not a volume concern. Suggestion for reconcile: record the deviation in sec-7 and name the seam for the query (a unit or systemd seam), or say in the argument's comment why volume-only scope is intended."""
+disposition = "tolerated"
+response = "Left for reconcile, where sec-7's seam table records vmmState. Renaming the seam now would touch every render of the front end (flake.nix, host/services.nix, host/policy-cases.nix, host/volume-cases.nix) for no change in behaviour, just before PHASE-05 edits the same file. If PHASE-05's status work needs a substitutable unit state, generalise the seam then instead of adding a third."
 
 # Findings are append-only `[[finding]]` tables, added by `review raise` (PHASE-03).
 # Empty here at creation — a fresh review is Active, awaiting the raiser (D-C8).
