@@ -58,21 +58,21 @@ vm/capsule.nix with `scrubPaths` derived from setup.nix and openssh.hostKeys and
 `agentUid` from users.users.agent, and pin it with resetHomeCases, including the
 eval-level check that this host's scrub list is what sec-4 says."""
 entrance_criteria = [
-  { id = "EN-1", text = "PHASE-01 complete" },
-  { id = "EN-2", text = "The logind `Service` value of a getty autologin session has been read on a running guest, so `workingSessions` filters on an observed value rather than a guessed one" },
+  { id = "EN-1", text = "The locked design only: this phase does not depend on PHASE-01 and may run before or beside it" },
+  { id = "EN-2", text = "design sec-2 and sec-4 filter `workingSessions` on the sessions read on slot b on 2026-09-15 (plan.md Notes), including the user manager's own session" },
 ]
 exit_criteria = [
   { id = "EX-1", text = "vm/reset-home.nix implements sec-4 steps 1-7 with exit statuses 0/3/4, `tools` as the one substitutable fragment, and the EXIT trap restarting the recorded gettys on every exit after step 2" },
   { id = "EX-2", text = "vm/capsule.nix builds `scrubPaths` as sec-4 specifies, passes `home` and `agentUid`, and adds the program to environment.systemPackages" },
-  { id = "EX-3", text = "vm/reset-home-cases.nix runs a fixture render with a fixture home, fixture scrubPaths and stubbed tools; the eval-level check reads the value the shipped guest is built with" },
+  { id = "EX-3", text = "vm/reset-home-cases.nix runs a fixture render with a fixture home, fixture scrubPaths and stubbed tools; the eval-level check reads `scrubPaths` off the program the evaluated guest actually ships (passthru, found in environment.systemPackages by name, and failing loudly when not found) rather than recomputing it" },
   { id = "EX-4", text = "`resetHomeCases` in flake.nix, both justfile recipes, and CLAUDE.md's suite list" },
   { id = "EX-5", text = "`just` green, `just check` clean, and the guest closure builds (`just build-vm`)" },
 ]
 verification = [
-  { id = "VT-1", expects = "busy refusal: status 3, sessions listed, nothing stopped; getty autologins on ttyS0 and tty1 alone do not refuse", test_file = "vm/reset-home-cases.nix", keywords = ["workingSessions", "ttyS0", "tty1"], waived = false },
+  { id = "VT-1", expects = "busy refusal: status 3, sessions listed, nothing stopped; the getty autologins on ttyS0 and tty1 plus the user manager's session alone do not refuse", test_file = "vm/reset-home-cases.nix", keywords = ["workingSessions", "ttyS0", "tty1", "systemd-user"], waived = false },
   { id = "VT-2", expects = "order: stop gettys, stop slice, remove $HOME, restart capsule-seed, start gettys; exit 4 when the slice is active after its stop or during the reset, gettys restarted on both", test_file = "vm/reset-home-cases.nix", keywords = ["stopUnit", "unitActive", "capsule-seed", "user-"], waived = false },
   { id = "VT-3", expects = "$HOME symlink: link removed, target survives; --scrub removes exactly scrubPaths then starts sshd-keygen then restarts sshd, and none of that without --scrub", test_file = "vm/reset-home-cases.nix", keywords = ["--scrub", "sshd-keygen", "restartUnit"], waived = false },
-  { id = "VT-4", expects = "eval-level: this host's scrubPaths has nothing under $HOME and contains /work/.env and the ed25519 host key and its .pub", test_file = "vm/reset-home-cases.nix", keywords = ["/work/.env", "ssh_host_ed25519_key"], waived = false },
+  { id = "VT-4", expects = "eval-level: the shipped scrubPaths has nothing under $HOME, contains the target volumePath's .env, and contains every declared host key and its .pub; no target value is spelled in the suite (POL-002)", test_file = "vm/reset-home-cases.nix", keywords = ["scrubPaths", "volumePath", "hostKeys", ".pub"], waived = false },
   { id = "VA-1", expects = "mutation: drop the EXIT trap's getty restart, and reorder the slice stop after the rm, each on a scratch copy; the named cases go red; restored" },
 ]
 specs        = []
@@ -98,10 +98,11 @@ exit_criteria = [
   { id = "EX-4", text = "the shipped `volumeControl` default is `sudo -k <helper store path>/bin/capsule-volume-root`, threaded from host/programs.nix; both front-end copies remain one store path" },
   { id = "EX-5", text = "host/volume-cases.nix, `volumeCases` in flake.nix, both justfile recipes, CLAUDE.md's suite list" },
   { id = "EX-6", text = "`just` green, `just check` clean; wrapCases unchanged and green" },
+  { id = "EX-7", text = "all three existing renders of host/cli.nix (flake.nix `capsule-cli`, host/services.nix, host/policy-cases.nix) receive `volumeRootHelper` from `hostPrograms`, so policyCases stays green and the two shipped copies stay one store path" },
 ]
 verification = [
   { id = "VT-1", expects = "name gating: resolved and CAPSULE_NAME names refused for every sub-verb, argv accepted; all volume and unknown sub-verb refused", test_file = "host/volume-cases.nix", keywords = ["CAPSULE_NAME", "all volume", "reset-home", "clone-from"], waived = false },
-  { id = "VT-2", expects = "reset refuses a running unit with the volumeRoot stub's log empty; clone-from makes the record directory before volumeRoot and nothing when an earlier check refuses", test_file = "host/volume-cases.nix", keywords = ["volumeRoot", "scrub-pending", "mkdir"], waived = false },
+  { id = "VT-2", expects = "reset refuses a running unit with the volumeRoot stub's log empty; clone-from makes the record directory before volumeRoot and nothing when an earlier check refuses", test_file = "host/volume-cases.nix", keywords = ["volumeRoot", "mkdir", "record directory"], waived = false },
   { id = "VT-3", expects = "start refuses before systemctl while the fixture lock is held exclusively; two shared holders coexist; absent lock file starts with a warning", test_file = "host/volume-cases.nix", keywords = ["volumeLock", "flock"], waived = false },
   { id = "VT-4", expects = "eval-level: the shipped volumeControl default carries `sudo -k`", test_file = "host/volume-cases.nix", keywords = ["sudo -k"], waived = false },
   { id = "VA-1", expects = "mutation: drop `-k` from the default, and let a CAPSULE_NAME name through; the named cases go red; restored" },
@@ -119,7 +120,7 @@ then injecting, `scrubPending` at the top of `work()` for `inject`, and the clon
 success output (allocated cost, clean-source not checked, reset-known-hosts).
 docs/contract-assignment.md's clean-source line moves in the same commit."""
 entrance_criteria = [
-  { id = "EN-1", text = "PHASE-02 and PHASE-03 complete (the exit statuses are fixed and the volume branch exists)" },
+  { id = "EN-1", text = "PHASE-03 complete (the volume branch exists); guest exit statuses are taken from design sec-4, stubbed, so PHASE-02 need not have landed" },
 ]
 exit_criteria = [
   { id = "EX-1", text = "`scrubPending` runs before every inject reached through `work()` (start, setup, inject, reset-home), removes the marker only on a successful scrub, and injects nothing on a failed one" },
@@ -156,7 +157,7 @@ exit_criteria = [
 ]
 verification = [
   { id = "VT-1", expects = "alloc for an image and `-` for none; the free line with and without the outside-the-pool parenthesis, against a fixture root", test_file = "host/volume-cases.nix", keywords = ["alloc", "kept back from clones", "outside the pool"], waived = false },
-  { id = "VA-1", expects = "`capsule all status` on this host prints alloc for stopped slots and a free line agreeing with `df` (read-only)" },
+  { id = "VA-1", expects = "`nix run .#capsule-cli -- all status` (the module copy is stale until the host rebuilds) prints alloc for stopped slots and a free line agreeing with `df` (read-only)" },
 ]
 specs        = []
 requirements = []
@@ -170,7 +171,8 @@ rebuilt, settle ASM-001 and ASM-002 on what they show, and record the evidence.
 Root, a real image and a real guest: the user runs the destructive steps."""
 entrance_criteria = [
   { id = "EN-1", text = "PHASE-01 to PHASE-05 complete and committed" },
-  { id = "EN-2", text = "the host is rebuilt from ~/flakes onto this commit (the user's act) and a finished slot, not capsule C's, is available to destroy" },
+  { id = "EN-2", text = "the host is rebuilt from ~/flakes with its lock on a committed HEAD containing PHASE-01..05 (git+file reads committed HEAD; the user's act)" },
+  { id = "EN-3", text = "a finished slot other than capsule C is re-created onto this commit's guest image, so `capsule-reset-home` exists in it; capsule C is not touched" },
 ]
 exit_criteria = [
   { id = "EX-1", text = "each of sec-8's live exercises 1-5 run, with its observation recorded on the slice notes" },
