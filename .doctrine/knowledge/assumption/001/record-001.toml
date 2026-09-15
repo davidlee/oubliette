@@ -1,0 +1,34 @@
+schema = "doctrine.knowledge"
+version = 1
+
+id = 1
+slug = "a-detached-baseline-keeps-its-logind-session-until-it-exits"
+title = "A detached baseline keeps its logind session until it exits"
+record_kind = "assumption"
+status = "held"
+created = "2026-09-15"
+updated = "2026-09-15"
+tags = []
+
+[facet]                         # every field typed; seeded empty (captured later)
+claim = "A baseline started detached (setsid) from an agent ssh session keeps that logind session in 'closing' until it exits, because NixOS leaves KillUserProcesses off; so 'agent has a logind session other than ttyS0' catches a running baseline."
+confidence = "medium"
+basis = "design-inference"
+validation_plan = "SL-002 live exercise 2: start a baseline, close the ssh session, run volume reset-home, expect the busy refusal listing the closing session."
+validated_by    = ""
+validated_on    = ""
+invalidated_by  = ""
+invalidated_on  = ""
+
+[evidence]                      # free-text citations (supports / contradicts / notes)
+supports    = []
+contradicts = []
+notes       = []
+
+[relationships]                 # verb-written edges (set by doctrine supersede)
+supersedes    = []   # record ids this one replaces (set by doctrine supersede)
+superseded_by = []   # set on superseded predecessor (verb-written, ADR-004 §5)
+
+[[relation]]
+label = "shapes"
+target = "SL-002"

@@ -1,0 +1,42 @@
+memory_uid = "mem_01a0a2fa848b792083092d981fd510b6"
+memory_key = "mem.fact.oubliette.design-apply-disposes-through-checkpoints"
+schema_version = 1
+memory_type = "fact"
+status = "active"
+title = "doctrine design apply disposes an inquiry through a cp- subject, and some acts land silently"
+summary = "Resolving an inq- node needs a separate cp-N declaration with disposes + dispose; body/resolution on inq- are refused as inert"
+created = "2026-09-15"
+updated = "2026-09-15"
+
+[scope]
+paths = []
+globs = []
+commands = ["doctrine design apply"]
+tags = ["gotcha"]
+workspace = "default"
+repo = "github.com/davidlee/oubliette"
+repo_id_kind = "remote"
+repo_id_confidence = "high"
+
+[git]
+anchor_kind = "checkout_state"
+commit = ""
+tree = "2ca83156194f36ef93729af05b68d65ef09a0130"
+ref_name = "refs/heads/main"
+checkout_state_id = "bb941199d5e619f47a1d15633aa892bd9033c62e35b51ef174876756bbe70d5d"
+base_commit = "437989545e075986eec9dc0d6c52394b8a3fd9d8"
+verified_sha = ""
+normalizer = "forget.checkout.v1"
+
+[review]
+verification_state = "unverified"
+reviewed = ""
+review_by = ""
+
+[trust]
+trust_level = "medium"
+
+[ranking]
+severity = "none"
+weight = 0
+
