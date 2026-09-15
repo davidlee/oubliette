@@ -91,16 +91,33 @@ the image open*. It is checked twice, on purpose:
    `mem.fact.oubliette.dead-guest-is-not-a-dead-vm` states for process names.
 
 **Running and idle**, for `reset-home` and the clone's scrub, means *the admin
-door answers and `agent` has no logind session other than the serial console's*.
+door answers and `agent` has no logind session except the gettys' own
+autologins*.
 
-- The console autologins `agent` at boot (`vm/capsule.nix:241`), so "any `agent`
-  process" is always true and cannot be the test.
-- An ssh login is a session. A baseline is started detached (`setsid`) from one,
-  and **assumed** to keep that session in `closing` until it exits, because NixOS
-  leaves `KillUserProcesses` off. That assumption is checked by a live exercise,
-  not a suite (see Verification).
+- `services.getty.autologinUser` logs `agent` in on **every** getty, which on this
+  guest is `serial-getty@ttyS0` and `getty@tty1` (seen on slot `b`: two sessions
+  before anyone connected). So "any `agent` process", and any test that names one
+  console, always refuses. The test excludes sessions whose logind `Service` is
+  the getty login, whatever tty they are on.
+- An ssh login is a session with `Service=sshd`. A baseline is started detached
+  (`setsid`) from one, and **assumed** to keep that session in `closing` until it
+  exits, because NixOS leaves `KillUserProcesses` off (`ASM-001`). The `Service`
+  values and that assumption are checked by a live exercise, not a suite (see
+  Verification).
+- Idle is checked **before** the guest program quiesces the agent: it refuses on
+  evidence that someone is working, then stops what that test cannot see (the
+  gettys and the agent's user manager) before deleting anything. sec-4 has the
+  sequence.
 - The refusal names `capsule <slot> stop` then `start` as the way out. There is
   no `--force`: stopping is cheap and ends every session.
+
+**One volume operation at a time on this host.** The root helper holds an
+exclusive lock (`capsules.volumeLock`) for its whole run, and `capsule <slot>
+start` takes the same lock shared around its `systemctl start` and stays-up
+check. Either refuses rather than waits when the other holds it. This closes the
+window between the helper's `fuser` and its act for every start the front end
+makes; a `systemctl start` typed by hand does not take the lock, which is the
+same boundary `capsule-inject` off `PATH` has (sec-5).
 
 This flowchart gives the refusal order for each command. Every refusal exits
 non-zero with a message naming its reason. Nothing is written before the last
@@ -116,8 +133,10 @@ flowchart TD
   C1 -- no --> RC["refuse: never created here"]
   C1 -- yes --> U1{"unit inactive<br/>or failed?"}
   U1 -- no --> RU["refuse: capsule &lt;slot&gt; stop"]
-  U1 -- yes --> H1["sudo capsule-volume-root reset"]
-  H1 --> F1{"image open?"}
+  U1 -- yes --> H1["sudo -k capsule-volume-root reset"]
+  H1 --> L1{"volume lock<br/>free?"}
+  L1 -- no --> RL1["refuse: another volume operation"]
+  L1 -- yes --> F1{"image open?"}
   F1 -- yes --> RF["refuse: held open, by pid"]
   F1 -- no --> D1["delete image"]
 
@@ -125,8 +144,10 @@ flowchart TD
   C2 -- no --> RC2["refuse, naming which"]
   C2 -- yes --> U2{"both units inactive<br/>or failed?"}
   U2 -- no --> RU2["refuse: stop which"]
-  U2 -- yes --> H2["sudo capsule-volume-root clone"]
-  H2 --> F2{"src image exists, neither open,<br/>src allocation ≤ free space?"}
+  U2 -- yes --> H2["sudo -k capsule-volume-root clone"]
+  H2 --> L2{"volume lock<br/>free?"}
+  L2 -- no --> RL2["refuse: another volume operation"]
+  L2 -- yes --> F2{"src image exists, neither open,<br/>src allocation + reserve ≤ free?"}
   F2 -- no --> RF2["refuse, naming which"]
   F2 -- yes --> D2["copy · marker · move into place"]
 
@@ -136,7 +157,13 @@ flowchart TD
   G -- no --> RG["refuse: image predates this verb, stop then start"]
   G -- yes --> B{"agent idle?"}
   B -- no --> RB["refuse: sessions listed, stop then start"]
-  B -- yes --> D3["delete $HOME · restart capsule-seed · inject"]
+  B -- yes --> Q["quiesce: stop gettys and<br/>the agent's user slice"]
+  Q --> Q2{"slice empty?"}
+  Q2 -- no --> RQ["fail: a login arrived, run it again"]
+  Q2 -- yes --> D3["delete $HOME · reseed"]
+  D3 --> Q3{"slice still<br/>empty?"}
+  Q3 -- no --> RQ
+  Q3 -- yes --> D4["gettys back · inject"]
 ```
 
 **Boundary conditions:**
@@ -153,6 +180,9 @@ flowchart TD
   state: slot names against the pool it was built with, and `src ≠ dest`. It is a
   root program, and it must not trust an argument because a well-behaved caller
   checked it first.
+- **"A login arrived" is detected, not prevented.** Blocking agent logins for the
+  duration needs `pam_nologin` in the guest's sshd PAM stack, which it does not
+  have (`IMP-011`).
 
 <!-- doctrine:section sec-3 -->
 ## The root helper: `capsule-volume-root`
@@ -163,7 +193,7 @@ image file** (`DEC-005`). New file `host/volume-root.nix`:
 ```nix
 {
   pkgs, lib,
-  capsules,                          # the declared pool: which names are slots
+  capsules,                          # the pool: slot names, volumeLock, volumeReserve
   microvms ? "/var/lib/microvms",    # image root, fixed at build
   moduleState ? "/var/lib/capsule",  # record root, where the marker goes
   imageOwner ? "microvm:kvm",        # what a copied image is chowned to
@@ -174,9 +204,20 @@ image file** (`DEC-005`). New file `host/volume-root.nix`:
 }: pkgs.writeShellApplication { name = "capsule-volume-root"; ... }
 ```
 
-All five host-specific values are **build-time arguments with defaults**, so
-every real call site gets one store path and a suite builds its own against a
-sandbox. **None of them may be a run-time argument**: this program runs as root,
+All host-specific values are **build-time arguments**, so every real call site
+gets one store path and a suite builds its own against a sandbox. Two of them
+come from `capsules.nix`, which gains two values (`POL-003`, one home each):
+
+```nix
+# capsules.nix, beside socketOf, which already owns /run/capsule
+volumeLock = "/run/capsule/volume.lock";   # one volume operation at a time
+volumeReserve = 20 * 1024 * 1024 * 1024;   # bytes a clone must leave free
+```
+
+A suite passes a fixture pool whose `volumeLock` is a shell expression under its
+own directory, as `host/policy-cases.nix` does for `moduleState`. A tmpfiles rule
+in `host/services.nix` makes the lock file (`0644 root`) at boot, so the front end
+can open it for reading without creating anything under `/run`. **None of them may be a run-time argument**: this program runs as root,
 and a later password-less grant (`IMP-010`) must not be pointable at `/`.
 `imageOwner` exists because a sandbox cannot `chown` to `microvm`. `tools` is a
 shell fragment of functions, the shape `host/cli.nix`'s `guestControl` already
@@ -191,6 +232,14 @@ free-space refusal nor crash the program between two lines.
 `created(s)` is `${microvms}/<s>/current/bin/tap-up` being executable, the same
 test as `host/cli.nix`'s `created`; `marker(s)` is
 `${moduleState}/slot/<s>/scrub-pending`.
+
+**Both sub-commands start the same way:** `exec 9<>"${volumeLock}"` and
+`flock -n 9`, refusing with "another volume operation is running" if the lock is
+held. The lock is held until the process exits, so every check and act below is
+inside it. It serialises helper runs against each other (the temporary file,
+the capacity check, the marker) and against `capsule <slot> start`, which takes
+it shared (sec-7). A crash releases it, because the kernel drops a `flock` with
+its last file descriptor.
 
 **Algorithm, `reset`:**
 
@@ -211,21 +260,29 @@ test as `host/cli.nix`'s `created`; `marker(s)` is
    front end makes it, as the operator, before calling the helper (sec-7).
 2. `fuser` on both images (the destination's only if present). Refuse if either
    is held.
-3. Refuse unless the source's **allocated** bytes (`stat -c '%b * %B'`) are at
-   most `freeBytes` of the destination directory. There is no margin: a margin is
-   a number with no declared home (`POL-003`).
+3. Refuse unless the source's **allocated** bytes (`stat -c '%b * %B'`) plus
+   `volumeReserve` are at most `freeBytes` of the destination directory.
+   `freeBytes` is `df`'s `avail`, the space **non-root** writers have. The copy
+   runs as root and could eat into ext4's root reserve, but the running VMMs run
+   as `microvm` and grow their sparse images into `avail`, so a clone that left
+   `avail` at zero would stop every running guest's writes (measured 2026-09-15:
+   107 GiB `avail`, about 100 GiB more in the root reserve). The reserve is that
+   headroom, declared. It bounds this clone only: growth of existing images is
+   `RSK-007`.
 4. `tmp=${microvms}/<dest>/capsule-work.img.clone`, a **fixed name in the
-   destination directory**. `rm -f` any leftover from an earlier run that
-   crashed mid-copy; nothing else writes that name and step 2 showed the
-   destination is not in use. Then `cp --sparse=always img(src) tmp` (the move
+   destination directory**. `rm -f` any leftover from an earlier run that was
+   killed mid-copy; the lock means no other helper is writing it, and step 2
+   showed the destination is not in use. Install `trap` on `EXIT` that removes
+   `tmp` unless step 6 committed it, so a copy that fails (`ENOSPC`, a read
+   error) leaves nothing behind. Then `cp --sparse=always img(src) tmp` (the move
    below is then a same-filesystem rename); `chown ${imageOwner}`; `chmod 0644`,
    matching the runner's own images.
 5. Unless `--identity`: if `marker(dest)` is absent, write it (content: the
    source slot name and a UTC timestamp, for a human reading it) and remember
    that **this run created it**. A marker already present belongs to an earlier
    clone that has not been scrubbed yet, and it is left exactly as it is.
-6. `commitImage tmp img(dest)`. If that fails: remove `tmp`, remove
-   `marker(dest)` **only if this run created it**, and exit non-zero.
+6. `commitImage tmp img(dest)`. If that fails: remove `marker(dest)` **only if
+   this run created it**, and exit non-zero (the trap removes `tmp`).
 7. Under `--identity`, after a successful move: remove any `marker(dest)`. The
    destination now carries the source's identity on purpose, so an earlier
    clone's marker would scrub what the operator asked to keep.
@@ -237,7 +294,8 @@ missing one:
 
 | interrupted | what is left | effect |
 | --- | --- | --- |
-| during step 4 | `tmp`, old image, old marker state | next clone removes `tmp`; nothing else changed |
+| step 4 fails | old image, old marker state | trap removed `tmp`; nothing else changed |
+| killed during step 4 | `tmp`, old image, old marker state | no trap runs; next clone removes `tmp` |
 | between 5 and 6 | new marker over the destination's *own* image | next inject scrubs its own `$HOME`: data lost, no identity leaked |
 | step 6 fails, marker pre-existed | earlier clone's image and its marker | still scrubbed, as before this run |
 | between 6 and 7 (`--identity`) | an earlier clone's marker over the new image | a scrub the operator did not ask for: fail-safe |
@@ -249,10 +307,14 @@ step 6 removes only what step 5 wrote.
 **Exit statuses:** 0 done; 1 refused (reason on stderr); 2 usage. The front end
 passes the message through unchanged.
 
-**How it is invoked:** the front end runs `sudo <store path>/bin/capsule-volume-root …`,
-which prompts for a password on either copy of the front end, as `capsule <slot>
-start`'s `sudo systemctl start` already does. No sudoers rule is added. A future
-grant would follow `host/proxy-restart.nix`'s one-spelling shape (`IMP-010`).
+**How it is invoked:** the front end runs
+`sudo -k <store path>/bin/capsule-volume-root …`. **`-k` is load-bearing**: with a
+command, it makes sudo ignore cached credentials, always prompt, and not refresh
+the ticket (`man sudo`). Without it the prompt is usually absent, because the
+`stop` a reset requires runs `sudo systemctl stop` moments earlier
+(`host/cli.nix:1486`), and `DEC-010` counts that prompt as the second keystroke.
+No sudoers rule is added. A future grant would follow `host/proxy-restart.nix`'s
+one-spelling shape (`IMP-010`), and would have to reopen `DEC-010`.
 
 <!-- doctrine:section sec-4 -->
 ## The guest program: `capsule-reset-home`
@@ -265,11 +327,16 @@ image. New file `vm/reset-home.nix`, called from `vm/capsule.nix` and added to
 {
   pkgs, lib,
   home,          # vm/capsule.nix's own binding: "${work}/home"
+  agentUid,      # config.users.users.agent.uid, so the slice is user-<uid>.slice
   scrubPaths,    # absolute paths removed only under --scrub (below)
   tools ? ''     # the one thing tying it to a running guest
-    agentSessions() { loginctl list-sessions --no-legend ... }  # sessions of agent, TTY != ttyS0
-    startUnit() { systemctl start "$1"; }
+    workingSessions() { ... }   # agent's sessions whose logind Service is not "login"
+    activeGettys() { systemctl list-units --state=active --no-legend --plain \
+      'getty@*' 'serial-getty@*' | awk '{print $1}'; }
+    startUnit() { systemctl start "$@"; }
+    stopUnit() { systemctl stop "$@"; }
     restartUnit() { systemctl restart "$1"; }
+    unitActive() { systemctl is-active --quiet "$1"; }
   '',
 }: pkgs.writeShellApplication { name = "capsule-reset-home"; ... }
 ```
@@ -290,16 +357,31 @@ declarations the list is `/work/.env` plus the ed25519 host key and its `.pub`.
 
 **Usage:** `capsule-reset-home [--scrub]`, run as root.
 
-1. `agentSessions`. If it prints anything, refuse with exit status **3** and list
-   the sessions (id, TTY, state). The console's `ttyS0` session is excluded,
-   because the console autologins `agent` at every boot.
-2. `rm -rf -- "${home}"` with **no trailing slash**. If the agent replaced
+`slice` below is `user-${agentUid}.slice`: the cgroup systemd puts every one of
+the agent's sessions and its user manager in. What was seen on slot `b` with a
+running guest and nobody connected: sessions on `ttyS0` and `tty1` plus the
+`systemd --user` manager, all in that slice.
+
+1. **Refuse on evidence of work.** `workingSessions`. If it prints anything,
+   refuse with exit status **3** and list the sessions (id, TTY, service, state).
+   Getty autologins are excluded by their `Service`, not by naming a tty
+   (sec-2).
+2. **Quiesce what that test cannot see.** Record `activeGettys`, `trap` on `EXIT`
+   to `startUnit` them again, then `stopUnit` them. Stopping only the ttyS0 getty
+   is not enough: on slot `b`, `getty@tty1` logged `agent` back in within five
+   seconds.
+3. `stopUnit "$slice"`. The stop returns once every unit in the slice has
+   stopped: on slot `b` it took 51 ms and left no process owned by `agent`. This
+   ends the autologin sessions, the user manager and anything it ran, which is
+   the population a session list misses. Refuse with exit status **4** unless
+   `! unitActive "$slice"`.
+4. `rm -rf -- "${home}"` with **no trailing slash**. If the agent replaced
    `$HOME` with a symlink, only the link is removed. `rm -rf` never follows links
    inside the tree.
-3. `restartUnit capsule-seed`. It is a `RemainAfterExit` oneshot, so a restart
+5. `restartUnit capsule-seed`. It is a `RemainAfterExit` oneshot, so a restart
    re-runs the seed, which recreates `$HOME` owned by `agent` and re-links the
-   config files.
-4. Under `--scrub`: `rm -f --` each of `scrubPaths`, then
+   config files. It runs as root in its own unit, so it does not start the slice.
+6. Under `--scrub`: `rm -f --` each of `scrubPaths`, then
    `startUnit sshd-keygen`, then `restartUnit sshd`. **`sshd` does not make host
    keys itself.** On the pinned nixpkgs a separate `sshd-keygen.service` does. It
    is a oneshot with no `RemainAfterExit`, so it is inactive again after the
@@ -310,9 +392,18 @@ declarations the list is `/work/.env` plus the ed25519 host key and its `.pub`.
    the admin session running this program: the unit has `KillMode=process`, so
    only the listener is replaced. That is **assumed** (`ASM-002`) and checked
    live.
+7. **Detect a login that arrived during steps 3–6.** If `unitActive "$slice"`,
+   exit **4**, "an agent login arrived during the reset; its `$HOME` may be
+   partial, so run it again". Nothing prevents that login: blocking needs
+   `pam_nologin` in the guest's sshd stack, which it lacks, and OpenSSH does not
+   check `/etc/nologin` itself when PAM is on (`openssh session.c:1502`). That
+   is `IMP-011`.
 
-**Exit statuses:** 0 done; 3 busy; anything else is a failure the front end
-reports as-is. The front end reads **127** (command not found) as "this slot's
+The `EXIT` trap then starts the recorded gettys, which log `agent` in again.
+That also happens on every refusal after step 2.
+
+**Exit statuses:** 0 done; 3 busy; 4 the agent could not be kept out; anything
+else is a failure the front end reports as-is. The front end reads **127** (command not found) as "this slot's
 image predates the verb".
 
 **What it does not know:** what a credential is, what `.doctrine/` is, or which
@@ -343,22 +434,22 @@ sequenceDiagram
   Op->>FE: capsule d volume clone-from b
   FE->>FE: names explicit, declared, created; both units stopped
   FE->>FE: mkdir -p slot/d (as the operator)
-  FE->>RH: sudo … clone b d
-  RH->>RH: fuser both · fits · cp sparse · chown
+  FE->>RH: sudo -k … clone b d
+  RH->>RH: volume lock · fuser both · fits with reserve · cp sparse · chown
   RH->>RH: write slot/d/scrub-pending, unless one is already there
   RH->>RH: commitImage (mv into place)
   FE-->>Op: cost, "clean source not checked", next steps
 
   Op->>FE: capsule d start
-  FE->>FE: systemctl start · wait for door
+  FE->>FE: shared volume lock · systemctl start · wait for door
   FE->>FE: work d inject → marker present?
   FE->>G: capsule-reset-home --scrub
   alt exit 0
-    G-->>FE: $HOME, .env, host key gone · seed, keygen, sshd restarted
+    G-->>FE: quiesced · $HOME, .env, host key gone · seed, keygen, sshd restarted · gettys back
     FE->>FE: remove marker
     FE->>INJ: capsule-inject --capsule d
     INJ->>G: write credentials (nothing exists, so none skipped)
-  else busy, missing or failed
+  else busy (3), a login arrived (4), missing (127) or failed
     G-->>FE: status
     FE-->>Op: refuse inject, marker kept, reason named
   end
@@ -412,7 +503,7 @@ marker. The programs do not know where the record lives, by design
 it.
 
 **`reset-home` uses the same pieces without a marker:** the front end checks the
-door answers, calls `guestResetHome "$n"`, maps 127 and 3 to their refusals, and
+door answers, calls `guestResetHome "$n"`, maps 127, 3 and 4 to their refusals, and
 on 0 runs `work "$n" inject`. That call also passes the gate, so a clone that was
 never scrubbed gets scrubbed here too. On a marked slot that means `$HOME` is
 deleted twice, once by `reset-home` and once by the scrub. The second deletion
@@ -437,11 +528,13 @@ one line under the table (`DEC-009`).
 - **The free line**, printed after the table and before `perimeter:`:
 
   ```
-  volumes: 108G free on /var/lib/microvms (2 images outside the pool: capsule, capsule-b)
+  volumes: 107G free on /var/lib/microvms, 20G of it kept back from clones (2 images outside the pool: capsule, capsule-b)
   ```
 
-  The parenthesis appears only when the image root holds state directories that
-  are not declared slots. It is how `CHR-013`'s leftovers become visible without
+  "Free" is `df`'s `avail`, the same number the clone's fit check reads, and the
+  reserve is `capsules.volumeReserve`, so a reader can predict a clone's refusal
+  from this line and the source's `alloc`. The parenthesis appears only when the
+  image root holds state directories that are not declared slots. It is how `CHR-013`'s leftovers become visible without
   anyone listing the directory.
 
 **Why the front end's `microvms` becomes an argument:** `host/cli.nix:220`
@@ -485,8 +578,11 @@ with the aggregation message the other actions already use.
 | argument | default | substituted by a suite for |
 | --- | --- | --- |
 | `microvms` (new) | `"/var/lib/microvms"` | `alloc`, the free line, `created` |
-| `volumeControl` (new) | `volumeRoot() { sudo ${volumeRootHelper}/bin/capsule-volume-root "$@"; }` | the root step, without root |
+| `volumeControl` (new) | `volumeRoot() { sudo -k ${volumeRootHelper}/bin/capsule-volume-root "$@"; }` | the root step, without root |
 | `guestControl` (existing) | gains `guestResetHome() { … admin ssh … capsule-reset-home "$@"; }` | the guest program's exit status |
+
+The start lock needs no new argument: it is `capsules.volumeLock`, and a suite's
+fixture pool already substitutes `capsules`.
 
 `volumeRootHelper` is `host/volume-root.nix` applied to the same `capsules`, and
 it is threaded in from `host/programs.nix`, beside the other programs the front
@@ -501,10 +597,25 @@ directory is the operator's, and the helper refuses rather than make it as root
 (sec-3). `scrubPending` goes at the
 top of `work()` for `inject`, as sec-5 shows.
 
+**`start` takes the volume lock.** Around its existing `sudo systemctl start` and
+two-second stays-up check, the `start` branch opens `capsules.volumeLock` for
+reading and runs `flock -s -n` on it, refusing with "a volume operation is running
+on this host; try again when it finishes" if the helper holds it. Shared, so two
+starts do not exclude each other. The lock is host-wide, so a clone of `a` onto
+`b` also makes `capsule c start` refuse while it runs; a clone of an image of a
+few GiB takes seconds, and per-slot locks would add ordering rules to buy that
+back. Released before the inject, which needs no lock: the helper never touches a
+running slot's image.
+
 **Module path:** `host/services.nix` installs the front end already, and its
 wrapper supplies defaults without hard-exporting them
 (`mem.fact.oubliette.wrap-hard-exports-defeat-the-caller`). This slice adds no
-environment variable, so `wrapCases` needs no change. `capsule-volume-root` is
+environment variable, so `wrapCases` needs no change. It gains one tmpfiles rule,
+`f ${capsules.volumeLock} 0644 root root -`, so the lock exists before any start
+and the front end never has to create a file under `/run`. If the file is absent,
+the host's module predates this slice and no helper built with it can be running
+through the front end, so `start` proceeds without the lock and says so on
+stderr, rather than refusing every start on a host that has not rebuilt. `capsule-volume-root` is
 not put on `PATH`: it is reached only through the front end's store path.
 
 <!-- doctrine:section sec-8 -->
@@ -518,8 +629,10 @@ not put on `PATH`: it is reached only through the front end's store path.
 | `host/volume-root-cases.nix` | **new**: its suite, built against a sandbox root with `imageOwner` set to the build user and `tools` substituted |
 | `vm/reset-home.nix` | **new**: the guest program (sec-4) |
 | `vm/reset-home-cases.nix` | **new**: its suite, with a fixture `home`, fixture `scrubPaths`, and `tools` stubbed |
-| `vm/capsule.nix` | builds `scrubPaths` from `setup.nix` and `openssh.hostKeys`; adds the program to `systemPackages` |
-| `host/cli.nix` | `volume` verb; `nameFrom`; `microvms`, `volumeControl`, `guestResetHome`; `scrubPending` in `work()`; `alloc` column and free line |
+| `vm/capsule.nix` | builds `scrubPaths` from `setup.nix` and `openssh.hostKeys`, passes `agentUid`; adds the program to `systemPackages` |
+| `capsules.nix` | **two values**: `volumeLock` and `volumeReserve` (sec-3) |
+| `host/services.nix` | one tmpfiles rule for `volumeLock` |
+| `host/cli.nix` | `volume` verb; `nameFrom`; `microvms`, `volumeControl` (`sudo -k`), `guestResetHome`; `scrubPending` in `work()`; shared volume lock in `start`; `alloc` column and free line with the reserve |
 | `host/volume-cases.nix` | **new**: the front end's volume branch against a fixture pool, rendered the way `host/policy-cases.nix` renders its own |
 | `host/programs.nix` | builds `volumeRootHelper` and threads it to the front end |
 | `flake.nix` | the three suites as outputs, each a short `import` |
@@ -535,9 +648,11 @@ watching the named case go red.
 `volumeRootCases`:
 - reset refuses an undeclared name, such as `capsule`
 - reset refuses an image held open (a background `exec 3<` on the fixture image) and prints the pid
+- reset and clone both refuse, by reason, while another process holds `volumeLock` (the suite holds it with `flock` in the background), and act once it is released
 - reset of an absent image succeeds, says "already fresh", and removes a stale marker
 - clone refuses `src = dest`, a missing source image, a destination that was never created, and a destination with no record directory, and **creates no record directory** when it refuses
-- clone refuses when the source's allocation exceeds free space (`freeBytes` stubbed to one byte less than the source's allocation)
+- clone refuses when the source's allocation plus the fixture's `volumeReserve` exceeds `freeBytes` by one byte, and proceeds when they are equal
+- clone whose copy fails (an unreadable fixture source) exits non-zero and leaves no `capsule-work.img.clone` and no marker it wrote
 - clone produces a sparse destination with the fixture owner and mode `0644`, and removes a leftover `capsule-work.img.clone` before copying
 - clone writes the marker unless `--identity`; **the marker exists when the image is committed** (`commitImage` stubbed to fail unless the marker is present, then move)
 - clone whose commit fails removes the marker it wrote and the temporary file
@@ -546,8 +661,9 @@ watching the named case go red.
 - **mutation:** move the marker write after `commitImage`; the "marker exists when the image is committed" case goes red. Make step 6 remove the marker unconditionally; the "keeps a marker it did not write" case goes red
 
 `resetHomeCases`:
-- refuses with status 3 and lists sessions while a non-console session exists; the console session alone does not refuse
-- removes `$HOME` and restarts `capsule-seed`, in that order
+- refuses with status 3 and lists sessions while a working session exists (`workingSessions` stubbed to print one); getty autologins on both `ttyS0` and `tty1` alone do not refuse, and a refusal stops nothing
+- in order: stop the recorded gettys, stop the agent's slice, remove `$HOME`, restart `capsule-seed`, then start the recorded gettys again
+- exits 4 when the slice is still active after its stop, and when it becomes active during the reset (`unitActive` stubbed per call); the gettys are started again on both, and on any other failure after they were stopped
 - a `$HOME` that is a symlink: the link goes, and its target survives
 - `--scrub` removes exactly `scrubPaths`, then starts `sshd-keygen`, then restarts `sshd`, in that order; without `--scrub`, none of those happens
 - **eval-level:** `scrubPaths` for this host contains no path under `$HOME`, and contains `/work/.env` and the host key
@@ -556,7 +672,9 @@ watching the named case go red.
 - every sub-verb refuses a resolved name and a `CAPSULE_NAME` name, and accepts an argv name
 - `all volume` refused; unknown sub-verb refused
 - `reset` refuses a running unit before calling `volumeRoot` (the stub's log stays empty)
-- `reset-home` maps guest status 127 to "image predates this verb" and 3 to "busy"
+- `reset-home` maps guest status 127 to "image predates this verb", 3 to "busy" and 4 to "a login arrived, run it again"
+- `start` refuses, by reason and before `systemctl`, while the fixture `volumeLock` is held exclusively; two starts do not exclude each other; an absent lock file starts with a warning
+- **eval-level:** the shipped `volumeControl` default invokes the helper with `sudo -k`
 - `inject` with a marker: scrub called first, then marker removed, then inject; with a failing scrub, inject is not called and the marker stays
 - `clone-from` makes the destination's record directory before calling `volumeRoot`, and makes nothing when an earlier check refuses
 - `alloc` and the free line against a fixture root, including the "outside the pool" parenthesis
@@ -564,10 +682,13 @@ watching the named case go red.
 **Live exercises, which no suite can reach** (`STD-001`: root, a real image, a real guest):
 
 1. `volume reset` on a finished slot: the image is gone, `start` makes a cold volume, and the `fuser` refusal fires with the unit stopped but the image held.
-2. `volume reset-home` on a running idle slot, then with an ssh session open (refused), then with a detached baseline running. **This confirms or refutes `ASM-001`, sec-2's session assumption.**
+2. `volume reset-home` on a running idle slot, then with an ssh session open (refused), then with a detached baseline running. First read `loginctl show-session -p Service -p TTY` for the `ttyS0` and `tty1` autologins and for an ssh session, which is what `workingSessions` filters on. After the idle run, both gettys are back and have logged `agent` in again. **This confirms or refutes `ASM-001`, sec-2's session assumption.**
 3. `volume clone-from` a stopped slot, then `start`. Read back that the scrub ran before inject, that `.env` and the credential files on the clone are this host's, that the host key's fingerprint differs from the source's, and that `sshd` restarted without dropping the admin session. **This confirms or refutes `ASM-002`.**
 4. `capsule all status` shows `alloc` for stopped slots and the free line.
+5. With a `volume clone-from` running, `capsule <other> start` refuses naming the volume operation, and succeeds once the clone finishes. A second `volume reset` run at the same time refuses the same way.
 
 **What this design does not verify:** the password-less grant (`IMP-010`), the
-clean-source rule (`IMP-008`, `IMP-001`), and `ISS-009` step 2's composition.
+clean-source rule (`IMP-008`, `IMP-001`), `ISS-009` step 2's composition, blocking
+agent logins during a reset (`IMP-011`), and growth of existing images into the
+reserve (`RSK-007`).
 

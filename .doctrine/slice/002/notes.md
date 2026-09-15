@@ -18,48 +18,51 @@ Exploring-stage triage, superseded by the design run's decisions
 
 ## Review passes — 2026-09-15
 
-**Pass 1** was the user's walk of sec-1..8 with the agent checking each claim
-against code and the pinned nixpkgs: `RV-001` `F-1`..`F-5`, all fixed in
-`075ead9`. `F-1`, a failed clone unmarking an earlier unscrubbed clone, is the
-kind a second pass exists to find:
-an ordering argument that read as sound until a *pre-existing* state was put in
-front of it.
+The findings and their rulings are on `RV-001`; this section says only what is
+still worth attacking.
 
-**What a further pass would probe**, in order of what it could still change:
+- **Pass 1**, the user's walk with the agent checking claims against code:
+  `F-1`..`F-5`.
+- **Pass 2**, Codex's adversarial review plus a live spike on slot `b`:
+  `F-6`..`F-10`. It reached two decisions (`DEC-004`'s idle test, `DEC-010`'s
+  premise) and a measured disk limit. **Pass 1's note said the design could lock
+  without a second pass, and that was wrong**: its own items 1–2 came back as
+  majors, and the spike found a blocker (`F-10`, the tty1 autologin) that no
+  reading of the design could have.
 
-1. **Check-then-act windows.** sec-3 `fuser` then `rm`/`cp` against a
-   `capsule <slot> start` racing it from a second shell; sec-4's session check
-   then `rm -rf` against a login arriving between them. Both need the operator to
-   race themselves, and the guest-side one is convenience rather than perimeter
-   (`POL-001`), so the likely disposition is "stated, not closed". It still needs
-   stating in sec-2.
-2. **`agent` processes outside any logind session.** A `systemd --user` unit
-   (the console session starts `user@1000.service`) is in no session, so sec-4's
-   idle test does not see it, and it may write into `$HOME` while that is being
-   deleted or reseeded.
-3. **Pre-existing state generally**, which is `F-1`'s class: a leftover marker
-   under `reset` after a crash, a `capsule-work.img.clone` left while a slot is
-   running, a marker whose content names a source other than the current clone's.
-4. Checked and not a defect: `setup` on a marked slot provisions, then stops at
-   the gate before the baseline, exactly as it stops at any failed inject today;
-   `capsule <slot> inject` recovers.
+**What a further pass would probe:**
 
-**Whether one is needed:** items 1–3 are bounded and none touches a decision, so
-the design can lock without one. If a pass is run, `/inquisition` or an external
-reviewer should be aimed at items 1–3 rather than the whole document.
+1. **The quiesce, live.** The `Service` values `workingSessions` filters on have
+   not been read (sec-8 live exercise 2), and neither has what `stop
+   user-<uid>.slice` does to a detached baseline if `ASM-001` is false: the
+   baseline would be killed rather than refused.
+2. **Pre-existing state**, `F-1`'s class, still unswept: a marker left under
+   `reset` by a crash, a `capsule-work.img.clone` from a killed run while that
+   slot is running, a marker naming a source other than the current clone's.
+3. **The lock's composition.** Checked: the only start of a slot's unit is
+   `host/cli.nix:1442`, and the probes run the runner in their own directories.
+   Not checked: a host rebuild or `daemon-reload` interacting with a held lock.
+
+**Whether one is needed:** items 1 and 2 are cheap and concrete: 1 is a live
+exercise already in sec-8, and 2 is a read of sec-3 against its crash table.
+Neither is likely to move a decision. Lock after the user has read the revised
+sec-2..8; run item 2 as part of that read rather than as a separate pass.
 
 ## Harvest
 <!-- single-copy: updated in place each harvest; ids only, never restated content -->
-fresh-as-of: 2026-09-15 · design (reviewing; review.scope and review.selectors discharged) · 075ead9
+fresh-as-of: 2026-09-15 · design (reviewing; RV-001 F-1..F-10 disposed, F-6..F-10 integrated) · pending commit
 
 ### Produced
 - `design.md` sec-1..sec-8 — materialised from run `dr-01a0a2ae…`; all eight walked with the user, sec-3/4/5/7/8 revised for `RV-001` `F-1`..`F-5` (`075ead9`)
 - `DEC-001`..`DEC-011` — the design's rulings, all accepted
 - `IMP-008`, `IMP-009`, `IMP-010`, `CHR-013` — follow-ups filed during inquiry
-- commits `78a6460`, `10d277b`, `4379895`, `075ead9` — nothing built or run
+- commits `78a6460`, `10d277b`, `4379895`, `075ead9`, `e3a4a90` — nothing built; one spike on slot `b` (stopped and restored its gettys and agent slice)
+- `RSK-007`, `IMP-011` — filed while disposing `F-9` and `F-7`
 
 ### Learned
 - mem.fact.oubliette.design-apply-disposes-through-checkpoints — how the run takes dispositions
+- mem.fact.oubliette.guest-autologins-agent-on-every-getty — tty1 and ttyS0; quiesce by the user slice
+- mem.fact.oubliette.nologin-is-pams-job-under-sshd — `/etc/nologin` blocks no ssh login on the guest
 
 ### Open
 - `ASM-001` — a detached baseline keeps its logind session (live exercise 2)

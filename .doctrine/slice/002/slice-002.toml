@@ -17,7 +17,13 @@ note = "SL-002 design sec-8 code impact"
 
 [[selector]]
 selector = "host/services.nix"
-intent = "scope-relevant"
+intent = "design-target"
+note = "SL-002 design sec-8 code impact"
+
+[[selector]]
+selector = "capsules.nix"
+intent = "design-target"
+note = "SL-002 design sec-8 code impact"
 
 [[selector]]
 selector = "host/volume*.nix"

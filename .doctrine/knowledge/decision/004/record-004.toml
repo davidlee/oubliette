@@ -3,7 +3,7 @@ version = 1
 
 id = 4
 slug = "volume-verbs-refuse-on-an-open-image-or-an-agent-process-outside-the-console-never-on-a-unit-name"
-title = "Volume verbs refuse on an open image or an agent process outside the console, never on a unit name alone"
+title = "Volume verbs refuse on an open image or a working agent session, never on a unit name alone"
 record_kind = "decision"
 status = "accepted"
 created = "2026-09-15"
@@ -12,7 +12,7 @@ tags = []
 
 [facet]                         # every field typed; seeded empty (captured later)
 context = "SL-002 after DEC-001: reset and clone-from need a stopped slot, reset-home and the scrub need a running slot nobody is working in. The console autologins agent at boot (vm/capsule.nix:241) and a baseline runs as a detached setsid agent process (host/baseline.nix:136)."
-choice = "Stopped: the front end refuses unless microvm@<slot> is inactive or failed, and the privileged step refuses if anything holds the image open (fuser as root) immediately before deleting or copying it. Running-and-idle: capsule-reset-home refuses if agent owns any process outside the serial console's session, naming stop-then-start as the way out. No --force on either."
+choice = "Stopped: the front end refuses unless microvm@<slot> is inactive or failed, and the privileged step refuses if anything holds the image open (fuser as root) immediately before deleting or copying it, under a host-wide volume lock that capsule <slot> start also takes. Running-and-idle: capsule-reset-home refuses if agent has any logind session other than a getty autologin (by the session's Service, on any tty), naming stop-then-start as the way out; it then stops the gettys and user-<uid>.slice before deleting, and fails if the slice becomes active during the reset. No --force on either."
 alternatives = ["Unit state only for stopped, loginctl ssh sessions only for idle: a unit can be inactive while another process holds the image, and a baseline run is missed", "Open-image check only, and no idle check: deletes a live session's $HOME with a warning in help text"]
 rationale = "The property needed is the image not being open; unit state is its proxy and the cheap early message, the open-file check is the guarantee and identifies the file rather than a process name (dead-guest-is-not-a-dead-vm). A process-based idle check is honest about a detached baseline."
 consequences = ["The privileged step is a sequence (check open, then act) and must be one spelled command, which bears on inq-7", "The console session must be identified reliably inside the guest program", "Stopping is the escape from every refusal, so no override flag exists"]

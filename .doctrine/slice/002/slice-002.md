@@ -45,11 +45,15 @@ refused.
   program in the image, `capsule-reset-home`, built from `vm/capsule.nix`'s own
   `home` binding. The program deletes `$HOME` and restarts `capsule-seed`; the
   host runs it over the admin door and then `inject` (`DEC-001`). Needs the
-  slot **running** with no `agent` login session other than the serial console's.
+  slot **running** with no `agent` login session other than the gettys'
+  autologins; the program then stops the gettys and the agent's user slice
+  before it deletes, and fails loudly if a login arrives meanwhile.
 - **`clone-from <m>`**: S5. A sparse copy of a stopped source's image onto a
   stopped destination, so a slot starts warm. **Any stopped declared slot other
   than the destination is a source** (`DEC-007`). The verb prints the source's
-  allocated size and refuses if it exceeds free space.
+  allocated size and refuses unless it plus a reserve declared in `capsules.nix`
+  fits in the space non-root writers have: the running VMMs grow their images
+  into that space.
 
 **D4's identity half comes with the clone** (`DEC-003`, `DEC-011`). Scrubbing is
 the default and `--identity` keeps everything. The scrub is `capsule-reset-home`,
@@ -78,22 +82,30 @@ free-space line under the table. `docs/probes.md`'s disk row is refreshed.
   root. The root helper then refuses if anything has the image open (`fuser`)
   immediately before it acts. This identifies the file rather than a process name
   (`mem.fact.oubliette.dead-guest-is-not-a-dead-vm`).
-- **"Running and idle" means no `agent` logind session other than the serial
-  console's** (`DEC-004`). The console autologins `agent`, so "any agent process"
-  cannot be the test; a baseline runs detached (`setsid`) and is assumed to keep
-  its ssh session listed until it exits (`ASM-001`). The refusal names
-  stop-then-start as the way out, and there is no `--force`.
+- **"Running and idle" means no `agent` logind session except the gettys'
+  autologins** (`DEC-004`). The guest autologins `agent` on every getty (`ttyS0`
+  and `tty1`), so "any agent process" cannot be the test; a baseline runs
+  detached (`setsid`) and is assumed to keep its ssh session listed until it exits
+  (`ASM-001`). After that check the program quiesces: it stops the gettys and
+  `user-<uid>.slice`, which holds every agent session and the user manager, and
+  detects rather than blocks a login during the reset (`IMP-011`). The refusal
+  names stop-then-start as the way out, and there is no `--force`.
+- **One volume operation at a time on the host.** The root helper holds a
+  host-wide lock for its run, and `capsule <slot> start` takes it shared, so a
+  start cannot race a check-then-act. A `systemctl start` typed by hand does not
+  take it.
 - **One root helper, one spelling** (`DEC-005`):
   `capsule-volume-root reset <slot>` and `capsule-volume-root clone <src> <dest>
   [--identity]` validate slots against the declared pool, resolve image paths,
-  check and act in one root process, and write the scrub marker. The front end
-  runs it through `sudo`, which prompts for a password on both copies of the
-  front end, so no rule and no rebuild are needed. Its state roots, image owner
+  check and act in one root process under the volume lock, and write the scrub
+  marker. The front end runs it through `sudo -k`, which ignores a cached ticket
+  and so always prompts, on both copies of the front end; no rule is needed. Its state roots, image owner
   and the two steps a suite substitutes are **build-time** arguments with
   defaults, never run-time ones. A password-less grant is `IMP-010`.
 - **No confirmation step** (`DEC-010`). The password prompt is the second
-  keystroke for `reset` and `clone-from`. `IMP-010` must reopen this if it
-  removes that prompt.
+  keystroke for `reset` and `clone-from`, and `sudo -k` is what keeps it there:
+  the `stop` those verbs require leaves a sudo ticket warm. `IMP-010` must reopen
+  this if it removes that prompt.
 - **No volume verb writes the assignment record** (`DEC-006`). The warm start is
   `volume clone-from <m>` then `setup <ref> …`. A clone carries the source's
   checkout commits and state chain, so that `setup` may need `--force`
@@ -151,7 +163,12 @@ Risks and assumptions:
 - **A wrong name is unrecoverable.** Mitigated by explicit declared names, state
   refusals and the password prompt. There is no undo.
 - **A clone costs the source's high-water mark and stays that high** (research
-  F6). The allocation column makes it visible, and the fit refusal bounds it.
+  F6). The allocation column makes it visible, and the fit refusal with its
+  declared reserve bounds it. Growth of images already on the host is not
+  bounded by anything (`RSK-007`).
+- **The volume lock is host-wide**, so a start refuses while any clone runs.
+  Clones of a few GiB take seconds; per-slot locks were judged not worth their
+  ordering rules.
   Figures live in [probes](../../../docs/probes.md).
 - **`capsule-reset-home` exists only in a new image.** A slot running the old
   image fails the door call. The front end must refuse that by reason
@@ -180,7 +197,9 @@ and that the admin session survived the `sshd` restart.
 
 - `ISS-009` step 2, which is filed `after` `IMP-001` for exactly this reason.
 - `IMP-008` (status shows a clean clone source), `IMP-009` (status width),
-  `IMP-010` (password-less grant), `CHR-013` (pre-slot state directories).
+  `IMP-010` (password-less grant), `CHR-013` (pre-slot state directories),
+  `IMP-011` (block agent logins during a reset), `RSK-007` (sparse images can
+  outgrow the host's non-root space).
 - D4's reuse-refusal and Q3's state model, whenever a second principal makes it
   urgent.
 - `CHR-002` is unrelated but adjacent: `handoff`'s own live path is still

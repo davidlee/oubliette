@@ -1,0 +1,42 @@
+memory_uid = "mem_01a0a37fe0a97670aafbf4c026a1d711"
+memory_key = "mem.fact.oubliette.guest-autologins-agent-on-every-getty"
+schema_version = 1
+memory_type = "fact"
+status = "active"
+title = "The guest autologins agent on every getty, tty1 as well as ttyS0"
+summary = "services.getty.autologinUser logs agent in on serial-getty@ttyS0 and getty@tty1, so a running guest always has two agent sessions and a restarted getty logs agent in again within seconds"
+created = "2026-09-15"
+updated = "2026-09-15"
+
+[scope]
+paths = ["vm/capsule.nix", "vm/reset-home.nix"]
+globs = []
+commands = []
+tags = ["gotcha"]
+workspace = "default"
+repo = "github.com/davidlee/oubliette"
+repo_id_kind = "remote"
+repo_id_confidence = "high"
+
+[git]
+anchor_kind = "checkout_state"
+commit = ""
+tree = "394a2cd9b4cfe7d489ec0b7c91515e1d84f7dfbb"
+ref_name = "refs/heads/main"
+checkout_state_id = "881ed5f132c1f485b04fac48404ca888050ea4d888b89f8c4154d0b93b320380"
+base_commit = "4571e8ed14e251c4f672e2d73d9af81a00831113"
+verified_sha = ""
+normalizer = "forget.checkout.v1"
+
+[review]
+verification_state = "unverified"
+reviewed = ""
+review_by = ""
+
+[trust]
+trust_level = "high"
+
+[ranking]
+severity = "none"
+weight = 0
+

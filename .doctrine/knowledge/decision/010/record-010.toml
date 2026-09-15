@@ -11,7 +11,7 @@ updated = "2026-09-15"
 tags = []
 
 [facet]                         # every field typed; seeded empty (captured later)
-context = "SL-002. Protections already decided: an explicit declared slot name (DEC-008), state refusals (DEC-004), and reset/clone-from running through password-prompting sudo (DEC-005). reset-home runs over the admin door and prompts for nothing."
+context = "SL-002. Protections already decided: an explicit declared slot name (DEC-008), state refusals (DEC-004), and reset/clone-from running through sudo -k (DEC-005), which prompts even when a ticket is warm. Without -k the prompt is usually absent: the stop those verbs require runs sudo systemctl stop moments earlier (RV-001 F-8). reset-home runs over the admin door and prompts for nothing."
 choice = "No --yes flag and no typed-name prompt. reset-home destroys only the agent's $HOME, which a repurpose exists to discard; inject restores credentials."
 alternatives = ["A required --yes: typed by reflex, and every ISS-009 composition carries it", "A typed-name prompt: breaks scripted composition for a one-letter name"]
 rationale = "The existing protections catch the real accidents (wrong slot, live slot, occupied slot); another keystroke mostly taxes the composition ISS-009 step 2 builds."

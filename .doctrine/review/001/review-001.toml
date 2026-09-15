@@ -68,10 +68,12 @@ response = "Observation correct; the shared temporary name is a regression from 
 
 [[finding]]
 id = "F-7"
-status = "open"
+status = "answered"
 severity = "major"
 title = "sec-4: reset-home can delete $HOME under agent processes its idle check cannot see"
 detail = "Raised by Codex adversarial review. The idle check reads logind sessions only and excludes the serial console's. Processes under the agent's user manager (user@1000.service) belong to no session; a human may be using the console; a login can arrive between the check and the delete. Codex prescribes a maintenance transaction: block logins, stop the console getty, terminate the agent's sessions and user manager, verify no agent process remains, reset, restore."
+disposition = "fix-now"
+response = '''Observation correct, verified by spike on slot b. Prescription adopted in part (user's ruling). reset-home keeps DEC-004's refusal on any agent session whose Service is not a getty login, then quiesces: note and stop system-getty.slice and system-serial\x2dgetty.slice, stop user-1000.slice (synchronous, measured 51ms, leaves no agent process), refuse unless the slice is inactive, reset, then fail loudly if the slice became active during the reset; a trap restarts the noted gettys. The slice replaces a pgrep test. The console-in-use sub-point is contested: on the module path the serial console goes to the unit's journal and no verb attaches it. Blocking logins with /etc/nologin is not adopted: the guest's sshd runs UsePAM yes with no pam_nologin in its stack, and OpenSSH skips its own nologin check under PAM (session.c:1502), so it would need a guest PAM change; filed as a backlog improvement. To integrate into sec-2, sec-4, sec-8.'''
 
 [[finding]]
 id = "F-8"
@@ -90,6 +92,15 @@ title = "sec-3: a clone may consume every non-root byte, and a failed copy leave
 detail = "Raised by Codex adversarial review; sharpened by the user (the filesystem becomes unwritable at about 95%, the ext4 root reserve). The fit check allows alloc up to df's avail with no reserve. The copy runs as root, so it completes, but afterwards avail is zero for every non-root writer, including running VMMs growing their sparse images. Concurrent clones can both pass the check. cp failing with ENOSPC leaves capsule-work.img.clone in place, because cleanup exists only for a failed commit. Codex prescribes a declared reserve, serialized capacity checks, and an EXIT cleanup."
 disposition = "design-wrong"
 response = """Correct, and worse than raised. Measured 2026-09-15 on /var/lib/microvms (ext4): 107 GiB avail to non-root, about 100 GiB more held in the root reserve (the user's "unwritable at 95%"). Root's cp completes; afterwards VMMs (user microvm) growing sparse images get ENOSPC. sec-3's "no margin, a margin has no declared home" was wrong: the answer is to declare one. User's ruling: a pool-level reserve in capsules.nix, 20 GiB, passed to the helper at build time; refuse unless allocated + reserve <= non-root avail. Concurrent clones serialised by F-6's lock. Fix-now part: an EXIT trap removes an uncommitted temporary image on any failure, not only a failed commit. Pre-existing sparse overcommit (five 32 GiB images could outgrow avail without any clone) is filed separately. To integrate into sec-3, sec-6 (free line may show the reserve), sec-8."""
+
+[[finding]]
+id = "F-10"
+status = "answered"
+severity = "blocker"
+title = "sec-2/sec-4: the guest autologins agent on tty1 as well as ttyS0, so the idle check always refuses"
+detail = "Found by the F-7 spike on slot b (2026-09-15). services.getty.autologinUser applies to every getty: loginctl showed agent sessions on ttyS0 (serial-getty@ttyS0.service) and on seat0/tty1 (getty@tty1.service). sec-2 and sec-4 exclude only the ttyS0 session, so the tty1 session makes reset-home refuse on every guest. After a stop of user-1000.slice with only the ttyS0 getty stopped, getty@tty1 logged agent in again within 5s, so a quiesce that stops one getty does not hold either."
+disposition = "fix-now"
+response = "The idle test no longer names a TTY: it excludes agent sessions whose logind Service is the getty login, whichever tty they are on, and refuses on any other (ssh sessions, and a detached baseline's per ASM-001). The quiesce stops both getty slices rather than one unit, so no autologin can respawn a session during the reset. To integrate into sec-2, sec-4, sec-8, with a live exercise reading the Service property of each session kind."
 
 # Findings are append-only `[[finding]]` tables, added by `review raise` (PHASE-03).
 # Empty here at creation — a fresh review is Active, awaiting the raiser (D-C8).
