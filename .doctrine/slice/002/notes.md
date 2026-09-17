@@ -235,6 +235,24 @@ pass with no new findings and is concluded. `F-1`, `F-2` and `F-6` stay
 further design pass is not needed for these: what is left to probe is whether
 the code matches the text, which the mutations in sec-8 are for.
 
+**Landing, one commit per finding.** Fix work on completed phases, so no phase
+status moves.
+
+- `F-1` + `F-2` together, as the design was relocked for them together.
+  `resetHomeRefusal <slot> <rc>` is one table in `host/cli.nix`'s main body,
+  called by `scrubPending` and the `reset-home` branch; 127 names `just
+  refresh-build <slot>` and 255 is read as ssh's own. `volumeCases` grew one
+  per-status expectation (`refusal` sets what a refusal must say and, for 127,
+  what it must not; `saidWhy` asserts it) read by both the reset-home block and
+  the gate loop, with 255 added to both. Both sec-8 mutations were run and read:
+  dropping the call from `scrubPending` reddens the gate's per-status cases and
+  leaves reset-home's green; putting stop-then-start back as 127's remedy
+  reddens both 127 cases. `just` green.
+  - **Restoring a mutation with `git checkout <file>` throws away an
+    uncommitted fix in the same file.** It cost one re-apply here. Either commit
+    the fix before mutating it, or keep the green copy aside and restore from
+    that.
+
 ## Harvest
 <!-- single-copy: updated in place each harvest; ids only, never restated content -->
 fresh-as-of: 2026-09-15 · started (PHASE-01..04 complete; design relocked at revision 74 over RV-004 F-1/F-2)

@@ -330,23 +330,51 @@ in
       test "$(guestLog)" = "reset-home dst marker=absent,inject --capsule dst marker=absent"
     ckt "  and never the root step" quietRoot
 
-    # homeRefuses <guest status> <what the guest found> <reason>…
+    # What a refusal must say for one guest status — its reason *and* its way
+    # out — and, for 127, the way out it must not name. Both call sites read
+    # this one table, because a gate that answers a status differently from the
+    # `reset-home` branch is a second program telling the operator a second
+    # thing about the same failure (design sec-5, sec-8).
+    refusal() {
+      notWant=""
+      case "$1" in
+        # Only `microvm -u` moves a slot's `current`, so stop-then-start boots
+        # the same image and meets 127 again: a loop, not a remedy (RV-004 F-1).
+        127)
+          want=("this slot's image predates" "just refresh-build dst")
+          notWant="stop, then start"
+          ;;
+        3) want=("the agent is busy" "capsule dst stop, then start") ;;
+        4) want=("an agent login arrived" "run it again") ;;
+        255) want=("ssh to the admin door failed" "run it again once capsule dst status") ;;
+        *) want=("capsule-reset-home exited $1") ;;
+      esac
+    }
+    # Asserts the table for the status `refusal` was last called with.
+    saidWhy() {
+      local why
+      for why in "''${want[@]}"; do
+        ckt "  saying $why" saw "$why"
+      done
+      [ -z "$notWant" ] || ckt "  and not $notWant" unsaw "$notWant"
+    }
+
+    # homeRefuses <guest status> <what the guest found>
     homeRefuses() {
-      local status="$1" what="$2" why
-      shift 2
+      local status="$1" what="$2"
       fresh
       up dst
       CASE_GUEST_RC=$status run dst volume reset-home
       ck "reset-home refuses when the guest $what (status $status)" 1 "$rc"
-      for why in "$@"; do
-        ckt "  saying $why" saw "$why"
-      done
+      refusal "$status"
+      saidWhy
       ckt "  and injects nothing" test "$(guestLog)" = "reset-home dst marker=absent"
     }
-    homeRefuses 127 "has no capsule-reset-home" "image predates" "capsule dst stop, then start"
-    homeRefuses 3 "finds the agent working" "busy" "capsule dst stop, then start"
-    homeRefuses 4 "sees a login arrive" "login arrived" "run it again"
-    homeRefuses 1 "fails otherwise" "exited 1"
+    homeRefuses 127 "has no capsule-reset-home"
+    homeRefuses 3 "finds the agent working"
+    homeRefuses 4 "sees a login arrive"
+    homeRefuses 255 "cannot be reached over the door"
+    homeRefuses 1 "fails otherwise"
 
     fresh
     run dst volume reset-home
@@ -373,11 +401,17 @@ in
     ckt "  and says why" saw "scrubbing before inject"
     ckt "  leaving no marker" absent "$(markerOf dst)"
 
-    for status in 1 3 4 127; do
+    # The gate answers a failed scrub with the same table `reset-home` reads, so
+    # the operator meeting 127 here — the likeliest place to meet it, since a
+    # clone needs both slots created rather than refreshed — is told the same
+    # way out (design sec-5, RV-004 F-2).
+    for status in 1 3 4 127 255; do
       fresh
       mark dst
       CASE_GUEST_RC=$status run dst inject
       ck "inject onto a cloned volume whose scrub fails ($status) refuses" 1 "$rc"
+      refusal "$status"
+      saidWhy
       ckt "  saying the marker stays" saw "marker stays"
       ckt "  and injects nothing" test "$(guestLog)" = "reset-home dst --scrub marker=present"
       ckt "  and keeps the marker" present "$(markerOf dst)"

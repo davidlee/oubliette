@@ -544,6 +544,44 @@ in
           "$prog" --capsule "$n" "$@"
         }
 
+        # The guest program's status, as a reason and a way out. It prints and
+        # returns; each caller says what it did not do, and exits or returns on
+        # its own. Both callers — `scrubPending` below and the `reset-home`
+        # branch — read this one table, so the same failure cannot be told two
+        # ways (SL-002 design sec-5). It is in the main body and not in the
+        # `guestControl` argument, because that is the seam a suite substitutes:
+        # a suite supplies the guest's status and asserts what the front end
+        # makes of it.
+        resetHomeRefusal() {
+          local n="$1" rc="$2"
+          case "$rc" in
+            # Only `microvm -u` moves a slot's `current`, and neither `stop` nor
+            # `start` runs it, so stop-then-start boots the same image and meets
+            # this again. `just refresh-build` is the one that moves it, and it
+            # keeps the volume.
+            127)
+              echo "capsule $n: this slot's image predates capsule-reset-home (status 127)."
+              echo "  just refresh-build $n moves the slot onto the current image and keeps the volume."
+              ;;
+            3)
+              echo "capsule $n: the agent is busy (sessions above), so nothing was reset."
+              echo "  capsule $n stop, then start, ends every session."
+              ;;
+            4)
+              echo "capsule $n: an agent login arrived during the reset, so \$HOME may be partial;"
+              echo "  run it again."
+              ;;
+            # ssh's own status, not the program's: the connection failed before
+            # the guest ran or during it, so what it did is unknown. Running it
+            # again is safe from any point.
+            255)
+              echo "capsule $n: ssh to the admin door failed (status 255), so what the guest did is unknown;"
+              echo "  run it again once capsule $n status shows the door."
+              ;;
+            *) echo "capsule $n: capsule-reset-home exited $rc." ;;
+          esac >&2
+        }
+
         # A cloned volume carries its source's credentials, `.env` and ssh host
         # key until the guest scrubs them, and the scrub needs the slot running,
         # which the clone could not have (SL-002 design sec-5). The helper leaves
@@ -553,14 +591,16 @@ in
         # `capsule-inject` run straight off `PATH` does not come through here,
         # and that boundary is stated in the design rather than closed.
         scrubPending() {
-          local n="$1" m
+          local n="$1" m rc=0
           m="$(slotDir "$n")/scrub-pending"
           [ -e "$m" ] || return 0
           echo "capsule $n: this volume was cloned ($(cat -- "$m" 2>/dev/null)), so scrubbing before inject"
-          guestResetHome "$n" --scrub || {
-            echo "capsule $n: the scrub did not complete, so nothing was injected; the marker stays." >&2
+          guestResetHome "$n" --scrub || rc=$?
+          if [ "$rc" -ne 0 ]; then
+            resetHomeRefusal "$n" "$rc"
+            echo "capsule $n: nothing was injected; the marker stays." >&2
             return 1
-          }
+          fi
           rm -f -- "$m"
         }
 
@@ -1687,28 +1727,11 @@ in
                 # front end exiting 127 reads as a missing `capsule`.
                 rc=0
                 guestResetHome "$name" || rc=$?
-                case "$rc" in
-                  0) work "$name" inject ;;
-                  127)
-                    echo "capsule $name: this slot's image predates volume reset-home (status 127)." >&2
-                    echo "  capsule $name stop, then start, onto an image that has it." >&2
-                    exit 1
-                    ;;
-                  3)
-                    echo "capsule $name: the agent is busy (sessions above), so nothing was reset." >&2
-                    echo "  capsule $name stop, then start, ends every session." >&2
-                    exit 1
-                    ;;
-                  4)
-                    echo "capsule $name: an agent login arrived during the reset, so \$HOME may be partial;" >&2
-                    echo "  run it again." >&2
-                    exit 1
-                    ;;
-                  *)
-                    echo "capsule $name: capsule-reset-home exited $rc, so nothing was injected." >&2
-                    exit 1
-                    ;;
-                esac
+                if [ "$rc" -ne 0 ]; then
+                  resetHomeRefusal "$name" "$rc"
+                  exit 1
+                fi
+                work "$name" inject
                 ;;
               "")
                 echo "capsule $name: volume needs a sub-verb." >&2
