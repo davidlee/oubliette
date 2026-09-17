@@ -331,6 +331,152 @@ it.
   6.8G, `e` 1.6G — `-` for the never-created ones, a free figure matching `df`
   exactly, and the parenthesis surfaced `CHR-013`'s two leftovers.
 
+## PHASE-06 — the five live exercises — 2026-09-17
+
+Root, a real image, a real guest, on slot `a` (destination) cloned from `d`,
+with `e` in the lock race. Capsule `c` was never named. All seven `VH` criteria
+satisfied; **`ASM-001` and `ASM-002` both validated**; `VH-7`'s STOP condition
+did not fire.
+
+**The entrance criteria were not met when the phase opened, and the check that
+found it is worth keeping.** The host ran a `capsule` **18 commits behind** —
+volume verbs present, but no `resetHomeRefusal`, no `just refresh-build` remedy,
+no `alloc`, so none of the `RV-004` remediation and none of PHASE-05. `a`'s guest
+closure was from **7 August** and carried no `capsule-*` program at all. Both
+were fixed by the user (rebuild from `~/flakes`, then `just refresh-build a`,
+which keeps the volume). Running the exercises before that would have verified
+the old program against messages the design no longer says — a pass for the
+wrong reason. **Two of my own readings were wrong first**: store-path equality
+between the devshell and module copies (which proves they are the same *build*,
+not that either is current), then `readlink -f` on the **wrapper**, which holds
+none of the program's text. `mem.fact.oubliette.module-programs-on-path-are-wrappers`
+already records both traps; it was not retrieved before the check. Both memories
+extended with the new readings.
+
+**Exercise 2 ran first, against sec-8's numbering** — exercise 1 destroys the
+volume and exercise 2 needs a provisioned one for its detached baseline. The
+exercises are a set, not a sequence.
+
+### 1 — `volume reset` (`VH-1`)
+
+Reset deleted the image and printed `F-6`'s `next:` line; `a` stayed
+`created yes` with `current` and `flake` intact, so **created is not "has an
+image"** — which is what let exercise 3 clone onto it. A cold `start` made a
+32 GiB sparse image reading **`alloc 261M`**: sec-6's "allocated, not apparent",
+first live reading. The `fuser` refusal fired with the **unit inactive** and the
+image held by an unprivileged `sleep 400 < …img`, naming the pid — the front
+end's unit check passed and the root helper caught it in the same process. A
+second reset over the absent image said *already fresh*.
+
+*Not exercised:* a holder that is a real VMM rather than an unprivileged reader;
+the refusal names a file's holder either way, which is the point.
+
+### 2 — `volume reset-home` and the session rule (`VH-2`, `ASM-001`)
+
+Sec-2's table reproduced exactly, and its **two unread rows filled**: an `agent`
+ssh login is `Service=sshd Class=user`, and a real `manager-early` (root's user
+manager, raised by the admin login) is `Service=systemd-user` — which confirms
+`RV-004` `F-3`, whose suite row had been spelled `Service=login` and so passed
+through the getty exclusion for the wrong reason.
+
+Refused with an ssh session open (listing only it, both autologins and the
+manager correctly excluded); refused with a detached baseline; succeeded idle,
+then ran `work a inject`. Afterwards **both gettys were back with `agent` logged
+in on `tty1` and `ttyS0`** and sec-2's three-session table was restored.
+`/work/doctrine` survived at `6287a4170` — `$HOME` is `/work/home`, a sibling of
+the checkout, so the delete is scoped.
+
+**`ASM-001` → validated.** A Ctrl-C'd baseline's sshd logged
+*"Received disconnect … disconnected by user"* and **the scope survived it**,
+build inside, session pinned in `closing`.
+
+*New, and not in the design:* a baseline leaves **two** agent sessions — the
+detached run (`closing`) and a **log tail** over a second ssh that stays
+`active` after its host client dies, because `tail -f` blocks without writing.
+Recorded as `mem.fact.oubliette.a-detached-baseline-leaves-two-agent-sessions`.
+
+*Not exercised:* `pam_nologin` (`IMP-011`) — a login arriving *during* a reset is
+still only detected, and no run here raced one.
+
+### 3 — `volume clone-from` and the scrub (`VH-3`, `VH-6`, `VH-7`)
+
+Host keys live at **`/work/ssh/`, on the volume**, named by `sshd_config`'s
+`HostKey` — which is why a clone inherits identity. `d`'s
+`SHA256:3DFzu…` became `a`'s `SHA256:DxNDz…` after the scrub; credentials went
+from `d`'s 921/41157 bytes to this host's 914/1001; `/work/doctrine` and
+`/work/baseline` carried over. The gate ran **scrub, marker removed, inject** in
+one invocation.
+
+`VH-6`: the clone is `microvm:kvm 644` and **`grep -c chown host/volume-root.nix`
+is 0** — there is no `chown` to have run; ownership comes from `asImageOwner`
+(`setpriv --reuid=microvm --regid=kvm --init-groups`). With `d`'s image replaced
+by a symlink to `/etc/shadow`, the copy failed `Permission denied` and left **no
+`capsule-work.img.clone` and no marker**.
+
+**`ASM-002` → validated.** `sshd`'s `ActiveEnterTimestamp` moved during the
+scrub and the scrub still returned 0 over that same admin session, not 255:
+`KillMode=process` replaced the listener and kept the established session.
+
+**`VH-7` did not fire**, and it was probed in isolation rather than merely
+observed not to happen: `ssh agent@guest true` — `waitAnswers`' exact shape —
+leaves no session at the gap the scrub occupies, read three times, with a
+`setsid sleep 60 &` control proving the read discriminates. The premise holds
+(a `closing` session **does** refuse, seen twice), so **`RV-004` `F-5` is sound
+in shape and wrong about this probe**. Recorded as
+`mem.fact.oubliette.a-closing-session-lives-as-long-as-its-work`.
+
+*Not exercised, and it is the remaining half of `F-5`:* `setup`'s
+`provisionSlot` push is a **heavier** probe than `true` and was never run this
+way. If any probe reproduces `F-5`, it is that one.
+
+*Not exercised:* the clone trap. `cp` refuses **before creating anything**, so
+the failed-copy case cannot see the trap — `volumeRootCases` says so and the live
+run agreed. **The trap's removal of a partial `.clone` is a suite-only
+guarantee** and should be stated that way, not counted as live-verified.
+
+### 4 — `alloc` and the free line (`VH-4`)
+
+Four samples. `alloc` filled for every stopped slot and `-` for the
+never-created; `a` tracked `3.3G → - → 261M → 6.8G` across the exercises. The
+free line moved 88G → 90G → 81G. **It is a whole-filesystem `df`, so a live
+capsule moves it**: the 9G drop against a 6.7G clone is `c` growing underneath.
+`CHR-013`'s two out-of-pool leftovers surfaced in every sample.
+
+### 5 — one volume operation at a time (`VH-5`)
+
+`/proc/locks` sampled passively (a shared lock of mine could have made the clone
+refuse spuriously) showed **two distinct exclusive holders**, one per clone run —
+independent of anything the program printed. `capsule e start` refused by reason
+twice against a real clone; `capsule a volume reset` refused on the same lock and
+printed **no** `next:` line, `set -e` having left first. `capsule e start`
+succeeded the moment the lock was free.
+
+*What the evidence covers (`STD-001`):* the `start` refusal was taken against a
+**real clone**; the `reset` refusal against a lock **held synthetically** by an
+unprivileged `flock -x`, because a 6.7 GiB copy gives ~17 s and the `sudo -k`
+prompt eats most of it. Same lock, same branch — but the reset half reads
+"refuses while the lock is held", not "refuses while a clone is running".
+
+### Other observations
+
+- **The marker invariant, live.** Two clones back to back; the marker kept the
+  **first** one's timestamp. `host/volume-root.nix` writes it *unless one is
+  already there*.
+- **Inject's two branches in one session.** Nothing skipped on `a`'s scrubbed
+  `$HOME`; both skipped as *already there* on `e`'s existing one.
+- **Unverified sub-claim for reconcile:** sec-4 step 5 says `capsule-seed`
+  "re-links the config files"; the reset `$HOME` held no symlinks. Either this
+  target declares none or they are conditional.
+- **`git` over the admin door fails** on an agent-owned checkout with
+  `detected dubious ownership` — read a checkout as `agent`, not root.
+
+### Terminal state
+
+`a` is a clone of `d` with a scrub marker pending, stopped; its next `start`
+scrubs and injects. `d` and `e` are stopped and unchanged — `d`'s image was
+restored byte-identical (owner, mode, size, allocated blocks, mtime) and
+verified before anything read from it. `c` untouched throughout.
+
 ## Harvest
 <!-- single-copy: updated in place each harvest; ids only, never restated content -->
 fresh-as-of: 2026-09-17 · started (PHASE-01..05 complete; RV-004 concluded; PHASE-06 is live exercises, and is the user's)

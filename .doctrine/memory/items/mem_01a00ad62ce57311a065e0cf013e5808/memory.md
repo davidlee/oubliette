@@ -16,3 +16,22 @@ grep and nothing contradicts either.
 status`, or follow the `exec` line to the inner store path.
 
 Cost a session, concluding the host was a version behind when it was current.
+
+**A third reading that agrees with the other two** (SL-002 PHASE-06, 2026-09-17).
+Inside the repo, the devshell's `capsule` and the module wrapper's **inner**
+store path can be the *same path* — and that reads as "the host is built from
+this source". It is not: it means the two copies are the same **build**, and if
+the devshell has not been re-entered since the system was built, both are stale
+together. Store-path equality between two copies says they agree, never that
+either matches the tree.
+
+This cost a wrong verdict in both directions in one session: first "the host is
+current" from the two copies agreeing, then "the rebuild did not land" from
+`readlink -f` on the wrapper, which contains none of the program's text.
+
+**The sound freshness read, in one line:**
+
+    P=$(grep -o '^exec /nix/store/[^ ]*' /run/current-system/sw/bin/capsule | awk '{print $2}')
+    grep -c '<a marker the tree has>' "$P"
+
+Better still, ask at the wire — the verb or flag either answers or it does not.

@@ -7,7 +7,7 @@ status = "active"
 title = "A fresh capsule has fresh ssh host keys at the same address"
 summary = "known_hosts refuses because the host is changed, not unknown, so accept-new does not fix it. guestSsh disables the check and keeps no record."
 created = "2026-08-16"
-updated = "2026-08-16"
+updated = "2026-09-17"
 
 [scope]
 paths = ["flake.nix"]

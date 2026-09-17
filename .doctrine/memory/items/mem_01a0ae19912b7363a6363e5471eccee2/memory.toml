@@ -1,0 +1,46 @@
+memory_uid = "mem_01a0ae19912b7363a6363e5471eccee2"
+memory_key = "mem.fact.oubliette.a-closing-session-lives-as-long-as-its-work"
+schema_version = 1
+memory_type = "fact"
+status = "active"
+title = "A closing logind session lives exactly as long as its work"
+summary = "State=closing agent sshd sessions refuse a reset-home, but ssh host true leaves none — its session is reaped before the next connection opens"
+created = "2026-09-17"
+updated = "2026-09-17"
+
+[scope]
+paths = ["vm/reset-home.nix", "host/cli.nix"]
+globs = []
+commands = ["capsule"]
+tags = ["gotcha"]
+workspace = "default"
+repo = "github.com/davidlee/oubliette"
+repo_id_kind = "remote"
+repo_id_confidence = "high"
+
+[git]
+anchor_kind = "checkout_state"
+commit = ""
+tree = "c76fc81b40ca37adb619be705ba46912211f8fac"
+ref_name = "refs/heads/main"
+checkout_state_id = "a598ea2abdd87689b6611bc8e533924d5ce140bffae65474ec73cb333d13bff7"
+base_commit = "0ab598b9f44f59d9500347594d8621dfe4d1afa1"
+verified_sha = ""
+normalizer = "forget.checkout.v1"
+
+[review]
+verification_state = "unverified"
+reviewed = ""
+review_by = ""
+
+[trust]
+trust_level = "high"
+
+[ranking]
+severity = "medium"
+weight = 0
+
+[[source]]
+kind = "slice"
+ref = "SL-002 PHASE-06 live exercise 2"
+

@@ -1,0 +1,46 @@
+memory_uid = "mem_01a0ae1991447051af57d597291fc6af"
+memory_key = "mem.fact.oubliette.a-detached-baseline-leaves-two-agent-sessions"
+schema_version = 1
+memory_type = "fact"
+status = "active"
+title = "A detached baseline leaves two agent sessions, not one"
+summary = "capsule <slot> baseline opens a second ssh session to tail the log; after Ctrl-C the run's session is closing and the tail's stays active"
+created = "2026-09-17"
+updated = "2026-09-17"
+
+[scope]
+paths = ["host/baseline.nix", "vm/reset-home.nix"]
+globs = []
+commands = ["capsule"]
+tags = ["gotcha"]
+workspace = "default"
+repo = "github.com/davidlee/oubliette"
+repo_id_kind = "remote"
+repo_id_confidence = "high"
+
+[git]
+anchor_kind = "checkout_state"
+commit = ""
+tree = "c76fc81b40ca37adb619be705ba46912211f8fac"
+ref_name = "refs/heads/main"
+checkout_state_id = "81390ba70ebc33d73c0c25e7f76b40eb1d38e8dab365fbb95135def4d2b57a49"
+base_commit = "0ab598b9f44f59d9500347594d8621dfe4d1afa1"
+verified_sha = ""
+normalizer = "forget.checkout.v1"
+
+[review]
+verification_state = "unverified"
+reviewed = ""
+review_by = ""
+
+[trust]
+trust_level = "high"
+
+[ranking]
+severity = "medium"
+weight = 0
+
+[[source]]
+kind = "slice"
+ref = "SL-002 PHASE-06 live exercise 2"
+
