@@ -299,9 +299,41 @@ status moves.
   fail. Carried to reconcile: `ASM-001` unsettled with `F-5` as a PHASE-06 STOP
   condition, `F-4`'s uncalled-guard gap, `F-7`'s seam.
 
+## PHASE-05 — status shows what a volume costs — 2026-09-17
+
+`alloc` after `disk`, and the `volumes:` line between the table and
+`perimeter`. Both are filesystem reads — `stat -c '%b * %B'` and
+`df --output=avail -B1`, the same two the root helper's fit check makes — so
+they need neither root nor the guest, and `alloc` is the one measured cell a
+**stopped** slot fills. Allocated, not apparent: it is the high-water mark, so
+`alloc` and the free line together predict the helper's refusal without running
+it.
+
+- **The parenthesis counts state *directories*, not images.** sec-6's rule
+  sentence says directories; its sample line words them "images" because on
+  this host both have one. A leftover with no image must still be seen
+  (`CHR-013`), so the noun went: `(2 outside the pool: capsule, capsule-b)`.
+  **Wording deviation from sec-6's sample — for reconcile.**
+- **`status` died on a host with no image root**, and `policyCases` caught it:
+  it takes the default `/var/lib/microvms` and runs in a sandbox that has none,
+  so `df` under `set -e` took the verb down. That is the devshell path on a
+  fresh machine, not a corner. The line now says what it found. `EX-5`/`VT-2`
+  appended while executing.
+- Four mutations, each read for *which* cases reddened: the parenthesis without
+  its declared-slot filter; `alloc` filled only for a running slot; apparent
+  size instead of allocated (a 4 GiB sparse image reads `4.0G` where the case
+  wants `0`); the absent-root guard removed.
+- **`RV-004` `F-7` did not bind.** Both additions are filesystem reads, so no
+  second unit-state seam was needed and `vmmState` was not touched.
+- `EX-3` + `VA-1`, live and read-only: `df /var/lib` is **92 GiB of 1.78 TiB,
+  95% used** (was 166 GiB / 91% on 2026-08-13). `EVD-009` supersedes `EVD-005`.
+  `capsule all status` read `alloc` for the three stopped slots — `a` 3.3G, `d`
+  6.8G, `e` 1.6G — `-` for the never-created ones, a free figure matching `df`
+  exactly, and the parenthesis surfaced `CHR-013`'s two leftovers.
+
 ## Harvest
 <!-- single-copy: updated in place each harvest; ids only, never restated content -->
-fresh-as-of: 2026-09-17 · started (PHASE-01..04 complete; RV-004 concluded and every finding landed; PHASE-05 next)
+fresh-as-of: 2026-09-17 · started (PHASE-01..05 complete; RV-004 concluded; PHASE-06 is live exercises, and is the user's)
 
 ### Produced
 - `design.md` sec-1..sec-8 — materialised from run `dr-01a0a2ae…`; all eight walked with the user, sec-3/4/5/7/8 revised for `RV-001` `F-1`..`F-5` (`075ead9`)
@@ -317,6 +349,7 @@ fresh-as-of: 2026-09-17 · started (PHASE-01..04 complete; RV-004 concluded and 
 - PHASE-03: `host/cli.nix` `volume` verb, `nameFrom`, start lock, `microvms`/`volumeControl`; `host/volume-cases.nix`; `hostPrograms.volumeRootHelper` — commits `2bd3ddd`, `814970d`
 - `RV-004` — code review of PHASE-02..04, seven findings with fix plans in their dispositions; `RV-005` is the reopened run's ledger — see `## RV-004`
 - PHASE-04: `host/cli.nix` `reset-home`, `scrubPending` in `work()`, `guestResetHome`, clone output; `docs/contract-assignment.md` clean-source line — see `## PHASE-04`
+- PHASE-05: `host/cli.nix` `allocOf`/`imageOf`/`volumes` + the `alloc` column; `host/volume-cases.nix`; `docs/probes.md` disk row; `EVD-009` — commits `f3eec1b`, `7f670dd` — see `## PHASE-05`
 - `RV-004`'s fixes, one commit per finding — `7259d03` (F-1, F-2: `resetHomeRefusal`), `bc05112` (F-6), `299f2c4` (F-3), `28bcead` (F-4: `vm/guest-path.nix`), `28c4a38` (F-5: PHASE-06 `VH-7`), `3fe9b19` (PHASE-02 `EX-6`/`VT-5`/`VA-2`, PHASE-04 `EX-6`/`EX-7`/`VT-3`/`VT-4`/`VA-3`), `461537b` (synthesis), `8cb44df` — see `## RV-004`
 
 ### Learned
@@ -331,6 +364,16 @@ fresh-as-of: 2026-09-17 · started (PHASE-01..04 complete; RV-004 concluded and 
 - mem.fact.oubliette.a-new-file-must-be-git-added-before-nix-sees-it — a dirty `git+file:` tree exposes tracked paths only
 
 ### Open
+- **The `RV-004` remediation belongs to no phase.** PHASE-04's recorded range
+  ends at `97de336` and PHASE-05's starts at `e1aec27`; the eight fix and doc
+  commits between them flipped no phase status, by the handover's own rule, so
+  nothing recorded them as a source delta. `host/cli.nix`, `host/volume-cases.nix`,
+  `vm/reset-home*.nix` and `vm/capsule.nix` all changed there and still read
+  *conformant*, because earlier ranges delivered those paths; only the one new
+  path, `vm/guest-path.nix`, shows — as **undelivered**. Left as it stands
+  rather than rewriting a completed phase's range: `record-delta` takes one
+  contiguous range per phase and the fixes amend two different phases. **For
+  `/audit` to reconcile**, and the reason the fix commits are itemised above.
 - `F-4`'s guard is pinned, but nothing pins that `vm/capsule.nix` *calls* it — needs a guest evaluated against a hostile `target` (a second NixOS eval in `just build`); for reconcile
 - `F-5`: whether the front end's own `waitAnswers`/`provisionSlot` session is still listed when the scrub reads — PHASE-06 `VH-7`, a STOP condition
 - `ASM-001` — a detached baseline keeps its logind session (live exercise 2, PHASE-06)
@@ -339,6 +382,7 @@ fresh-as-of: 2026-09-17 · started (PHASE-01..04 complete; RV-004 concluded and 
 - the `setpriv` drop under `sudo -k` on this host — no suite reaches it (PHASE-06 `VH-6`)
 - sec-7's seam table lacks `vmmState` — deviation recorded in `## PHASE-03`, for reconcile
 - sec-2's flowchart asks "door answers?"; the front end asks "has a door" — deviation in `## PHASE-04`, for reconcile
+- sec-6's sample free line words undeclared state directories "images"; the code counts directories, per the section's own rule sentence — deviation in `## PHASE-05`, for reconcile
 - a non-interactive root ssh finds `capsule-reset-home` on `PATH` — else 127 misreads as "predates" (live exercise 2)
 - `notHeld` fails open if `fuser` itself errors — noted in `## PHASE-01`, not filed
 - the real `loginctl` output against `agentSessions`'s parser — the suite's fake is an assumed shape (live exercise 2)

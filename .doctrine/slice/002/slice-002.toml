@@ -93,6 +93,11 @@ selector = "CLAUDE.md"
 intent = "design-target"
 note = "SL-002 design sec-8 code impact"
 
+[[selector]]
+selector = "vm/guest-path.nix"
+intent = "design-target"
+note = "RV-004 F-4: the eval guard over target-derived paths spliced into the guest's root rm"
+
 [[relation]]
 label = "governed_by"
 target = "POL-003"
