@@ -1,0 +1,46 @@
+memory_uid = "mem_01a0ae41cc4477d19548a9ff425ad0fc"
+memory_key = "mem.fact.oubliette.reconcile-edits-are-invisible-to-the-design-run"
+schema_version = 1
+memory_type = "fact"
+status = "active"
+title = "A reconcile edit to design.md is invisible to the design run that generated it"
+summary = "Direct edits to design.md at /reconcile live only in the file; the locked run still reports zero changes, and materialise renders from the run"
+created = "2026-09-17"
+updated = "2026-09-17"
+
+[scope]
+paths = [".doctrine/slice/002/design.md"]
+globs = []
+commands = ["doctrine design materialise", "doctrine design show"]
+tags = ["gotcha", "doctrine"]
+workspace = "default"
+repo = "github.com/davidlee/oubliette"
+repo_id_kind = "remote"
+repo_id_confidence = "high"
+
+[git]
+anchor_kind = "commit"
+commit = "9f5568e532ef163f2122a4aa024a917268fcb5de"
+tree = "3bda68de63b857311298d8385f55f07b0bce53d9"
+ref_name = "refs/heads/main"
+checkout_state_id = ""
+base_commit = "9f5568e532ef163f2122a4aa024a917268fcb5de"
+verified_sha = ""
+normalizer = ""
+
+[review]
+verification_state = "unverified"
+reviewed = ""
+review_by = ""
+
+[trust]
+trust_level = "high"
+
+[ranking]
+severity = "medium"
+weight = 0
+
+[[source]]
+kind = "review"
+ref = "RV-006"
+
