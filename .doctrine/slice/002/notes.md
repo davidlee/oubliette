@@ -258,6 +258,11 @@ status moves.
   command. Cases: the success case sees the line, the `CASE_ROOT_FAIL` case does
   not. Mutation: move the line above `volumeRoot reset` — only the negative case
   reddens, which is what makes it discriminate.
+- `F-3`. The `manager-early` row was spelled `Service=login`, so the getty
+  exclusion passed it and the case was green whatever the `manager-early` clause
+  did. Row is now `systemd-user`, which is what a real one is. Read both ways:
+  deleting the clause with the old row leaves the case green; with the new row
+  it goes red. Test-only — `vm/reset-home.nix` is unchanged.
 
 ## Harvest
 <!-- single-copy: updated in place each harvest; ids only, never restated content -->

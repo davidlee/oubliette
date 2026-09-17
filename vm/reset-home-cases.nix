@@ -169,7 +169,10 @@ in
     ck "a session that could not be read refuses" 3 "$rc"
 
     fresh
-    echo '7 - login manager-early active' >>"$CASE_SESSIONS"
+    # `Service=systemd-user`, not `login`: a real manager-early session is root's
+    # user manager (plan.md's slot-b table), and a row spelled `login` is passed
+    # by the getty exclusion whatever the manager-early clause does (RV-004 F-3).
+    echo '7 - systemd-user manager-early active' >>"$CASE_SESSIONS"
     run
     ck "a manager-early session is not work" 0 "$rc"
 

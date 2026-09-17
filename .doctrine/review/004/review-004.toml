@@ -59,7 +59,7 @@ response = "No code change; this is a verification gap. Add to PHASE-06's live e
 
 [[finding]]
 id = "F-6"
-status = "answered"
+status = "verified"
 severity = "minor"
 title = "expected a volume reset's success to name what a fresh volume breaks for the operator, as clone-from does; observed it prints only the helper's line"
 detail = """The reset branch (host/cli.nix:1616-1623) ends at 'volumeRoot reset "$name"'. A reset deletes the guest's ssh host key with the volume, so the next start has a new key at the same address, and the operator's own door, which checks host keys, refuses (mem.fact.oubliette.fresh-capsule-fresh-host-keys; design scope 'Fresh host keys already have a home: just reset-known-hosts <slot>'). clone-from prints 'next: just reset-known-hosts <dest>; capsule <dest> start' (host/cli.nix:1671). The same need goes unmentioned for reset, which is S4, the more frequent of the two."""
