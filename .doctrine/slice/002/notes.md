@@ -292,10 +292,16 @@ status moves.
   `VT-4`/`VA-3` for the shared refusal and the reset's next step. `doctrine
   slice verify-vt SL-002` passes every VT on PHASE-01..04; PHASE-05's `VT-1`
   fails because PHASE-05 has not run.
+- **`RV-004` concluded**, all seven findings terminal (F-1..F-6 verified, F-7
+  tolerated-verified). `## Synthesis` on the prose ledger: **acceptable** — the
+  marker invariant, the name gate and the suites that read the shipped image
+  held; what the pass found was operator guidance and one case that could not
+  fail. Carried to reconcile: `ASM-001` unsettled with `F-5` as a PHASE-06 STOP
+  condition, `F-4`'s uncalled-guard gap, `F-7`'s seam.
 
 ## Harvest
 <!-- single-copy: updated in place each harvest; ids only, never restated content -->
-fresh-as-of: 2026-09-15 · started (PHASE-01..04 complete; design relocked at revision 74 over RV-004 F-1/F-2)
+fresh-as-of: 2026-09-17 · started (PHASE-01..04 complete; RV-004 concluded and every finding landed; PHASE-05 next)
 
 ### Produced
 - `design.md` sec-1..sec-8 — materialised from run `dr-01a0a2ae…`; all eight walked with the user, sec-3/4/5/7/8 revised for `RV-001` `F-1`..`F-5` (`075ead9`)

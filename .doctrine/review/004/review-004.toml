@@ -8,6 +8,7 @@ title = "code review of SL-002 PHASE-02 to PHASE-04"
 facet     = "code-review"     # scope|design|plan|phase-plan|implementation|code-review|reconciliation
 raiser    = "raiser"
 responder = "responder"
+concluded = true
 
 [target]                   # the outbound `reviews` edge (ADR-004): RV-NNN ──reviews──▶ <ref>
 ref   = "SL-002"
