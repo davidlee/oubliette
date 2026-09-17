@@ -1,0 +1,46 @@
+memory_uid = "mem_01a0ad852c8d7fa3945a9932223c8f6b"
+memory_key = "mem.fact.oubliette.a-new-file-must-be-git-added-before-nix-sees-it"
+schema_version = 1
+memory_type = "fact"
+status = "active"
+title = "A dirty git+file: flake sees only tracked files"
+summary = "A new .nix file is invisible to nix build until git add, even with the tree dirty and uncommitted."
+created = "2026-09-17"
+updated = "2026-09-17"
+
+[scope]
+paths = ["flake.nix"]
+globs = []
+commands = ["nix build"]
+tags = ["gotcha"]
+workspace = "default"
+repo = "github.com/davidlee/oubliette"
+repo_id_kind = "remote"
+repo_id_confidence = "high"
+
+[git]
+anchor_kind = "checkout_state"
+commit = ""
+tree = "004d223042b0ffbc76ce4262d1412801c7253d39"
+ref_name = "refs/heads/main"
+checkout_state_id = "a345ef202f7c193da15f475fb29441b6ff83829e524d6e136ef4605cc92819e6"
+base_commit = "8cb44df7b04786deddbdbd21fbf1d7d23a78ce17"
+verified_sha = ""
+normalizer = "forget.checkout.v1"
+
+[review]
+verification_state = "unverified"
+reviewed = ""
+review_by = ""
+
+[trust]
+trust_level = "high"
+
+[ranking]
+severity = "medium"
+weight = 0
+
+[[source]]
+kind = "session"
+ref = "SL-002 RV-004 F-4, 2026-09-17"
+

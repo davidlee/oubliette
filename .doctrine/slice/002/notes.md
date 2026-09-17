@@ -317,6 +317,7 @@ fresh-as-of: 2026-09-17 · started (PHASE-01..04 complete; RV-004 concluded and 
 - PHASE-03: `host/cli.nix` `volume` verb, `nameFrom`, start lock, `microvms`/`volumeControl`; `host/volume-cases.nix`; `hostPrograms.volumeRootHelper` — commits `2bd3ddd`, `814970d`
 - `RV-004` — code review of PHASE-02..04, seven findings with fix plans in their dispositions; `RV-005` is the reopened run's ledger — see `## RV-004`
 - PHASE-04: `host/cli.nix` `reset-home`, `scrubPending` in `work()`, `guestResetHome`, clone output; `docs/contract-assignment.md` clean-source line — see `## PHASE-04`
+- `RV-004`'s fixes, one commit per finding — `7259d03` (F-1, F-2: `resetHomeRefusal`), `bc05112` (F-6), `299f2c4` (F-3), `28bcead` (F-4: `vm/guest-path.nix`), `28c4a38` (F-5: PHASE-06 `VH-7`), `3fe9b19` (PHASE-02 `EX-6`/`VT-5`/`VA-2`, PHASE-04 `EX-6`/`EX-7`/`VT-3`/`VT-4`/`VA-3`), `461537b` (synthesis), `8cb44df` — see `## RV-004`
 
 ### Learned
 - mem.fact.oubliette.design-apply-disposes-through-checkpoints — how the run takes dispositions
@@ -326,9 +327,12 @@ fresh-as-of: 2026-09-17 · started (PHASE-01..04 complete; RV-004 concluded and 
 - mem.pattern.oubliette.a-mutation-must-reach-the-case — read which cases went red, not the exit status; a mutant can also die at Nix eval
 - mem.fact.oubliette.errexit-skips-a-captured-function — a failed listing inside `$(...)` reads as empty; `|| return`
 - mem.pattern.oubliette.fake-guest-tools-on-path — tools left out of `runtimeInputs` let a suite run the shipped store path; a stub `sudo` for host/cli.nix (PHASE-03)
+- mem.fact.oubliette.git-checkout-restores-more-than-the-mutation — restoring a mutation that way discards an uncommitted fix in the same file
+- mem.fact.oubliette.a-new-file-must-be-git-added-before-nix-sees-it — a dirty `git+file:` tree exposes tracked paths only
 
 ### Open
-- `RV-004` `F-1`..`F-6` — dispositioned, not yet fixed; the design text for `F-1`/`F-2`/`F-6` is locked (revision 74), the code is next
+- `F-4`'s guard is pinned, but nothing pins that `vm/capsule.nix` *calls* it — needs a guest evaluated against a hostile `target` (a second NixOS eval in `just build`); for reconcile
+- `F-5`: whether the front end's own `waitAnswers`/`provisionSlot` session is still listed when the scrub reads — PHASE-06 `VH-7`, a STOP condition
 - `ASM-001` — a detached baseline keeps its logind session (live exercise 2, PHASE-06)
 - `Service`/`Class` of an `agent` ssh login and of a detached baseline — unread (live exercise 2)
 - `ASM-002` — restarting guest sshd keeps the admin session (live exercise 3, PHASE-06)
