@@ -1,15 +1,15 @@
 schema = "doctrine.backlog"
 version = 1
 
-id = 3
-slug = "plan-d-d7-and-d2s-dynamic-half-per-assignment-flavour"
-title = "Plan D D7 and D2's dynamic half - per-assignment flavour"
+id = 13
+slug = "nothing-reports-a-slot-booting-an-older-image-than-the-flake-declares"
+title = "Nothing reports a slot booting an older image than the flake declares"
 kind = "improvement"
 status = "open"
 resolution = ""                 # seeded empty so `backlog edit` sets it in place
-created = "2026-08-16"
-updated = "2026-08-16"
-tags = []
+created = "2026-09-17"
+updated = "2026-09-17"
+tags = ["area:cli"]
 
 # outbound-only (ADR-004). Cross-kind structural edges (e.g. references with a role
 # — `originates_from` for backlog→slice provenance — governed_by, related, drift) are
@@ -18,5 +18,5 @@ tags = []
 # them. The dep/seq axes below stay typed (they carry per-edge payloads).
 [relationships]
 needs    = ["IMP-012"]                   # item→item hard prerequisite
-after    = []                   # item→item soft sequence: { to, rank? }
+after    = [{ to = "IMP-009", rank = 0 }]                   # item→item soft sequence: { to, rank? }
 triggers = []                   # watched source globs: { globs, note? }
