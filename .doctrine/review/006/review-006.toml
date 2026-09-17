@@ -1,0 +1,228 @@
+id    = 6
+slug  = "closure-audit-of-sl-002"
+title = "closure audit of SL-002"
+# no status — a review's status is DERIVED from its findings (ADR-007 D-C8), so
+# it is never stored (the storage rule forbids derived data in authored files).
+
+[review]
+facet     = "reconciliation"     # scope|design|plan|phase-plan|implementation|code-review|reconciliation
+raiser    = "raiser"
+responder = "responder"
+
+[target]                   # the outbound `reviews` edge (ADR-004): RV-NNN ──reviews──▶ <ref>
+ref   = "SL-002"
+
+[[finding]]
+id = "F-1"
+status = "verified"
+severity = "major"
+title = "docs/contract-target.md does not state the format constraint vm/guest-path.nix now enforces on target.volumePath"
+detail = """
+Expected: the target contract states every constraint a repo must satisfy to be confined here (CLAUDE.md: 'Update them in the same commit as anything that moves the boundary'; POL-002's surface is docs/contract-target.md).
+Observed: vm/capsule.nix:48-58 puts target.volumePath (via home) and every scrubPaths entry through vm/guest-path.nix, which throws unless the value matches ^/[A-Za-z0-9._/@+-]+$. docs/contract-target.md:77 still describes volumePath with no format requirement, and nothing in that file mentions the guard. A target declaring volumePath = "/work dir" — legal before 28bcead — now fails guest eval with a throw whose text names vm/capsule.nix, a file the target's author does not own and the contract never points at.
+Same omission, lesser: a target may now rely on volume reset-home deleting exactly <volumePath>/home and on a clone's scrub deleting every setup.nix dest plus every services.openssh.hostKeys path; the contract's $HOME row (line 274) says none of it.
+Evidence: target.nix:37 volumePath = "/work"; vm/capsule.nix:31 work = target.volumePath; vm/guest-path.nix plain regex; grep of docs/contract-target.md for volumePath|plain absolute|scrub returns lines 59/77/95/123/274/275/281, none constraining the value."""
+disposition = "fix-now"
+response = """
+Fixed in this audit. docs/contract-target.md's volumePath row now states the constraint and why it exists — 'Must match ^/[A-Za-z0-9._/@+-]+$ — absolute, and nothing a shell reads as anything but a path. It is spliced unquoted into capsule-reset-home's rm as root (vm/guest-path.nix), so a value carrying a space or a glob character would word-split into paths nobody named; a value that does not match throws at guest eval rather than building.' The $HOME row in 'What the capsule supplies back' now says $HOME is a sibling of the checkout rather than a parent, which is what a target relies on when volume reset-home deletes it and leaves guestPath, the caches and <volumePath>/baseline alone.
+Not written there: the setup.nix dests and the openssh hostKeys paths that make up the rest of scrubPaths. Those are the host's declarations, not the target's, so they do not belong in the target contract; docs/contract-assignment.md already carries the clean-source half.
+just check green after the edit. The matching sec-8 code-impact entry is F-2's, not this one's."""
+
+[[finding]]
+id = "F-2"
+status = "verified"
+severity = "major"
+title = "the RV-004 remediation is recorded against no phase, so vm/guest-path.nix reads undelivered"
+detail = """
+Expected: every commit that landed slice source is inside some phase's recorded boundary, so slice conformance reads the tree the slice actually built.
+Observed: .doctrine/state/slice/002/boundaries.toml records PHASE-04 as 6d101b0..97de336 and PHASE-05 as e1aec27..7f670dd. The eight RV-004 fix commits (7259d03 F-1/F-2, bc05112 F-6, 299f2c4 F-3, 28bcead F-4, 28c4a38 F-5, 3fe9b19 criteria, 461537b synthesis, 8cb44df conclude) sit between them and flipped no phase status, so no row covers them. doctrine slice conformance SL-002 therefore reports vm/guest-path.nix — a file that shipped at 28bcead and is imported by vm/capsule.nix:48 — as undelivered; host/cli.nix, host/volume-cases.nix, vm/reset-home.nix and vm/reset-home-cases.nix hide the same gap because earlier ranges already delivered those paths.
+Sizing for the repair: git diff --name-only a12865e 8cb44df (non-.doctrine) is exactly the six remediation paths and nothing else. Widening PHASE-04 to 6d101b0..8cb44df is the only shape record-delta accepts (one contiguous range, UPSERT by phase) and additionally sweeps in README.md, docs/contract-doctrine.md and flake.lock from the six unrelated commits in the window (a9d1396..a12865e)."""
+disposition = "verified"
+response = """
+Confirmed, both halves, and both go to the reconciliation brief rather than being fixed here — sec-8 is the design's prose and the selector registry is the slice's structured tier, and /reconcile is the sole writer of reconciled truth.
+(a) vm/guest-path.nix: a per-slice direct edit adding the row to sec-8's code-impact table. RV-004 F-4's 'touches the design? no' was a reading of sec-4's prose, and sec-8's table is a different question.
+(b) host/policy-cases.nix: a direct edit adding the row, plus doctrine slice selector add — the load-bearing half, since conformance computes its declared side from design-target selectors and host/*-cases.nix is scope-relevant. A prose-only fix would leave it in the undeclared cell. Its intent line should say what it is: policyCases caught status dying under set -e on a host with no image root, which is the devshell path on a fresh machine."""
+
+[[finding]]
+id = "F-3"
+status = "verified"
+severity = "major"
+title = "PHASE-06's boundary row covers an unrelated chore and excludes PHASE-06's own commit"
+detail = """
+Expected: a phase's recorded range is the range that phase landed.
+Observed: boundaries.toml records PHASE-06 as 421392b..0ab598b. git diff --name-only 421392b 0ab598b is one file, justfile, changed by 0ab598b 'chore: add update-system just recipe' — work that belongs to no slice. PHASE-06's actual commit, fdfad31 'feat: five live exercises', is one commit later and is outside the row; git diff --name-only 0ab598b fdfad31 is .doctrine-only, which is correct for an evidence-only phase.
+So the registry currently attributes an unrelated justfile change to SL-002 and attributes none of PHASE-06's evidence to PHASE-06. The conformant cell is unaffected — justfile is already delivered by PHASE-01, PHASE-02 and PHASE-03's ranges — so the cost is attribution, not a masked gap. Found by reading boundaries.toml against git log --reverse 2dd93e79^..HEAD rather than by conformance, which cannot see a wrong range."""
+disposition = "verified"
+response = """
+Confirmed, and it is the registry rather than the work that is wrong — every one of the eight commits is green, reviewed on RV-004 and itemised in notes.md's Harvest. Goes to the reconciliation brief naming doctrine slice record-delta, not a prose edit: slice conformance reads boundaries.toml and nothing else.
+Recommended repair, with its cost stated so /reconcile is choosing rather than discovering: widen PHASE-04 to --start 6d101b0 --end 8cb44df. record-delta takes one contiguous range and UPSERTs by phase, so this is the only shape available, and it over-attributes — the window also holds six unrelated commits (a9d1396..a12865e) which add README.md, docs/contract-doctrine.md and flake.lock to the undeclared cell, each dispositionable as exactly that. PHASE-04 is the right phase of the two the fixes amend: F-1/F-2/F-6 are its own, and only F-3/F-4 reach back to PHASE-02.
+Rejected alternatives: assigning the range to PHASE-06 (attributes PHASE-02 and PHASE-04's fixes to an evidence-only phase — a worse lie than the current gap); leaving it (conformance stays red for this slice with no record of why, which is what the handover called papering). Either way the over-attribution belongs in notes.md beside the range, so the next reader of boundaries.toml is not misled."""
+
+[[finding]]
+id = "F-4"
+status = "verified"
+severity = "minor"
+title = "design sec-8's code-impact table omits two paths that shipped, and one of them has no selector"
+detail = """
+Expected: sec-8's code-impact table is the closed list of what the slice changes, and every path it names carries a design-target selector so conformance can see it.
+Observed, two omissions:
+(a) vm/guest-path.nix — new at 28bcead for RV-004 F-4 — is absent from the table. F-4 was disposed fix-now with 'touches the design? no', which was right about sec-4's text and wrong about sec-8's list: a new file in vm/ is code impact. It does carry a design-target selector (added with the F-4 intent), so this is a prose gap only.
+(b) host/policy-cases.nix — changed in PHASE-05 for the absent-image-root guard, because status's df under set -e took the verb down on a host with no image root — is absent from the table and carries no design-target selector. host/*-cases.nix matches it, but that selector is scope-relevant, which conformance does not read as declared. It is the single non-.doctrine entry in conformance's undeclared cell.
+Evidence: design.md sec-8 table, lines 715-731; doctrine slice selector list SL-002; doctrine slice conformance SL-002 undeclared cell."""
+disposition = "verified"
+response = """
+Confirmed and unambiguous — this one costs nothing to repair. The reconciliation brief names doctrine slice record-delta SL-002 PHASE-06 --start 0ab598b --end fdfad31, which is the phase's own evidence commit and touches .doctrine only, correct for a phase that produced no code.
+The row it replaces, 421392b..0ab598b, covers exactly 0ab598b 'chore: add update-system just recipe' — work belonging to no slice. justfile is already delivered by PHASE-01, PHASE-02 and PHASE-03's ranges, so no conformant cell moves and nothing was masked; the whole cost was attribution.
+Worth keeping as a pattern: conformance cannot see a wrong range, only a missing path. Reading boundaries.toml against git log --reverse over the slice's span is the check that finds this class, and it is cheap."""
+
+[[finding]]
+id = "F-5"
+status = "verified"
+severity = "minor"
+title = "design review_pass STALE is a coverage snapshot the last disposal did not refresh, not a review gap"
+detail = """
+Expected: design show --format status, sections_outstanding_review and changes_since_baseline agree about whether the locked design has been reviewed at its current content.
+Observed: they disagree, and the flag is the one that is wrong about what matters. [review.pass].covered in .doctrine/state/slice/002/design.toml holds sec-2=2359f46e, sec-5=b61621ca, sec-7=d2a846d5, sec-8=58ea2323 — the attestation set as it stood at the revision-58 disposal. The four sections were revised at revision 63 (RV-004 F-1/F-2/F-6), re-attested at revision 71 as att-15..att-18 with fingerprints f9e21c1c / f9cb17c6 / ab675c8d / 83b41b58, and re-accepted: cpa-design-accepted's covered set matches the current eight exactly, and every section reads review=current. The revision-72 review_disposed updated [review.pass].review to RV-005 but carried the revision-58 covered snapshot forward unchanged.
+So the STALE reading is computed correctly from an input the last write left stale. What the audit leans on — eight current attestations and a user-acceptance act whose basis names F-1, F-2 and F-6 by their fixes — covers the current text. The lock is what it looks like. The defect is in the doctrine CLI's review-disposed write, which is not this repo's code."""
+disposition = "tolerated"
+response = """
+The flag is real, correctly computed, and not about what it appears to be about — so the attestation the audit leans on stands, and nothing in this repo is edited for it.
+Settled from the run's own records: [review.pass].covered holds the revision-58 attestation set (sec-2=2359f46e, sec-5=b61621ca, sec-7=d2a846d5, sec-8=58ea2323). Those four sections were revised at revision 63 for RV-004 F-1/F-2/F-6, re-attested at revision 71 as att-15..att-18 at the fingerprints the sections carry now, and the user re-accepted them — cpa-design-accepted's covered set matches the current eight exactly, and its basis names the three fixes. The revision-72 review_disposed updated [review.pass].review to RV-005 and left the covered snapshot at revision 58's.
+So 'the recorded pass does not cover current content' is true of the snapshot and false of the review: RV-005 was concluded with no findings against the revised text, which is the pass the design lock rests on. Tolerated rather than followed up because the defect is in the doctrine CLI's review-disposed write, in another repo, and oubliette cannot fix it; recorded here so the next audit of this run does not re-derive it. Worth reporting upstream with this run as the reproduction.
+The audit does not lean on the flag. It leans on eight current attestations and a human acceptance act, which is stronger evidence than the scalar either way."""
+
+[[finding]]
+id = "F-6"
+status = "verified"
+severity = "minor"
+title = "the eval guard is pinned; nothing pins that vm/capsule.nix calls it"
+detail = """
+Expected: a check that exists to refuse a hostile value is verified at the point it would refuse one.
+Observed: resetHomeCases reads five builtins.tryEval verdicts straight off guest-path.nix (plain / spaced / globbed / relative / expression) and asserts them in the shell, and separately asserts shippedPlain over shipped.scrubPaths ++ [guest.users.users.agent.home]. Both hold with the guestPath calls deleted from vm/capsule.nix:50-57: the first imports the function directly, and the second only says this host's values are plain, which they are either way. So the mutation that matters — dropping the call — reddens nothing.
+This is the fourth-kind gap CLAUDE.md names: a suite runs a program's own text and never sees what is wrapped around it. Catching it needs the guest evaluated against a hostile target, which means mkVm parameterised by target and a second full NixOS eval in just build. RV-004 F-4's agreed fix plan was the function, and the cost was judged against a minor finding; the suite header (vm/reset-home-cases.nix:93-96) already says so."""
+disposition = "follow-up"
+response = """
+Confirmed, and it is owned future work rather than a fix — RSK-008, filed, tagged area:target, linked originates_from SL-002, likelihood low / impact high.
+Followed up rather than fixed now for the reason RV-004 F-4 gave and this audit agrees with: closing it needs mkVm parameterised by target and a second full NixOS eval in just build, which is a structural change to how the guest is built, on a repo where CLAUDE.md asks for judiciousness about evals. That is a slice's worth of work, not an audit's, and it is the wrong thing to improvise at closure.
+Not a tolerated: nothing about the gap is accepted. The guard is right, it is the only thing standing between a target-derived value and a root rm, and a refactor could delete its call with a green build. RSK-008 carries the mutation that proves the gap (drop the guestPath calls from vm/capsule.nix:50-57; nothing reddens) so the next attempt starts from a red.
+Not a blocker: this host's values are plain, resetHomeCases pins that they are, and the exposure needs a hostile or careless target.nix edit that no current target makes."""
+
+[[finding]]
+id = "F-7"
+status = "verified"
+severity = "minor"
+title = "six places where the design text no longer describes the shipped program"
+detail = """
+Expected: design.md is canonical for what shipped. Observed, six divergences, each re-read against the code rather than against the note that recorded it:
+(1) sec-7's seam table gives volumeControl's default as volumeRoot() alone; host/cli.nix:110-113 also defines vmmState() { unitState "$(unitOf "$1")"; } in the same seam. pkgs.systemd is in the front end's runtimeInputs, so without it a sandbox reads every unit as -- and no reset or clone-from could reach VT-2. Recorded at PHASE-03, raised as RV-004 F-7, disposed tolerated-verified and carried here.
+(2) sec-2's flowchart node A asks 'admin door answers?' and the prose says 'the admin door answers'; host/cli.nix:1780 tests door "$name" probe, a -S test on the socket — has a door, not answers. pkgs.openssh is in runtimeInputs, so a real answers() can never pass in a sandbox. A guest that does not answer behind a live door fails the ssh call and is reported with its status.
+(3) sec-2's ASM-001 bullet describes a detached baseline as keeping one session in closing. PHASE-06 exercise 2 read two: the detached run in closing, and a log tail over a second ssh that stays active after its host client dies because tail -f blocks without writing. Both refuse, so the rule holds; the account is incomplete.
+(4) sec-6's sample free line reads '(2 images outside the pool: capsule, capsule-b)'; the same section's rule sentence says state directories, and host/cli.nix:1109 prints ' (%d outside the pool: %s)' counting directories. CHR-013's leftovers include one with no image, which is why the noun went.
+(5) sec-6 calls the free figure df's avail without saying it is a whole-filesystem reading. PHASE-06 exercise 4 watched it move 88G → 90G → 81G, a 9G drop against a 6.7G clone, because capsule c was growing underneath. A reader predicting a clone's refusal from this line and a source's alloc needs to know the line is not stable.
+(6) sec-4 step 5 says restarting capsule-seed 'recreates $HOME owned by agent and re-links the config files', which reads as though the links are in $HOME. vm/capsule.nix:71-76 writes configLinks to ${work}/${path} — for this target /work/.cargo/config.toml — siblings of $HOME, not children. PHASE-06 saw no symlinks in the reset $HOME and recorded it as an unverified sub-claim; it is the expected result, and the wording is what misleads."""
+disposition = "verified"
+response = """
+All six confirmed against the code, not against the notes that recorded them. To the reconciliation brief as per-slice direct edits to design.md — one section each, no behaviour change, and none of them is the code being wrong:
+(1) sec-7 seam table — add the vmmState row. This is RV-004 F-7, tolerated-verified there on the understanding it would be reconciled here.
+(2) sec-2 flowchart node A and the prose above it — 'has a door', not 'answers'.
+(3) sec-2 ASM-001 bullet — a detached baseline leaves two sessions, the run in closing and a log tail that stays active. Both refuse, so the rule is unchanged; only the account is.
+(4) sec-6 sample free line — drop 'images' to match the section's own rule sentence and the code.
+(5) sec-6 — one sentence that the free figure is a whole-filesystem df and moves with any capsule on the host.
+(6) sec-4 step 5 — say the config links land under volumePath beside $HOME, not in it. This also settles notes.md's 'unverified sub-claim': the reset $HOME held no symlinks because none were ever there, which is the expected result.
+Recorded as design deviations rather than defects: in every case the shipped behaviour is the one the design would choose if asked again, and two of them (the door probe, the systemd seam) exist because pkgs.openssh and pkgs.systemd are in the front end's runtimeInputs and a sandbox cannot stub them — the boundary CLAUDE.md says to respect rather than work around."""
+
+[[finding]]
+id = "F-8"
+status = "verified"
+severity = "minor"
+title = "VH-5's reset half was taken against a synthetically held lock, not a running clone"
+detail = """
+Expected: VH-5 reads 'a start and a second reset refuse while a clone holds the lock, and succeed after'.
+Observed: the start half was taken against a real clone — capsule e start refused by reason twice while a 6.7 GiB copy ran, and succeeded the moment the lock was free, with /proc/locks sampled passively showing two distinct exclusive holders, one per clone run, independent of anything the program printed. The reset half was taken against a lock held by an unprivileged flock -x, because the clone gives about 17 seconds and the sudo -k password prompt eats most of it.
+Same lock file, same branch, same refusal text — but the evidence supports 'volume reset refuses while capsules.volumeLock is held exclusively', which is what volumeCases already pins, and not 'volume reset refuses while a clone is running', which is what VH-5 says. STD-001: the two are not the same claim, and the second is the one a reader takes from the criterion."""
+disposition = "tolerated"
+response = """
+Accepted, with the claim written down at the strength its evidence carries rather than at VH-5's.
+What VH-5 actually holds: the start half was taken against a real 6.7 GiB clone — capsule e start refused by reason twice and succeeded the moment the lock cleared, with /proc/locks sampled passively showing two distinct exclusive holders, one per clone run, independent of anything the program printed. That is the half that could have been a spurious pass and was not. The reset half holds 'volume reset refuses while capsules.volumeLock is held exclusively, and prints no next: line because set -e left first'.
+Why not re-run it: a clone gives about 17 seconds and sudo -k puts a password prompt in front of the reset, which eats most of them. Racing it reliably means either a much larger source image or defeating the prompt, and IMP-010's password-less grant is explicitly out of this slice's scope. The marginal claim bought is 'the same lock, held by a clone rather than by flock' — same file, same branch, same refusal text, already pinned by volumeCases against a fixture lock.
+The reconciliation brief carries the narrower wording into notes.md so the next reader of VH-5 does not read the criterion as the evidence. Not a follow-up: there is no owned work here, only a claim to state honestly."""
+
+[[finding]]
+id = "F-9"
+status = "verified"
+severity = "minor"
+title = "RV-004 F-5's remaining half is unprobed, and it is the heavier of the two paths"
+detail = """
+Expected: F-5 asked whether the front end's own ssh traffic, opened just before the scrub, is counted as work by the idle rule and makes the gate refuse its own clone.
+Observed: VH-7 answered start's half and only start's half. ssh agent@guest true — waitAnswers' exact shape — was run three times at the gap the scrub occupies and left no session, with a setsid sleep 60 & control proving the read discriminates; the premise held, since a closing session does refuse, seen twice. setup's provisionSlot push is a heavier probe — it moves a packfile rather than exiting immediately — and was never run this way. It is the only path left that could reproduce F-5, and a warm start (clone-from then setup) is exactly the sequence DEC-006 says is the intended use.
+The gate is fail-safe when it fires: an unscrubbed clone is refused, not injected. The cost of F-5 being real on this path is a warm start that cannot complete without a stop."""
+disposition = "follow-up"
+response = """
+Confirmed and filed as CHR-014, tagged area:cli, linked originates_from SL-002 — owned work with a named probe, not an accepted gap.
+Followed up rather than fixed because it is an exercise on a live host with root and a real guest, which is PHASE-06's kind of work on a slice whose phases are closed. It needs a clone onto a stopped slot, a setup with a real ref, and a loginctl read timed to the gate's call — the user's to run, not an audit's.
+CHR-014 carries the shape and the stakes: a closing agent sshd session at that moment means the idle rule counts the front end's own traffic, which reopens the design rather than getting patched in code. Fail-safe either way — the gate refuses rather than injecting onto an unscrubbed clone — so the cost of F-5 being real on this path is a warm start that cannot complete without a stop, which is why it is not a blocker on SL-002's closure.
+What VH-7 did settle is kept at its own strength: start's waitAnswers leaves no session, probed three times with a control that proved the read discriminates, and the premise holds because a closing session does refuse. F-5 is sound in shape and wrong about that probe."""
+
+[[finding]]
+id = "F-10"
+status = "verified"
+severity = "nit"
+title = "the clone trap's removal of a partial .clone is a suite-only guarantee, and is stated as one"
+detail = """
+Expected: an audit does not count a guarantee as live-verified because an exercise in its neighbourhood passed.
+Observed: it does not, and the record already says so in both places. host/volume-root.nix's EXIT trap removes a partial capsule-work.img.clone, but cp refuses before creating anything when it cannot read the source, so the failed-copy case never reaches the trap. design.md sec-8's volumeRootCases list states it inline ('cp refuses before creating anything, so this case cannot see the trap'), and a companion case drives a post-copy failure instead — the owner stub refusing the chmod — which does reach it. VH-6's live run agreed: d's image replaced by a symlink to /etc/shadow gave Permission denied, no capsule-work.img.clone and no marker.
+Raised so the disposition is on the ledger rather than only in the notes, since VH-6 passing is the obvious thing to round up."""
+disposition = "aligned"
+response = """
+Correct, and already stated as such in both places it needs to be — no change.
+design.md sec-8's volumeRootCases list says it inline: 'clone whose copy cannot read its source exits non-zero and writes no marker; cp refuses before creating anything, so this case cannot see the trap'. A companion case drives a post-copy failure instead — the owner stub refusing the chmod — which does reach the EXIT trap and pins that no capsule-work.img.clone survives. notes.md PHASE-06 exercise 3 repeats the boundary for the live run.
+VH-6's live evidence is what it says and no more: d's image replaced by a symlink to /etc/shadow gave Permission denied, no capsule-work.img.clone and no marker — a copy that never started, so nothing about the trap. Raised so the disposition is on the ledger, because a passing VH-6 beside a trap is exactly the shape an audit rounds up."""
+
+[[finding]]
+id = "F-11"
+status = "verified"
+severity = "minor"
+title = "notHeld fails open if fuser itself errors, in the one program that acts as root"
+detail = """
+Expected: the check that stands between a root rm/cp and an image somebody is using refuses when it cannot answer.
+Observed: host/volume-root.nix:91-97 is if pids=$(fuser "$1" 2>/dev/null); then refuse; fi. fuser exits non-zero both for 'nothing holds it' and for its own failure, and the 2>/dev/null discards the difference, so any error reads as 'free' and the caller proceeds to delete or overwrite. The [ -e "$1" ] || return 0 above it removes the common error, a missing file; what remains is /proc unreadable to root, which is not a state this host is in.
+Reasoned through at PHASE-01 and never filed — design sec-2 calls this check 'the real guarantee', which is the language a fail-open should not sit behind. Symmetry with the rest of the program: every other refusal in it names its reason and exits non-zero."""
+disposition = "follow-up"
+response = """
+Confirmed, and filed as ISS-010, tagged area:cli, linked originates_from SL-002 — an issue rather than a risk because it is a defect in shipped code with a known fix, not an unverified property.
+Not fixed in this audit, deliberately. The fix is not the one-liner it looks like: distinguishing fuser's exits means reading its status and stderr, deciding which non-zero values are 'nothing holds it' versus 'could not answer', and proving the new branch with a stubbed fuser on PATH — and the stub has to be shown to be reached before the case is trusted (mem.pattern.oubliette.a-mutation-must-reach-the-case). That is red/green/refactor on a root program at closure time, which is the wrong moment for it.
+Not tolerated: the exposure is real, it sits in the check design sec-2 calls 'the real guarantee', and fail-open is the wrong direction for the last thing standing before a root rm or cp over a live image. What bounds it today is the [ -e ] test above it, which removes the common error, and a host whose /proc root can read. ISS-010 carries the fix shape.
+The record defect is separate and closed here: it was reasoned through at PHASE-01 and left in prose for two phases. Filed now."""
+
+[[finding]]
+id = "F-12"
+status = "verified"
+severity = "nit"
+title = "doctrine check gate resolves to a just recipe this project does not have"
+detail = """
+Expected: the audit's mandated gate step runs.
+Observed: doctrine check gate exits with 'error: justfile does not contain recipe gate'. .doctrine/doctrine.toml declares no [check] table, so the cadence falls through to its baked default just gate; this project's end-of-phase gate is the default recipe (just), whose own comment reads 'the gate: everything parses and is formatted'. doctrine check commit works, because its default just check exists.
+Not this slice's defect — it affects every audit in this repo — and the gate was run directly instead (just check ok, just exit 0). Raised because the next audit will hit it too and the fix is one line in either file."""
+disposition = "follow-up"
+response = """
+Confirmed, filed as CHR-015, tagged area:governance, linked originates_from SL-002 — and it belongs to the repo's conduct config, not to this slice.
+The gate did run: just check ok, and just exit 0 over build, hostModuleUnits, all fourteen *Cases suites and fmt. What failed is only the doctrine-side alias for it.
+CHR-015 records the two closures and recommends the [check] table in .doctrine/doctrine.toml over a gate: alias in the justfile, on this repo's own rule — the justfile already names the gate and a second spelling is a second thing to keep true. Not fixed in the audit because editing conduct config mid-closure changes the gate this very audit is being judged against."""
+
+[[finding]]
+id = "F-13"
+status = "verified"
+severity = "nit"
+title = "selector doctor's three redundancy findings would break conformance if acted on"
+detail = """
+Expected: an advisory the next reader can follow.
+Observed: doctrine slice selector doctor SL-002 reports host/volume-root.nix, host/volume-root-cases.nix and host/volume-cases.nix as redundant, subsumed by host/volume*.nix and host/*-cases.nix. The subsuming selectors are scope-relevant; the three it flags are design-target, and conformance computes its declared side from design-target only. Removing them would move three delivered paths from the conformant cell into undeclared.
+Recorded so the advisory is dispositioned rather than left for someone to act on later. Also noted for the same reader: eleven of conformance's fourteen undeclared paths are doctrine's own bookkeeping under .doctrine/, which no source selector should ever declare."""
+disposition = "tolerated"
+response = """
+Confirmed, and the advisory is the thing to leave alone. doctrine slice selector doctor reads redundancy structurally — host/volume*.nix subsumes host/volume-root.nix as a glob — without weighting intent, and conformance computes its declared side from design-target selectors only. The three it flags are design-target; the two that subsume them are scope-relevant. Acting on the advice would move host/volume-root.nix, host/volume-root-cases.nix and host/volume-cases.nix out of the conformant cell and into undeclared.
+Tolerated rather than fixed: the redundancy is load-bearing, and the right change would be to the doctor's weighting, which is another repo's code. Recorded here so the next reader of that report does not follow it.
+Same reader, same report: eleven of conformance's fourteen undeclared paths are .doctrine bookkeeping — knowledge records, memory items, RV-003's files, this slice's own design.md, notes.md, plan.toml and slice-002.toml. No source selector should ever declare those, so they are permanent noise in that cell rather than findings. Only host/policy-cases.nix is a real lead, and it is F-2's."""
+
+# Findings are append-only `[[finding]]` tables, added by `review raise` (PHASE-03).
+# Empty here at creation — a fresh review is Active, awaiting the raiser (D-C8).

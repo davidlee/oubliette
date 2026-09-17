@@ -1,0 +1,46 @@
+memory_uid = "mem_01a0ae2f20ad7511af53faf963f5e141"
+memory_key = "mem.fact.oubliette.review-pass-stale-is-a-snapshot-not-a-gap"
+schema_version = 1
+memory_type = "fact"
+status = "active"
+title = "A locked design run reports review_pass STALE from a snapshot the last disposal did not refresh"
+summary = "review_pass STALE can be true of [review.pass].covered and false of the review; the attestations and the acceptance act are what to read instead."
+created = "2026-09-17"
+updated = "2026-09-17"
+
+[scope]
+paths = [".doctrine/state/slice"]
+globs = []
+commands = ["doctrine design show"]
+tags = ["gotcha", "audit"]
+workspace = "default"
+repo = "github.com/davidlee/oubliette"
+repo_id_kind = "remote"
+repo_id_confidence = "high"
+
+[git]
+anchor_kind = "checkout_state"
+commit = ""
+tree = "612c39908d6409e3f25b4ca249555fa6e6bcaabd"
+ref_name = "refs/heads/main"
+checkout_state_id = "c4d3708466a34da594d75da8bdefd5f1204aa2c4c66a416396b65bc812832c4c"
+base_commit = "d39f4d6910a079b2e4f5f2c1acddb3e8c28f5522"
+verified_sha = ""
+normalizer = "forget.checkout.v1"
+
+[review]
+verification_state = "unverified"
+reviewed = ""
+review_by = ""
+
+[trust]
+trust_level = "medium"
+
+[ranking]
+severity = "none"
+weight = 0
+
+[[source]]
+kind = "review"
+ref = "RV-006"
+

@@ -325,6 +325,12 @@ it.
   wants `0`); the absent-root guard removed.
 - **`RV-004` `F-7` did not bind.** Both additions are filesystem reads, so no
   second unit-state seam was needed and `vmmState` was not touched.
+- **Lifted from the phase sheet: block accounting is not apparent size.** `%b *
+  %B` on a *fully written* file can exceed its apparent size by its indirect
+  blocks, so a case asserting an exact figure is flaky by construction. If
+  `3.0M` ever goes red, assert the **unit suffix** rather than loosening to "not
+  `-`", which would stop discriminating between a sparse image and a written
+  one — the distinction the column exists for.
 - `EX-3` + `VA-1`, live and read-only: `df /var/lib` is **92 GiB of 1.78 TiB,
   95% used** (was 166 GiB / 91% on 2026-08-13). `EVD-009` supersedes `EVD-005`.
   `capsule all status` read `alloc` for the three stopped slots — `a` 3.3G, `d`
@@ -470,6 +476,28 @@ prompt eats most of it. Same lock, same branch — but the reset half reads
 - **`git` over the admin door fails** on an agent-owned checkout with
   `detected dubious ownership` — read a checkout as `agent`, not root.
 
+### Which task satisfied which criterion
+
+Lifted from the phase sheet, which is disposable; `notes.md` said only "all
+seven".
+
+| criterion | verdict |
+| --- | --- |
+| `VH-1` | ✓ T2 — reset, cold start, `fuser` refusal by pid with the unit inactive, already-fresh |
+| `VH-2` | ✓ T1a–T1d — both autologins and the ssh row read, two refusals, idle success, gettys back |
+| `VH-3` | ✓ T4 — scrub before inject, this host's credentials, fingerprint differs, session survived |
+| `VH-4` | ✓ four samples (T0, T2, T4, T5) |
+| `VH-5` | ✓ T5 — with the caveat on which half saw a real clone |
+| `VH-6` | ✓ T3 (no `.clone`, no marker) + T4 (`microvm:kvm 644`, zero `chown` in the helper) |
+| `VH-7` | ✓ STOP condition did not fire; probed in isolation and does not reproduce |
+
+**The research baseline reports drift and was not refreshed, on purpose.**
+`doctrine slice research SL-002`'s additions are `design.md`, `plan.toml` and
+`plan.md` — research predates design, which is the normal order. Nothing in this
+phase load-bears on `research.md`, and its one finding this slice relied on (F4,
+that `$HOME` is not contract-derived) was already recorded as **wrong** in
+`## Design triage`. Noted rather than silently skipped.
+
 ### Terminal state
 
 `a` is a clone of `d` with a scrub marker pending, stopped; its next `start`
@@ -477,64 +505,100 @@ scrubs and injects. `d` and `e` are stopped and unchanged — `d`'s image was
 restored byte-identical (owner, mode, size, allocated blocks, mtime) and
 verified before anything read from it. `c` untouched throughout.
 
+## Audit — RV-006 — 2026-09-17
+
+The closure audit. Thirteen findings, **no blockers**; ledger `done`, every
+finding terminal. Reasoning is `RV-006`'s `## Synthesis`, the worklist for
+`/reconcile` is its `## Reconciliation Brief`. What is worth keeping here:
+
+- **The deleting held.** Every finding that touches behaviour is about a
+  **check**, not a delete: a guard whose call site nothing pins (`RSK-008`), a
+  `fuser` test that fails open (`ISS-010`), a probe that answered half its
+  question (`CHR-014`). The marker invariant, the name gate and the lock all
+  came through unmarked.
+- **A second registry defect, not in the handover's list.** PHASE-06's
+  `boundaries.toml` row was `421392b..0ab598b` — an unrelated `chore:` commit —
+  and excluded `fdfad31`, the phase's own. `justfile` was already delivered by
+  PHASE-01..03, so no cell moved and conformance could not see it. Found by
+  reading `boundaries.toml` against `git log --reverse`, which is now
+  `mem.pattern.oubliette.a-wrong-phase-range-is-invisible-to-conformance`.
+- **`review_pass STALE` is real about the snapshot and false about the review.**
+  `[review.pass].covered` holds the revision-58 attestation set; the revision-72
+  disposal updated the review id beside it and left it. All eight sections carry
+  a current attestation and `cpa-design-accepted` covers the current
+  fingerprints, so the lock is what it looks like. Recorded as
+  `mem.fact.oubliette.review-pass-stale-is-a-snapshot-not-a-gap`; the defect is
+  the doctrine CLI's, not this repo's.
+- **`docs/contract-target.md` was fixed in the audit** (`F-1`): `volumePath` now
+  states the `^/[A-Za-z0-9._/@+-]+$` constraint `vm/guest-path.nix` enforces and
+  why, and the `$HOME` row says it is a sibling of the checkout rather than a
+  parent. A guard that throws at guest eval is a supply requirement, and the
+  contract is where a target reads one.
+- **Six design deviations, not five.** The sixth settles `notes.md`'s own
+  unverified sub-claim: sec-4 step 5's "re-links the config files" reads as
+  though they are in `$HOME`; `vm/capsule.nix:71-76` writes them to
+  `${work}/${path}` — for this target `/work/.cargo/config.toml` — so the reset
+  `$HOME` holding no symlinks is the expected result, not a gap.
+- **`doctrine check gate` does not run in this repo** (`CHR-015`). The gate was
+  run directly: `just check` ok, `just` exit 0 over build, `hostModuleUnits`,
+  fourteen `*Cases` suites and fmt; `verify-vt` passes every `VT` on
+  PHASE-01..05.
+
 ## Harvest
 <!-- single-copy: updated in place each harvest; ids only, never restated content -->
-fresh-as-of: 2026-09-17 · started, 6/6 phases complete, lifecycle divergent — awaiting `/audit` · `fdfad31`
+fresh-as-of: 2026-09-17 · audit · `RV-006` done, no blockers, brief written — awaiting `/reconcile`
 
 ### Produced
-- `design.md` sec-1..sec-8 — materialised from run `dr-01a0a2ae…`; all eight walked with the user, sec-3/4/5/7/8 revised for `RV-001` `F-1`..`F-5` (`075ead9`)
+- `design.md` sec-1..sec-8 — materialised from run `dr-01a0a2ae…`; all eight walked with the user, relocked at revision 74/75 after `RV-004`
 - `DEC-001`..`DEC-011` — the design's rulings, all accepted
-- `IMP-008`, `IMP-009`, `IMP-010`, `CHR-013` — follow-ups filed during inquiry
-- commits `78a6460`, `10d277b`, `4379895`, `075ead9`, `e3a4a90` — nothing built; one spike on slot `b` (stopped and restored its gettys and agent slice)
-- `RSK-007`, `IMP-011` — filed while disposing `F-9` and `F-7`
-- `RV-001` `F-11` — found while planning (the user manager is a logind session); sec-2/4/8 revised through a reopened run, `RV-002` is that pass
-- `plan.toml`, `plan.md` — six phases; commits `95ccff1`, `c21a391`, `3a07fe7`
-- PHASE-01: `host/volume-root.nix`, `host/volume-root-cases.nix`, `capsules.nix` `volumeLock`/`volumeReserve`, the lock's tmpfiles rule — commits `6f33e38`, `661c13c`
-- `RV-003` `F-1` — found executing PHASE-01; sec-1/3/8 revised (`0bd060f`); PHASE-01 `EX-7`/`VT-5`/`VA-3` and PHASE-06 `VH-6` appended
-- PHASE-02: `vm/reset-home.nix`, `vm/reset-home-cases.nix`, `vm/capsule.nix` `resetHome` + `scrubPaths` — commit `87e682b`
-- PHASE-03: `host/cli.nix` `volume` verb, `nameFrom`, start lock, `microvms`/`volumeControl`; `host/volume-cases.nix`; `hostPrograms.volumeRootHelper` — commits `2bd3ddd`, `814970d`
-- `RV-004` — code review of PHASE-02..04, seven findings with fix plans in their dispositions; `RV-005` is the reopened run's ledger — see `## RV-004`
-- PHASE-04: `host/cli.nix` `reset-home`, `scrubPending` in `work()`, `guestResetHome`, clone output; `docs/contract-assignment.md` clean-source line — see `## PHASE-04`
-- PHASE-05: `host/cli.nix` `allocOf`/`imageOf`/`volumes` + the `alloc` column; `host/volume-cases.nix`; `docs/probes.md` disk row; `EVD-009` — commits `f3eec1b`, `7f670dd` — see `## PHASE-05`
-- `RV-004`'s fixes, one commit per finding — `7259d03` (F-1, F-2: `resetHomeRefusal`), `bc05112` (F-6), `299f2c4` (F-3), `28bcead` (F-4: `vm/guest-path.nix`), `28c4a38` (F-5: PHASE-06 `VH-7`), `3fe9b19` (PHASE-02 `EX-6`/`VT-5`/`VA-2`, PHASE-04 `EX-6`/`EX-7`/`VT-3`/`VT-4`/`VA-3`), `461537b` (synthesis), `8cb44df` — see `## RV-004`
-- PHASE-06: the five live exercises — no code; evidence only. `ASM-001` and `ASM-002` **validated**; all seven `VH` satisfied; `VH-7`/`F-5` did not fire. Commit `fdfad31` — see `## PHASE-06`
-- **EN-2/EN-3 were unmet at phase open** and the user rebuilt: the host ran a `capsule` 18 commits behind (no `resetHomeRefusal`, no `alloc`) and `a`'s guest closure was 7 August with no `capsule-*` in it. `just refresh-build a` kept the volume
+- `plan.toml`, `plan.md` — six phases
+- PHASE-01: `host/volume-root.nix`, `host/volume-root-cases.nix`, `capsules.nix` `volumeLock`/`volumeReserve`, the lock's tmpfiles rule — `6f33e38`, `661c13c`
+- PHASE-02: `vm/reset-home.nix`, `vm/reset-home-cases.nix`, `vm/capsule.nix` `resetHome` + `scrubPaths` — `87e682b`
+- PHASE-03: `host/cli.nix` `volume` verb, `nameFrom`, start lock, `microvms`/`volumeControl`; `host/volume-cases.nix`; `hostPrograms.volumeRootHelper` — `2bd3ddd`, `814970d`
+- PHASE-04: `host/cli.nix` `reset-home`, `scrubPending` in `work()`, `guestResetHome`, clone output; `docs/contract-assignment.md` — see `## PHASE-04`
+- PHASE-05: `host/cli.nix` `allocOf`/`imageOf`/`volumes` + the `alloc` column; `host/policy-cases.nix`; `docs/probes.md` disk row; `EVD-009` — `f3eec1b`, `7f670dd`
+- PHASE-06: the five live exercises, evidence only — `fdfad31`
+- `RV-001`..`RV-005` — three design passes, one reopened run, one code review; all concluded. `RV-004`'s fixes landed one commit per finding, `7259d03`..`8cb44df`
+- `RV-006` — the closure audit; 13 findings, no blockers, `## Synthesis` + `## Reconciliation Brief` on the ledger
+- `docs/contract-target.md` — `volumePath`'s format constraint and `$HOME`'s scope, fixed under `RV-006` `F-1`
+- minted this slice: `IMP-008`, `IMP-009`, `IMP-010`, `IMP-011`, `CHR-013`, `RSK-007`
+- minted at the audit: `RSK-008` — the guest-path guard's call site is unpinned; `CHR-014` — probe `setup`'s `provisionSlot` push against the scrub gate; `ISS-010` — `notHeld` fails open when `fuser` errors; `CHR-015` — declare this project's gate for `doctrine check`
 
 ### Learned
-- mem.fact.oubliette.design-apply-disposes-through-checkpoints — how the run takes dispositions
-- mem.fact.oubliette.guest-autologins-agent-on-every-getty — tty1 and ttyS0, and the user manager is a session too; quiesce by the user slice
-- mem.fact.oubliette.nologin-is-pams-job-under-sshd — `/etc/nologin` blocks no ssh login on the guest
-- mem.fact.oubliette.image-directories-are-vmm-writable — root acts in an image directory only as the image owner
-- mem.pattern.oubliette.a-mutation-must-reach-the-case — read which cases went red, not the exit status; a mutant can also die at Nix eval
-- mem.fact.oubliette.errexit-skips-a-captured-function — a failed listing inside `$(...)` reads as empty; `|| return`
-- mem.pattern.oubliette.fake-guest-tools-on-path — tools left out of `runtimeInputs` let a suite run the shipped store path; a stub `sudo` for host/cli.nix (PHASE-03)
-- mem.fact.oubliette.git-checkout-restores-more-than-the-mutation — restoring a mutation that way discards an uncommitted fix in the same file
-- mem.fact.oubliette.a-new-file-must-be-git-added-before-nix-sees-it — a dirty `git+file:` tree exposes tracked paths only
-- mem.fact.oubliette.a-closing-session-lives-as-long-as-its-work — a `State=closing` agent session refuses, but `ssh host true` leaves none; the `F-5` answer
-- mem.fact.oubliette.a-detached-baseline-leaves-two-agent-sessions — the run (`closing`) plus a log tail that stays `active` after its host client dies
-- mem.fact.oubliette.module-programs-on-path-are-wrappers — **extended**: two copies sharing a store path proves the same *build*, not currency; parse `exec` then grep the target
-- mem.fact.oubliette.fresh-capsule-fresh-host-keys — **extended**: keys are `/work/ssh/`, and a clone+scrub changes them **twice**
+- mem.fact.oubliette.design-apply-disposes-through-checkpoints
+- mem.fact.oubliette.guest-autologins-agent-on-every-getty
+- mem.fact.oubliette.nologin-is-pams-job-under-sshd
+- mem.fact.oubliette.image-directories-are-vmm-writable
+- mem.pattern.oubliette.a-mutation-must-reach-the-case
+- mem.fact.oubliette.errexit-skips-a-captured-function
+- mem.pattern.oubliette.fake-guest-tools-on-path
+- mem.fact.oubliette.git-checkout-restores-more-than-the-mutation
+- mem.fact.oubliette.a-new-file-must-be-git-added-before-nix-sees-it
+- mem.fact.oubliette.a-closing-session-lives-as-long-as-its-work
+- mem.fact.oubliette.a-detached-baseline-leaves-two-agent-sessions
+- mem.fact.oubliette.module-programs-on-path-are-wrappers — extended
+- mem.fact.oubliette.fresh-capsule-fresh-host-keys — extended
+- mem.pattern.oubliette.a-wrong-phase-range-is-invisible-to-conformance — from the audit
+- mem.fact.oubliette.review-pass-stale-is-a-snapshot-not-a-gap — from the audit
+- `EVD-009` — the disk row, re-measured; supersedes `EVD-005`
 
 ### Open
-- **The `RV-004` remediation belongs to no phase.** PHASE-04's recorded range
-  ends at `97de336` and PHASE-05's starts at `e1aec27`; the eight fix and doc
-  commits between them flipped no phase status, by the handover's own rule, so
-  nothing recorded them as a source delta. `host/cli.nix`, `host/volume-cases.nix`,
-  `vm/reset-home*.nix` and `vm/capsule.nix` all changed there and still read
-  *conformant*, because earlier ranges delivered those paths; only the one new
-  path, `vm/guest-path.nix`, shows — as **undelivered**. Left as it stands
-  rather than rewriting a completed phase's range: `record-delta` takes one
-  contiguous range per phase and the fixes amend two different phases. **For
-  `/audit` to reconcile**, and the reason the fix commits are itemised above.
-- `F-4`'s guard is pinned, but nothing pins that `vm/capsule.nix` *calls* it — needs a guest evaluated against a hostile `target` (a second NixOS eval in `just build`); for reconcile
-- **`F-5`'s remaining half**: `VH-7` showed `start`'s `waitAnswers` (`ssh agent@guest true`) leaves no session, so the gate is safe on that path. `setup`'s `provisionSlot` push is the **heavier** probe and was never run this way — the only thing left that could reproduce `F-5`
-- **The clone trap is a suite-only guarantee.** `cp` refuses before creating anything, so the live failed-copy case cannot reach the trap that removes a partial `.clone`; `volumeRootCases` says so and the live run agreed. State it that way at reconcile rather than counting `VH-6` as covering it
-- **`VH-5`'s reset half** was taken against a lock held synthetically by `flock -x`, not a running clone — same lock and branch, weaker claim (`STD-001`)
-- sec-4 step 5 says `capsule-seed` "re-links the config files"; the reset `$HOME` held no symlinks — either this target declares none or they are conditional; for reconcile
-- **`doctrine design show SL-002 --format status` reports `review_pass STALE`** on a run *locked at revision 75* with `0 sections with outstanding review` and `0 changes since the declared baseline`. Assess whether the flag is real before `/audit` leans on the attestation
-- sec-7's seam table lacks `vmmState` — deviation recorded in `## PHASE-03`, for reconcile
-- sec-2's flowchart asks "door answers?"; the front end asks "has a door" — deviation in `## PHASE-04`, for reconcile
-- sec-6's sample free line words undeclared state directories "images"; the code counts directories, per the section's own rule sentence — deviation in `## PHASE-05`, for reconcile
-- **The design's account of a detached baseline names one session; there are two** (the run and its log tail) — sec-2/sec-4 wording, for reconcile
-- **The free line is a whole-filesystem `df`**, so a live capsule moves it independently of any clone — worth a sentence in sec-6 at reconcile
-- `notHeld` fails open if `fuser` itself errors — noted in `## PHASE-01`, not filed
+Every item the audit dispositioned lives on `RV-006`; the write surfaces are its
+`## Reconciliation Brief`. What is carried forward, by id:
+
+- `RV-006` `F-2`, `F-3`, `F-4` — the slice registry: one selector to add
+  (`host/policy-cases.nix`) and two `record-delta` rows to correct. The
+  load-bearing half of the conformance findings; the `design.md` sec-8 edits
+  beside them are the mirror
+- `RV-006` `F-7` — six design-text deviations, one direct edit each to sec-2,
+  sec-4, sec-6 and sec-7
+- `RV-006` `F-8` — `VH-5`'s reset half restated at the strength of its evidence,
+  in `## PHASE-06`
+- `RSK-008` — the guard is pinned, its call site is not; needs the guest
+  evaluated against a hostile `target`
+- `CHR-014` — `RV-004` `F-5`'s remaining half: `setup`'s `provisionSlot` push
+- `ISS-010` — `notHeld` fails open if `fuser` itself errors
+- `CHR-015` — `doctrine check gate` resolves to a recipe this project lacks
+- Tolerated, no owner: `RV-006` `F-5` (the doctrine CLI's stale pass snapshot),
+  `F-13` (`selector doctor`'s three redundancy findings would break conformance
+  if acted on)

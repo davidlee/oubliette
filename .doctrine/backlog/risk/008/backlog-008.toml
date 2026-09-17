@@ -1,0 +1,33 @@
+schema = "doctrine.backlog"
+version = 1
+
+id = 8
+slug = "the-guest-path-guard-is-pinned-its-call-site-is-not"
+title = "The guest-path guard is pinned, its call site is not"
+kind = "risk"
+status = "open"
+resolution = ""                 # seeded empty so `backlog edit` sets it in place
+created = "2026-09-17"
+updated = "2026-09-17"
+tags = ["area:target"]
+
+[facet]                         # risk only — every field typed; seeded empty
+likelihood = "low"
+impact = "high"
+origin = "SL-002 RV-006 F-6: a guard verified in isolation from the only call site that reaches it"
+controls = ["resetHomeCases pins the function's five verdicts and the shipped path list; vm/guest-path.nix's header and vm/capsule.nix:45-47 both say why the call is there"]
+
+# outbound-only (ADR-004). Cross-kind structural edges (e.g. references with a role
+# — `originates_from` for backlog→slice provenance — governed_by, related, drift) are
+# uniform `[[relation]]` rows (SL-048 "the cut") — author them with
+# `doctrine link RSK-NNN <label> <target>`; `doctrine inspect RSK-NNN` renders
+# them. The dep/seq axes below stay typed (they carry per-edge payloads).
+[relationships]
+needs    = []                   # item→item hard prerequisite
+after    = []                   # item→item soft sequence: { to, rank? }
+triggers = []                   # watched source globs: { globs, note? }
+
+[[relation]]
+label = "references"
+role = "originates_from"
+target = "SL-002"

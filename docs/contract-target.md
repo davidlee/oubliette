@@ -74,7 +74,7 @@ changes until they are built.
 | --- | --- | --- | --- | --- |
 | `name` | profile | guest (checkout dir, motd), host (`services.capsule-perimeter.repo` default). **It is also the document's filename**, so it is the name every host-side program is given as `--profile` | yes | — |
 | `path` | **source** | host: `capsule-provision` looks it up (its push source), `capsule-brief --from-host` (the checkout it snapshots), `capsule <slot> fetch` (the repo a quarantine lands in) | yes | `CAPSULE_REPO`, or the module's `repo` option, overrides it per host — and having two host-side overrides where no other field has any is the tell that it was never project state |
-| `volumePath` | capsule | guest: the mount point, and what `caches`/`guestConfig` resolve against. host: `capsule status` looks it up for the disk figure and for `<volumePath>/baseline`, which is where `capsule-baseline` writes its record | yes | — |
+| `volumePath` | capsule | guest: the mount point, and what `caches`/`guestConfig` resolve against. host: `capsule status` looks it up for the disk figure and for `<volumePath>/baseline`, which is where `capsule-baseline` writes its record. **Must match `^/[A-Za-z0-9._/@+-]+$`** — absolute, and nothing a shell reads as anything but a path. It is spliced unquoted into `capsule-reset-home`'s `rm` as root (`vm/guest-path.nix`), so a value carrying a space or a glob character would word-split into paths nobody named; a value that does not match throws at guest eval rather than building | yes | — |
 | `guestPath` | capsule | guest: the checkout the seed creates. host: looked up by all five programs — it is the path half of the guest's git URL and the working directory of every script pushed into a capsule | derived | — |
 | `toolsPackage` | flavour | guest: `packages.<system>.<name>` from the target's own flake | in practice yes | `null` — the guest gets `extraTools` only, and loses the no-drift property that made threading the target's list worth it. **Available only to a target whose whole tool set is a list of nixpkgs attr names**: `extraTools` is a supplement, never a substitute, so anything built by a function — a `python3.withPackages (…)` has no attr name — has to export a package (NOTES item 23) |
 | `extraTools` | flavour | guest: nixpkgs attr names, resolved against the *guest's* pkgs | no | `[]` |
@@ -271,7 +271,7 @@ is the same for every target.
 | | what |
 | --- | --- |
 | checkout | `guestPath`, a git repo, **initially empty** — history arrives by `capsule-provision`, so the base commit is an argument and not a value in the closure |
-| `$HOME` | `<volumePath>/home`, on the volume, so agent state survives reboots and dies with a fresh capsule |
+| `$HOME` | `<volumePath>/home`, on the volume, so agent state survives reboots and dies with a fresh capsule — and a sibling of the checkout, not a parent of it, which is what lets `capsule <slot> volume reset-home` delete `$HOME` alone and leave `guestPath`, the caches and `<volumePath>/baseline` where they are |
 | `TMPDIR` | `<volumePath>/tmp`, mode 1777 — on disk, because the guest's root is tmpfs and therefore guest RAM |
 | caches | one env var per `caches` entry, pointing at a directory the seed has created and chowned |
 | egress | `HTTP(S)_PROXY`/`http(s)_proxy` at the host's allowlist proxy, `NO_PROXY` for the host and loopback. No default route and no resolver in the guest |

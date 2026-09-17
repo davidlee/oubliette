@@ -1,0 +1,46 @@
+memory_uid = "mem_01a0ae2f209474228d3f6b6170d9a21b"
+memory_key = "mem.pattern.oubliette.a-wrong-phase-range-is-invisible-to-conformance"
+schema_version = 1
+memory_type = "pattern"
+status = "active"
+title = "A wrong phase range is invisible to slice conformance"
+summary = "Conformance compares recorded ranges against selectors; it cannot ask whether a range is the range its phase landed. Read boundaries.toml against git log --reverse over the slice's span."
+created = "2026-09-17"
+updated = "2026-09-17"
+
+[scope]
+paths = [".doctrine/state/slice"]
+globs = []
+commands = ["doctrine slice conformance", "doctrine slice record-delta"]
+tags = ["gotcha", "audit"]
+workspace = "default"
+repo = "github.com/davidlee/oubliette"
+repo_id_kind = "remote"
+repo_id_confidence = "high"
+
+[git]
+anchor_kind = "checkout_state"
+commit = ""
+tree = "612c39908d6409e3f25b4ca249555fa6e6bcaabd"
+ref_name = "refs/heads/main"
+checkout_state_id = "ee1fec34678f5381a10720fe0e1e04f20bbb6d7717ff11afbbe81db623f4a577"
+base_commit = "d39f4d6910a079b2e4f5f2c1acddb3e8c28f5522"
+verified_sha = ""
+normalizer = "forget.checkout.v1"
+
+[review]
+verification_state = "unverified"
+reviewed = ""
+review_by = ""
+
+[trust]
+trust_level = "medium"
+
+[ranking]
+severity = "none"
+weight = 0
+
+[[source]]
+kind = "review"
+ref = "RV-006"
+
