@@ -585,7 +585,7 @@ finding terminal. Reasoning is `RV-006`'s `## Synthesis`, the worklist for
 
 ## Harvest
 <!-- single-copy: updated in place each harvest; ids only, never restated content -->
-fresh-as-of: 2026-09-17 · reconcile · `fcc8761` — `RV-006` done, no blockers, brief written
+fresh-as-of: 2026-09-17 · close · `99d9875` — brief written through; registry repaired, six deviations landed
 
 ### Produced
 - `design.md` sec-1..sec-8 — materialised from run `dr-01a0a2ae…`; all eight walked with the user, relocked at revision 74/75 after `RV-004`
@@ -601,6 +601,11 @@ fresh-as-of: 2026-09-17 · reconcile · `fcc8761` — `RV-006` done, no blockers
 - `RV-006` — the closure audit; 13 findings, no blockers, `## Synthesis` + `## Reconciliation Brief` on the ledger
 - `docs/contract-target.md` — `volumePath`'s format constraint and `$HOME`'s scope, fixed under `RV-006` `F-1`
 - minted this slice: `IMP-008`, `IMP-009`, `IMP-010`, `IMP-011`, `CHR-013`, `RSK-007`
+- the reconcile pass — `9f5568e`, `99d9875`: `host/policy-cases.nix` declared
+  `design-target`; PHASE-04 and PHASE-06 `record-delta` rows corrected
+  (`undelivered` 1 → 0, `conformant` 15 → 17); six design deviations in
+  `design.md` sec-2/4/6/7/8; `VH-5`'s reset half restated in `## PHASE-06`;
+  `RV-006`'s `## Reconciliation Outcome`; `notes.md` `## Reconcile — RV-006`
 - minted at the audit: `RSK-008` — the guest-path guard's call site is unpinned; `CHR-014` — probe `setup`'s `provisionSlot` push against the scrub gate; `ISS-010` — `notHeld` fails open when `fuser` errors; `CHR-015` — declare this project's gate for `doctrine check`
 
 ### Learned
@@ -619,20 +624,15 @@ fresh-as-of: 2026-09-17 · reconcile · `fcc8761` — `RV-006` done, no blockers
 - mem.fact.oubliette.fresh-capsule-fresh-host-keys — extended
 - mem.pattern.oubliette.a-wrong-phase-range-is-invisible-to-conformance — from the audit
 - mem.fact.oubliette.review-pass-stale-is-a-snapshot-not-a-gap — from the audit
+- mem.fact.oubliette.reconcile-edits-are-invisible-to-the-design-run — from the
+  reconcile; the materialise half is inferred from the verb's contract, unobserved
 - `EVD-009` — the disk row, re-measured; supersedes `EVD-005`
 
 ### Open
-Every item the audit dispositioned lives on `RV-006`; the write surfaces are its
-`## Reconciliation Brief`. What is carried forward, by id:
+`RV-006`'s brief is **written through** — `F-2`, `F-3`, `F-4`, `F-7` and `F-8`
+are recorded in its `## Reconciliation Outcome` and need nothing further. What
+leaves the slice as owned work, by id:
 
-- `RV-006` `F-2`, `F-3`, `F-4` — the slice registry: one selector to add
-  (`host/policy-cases.nix`) and two `record-delta` rows to correct. The
-  load-bearing half of the conformance findings; the `design.md` sec-8 edits
-  beside them are the mirror
-- `RV-006` `F-7` — six design-text deviations, one direct edit each to sec-2,
-  sec-4, sec-6 and sec-7
-- `RV-006` `F-8` — `VH-5`'s reset half restated at the strength of its evidence,
-  in `## PHASE-06`
 - `RSK-008` — the guard is pinned, its call site is not; needs the guest
   evaluated against a hostile `target`
 - `CHR-014` — `RV-004` `F-5`'s remaining half: `setup`'s `provisionSlot` push
@@ -641,3 +641,8 @@ Every item the audit dispositioned lives on `RV-006`; the write surfaces are its
 - Tolerated, no owner: `RV-006` `F-5` (the doctrine CLI's stale pass snapshot),
   `F-13` (`selector doctor`'s three redundancy findings would break conformance
   if acted on)
+- Standing, by ruling rather than by defect: **PHASE-04's recorded range is a
+  superset**. `record-delta` takes one contiguous range per phase, so the eight
+  `RV-004` fixes could not be brought in without the six unrelated commits around
+  them. `## Reconcile — RV-006` names them and the three paths they put in the
+  `undeclared` cell
