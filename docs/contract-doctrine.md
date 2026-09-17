@@ -110,9 +110,17 @@ of it is a mechanism, and none of it may become one.
 
 Three obligations that are not fields:
 
-- **Its flake input reads committed HEAD.** `git+file:` means uncommitted work
-  in doctrine is invisible to the capsule; a tool-set change needs a commit
-  there and `nix flake update target` here.
+- **Its flake input reads committed HEAD, and the lock is not the last step.**
+  `git+file:` means uncommitted work in doctrine is invisible to the capsule; a
+  tool-set change needs a commit there and `nix flake update target` here. That
+  moves the *lock*, and a lock is not an image: a created VM tracks its state
+  directory and not the flake, so the chain finishes with `nix build .#capsule`,
+  `microvm -u <slot>` and a restart — `just refresh-build <slot>`, per slot
+  ([plan-d-fleet.md](./plan-d-fleet.md) §9, class 2). **Stopping at the lock is
+  silent.** The pin reads current, the guest keeps the old toolchain, and the
+  only symptom is red tests inside the capsule: `SL-245` was stopped by a
+  guest compiler ten weeks behind a lock that was already correct. `IMP-013` is
+  the signal that does not exist yet; `IMP-012` is what would make it cheap.
 - **The jailed `claude`/`codex` wrappers stay out of `dev-tools`.** They are
   bwrap wrappers binding host paths that do not exist in the VM. The capsule's
   confinement is the VM.

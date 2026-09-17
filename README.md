@@ -563,11 +563,19 @@ for doctrine `packages.dev-tools` — so both this VM and that devshell take fro
 one list. To change it:
 
 ```
-cd ~/dev/doctrine        # edit devToolPkgs in flake.nix
-git commit               # git+file: inputs read committed HEAD
-cd ~/dev/microvm-spike && nix flake update target
-vm-stop capsule && vm capsule
+cd ~/dev/doctrine          # edit devToolPkgs in flake.nix
+git commit                 # git+file: inputs read committed HEAD
+cd ~/dev/oubliette && nix flake update target && git commit flake.lock
+just refresh-build <slot>  # per slot; module path
 ```
+
+**The last line is the one that is easy to skip, and skipping it is silent.**
+`nix flake update target` moves the lock; a created VM tracks its state
+directory and not the flake, so until `microvm -u` has run for a slot that slot
+keeps the tool set it was built with, and the pin reads perfectly current while
+it does. `just refresh-build <slot>` is the stop, `microvm -u` and restart in
+one. On the devshell path it is `vm-stop <name> && vm <name>` instead, which
+rebuilds the image as part of starting it.
 
 Tools the target's list omits because it assumes a host that has them go in
 `target.nix`'s `extraTools`, not here.
