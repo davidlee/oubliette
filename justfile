@@ -476,3 +476,7 @@ reset-known-hosts name:
     ssh-keygen -R "$(just _net guest)"
   fi
 
+# update & switch the system nix derivation
+update-system:
+  cd ~/flakes && just update-local && just system-switch
+
