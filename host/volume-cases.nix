@@ -475,6 +475,73 @@ in
       grep -qxF "nolock systemctl start microvm@dst" "$CASE_SUDO_LOG"
     ckt "  and creates no lock file" absent "$lock"
 
+    # ------------------------------------------------------------ what it costs
+    # `alloc` and the free line (design sec-6). Both are filesystem reads — no
+    # root, no guest — which is why a stopped slot has an allocation at all and
+    # why this suite can reach them: the fixture root is the image root.
+    #
+    # The free figure is the *builder's* disk, so nothing here asserts a number.
+    # What is pinned is the shape, the parts and the position of the column,
+    # since a figure would pin whatever machine ran the build.
+    #
+    # `img <slot> <MiB>` writes a fully allocated image; `sparse <slot> <MiB>`
+    # writes one that costs nothing, which is what a fresh volume looks like.
+    img() {
+      mkdir -p "$CASE_ROOT/microvms/$1"
+      head -c "$(($2 * 1048576))" /dev/zero > "$CASE_ROOT/microvms/$1/capsule-work.img"
+    }
+    sparse() {
+      mkdir -p "$CASE_ROOT/microvms/$1"
+      truncate -s "$2M" "$CASE_ROOT/microvms/$1/capsule-work.img"
+    }
+    # The `alloc` cell of one slot's row, by position: every column before it
+    # holds a single token, so the thirteenth field is it. Reading it by column
+    # rather than by grep is what says `alloc` landed *after* `disk` and not
+    # merely somewhere on the line.
+    allocOf() { awk -v n="$1" '$1 == n { print $13 }' out; }
+
+    fresh
+    img dst 3
+    run all status
+    ck "status answers with an image in the pool" 0 "$rc"
+    ckt "  the header has alloc immediately after disk" grep -qE 'disk +alloc +mem' out
+    ck "  and the slot's cell is what the image allocates" 3.0M "$(allocOf dst)"
+    ck "  while a slot with no image reads -" - "$(allocOf src)"
+    ck "  and so does one never created here" - "$(allocOf bare)"
+
+    fresh
+    sparse dst 4096
+    run all status
+    ck "a sparse image costs what it has written, not what it claims" 0 "$(allocOf dst)"
+
+    fresh
+    img dst 3
+    run all status
+    ckt "the free line names the image root" saw "free on $CASE_ROOT/microvms"
+    ckt "  and the reserve a clone may not spend" saw "kept back from clones"
+    ckt "  reading the reserve this host declares" saw "20G of it"
+    ckt "  and says nothing about the pool when nothing is outside it" unsaw "outside the pool"
+
+    # A host that has never created a VM has no image root at all — the devshell
+    # path on a fresh machine. The line is always printed (design sec-6), so it
+    # says that rather than taking `status` down with it.
+    fresh
+    rm -r "$CASE_ROOT/microvms"
+    run all status
+    ck "status answers on a host with no image root" 0 "$rc"
+    ckt "  naming the image root it did not find" saw "no $CASE_ROOT/microvms"
+    ckt "  and saying what that means" saw "so no slot has been created here"
+    ckt "  and reading no slot's allocation" test "$(allocOf dst)" = -
+
+    fresh
+    img dst 3
+    mkdir -p "$CASE_ROOT/microvms/leftover" "$CASE_ROOT/microvms/older"
+    run all status
+    ckt "a state directory that is not a declared slot is named" saw "outside the pool"
+    ckt "  counted" saw "2 outside the pool"
+    ckt "  and listed, so nobody has to read the directory" saw "leftover, older"
+    ckt "  while the declared slots are not" unsaw "dst, "
+
     # ------------------------------------------------------------ shipped
     # The one line the fixture's `volumeControl` replaces, read off the store
     # path every real call site builds. Comments stripped, so a comment that

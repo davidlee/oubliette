@@ -165,10 +165,13 @@ exit_criteria = [
   { id = "EX-2", text = "the free line is always printed, reads df avail on the image root and `capsules.volumeReserve`, and names undeclared state directories only when there are any" },
   { id = "EX-3", text = "docs/probes.md's disk row re-measured and dated" },
   { id = "EX-4", text = "`just` green, `just check` clean" },
+  { id = "EX-5", text = "appended while executing: a host with no image root at all (the devshell path on a fresh machine) still prints the free line, saying there is none, rather than taking `status` down with it" },
 ]
 verification = [
   { id = "VT-1", expects = "alloc for an image and `-` for none; the free line with and without the outside-the-pool parenthesis, against a fixture root", test_file = "host/volume-cases.nix", keywords = ["alloc", "kept back from clones", "outside the pool"], waived = false },
+  { id = "VT-2", expects = "with the fixture image root removed, `all status` still exits 0, says there is no image root, and reads every slot's alloc as `-`", test_file = "host/volume-cases.nix", keywords = ["no image root", "so no slot has been created here"], waived = false },
   { id = "VA-1", expects = "`nix run .#capsule-cli -- all status` (the module copy is stale until the host rebuilds) prints alloc for stopped slots and a free line agreeing with `df` (read-only)" },
+  { id = "VA-2", expects = "mutations, each read for which cases redden: drop the declared-slot filter from the parenthesis; fill alloc only for a running slot; read apparent size instead of allocated; drop the absent-image-root guard" },
 ]
 specs        = []
 requirements = []

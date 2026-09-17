@@ -1051,13 +1051,64 @@ in
         # (item 51, decision 3): this is one table for N slots over M targets, so
         # a shape that were a function of any one of them would change between
         # two runs on one host, silently, with no rebuild to notice it.
-        statusFmt='%-7s %-7s %-10s %-8s %-8s %-4s %-7s %-9s %-5s %-8s %-4s %-4s %-11s %-4s %-3s %-9s %-7s %-6s %s\n'
+        statusFmt='%-7s %-7s %-10s %-8s %-8s %-4s %-7s %-9s %-5s %-8s %-4s %-4s %-6s %-11s %-4s %-3s %-9s %-7s %-6s %s\n'
 
         statusHeader() {
           # shellcheck disable=SC2059
           printf "$statusFmt" \
             capsule created vm proxy relay door answers \
-            head dirty baseline age disk 'mem cur/peak' refs gen profile policy unit purpose
+            head dirty baseline age disk alloc 'mem cur/peak' refs gen profile policy unit purpose
+        }
+
+        # What a slot's volume costs, and what a clone of it would cost: the
+        # image's *allocated* size, which is its high-water mark (design sec-6,
+        # `DEC-009`). The same read the helper's fit check makes
+        # (host/volume-root.nix), unprivileged — the image is `0644` in a `0775`
+        # directory, so this needs neither root nor the guest, and it is the one
+        # cell on the row that a **stopped** slot still fills.
+        imageOf() { printf '%s/%s/capsule-work.img' ${microvms} "$1"; }
+        allocOf() {
+          local i
+          i=$(imageOf "$1")
+          [ -f "$i" ] || { echo -; return 0; }
+          numfmt --to=iec "$(($(stat -c '%b * %B' "$i")))"
+        }
+
+        # The other half of predicting a clone's refusal without running one:
+        # `alloc` is what it would cost, this is what it has to fit in. `avail`
+        # is what non-root writers have, because the running VMMs are `microvm`
+        # and grow their sparse images into it — the same number the helper
+        # reads — and the reserve is the one `capsules.nix` declares.
+        #
+        # The parenthesis is how `CHR-013`'s leftovers become visible without
+        # anyone listing the directory. It counts **state directories** that are
+        # not declared slots rather than images, so a leftover that has no image
+        # is still seen; sec-6's rule sentence says directories and its sample
+        # line words them "images" because on this host both have one.
+        volumes() {
+          local free reserve outside=() d joined
+          # A host that has never created a VM has no image root, which is the
+          # devshell path on a fresh machine. The line is printed either way —
+          # what varies is what it found, never whether it is there.
+          if [ ! -d ${microvms} ]; then
+            printf 'volumes: no %s on this host, so no slot has been created here.\n' ${microvms}
+            return 0
+          fi
+          free=$(df --output=avail -B1 ${microvms} | tail -n 1)
+          reserve=${toString capsules.volumeReserve}
+          shopt -s nullglob
+          for d in ${microvms}/*/; do
+            d=''${d%/}
+            d=''${d##*/}
+            isDeclared "$d" || outside+=("$d")
+          done
+          printf 'volumes: %s free on %s, %s of it kept back from clones' \
+            "$(numfmt --to=iec "$free")" ${microvms} "$(numfmt --to=iec "$reserve")"
+          if [ ''${#outside[@]} -gt 0 ]; then
+            joined=$(printf '%s, ' "''${outside[@]}")
+            printf ' (%d outside the pool: %s)' "''${#outside[@]}" "''${joined%, }"
+          fi
+          echo
         }
 
         yesno() { if "$@"; then echo yes; else echo no; fi; }
@@ -1127,6 +1178,7 @@ in
             "$(yesno test -S "$(sockOf "$n")")" \
             "$ans" \
             "''${head:0:9}" "$dirty" "$baseline" "$(ageOf "$stamp")" "$disk" \
+            "$(allocOf "$n")" \
             "$(memOf "$n")" \
             "$refs" \
             "$(recordField "$n" generation)" \
@@ -1768,6 +1820,8 @@ in
           status)
             statusHeader
             for t in "''${targets[@]}"; do statusRow "$t"; done
+            echo
+            volumes
             echo
             perimeter
             ;;
