@@ -546,7 +546,7 @@ finding terminal. Reasoning is `RV-006`'s `## Synthesis`, the worklist for
 
 ## Harvest
 <!-- single-copy: updated in place each harvest; ids only, never restated content -->
-fresh-as-of: 2026-09-17 · audit · `RV-006` done, no blockers, brief written — awaiting `/reconcile`
+fresh-as-of: 2026-09-17 · reconcile · `fcc8761` — `RV-006` done, no blockers, brief written
 
 ### Produced
 - `design.md` sec-1..sec-8 — materialised from run `dr-01a0a2ae…`; all eight walked with the user, relocked at revision 74/75 after `RV-004`
