@@ -263,6 +263,24 @@ status moves.
   did. Row is now `systemd-user`, which is what a real one is. Read both ways:
   deleting the clause with the old row leaves the case green; with the new row
   it goes red. Test-only — `vm/reset-home.nix` is unchanged.
+- `F-4`. `vm/guest-path.nix` is the guard: one function, `what: path`, that
+  returns the path or throws unless it matches `^/[A-Za-z0-9._/@+-]+$`.
+  `vm/capsule.nix` puts `home` and every `scrubPaths` entry through it;
+  `vm/reset-home.nix` still takes raw shell expressions, so the fixture is
+  unaffected, and its header now says where the check lives. It is its own file
+  rather than a `let` in capsule.nix so the suite takes it as an argument
+  instead of re-rendering it. `resetHomeCases` reads five `builtins.tryEval`
+  verdicts at eval and asserts them in the shell, plus one over the list the
+  *image* carries. Mutation: widen the class to `.*` and the four negative
+  verdicts redden.
+  - **Open, and a gap of the kind CLAUDE.md names:** the suite pins the guard,
+    not that `vm/capsule.nix` calls it. Dropping the call changes nothing
+    observable for a good target, and catching it needs the guest evaluated
+    against a *hostile* `target`, which means `mkVm` parameterised by target and
+    a second full NixOS eval in `just build`. Not taken for a minor finding
+    whose agreed fix plan was the function; for reconcile.
+  - A new file must be `git add`ed before nix can see it: a dirty `git+file:`
+    tree still only exposes tracked paths.
 
 ## Harvest
 <!-- single-copy: updated in place each harvest; ids only, never restated content -->

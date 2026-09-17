@@ -38,6 +38,19 @@
   guest,
   target,
 }: let
+  # The guard over the paths the shipped program is built with (vm/guest-path.nix,
+  # called from vm/capsule.nix). It is a `throw` rather than a program, so the
+  # verdicts are read at eval and asserted in the shell — `hostModuleUnits`'
+  # arrangement one level down (CLAUDE.md, host/profile-cases.nix's precedent).
+  guestPath = import ./guest-path.nix {inherit lib;};
+  verdicts = lib.mapAttrs (_: p: (builtins.tryEval (guestPath "a scrub path" p)).success) {
+    plain = "/work/.env";
+    spaced = "/work/a file";
+    globbed = "/work/*";
+    relative = "work/.env";
+    expression = "$(id -u)";
+  };
+
   fixture = import ./reset-home.nix {
     inherit pkgs lib;
     home = ''"$CASE_ROOT/work/home"'';
@@ -76,6 +89,19 @@
       }
     '';
   };
+
+  # And the same guard over the list the *image* carries, read off the evaluated
+  # guest rather than recomputed. This says the shipped paths are plain; it does
+  # not say vm/capsule.nix would refuse a bad one, which needs a guest evaluated
+  # against a hostile target (noted as open on SL-002).
+  shippedPlain =
+    (builtins.tryEval (
+      lib.deepSeq
+      (map (guestPath "a shipped scrub path")
+        (shipped.scrubPaths ++ [guest.users.users.agent.home]))
+      true
+    ))
+    .success;
 
   # The program the evaluated guest ships, found by name and never rebuilt here:
   # a check that recomputed the list would agree with itself.
@@ -251,6 +277,8 @@ in
     agentHome=${lib.escapeShellArg guest.users.users.agent.home}
     listed() { printf '%s\n' "''${shippedPaths[@]}" | grep -qxF -- "$1"; }
 
+    ckt "every path the image carries passes the same guard" \
+      test ${lib.boolToString shippedPlain} = true
     ckt "the shipped scrub list is not empty" test "''${#shippedPaths[@]}" -gt 0
     ck "  and has nothing under \$HOME, which the reset already removes" "" \
       "$(printf '%s\n' "''${shippedPaths[@]}" | grep -F -- "$agentHome/" || true)"
@@ -259,6 +287,16 @@ in
       ckt "  and has the declared host key $key" listed "$key"
       ckt "  and its public half" listed "$key.pub"
     done
+
+    # The guard that stands between a target's `volumePath` and a root `rm`. Each
+    # verdict was taken at eval; the shell only reads them out (CLAUDE.md).
+    ckt "a plain absolute path is built" test ${lib.boolToString verdicts.plain} = true
+    ckt "  a path with a space is refused at eval" test ${lib.boolToString verdicts.spaced} = false
+    ckt "  and one with a glob character" test ${lib.boolToString verdicts.globbed} = false
+    ckt "  and a relative one, which would resolve against root's cwd" \
+      test ${lib.boolToString verdicts.relative} = false
+    ckt "  and a shell expression, which is what the fixture passes on purpose" \
+      test ${lib.boolToString verdicts.expression} = false
 
     # ------------------------------------------------------ the shipped listing
     #

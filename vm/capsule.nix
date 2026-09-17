@@ -42,13 +42,19 @@
   # under `$HOME` is dropped because the reset already removes it; only the `dest`
   # strings reach the program, so editing a payload's `produce` does not change
   # the image.
+  # Both are spliced unquoted into a root `rm`, and both are target-derived, so
+  # they are checked here — the one place that has the target's values and is not
+  # the program a suite renders against a sandbox (`RV-004` F-4).
+  guestPath = import ./guest-path.nix {inherit lib;};
   resetHome = import ./reset-home.nix {
-    inherit pkgs lib home;
+    inherit pkgs lib;
+    home = guestPath "the agent's $HOME" home;
     agentUid = config.users.users.agent.uid;
     scrubPaths =
-      builtins.filter (p: !lib.hasPrefix "${home}/" p)
-      (map (i: i.dest) (import ../setup.nix {volumePath = work;}))
-      ++ lib.concatMap (k: [k.path "${k.path}.pub"]) config.services.openssh.hostKeys;
+      map (guestPath "a scrub path")
+      (builtins.filter (p: !lib.hasPrefix "${home}/" p)
+        (map (i: i.dest) (import ../setup.nix {volumePath = work;}))
+        ++ lib.concatMap (k: [k.path "${k.path}.pub"]) config.services.openssh.hostKeys);
   };
 
   # Static configuration the capsule renders from its own declared reservation

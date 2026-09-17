@@ -32,7 +32,7 @@ response = "Design and code together, in the same reopen as F-1. Design: sec-5's
 
 [[finding]]
 id = "F-3"
-status = "answered"
+status = "verified"
 severity = "minor"
 title = "expected the manager-early case to be satisfied only by the manager-early exclusion; observed its row has Service=login, so the login exclusion passes it regardless"
 detail = """vm/reset-home-cases.nix:171-174 appends '7 - login manager-early active' and expects 0. workingSessions (vm/reset-home.nix, awk '$3 != "login" && $4 != "manager" && $4 != "manager-early"') excludes the row on $3 alone, so deleting '&& $4 != "manager-early"' leaves the case green. That breaks CLAUDE.md's rule that a suite be checked by mutating the behaviour it names. A real manager-early session has Service=systemd-user (plan.md's slot-b table: root's user manager). Fix: '7 - systemd-user manager-early active'."""

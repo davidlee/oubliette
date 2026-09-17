@@ -16,9 +16,11 @@
 # **Every path it acts on is fixed when the image is built**: `home` and
 # `scrubPaths` are spliced into the text raw, as `capsule-seed` splices `home`,
 # and the command line carries `--scrub` and nothing else. A fixture passes a
-# double-quoted shell expression instead (vm/reset-home-cases.nix). Both are
-# unlinked rather than followed: `rm -rf` on `$HOME` with no trailing slash
-# removes a symlink and not what it names, and never follows one inside the tree.
+# double-quoted shell expression instead (vm/reset-home-cases.nix), which is why
+# the check that a real path is a plain absolute one is not here but at the call
+# site that holds the target's values: vm/capsule.nix, through vm/guest-path.nix.
+# Both are unlinked rather than followed: `rm -rf` on `$HOME` with no trailing
+# slash removes a symlink and not what it names, and never follows one inside it.
 # That matters less than on the host (POL-001: this is convenience, not a
 # boundary), but a root program walking an agent-writable tree should not
 # follow it anywhere.
