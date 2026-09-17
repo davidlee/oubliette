@@ -460,8 +460,11 @@ succeeded the moment the lock was free.
 *What the evidence covers (`STD-001`):* the `start` refusal was taken against a
 **real clone**; the `reset` refusal against a lock **held synthetically** by an
 unprivileged `flock -x`, because a 6.7 GiB copy gives ~17 s and the `sudo -k`
-prompt eats most of it. Same lock, same branch — but the reset half reads
-"refuses while the lock is held", not "refuses while a clone is running".
+prompt eats most of it. Same lock, same branch, same refusal text — but the
+reset half holds only **"`volume reset` refuses while `capsules.volumeLock` is
+held exclusively"**, which is what `volumeCases` already pins against a fixture
+lock. It does **not** hold `VH-5`'s "refuses while a clone is running". The
+`start` half does, and keeps the stronger claim.
 
 ### Other observations
 
@@ -543,6 +546,42 @@ finding terminal. Reasoning is `RV-006`'s `## Synthesis`, the worklist for
   run directly: `just check` ok, `just` exit 0 over build, `hostModuleUnits`,
   fourteen `*Cases` suites and fmt; `verify-vt` passes every `VT` on
   PHASE-01..05.
+
+## Reconcile — RV-006 — 2026-09-17
+
+`RV-006`'s brief written through. Structured tier first, prose second; no `REV`
+(`SL-002` carries no specs and no requirements, and no policy or ADR moved).
+
+- **The registry now delivers what the slice built.** `vm/guest-path.nix` and
+  `host/policy-cases.nix` were the two gaps; both are `conformant`.
+  `undelivered` is **0**, `conformant` 15 → **17**.
+- **PHASE-06's row was replaced** — `0ab598b..fdfad31`, the phase's own evidence
+  commit, in place of `421392b..0ab598b`, which covered an unrelated `chore:`
+  `justfile` change and excluded `fdfad31`. No conformant cell moved; the whole
+  cost had been attribution.
+- **PHASE-04's row was widened, and it over-attributes.** `6d101b0..8cb44df`
+  brings the eight `RV-004` remediation commits into the registry, which is what
+  moves `vm/guest-path.nix`. `record-delta` UPSERTs **one contiguous range per
+  phase**, so there is no shape that takes the fixes without the window around
+  them. **Six commits in that window (`a9d1396..a12865e`) belong to no slice**,
+  and `README.md`, `docs/contract-doctrine.md` and `flake.lock` are in the
+  `undeclared` cell because of them, not because `SL-002` touched them. The
+  ruling was to widen and write the cost down rather than leave conformance red
+  with no record of why — **so the next reader of `boundaries.toml` should read
+  PHASE-04's range as a superset, not as a claim**.
+- **`undeclared` went 14 → 46**, more than the audit's estimate of +3. The three
+  extra non-`.doctrine` paths were predicted exactly; the rest is `.doctrine`
+  bookkeeping the wider window sweeps in — four `backlog/`, two `knowledge/`,
+  three `review/` and several `memory/` items — and no source selector should
+  ever claim any of it. The count is noise, the three paths are the cost.
+- **Six design deviations landed in `design.md`** (sec-2 ×2, sec-4, sec-6 ×2,
+  sec-7) and `VH-5`'s reset half is now stated at its evidence in exercise 5.
+  Details in `RV-006`'s `## Reconciliation Outcome`.
+- **The brief's own finding citations are crossed** for three items: `F-2`'s
+  *detail* is the PHASE-04 gap, `F-3`'s the PHASE-06 row, `F-4`'s the sec-8
+  table, but each finding's *response* — and the brief written from them — names
+  the next one along. The work was unambiguous by content; the outcome is
+  recorded against the finding whose detail states the defect.
 
 ## Harvest
 <!-- single-copy: updated in place each harvest; ids only, never restated content -->

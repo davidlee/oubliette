@@ -94,6 +94,14 @@ the image open*. It is checked twice, on purpose:
 door answers and `agent` has no logind session except the gettys' autologins
 and its own user manager*.
 
+**The front end checks the first half weakly, on purpose.** It runs
+`door "$name" probe`, which is a `-S` test on the relay socket (or, off the
+relay, `doorsOpen` plus the tap's existence) — it establishes that there is a
+door, not that anything is behind it. A guest that does not answer behind a live
+door therefore fails the `ssh` call itself, and `resetHomeRefusal` reports that
+with the guest's status rather than with a door message. Two refusals with two
+readings beats one check that guesses which it was.
+
 With nobody connected, a running guest already has three `agent` sessions. This
 is what `loginctl show-session` reported on slot `b`, beside the admin door's own
 login:
@@ -119,8 +127,16 @@ login:
 - An ssh login is a session with `Service=sshd` (the admin door's, above). A
   baseline is started detached (`setsid`) from one, and **assumed** to keep that
   session in `closing` until it exits, because NixOS leaves `KillUserProcesses`
-  off (`ASM-001`). That assumption, and the values for an `agent` ssh login, are
-  checked by a live exercise (see Verification).
+  off (`ASM-001`). That assumption, and the values for an `agent` ssh login, were
+  checked by a live exercise and `ASM-001` is **validated**
+  (`mem.fact.oubliette.a-closing-session-lives-as-long-as-its-work`).
+  A detached baseline leaves **two** `agent` sessions, not one: the run itself,
+  pinned in `closing`, and a **log tail** over a second ssh that stays `active`
+  after its host-side client dies, because `tail -f` blocks without writing
+  (`mem.fact.oubliette.a-detached-baseline-leaves-two-agent-sessions`). Both
+  refuse under the rule above — one for not being `login` or a manager, the other
+  the same — so the count does not change the rule, only what a reader should
+  expect the refusal to list.
 - Idle is checked **before** the guest program quiesces the agent: it refuses on
   evidence that someone is working, then stops what that test cannot see (the
   gettys and the agent's user manager) before deleting anything. sec-4 has the
@@ -168,7 +184,7 @@ flowchart TD
   F2 -- no --> RF2["refuse, naming which"]
   F2 -- yes --> D2["copy · marker · move into place"]
 
-  S -- reset-home --> A{"admin door<br/>answers?"}
+  S -- reset-home --> A{"has a door?"}
   A -- no --> RA["refuse: capsule &lt;slot&gt; start"]
   A -- yes --> G{"guest has<br/>capsule-reset-home?"}
   G -- no --> RG["refuse: image predates this verb,<br/>just refresh-build &lt;slot&gt;"]
@@ -425,6 +441,11 @@ running guest and nobody connected: sessions on `ttyS0` and `tty1` plus the
 5. `restartUnit capsule-seed`. It is a `RemainAfterExit` oneshot, so a restart
    re-runs the seed, which recreates `$HOME` owned by `agent` and re-links the
    config files. It runs as root in its own unit, so it does not start the slice.
+   **The config links land under `volumePath`, beside `$HOME` rather than inside
+   it** — `vm/capsule.nix:70-76` writes each to `${work}/${path}`, for this
+   target `/work/.cargo/config.toml`. So the delete in step 4 never removed them,
+   and a reset `$HOME` holding no symlinks is the expected result rather than an
+   unverified one.
 6. Under `--scrub`: `rm -f --` each of `scrubPaths`, then
    `startUnit sshd-keygen`, then `restartUnit sshd`. **`sshd` does not make host
    keys itself.** On the pinned nixpkgs a separate `sshd-keygen.service` does. It
@@ -609,14 +630,20 @@ one line under the table (`DEC-009`).
 - **The free line**, printed after the table and before `perimeter:`:
 
   ```
-  volumes: 107G free on /var/lib/microvms, 20G of it kept back from clones (2 images outside the pool: capsule, capsule-b)
+  volumes: 107G free on /var/lib/microvms, 20G of it kept back from clones (2 outside the pool: capsule, capsule-b)
   ```
 
   "Free" is `df`'s `avail`, the same number the clone's fit check reads, and the
   reserve is `capsules.volumeReserve`, so a reader can predict a clone's refusal
-  from this line and the source's `alloc`. The parenthesis appears only when the
-  image root holds state directories that are not declared slots. It is how `CHR-013`'s leftovers become visible without
-  anyone listing the directory.
+  from this line and the source's `alloc`. It is a **whole-filesystem** figure —
+  `df --output=avail` on the image root, not a sum over the pool — so it moves
+  with every capsule on this host and with anything else sharing that
+  filesystem. Two readings taken either side of a clone are not expected to
+  differ by the clone's size alone.
+- **The parenthesis** appears only when the image root holds state directories
+  that are not declared slots. It counts directories, not images, so a leftover
+  with no image is still seen — which is how `CHR-013`'s leftovers become visible
+  without anyone listing the directory.
 
 **Why the front end's `microvms` becomes an argument:** `host/cli.nix:220`
 currently binds `microvms = "/var/lib/microvms"` in a `let`. It becomes an
@@ -660,10 +687,21 @@ with the aggregation message the other actions already use.
 | --- | --- | --- |
 | `microvms` (new) | `"/var/lib/microvms"` | `alloc`, the free line, `created` |
 | `volumeControl` (new) | `volumeRoot() { sudo -k ${volumeRootHelper}/bin/capsule-volume-root "$@"; }` | the root step, without root |
+| `volumeControl`, second function | `vmmState() { unitState "$(unitOf "$1")"; }` | the slot's `microvm@` unit state |
 | `guestControl` (existing) | gains `guestResetHome() { … admin ssh … capsule-reset-home "$@"; }` | the guest program's exit status |
 
 The start lock needs no new argument: it is `capsules.volumeLock`, and a suite's
 fixture pool already substitutes `capsules`.
+
+**Why the unit state is a seam and not a plain call.** `pkgs.systemd` is in the
+front end's `runtimeInputs`, so nothing in a sandbox can stub `systemctl`: it
+runs the real one, against a session bus with none of these units, and reads
+every slot as `--`. A suite could then never drive the `stopped` precondition it
+exists to pin. So `vmmState` — one line over the existing `unitState` — is
+carried in `volumeControl` beside `volumeRoot`, and a suite hands the branch a
+stopped slot and a running one without a VMM. This is the same boundary
+`gitChannelCases` respects for `ssh` (CLAUDE.md): the seam moves to the caller
+rather than the test reaching around `runtimeInputs`.
 
 `volumeRootHelper` is `host/volume-root.nix` applied to the same `capsules`, and
 it is threaded in from `host/programs.nix`, beside the other programs the front
@@ -718,11 +756,13 @@ not put on `PATH`: it is reached only through the front end's store path.
 | `host/volume-root-cases.nix` | **new**: its suite, built against a sandbox root with `tools` substituted, the drop to the image owner included |
 | `vm/reset-home.nix` | **new**: the guest program (sec-4) |
 | `vm/reset-home-cases.nix` | **new**: its suite, with a fixture `home`, fixture `scrubPaths`, and `tools` stubbed |
-| `vm/capsule.nix` | builds `scrubPaths` from `setup.nix` and `openssh.hostKeys`, passes `agentUid`; adds the program to `systemPackages` |
+| `vm/capsule.nix` | builds `scrubPaths` from `setup.nix` and `openssh.hostKeys`, passes `agentUid`; adds the program to `systemPackages`; calls `vm/guest-path.nix`'s guard over `volumePath` |
+| `vm/guest-path.nix` | **new** (`RV-004` `F-4`): the eval guard over the target-derived paths spliced unquoted into the guest's root `rm`. A `target.nix` value that changes which files a root `rm` deletes is checked at eval, and the contract states the constraint (`docs/contract-target.md`) |
 | `capsules.nix` | **two values**: `volumeLock` and `volumeReserve` (sec-3) |
 | `host/services.nix` | one tmpfiles rule for `volumeLock` |
 | `host/cli.nix` | `volume` verb; `nameFrom`; `microvms`, `volumeControl` (`sudo -k`), `guestResetHome`; `resetHomeRefusal`, called by `scrubPending` in `work()` and by the `reset-home` branch; `reset`'s next-step line; shared volume lock in `start`; `alloc` column and free line with the reserve |
 | `host/volume-cases.nix` | **new**: the front end's volume branch against a fixture pool, rendered the way `host/policy-cases.nix` renders its own |
+| `host/policy-cases.nix` | the absent-image-root guard: `status`'s `df` under `set -e` took the verb down on a host with no image root, which is the devshell path on a fresh machine |
 | `host/programs.nix` | builds `volumeRootHelper` and threads it to the front end |
 | `flake.nix` | the three suites as outputs, each a short `import` |
 | `justfile` | the three suites in **both** `build` and `cases` (`NOTES item 51` step 3) |

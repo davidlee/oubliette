@@ -247,3 +247,100 @@ at the previous disposal's snapshot, which is why a locked, fully-attested desig
 run reports `review_pass STALE`. Another repo's defect; this run
 (`dr-01a0a2ae-bcb8-7b80-a3f3-53dcbaf0706e`, revisions 58 → 72) is a clean
 reproduction if it is ever reported upstream.
+
+## Reconciliation Outcome
+
+Written 2026-09-17 at `f8335c9`. Every brief item is resolved. No `REV`: `SL-002`
+carries no specs and no requirements, and the `POL-002` surface that moved
+(`docs/contract-target.md`) was fixed in the audit under `F-1`.
+
+**A note on the citations below.** The brief's finding labels are crossed for
+three items — `F-2`'s *detail* is the PHASE-04 range gap, `F-3`'s the PHASE-06
+row, `F-4`'s the sec-8 table, while each finding's *response*, and the brief
+written from them, names the next one along. Each write below is recorded against
+the finding whose **detail** states the defect it repairs. The work was
+unambiguous by content; only the labels disagreed.
+
+### Structured — slice registry
+
+- **`host/policy-cases.nix` declared** as `design-target`, intent naming the
+  absent-image-root guard (`F-4`). `host/*-cases.nix` remains `scope-relevant`,
+  which conformance does not read as declared.
+- **PHASE-06 range replaced** — `record-delta SL-002 PHASE-06 --start 0ab598b
+  --end fdfad31` (`F-3`). The row it replaced covered an unrelated `chore:`
+  `justfile` change and excluded the phase's own commit. No conformant cell
+  moved.
+- **PHASE-04 range widened** — `record-delta SL-002 PHASE-04 --start 6d101b0
+  --end 8cb44df` (`F-2`), **on an explicit human ruling** between widening and
+  leaving it. This is what moves `vm/guest-path.nix` out of `undelivered`. Its
+  cost is recorded in `notes.md` `## Reconcile — RV-006`: six commits in the
+  window belong to no slice, and `README.md`, `docs/contract-doctrine.md` and
+  `flake.lock` sit in `undeclared` because of them. PHASE-04's range is a
+  superset, not a claim.
+
+Result: `undelivered` 1 → **0**; `conformant` 15 → **17**; `undeclared` 14 → 46,
+of which three non-`.doctrine` paths are the priced cost and the rest is
+`.doctrine` bookkeeping no source selector should claim.
+
+### Per-slice direct edits
+
+All in `.doctrine/slice/002/design.md` unless stated, all under `F-7` except the
+last two.
+
+- **sec-8 code-impact table** (`F-4`) — two rows added: `vm/guest-path.nix`
+  (**new**, the eval guard over target-derived paths spliced unquoted into the
+  guest's root `rm`) and `host/policy-cases.nix` (the absent-image-root guard).
+  `vm/capsule.nix`'s row now says it calls the guard.
+- **sec-7 seam table** (`F-7`.1) — `vmmState() { unitState "$(unitOf "$1")"; }`
+  added as a second function on `volumeControl`, with a paragraph on why it is a
+  seam: `pkgs.systemd` is in the front end's `runtimeInputs`, so a sandbox runs
+  the real `systemctl` and reads every unit as `--`. Same boundary
+  `gitChannelCases` respects for `ssh`.
+- **sec-2 flowchart node A** (`F-7`.2) — "admin door answers?" → "has a door?",
+  with a paragraph above the flowchart: the front end runs `door "$name" probe`,
+  a `-S` test on the relay socket (off the relay, `doorsOpen` plus the tap), so a
+  guest that does not answer behind a live door fails the `ssh` call and is
+  reported by `resetHomeRefusal` with its status.
+- **sec-2 `ASM-001` bullet** (`F-7`.3) — `ASM-001` marked **validated**, and a
+  detached baseline is recorded as leaving **two** `agent` sessions: the run in
+  `closing`, and a log tail over a second ssh that stays `active` after its host
+  client dies. Both refuse under the existing rule, so the rule is unchanged.
+- **sec-6 sample free line** (`F-7`.4) — "2 images outside the pool" → "2 outside
+  the pool", matching the section's own rule sentence and `host/cli.nix:1108`. A
+  leftover directory with no image must still be seen (`CHR-013`).
+- **sec-6 free figure** (`F-7`.5) — stated as a whole-filesystem
+  `df --output=avail` on the image root (`host/cli.nix:1097`), so it moves with
+  every capsule on the host and two readings around a clone are not expected to
+  differ by the clone's size alone.
+- **sec-4 step 5** (`F-7`.6) — the config links land under `volumePath` **beside**
+  `$HOME`, not in it (`vm/capsule.nix:70-76`; for this target
+  `/work/.cargo/config.toml`). This settles `notes.md`'s unverified sub-claim: the
+  reset `$HOME` held no symlinks because none were ever there.
+- **`notes.md` `## PHASE-06` exercise 5** (`F-8`) — `VH-5`'s reset half restated
+  at its evidence: *refuses while `capsules.volumeLock` is held exclusively*,
+  which `volumeCases` already pins, and **not** *while a clone is running*. The
+  `start` half keeps the stronger claim. The section had carried an `STD-001`
+  caveat since `fdfad31`; this names the lock and makes "exclusively" explicit.
+- **`notes.md` `## Reconcile — RV-006`** (`F-2`) — new section recording the
+  registry repair and PHASE-04's over-attribution.
+
+### Governance / spec
+
+None. `POL-001`..`POL-004`, `STD-001` and `ADR-001`..`ADR-003` were confirmed at
+the design run's `cpa-governance-confirmed` act and none is contradicted by what
+shipped.
+
+### Terminal without a write
+
+- `F-1` — fixed during the audit (`docs/contract-target.md`).
+- `F-5` — tolerated: `review_pass STALE` is a stale coverage snapshot in the
+  doctrine CLI's own write, not a review gap
+  (`mem.fact.oubliette.review-pass-stale-is-a-snapshot-not-a-gap`).
+- `F-10` — tolerated: the clone trap's removal of a partial `.clone` is a
+  suite-only guarantee, already stated as one in sec-8 and the notes.
+- `F-13` — tolerated: `selector doctor`'s three redundancy findings would break
+  conformance if acted on.
+- `F-6`, `F-9`, `F-11`, `F-12` — left the slice as owned work: `RSK-008`,
+  `CHR-014`, `ISS-010`, `CHR-015`.
+
+Reconcile pass complete — handoff to `/close`.

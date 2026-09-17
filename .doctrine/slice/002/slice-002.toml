@@ -98,6 +98,11 @@ selector = "vm/guest-path.nix"
 intent = "design-target"
 note = "RV-004 F-4: the eval guard over target-derived paths spliced into the guest's root rm"
 
+[[selector]]
+selector = "host/policy-cases.nix"
+intent = "design-target"
+note = "PHASE-05: the absent-image-root guard, so status does not die under set -e on a host with no image root"
+
 [[relation]]
 label = "governed_by"
 target = "POL-003"
