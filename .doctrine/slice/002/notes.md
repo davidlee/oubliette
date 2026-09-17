@@ -281,6 +281,12 @@ status moves.
     whose agreed fix plan was the function; for reconcile.
   - A new file must be `git add`ed before nix can see it: a dirty `git+file:`
     tree still only exposes tracked paths.
+- `F-5`. No code. `VH-7` appended to `plan.toml` PHASE-06 and mirrored into the
+  phase sheet as a **STOP condition**: if a post-clone `start` refuses the scrub
+  as busy, read `loginctl` at that moment for a closing `agent` sshd session the
+  front end's own `waitAnswers` (or `provisionSlot`) left. If one is there the
+  idle rule counts the front end's own traffic as work, and that reopens the
+  design rather than getting patched in code.
 
 ## Harvest
 <!-- single-copy: updated in place each harvest; ids only, never restated content -->

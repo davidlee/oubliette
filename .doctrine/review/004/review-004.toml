@@ -41,7 +41,7 @@ response = "Code only. vm/reset-home-cases.nix:172 row becomes '7 - systemd-user
 
 [[finding]]
 id = "F-4"
-status = "answered"
+status = "verified"
 severity = "minor"
 title = "expected target-derived paths spliced into a root program's text to be guarded against shell-significant characters; observed a raw splice with no eval-time check"
 detail = """vm/reset-home.nix:78 'home=${home}' and :80 'scrubPaths=(${lib.concatStringsSep " " scrubPaths})' splice unquoted, so the fixture can pass '"$CASE_ROOT/..."'. The values are target-derived: setup.nix's dests and home both come from target.nix's volumePath (setup.nix header; vm/capsule.nix:45-52). A volumePath with a space or glob character would still build and shellcheck, and would word-split inside 'rm -f -- "${scrubPaths[@]}"' into other paths, removed as root (a relative fragment resolves against root's cwd over ssh). Under POL-002 a different target should need only a different value, and this value silently changes which files are deleted. The guest is not the perimeter (POL-001), which is why this is minor. The header states the raw splice but not the hazard; capsule-seed's splice of home is the precedent and has the same gap. Suggestion: a throw in vm/capsule.nix (not in reset-home.nix, so the fixture still passes shell expressions) unless every path matches a conservative character class."""

@@ -189,6 +189,7 @@ verification = [
   { id = "VH-4", expects = "exercise 4: status shows alloc for stopped slots and the free line" },
   { id = "VH-5", expects = "exercise 5: a start and a second reset refuse while a clone holds the lock, and succeed after" },
   { id = "VH-6", expects = "exercise 3, before the start: the clone's image is microvm:kvm with no chown run, and a source image swapped for a symlink to a root-only file fails the copy and leaves no capsule-work.img.clone (RV-003 F-1)" },
+  { id = "VH-7", expects = "exercise 3: if `capsule <dest> start` after a clone refuses the scrub as busy (3), read `loginctl list-sessions` and `loginctl show-session -p Name -p Service -p Class -p State` at once and look for a closing `agent` sshd session left by the front end's own `waitAnswers` probe (or, on a setup, by `provisionSlot`'s push); if one is there the idle rule counts the front end's own traffic as work and the design reopens (RV-004 F-5, ASM-001)" },
 ]
 specs        = []
 requirements = []
