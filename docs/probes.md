@@ -14,11 +14,12 @@ source.** Where another record load-bears on a number — a question it would
 answer, a constraint it prices — that number is minted as an `EVD` so the edge
 can be drawn (`doctrine knowledge list`, and `supports` edges onto `QUE-004`,
 `QUE-005`, `CON-001`, `CON-004`). `EVD-001` the ratchet, `EVD-002`
-time-to-interactive, `EVD-003` the relay, `EVD-004` probe totals, `EVD-005` disk,
-`EVD-006` the scoped exhibit, `EVD-007` the flavour composition. **That is a
-citation, not a copy**: each says which section here it came from, and a re-taken
-figure is edited here and the record superseded. Do not mint an `EVD` for a
-figure nothing points at — this file is where a number lives by default.
+time-to-interactive, `EVD-003` the relay, `EVD-004` probe totals, `EVD-009` disk
+(re-taken 2026-09-17; `EVD-005` superseded), `EVD-006` the scoped exhibit,
+`EVD-007` the flavour composition. **That is a citation, not a copy**: each
+says which section here it came from, and a re-taken figure is edited here and
+the record superseded. Do not mint an `EVD` for a figure nothing points at —
+this file is where a number lives by default.
 
 **Which corpus mints one is `ADR-003`.** Evidence whose subject is *this repo's
 mechanism* is minted here and doctrine cites it across by id; evidence whose
@@ -319,7 +320,7 @@ it, because two samples say more about the noise than either says alone.
 | volume, provisioned plus some ssh work | 385 MiB | — | hand-measured, [item 15](./ledger/015-things-that-only-grow.md) | same order — a pre-build capsule is ~300-400 MiB either way |
 | volume, one `just web-build test` in, **untuned** | 7.4 GiB | — | hand-measured, item 15 | 6.9 GiB of it `/work/doctrine`. Taken when the capsule had no build config at all — full debuginfo, incremental cache. **Superseded**: with `guestConfig` the same workload leaves 1.1 GiB, below. Kept because the gap is the argument for the config existing |
 | `/work/doctrine`, same workload, **tuned** | **1.1 GiB** | — | hand-measured, below | `debug = 0`, `incremental = false`. A **floor**, not a plateau — no discard, and `target/` accretes |
-| host disk available under `/var/lib` | **166 GiB** of 1.78 TiB, **91% used** | — | hand-measured, `df /var/lib`, 2026-08-13 | `/var/lib` is on the root filesystem, `/dev/nvme0n1p2`, **ext4 — so no reflink**: a cloned volume is a real copy of the source's *allocated* blocks, which is its high-water mark and not its current usage. This row is what bounds the number of capsules, and it is the only reading of it — [Plan C](./plan-c-multi-capsule.md#disk-is-the-practical-limit)'s 180 GiB is the same disk earlier and its N table is that much optimistic |
+| host disk available under `/var/lib` | **92 GiB** of 1.78 TiB, **95% used**; 166 GiB / 91% on 2026-08-13 | — | hand-measured, `df /var/lib`, 2026-09-17 | `/var/lib` is on the root filesystem, `/dev/nvme0n1p2`, **ext4 — so no reflink**: a cloned volume is a real copy of the source's *allocated* blocks, which is its high-water mark and not its current usage. This row is what bounds the number of capsules, and it is the only reading of it — [Plan C](./plan-c-multi-capsule.md#disk-is-the-practical-limit)'s 180 GiB is the same disk earlier and its N table is that much optimistic. It is no longer only hand-measured: `capsule status`'s `volumes:` line reads the same `avail` (SL-002 `DEC-009`), so the figure is checkable without opening this file, and `alloc` beside it is each slot's high-water mark — what a clone of that slot would actually cost. Read 2026-09-17: `a` 3.3G, `d` 6.8G, `e` 1.6G, all **stopped** |
 | cold boot to ssh | 6.41 s | 6.34 | freshness | volume created, mkfs and seed all inside it |
 | provision, 32 MiB of history | 1.90 s | 2.26 | freshness | the noisiest term here, ±16% |
 | time to a usable fresh capsule | 8.31 s | 8.60 | freshness | boot + provision; "usable" means provisioned, not merely answering ssh — and **not interactive**. An interactive capsule is this plus setup plus a cold baseline build, both paid per fresh capsule because `/work/home` is on the volume freshness deletes. That is ~2 min, and this row is 7% of it ([the cold build](#the-cold-build)). Do not let the word widen quietly |

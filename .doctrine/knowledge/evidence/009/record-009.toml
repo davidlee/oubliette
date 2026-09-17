@@ -1,0 +1,25 @@
+schema = "doctrine.knowledge"
+version = 1
+
+id = 9
+slug = "disk-is-tighter-than-it-was-and-status-now-reads-the-same-number"
+title = "Disk is tighter than it was, and status now reads the same number"
+record_kind = "evidence"
+status = "captured"
+created = "2026-09-17"
+updated = "2026-09-17"
+tags = []
+
+[facet]                         # every field typed; seeded empty (captured later)
+datum        = "92 GiB available of 1.78 TiB under /var/lib, 95% used, on ext4 with no reflink - down from 166 GiB / 91% on 2026-08-13. A clone still copies the source's allocated blocks, and `capsule status`'s `volumes:` line now reads the same `avail` beside each slot's `alloc`."
+provenance   = "inspection"               # inspection | experiment | reproduction | citation
+confidence   = "high"               # low | medium | high
+
+[evidence]                      # free-text citations (supports / contradicts / notes)
+supports    = ["QUE-004"]
+contradicts = []
+notes       = []
+
+[relationships]                 # verb-written edges (set by doctrine supersede)
+supersedes    = ["EVD-005"]   # record ids this one replaces (set by doctrine supersede)
+superseded_by = []   # set on superseded predecessor (verb-written, ADR-004 §5)
