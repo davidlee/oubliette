@@ -1660,6 +1660,12 @@ in
                 volumeCreated "$name" || exit 1
                 volumeStopped "$name" "a volume reset" || exit 1
                 volumeRoot reset "$name"
+                # The guest's ssh host key went with the volume, so the next
+                # start has a new key at the same address and the human's own
+                # door, which checks them, refuses
+                # (mem.fact.oubliette.fresh-capsule-fresh-host-keys). Nothing is
+                # said when the root step refused: `set -e` has already left.
+                echo "  next: just reset-known-hosts $name; capsule $name start"
                 ;;
               clone-from)
                 src="''${1-}"

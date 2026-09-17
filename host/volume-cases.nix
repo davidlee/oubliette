@@ -220,6 +220,8 @@ in
     run dst volume reset
     ck "reset of a stopped, created slot runs" 0 "$rc"
     ckt "  as the root step's reset of that slot alone" test "$(rootLog)" = "reset dst"
+    ckt "  and names the host key a fresh volume breaks" saw "just reset-known-hosts dst"
+    ckt "  beside the start that follows it" saw "capsule dst start"
 
     fresh
     unit dst failed
@@ -251,6 +253,7 @@ in
     CASE_ROOT_FAIL="capsule-volume-root: another volume operation is running" run dst volume reset
     ck "a refusal from the root step is the verb's exit status" 1 "$rc"
     ckt "  and its message passes through unchanged" saw "another volume operation is running"
+    ckt "  and nothing is said about what to do next" unsaw "reset-known-hosts"
 
     # ------------------------------------------------------------ clone-from
     fresh

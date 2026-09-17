@@ -252,6 +252,12 @@ status moves.
     uncommitted fix in the same file.** It cost one re-apply here. Either commit
     the fix before mutating it, or keep the green copy aside and restore from
     that.
+- `F-6`. A successful `volume reset` prints `next: just reset-known-hosts
+  <slot>; capsule <slot> start`, as `clone-from` does; a refused one prints
+  nothing, which `set -e` gives for free since the root step is a simple
+  command. Cases: the success case sees the line, the `CASE_ROOT_FAIL` case does
+  not. Mutation: move the line above `volumeRoot reset` — only the negative case
+  reddens, which is what makes it discriminate.
 
 ## Harvest
 <!-- single-copy: updated in place each harvest; ids only, never restated content -->

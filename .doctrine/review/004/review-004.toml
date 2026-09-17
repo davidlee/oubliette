@@ -14,7 +14,7 @@ ref   = "SL-002"
 
 [[finding]]
 id = "F-1"
-status = "answered"
+status = "verified"
 severity = "major"
 title = "expected the status-127 refusal to name a remedy that moves a slot onto a newer image; observed it names stop-then-start, which re-runs the same one"
 detail = "host/cli.nix:1693-1694 answers status 127 with 'capsule <slot> stop, then start, onto an image that has it'. On this host a slot's guest closure is whatever /var/lib/microvms/<slot>/current points at, set by 'microvm -c' and moved only by 'microvm -u' (README.md:181, 224; justfile:182-199 'refresh-build'). The start branch (host/cli.nix:1509-1591) runs 'systemctl start microvm@<slot>' and never updates 'current', so a stop and start boots the same pre-verb image and the verb fails again with the same advice: a loop. host/volume-cases.nix:346 pins the wrong text ('capsule dst stop, then start'). The advice originates in the design: sec-2's flowchart node RG ('image predates this verb, stop then start', design.md:174) and the slice's risk ('restart onto the new image'). Expected remedy: 'just refresh-build <slot>' (stops, 'microvm -u', restarts). The 3 (busy) remedy, stop then start, is correct and unaffected."
@@ -23,7 +23,7 @@ response = "Fix in the design first, then in code; the user decided on 2026-09-1
 
 [[finding]]
 id = "F-2"
-status = "answered"
+status = "verified"
 severity = "major"
 title = "expected the scrub gate to refuse by reason and name the way out, as reset-home does; observed every scrub failure collapses to one message, and the status mapping lives only in the reset-home branch"
 detail = "scrubPending (host/cli.nix:556-566) prints 'the scrub did not complete, so nothing was injected; the marker stays' for every non-zero status. The 127/3/4 mapping to reason and remedy exists only inline in the reset-home branch (host/cli.nix:1689-1711). volume-cases.nix:376-384 asserts only 'marker stays' for 1, 3, 4 and 127, so the suite pins the collapse. The design asks for more in two places: sec-5's sequence diagram ('refuse inject, marker kept, reason named') and the slice's risk that the front end 'must refuse [a pre-verb image] by reason, not pass it through as a bare error'. The gate is also the path most likely to meet 127: clone-from requires both slots created, not refreshed, so 'capsule d volume clone-from b; capsule d start' on a slot whose 'current' predates PHASE-02 fails at start with ssh's 'command not found' and no remedy, leaving the slot running and marked. Suggestion: one function from the guest's status to its refusal, called by both scrubPending and the reset-home branch. The same function would stop the '*' arm reporting ssh's own 255 as 'capsule-reset-home exited 255' (host/cli.nix:1708)."
