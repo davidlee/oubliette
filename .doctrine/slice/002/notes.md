@@ -479,7 +479,7 @@ verified before anything read from it. `c` untouched throughout.
 
 ## Harvest
 <!-- single-copy: updated in place each harvest; ids only, never restated content -->
-fresh-as-of: 2026-09-17 · started (PHASE-01..05 complete; RV-004 concluded; PHASE-06 is live exercises, and is the user's)
+fresh-as-of: 2026-09-17 · started, 6/6 phases complete, lifecycle divergent — awaiting `/audit` · `fdfad31`
 
 ### Produced
 - `design.md` sec-1..sec-8 — materialised from run `dr-01a0a2ae…`; all eight walked with the user, sec-3/4/5/7/8 revised for `RV-001` `F-1`..`F-5` (`075ead9`)
@@ -497,6 +497,8 @@ fresh-as-of: 2026-09-17 · started (PHASE-01..05 complete; RV-004 concluded; PHA
 - PHASE-04: `host/cli.nix` `reset-home`, `scrubPending` in `work()`, `guestResetHome`, clone output; `docs/contract-assignment.md` clean-source line — see `## PHASE-04`
 - PHASE-05: `host/cli.nix` `allocOf`/`imageOf`/`volumes` + the `alloc` column; `host/volume-cases.nix`; `docs/probes.md` disk row; `EVD-009` — commits `f3eec1b`, `7f670dd` — see `## PHASE-05`
 - `RV-004`'s fixes, one commit per finding — `7259d03` (F-1, F-2: `resetHomeRefusal`), `bc05112` (F-6), `299f2c4` (F-3), `28bcead` (F-4: `vm/guest-path.nix`), `28c4a38` (F-5: PHASE-06 `VH-7`), `3fe9b19` (PHASE-02 `EX-6`/`VT-5`/`VA-2`, PHASE-04 `EX-6`/`EX-7`/`VT-3`/`VT-4`/`VA-3`), `461537b` (synthesis), `8cb44df` — see `## RV-004`
+- PHASE-06: the five live exercises — no code; evidence only. `ASM-001` and `ASM-002` **validated**; all seven `VH` satisfied; `VH-7`/`F-5` did not fire. Commit `fdfad31` — see `## PHASE-06`
+- **EN-2/EN-3 were unmet at phase open** and the user rebuilt: the host ran a `capsule` 18 commits behind (no `resetHomeRefusal`, no `alloc`) and `a`'s guest closure was 7 August with no `capsule-*` in it. `just refresh-build a` kept the volume
 
 ### Learned
 - mem.fact.oubliette.design-apply-disposes-through-checkpoints — how the run takes dispositions
@@ -508,6 +510,10 @@ fresh-as-of: 2026-09-17 · started (PHASE-01..05 complete; RV-004 concluded; PHA
 - mem.pattern.oubliette.fake-guest-tools-on-path — tools left out of `runtimeInputs` let a suite run the shipped store path; a stub `sudo` for host/cli.nix (PHASE-03)
 - mem.fact.oubliette.git-checkout-restores-more-than-the-mutation — restoring a mutation that way discards an uncommitted fix in the same file
 - mem.fact.oubliette.a-new-file-must-be-git-added-before-nix-sees-it — a dirty `git+file:` tree exposes tracked paths only
+- mem.fact.oubliette.a-closing-session-lives-as-long-as-its-work — a `State=closing` agent session refuses, but `ssh host true` leaves none; the `F-5` answer
+- mem.fact.oubliette.a-detached-baseline-leaves-two-agent-sessions — the run (`closing`) plus a log tail that stays `active` after its host client dies
+- mem.fact.oubliette.module-programs-on-path-are-wrappers — **extended**: two copies sharing a store path proves the same *build*, not currency; parse `exec` then grep the target
+- mem.fact.oubliette.fresh-capsule-fresh-host-keys — **extended**: keys are `/work/ssh/`, and a clone+scrub changes them **twice**
 
 ### Open
 - **The `RV-004` remediation belongs to no phase.** PHASE-04's recorded range
@@ -521,14 +527,14 @@ fresh-as-of: 2026-09-17 · started (PHASE-01..05 complete; RV-004 concluded; PHA
   contiguous range per phase and the fixes amend two different phases. **For
   `/audit` to reconcile**, and the reason the fix commits are itemised above.
 - `F-4`'s guard is pinned, but nothing pins that `vm/capsule.nix` *calls* it — needs a guest evaluated against a hostile `target` (a second NixOS eval in `just build`); for reconcile
-- `F-5`: whether the front end's own `waitAnswers`/`provisionSlot` session is still listed when the scrub reads — PHASE-06 `VH-7`, a STOP condition
-- `ASM-001` — a detached baseline keeps its logind session (live exercise 2, PHASE-06)
-- `Service`/`Class` of an `agent` ssh login and of a detached baseline — unread (live exercise 2)
-- `ASM-002` — restarting guest sshd keeps the admin session (live exercise 3, PHASE-06)
-- the `setpriv` drop under `sudo -k` on this host — no suite reaches it (PHASE-06 `VH-6`)
+- **`F-5`'s remaining half**: `VH-7` showed `start`'s `waitAnswers` (`ssh agent@guest true`) leaves no session, so the gate is safe on that path. `setup`'s `provisionSlot` push is the **heavier** probe and was never run this way — the only thing left that could reproduce `F-5`
+- **The clone trap is a suite-only guarantee.** `cp` refuses before creating anything, so the live failed-copy case cannot reach the trap that removes a partial `.clone`; `volumeRootCases` says so and the live run agreed. State it that way at reconcile rather than counting `VH-6` as covering it
+- **`VH-5`'s reset half** was taken against a lock held synthetically by `flock -x`, not a running clone — same lock and branch, weaker claim (`STD-001`)
+- sec-4 step 5 says `capsule-seed` "re-links the config files"; the reset `$HOME` held no symlinks — either this target declares none or they are conditional; for reconcile
+- **`doctrine design show SL-002 --format status` reports `review_pass STALE`** on a run *locked at revision 75* with `0 sections with outstanding review` and `0 changes since the declared baseline`. Assess whether the flag is real before `/audit` leans on the attestation
 - sec-7's seam table lacks `vmmState` — deviation recorded in `## PHASE-03`, for reconcile
 - sec-2's flowchart asks "door answers?"; the front end asks "has a door" — deviation in `## PHASE-04`, for reconcile
 - sec-6's sample free line words undeclared state directories "images"; the code counts directories, per the section's own rule sentence — deviation in `## PHASE-05`, for reconcile
-- a non-interactive root ssh finds `capsule-reset-home` on `PATH` — else 127 misreads as "predates" (live exercise 2)
+- **The design's account of a detached baseline names one session; there are two** (the run and its log tail) — sec-2/sec-4 wording, for reconcile
+- **The free line is a whole-filesystem `df`**, so a live capsule moves it independently of any clone — worth a sentence in sec-6 at reconcile
 - `notHeld` fails open if `fuser` itself errors — noted in `## PHASE-01`, not filed
-- the real `loginctl` output against `agentSessions`'s parser — the suite's fake is an assumed shape (live exercise 2)
