@@ -70,13 +70,16 @@ exit_criteria = [
   { id = "EX-3", text = "vm/reset-home-cases.nix runs a fixture render with a fixture home, fixture scrubPaths and stubbed tools; the eval-level check reads `scrubPaths` off the program the evaluated guest actually ships (passthru, found in environment.systemPackages by name, and failing loudly when not found) rather than recomputing it" },
   { id = "EX-4", text = "`resetHomeCases` in flake.nix, both justfile recipes, and CLAUDE.md's suite list" },
   { id = "EX-5", text = "`just` green, `just check` clean, and the guest closure builds (`just build-vm`)" },
+  { id = "EX-6", text = "appended after RV-004 F-4: vm/guest-path.nix refuses at eval any `home` or `scrubPaths` entry that is not a plain absolute path, and vm/capsule.nix — not vm/reset-home.nix, whose fixture passes shell expressions — puts the target-derived values through it" },
 ]
 verification = [
   { id = "VT-1", expects = "busy refusal: status 3, sessions listed, nothing stopped; with agentSessions stubbed to print sec-2's three sessions nothing refuses; an sshd session or any other class refuses; the filter runs in the program, not the stub", test_file = "vm/reset-home-cases.nix", keywords = ["agentSessions", "workingSessions", "systemd-user", "manager", "background"], waived = false },
   { id = "VT-2", expects = "order: stop gettys, stop slice, remove $HOME, restart capsule-seed, start gettys; exit 4 when the slice is active after its stop or during the reset, gettys restarted on both", test_file = "vm/reset-home-cases.nix", keywords = ["stopUnit", "unitActive", "capsule-seed", "user-"], waived = false },
   { id = "VT-3", expects = "$HOME symlink: link removed, target survives; --scrub removes exactly scrubPaths then starts sshd-keygen then restarts sshd, and none of that without --scrub", test_file = "vm/reset-home-cases.nix", keywords = ["--scrub", "sshd-keygen", "restartUnit"], waived = false },
   { id = "VT-4", expects = "eval-level: the shipped scrubPaths has nothing under $HOME, contains the target volumePath's .env, and contains every declared host key and its .pub; no target value is spelled in the suite (POL-002)", test_file = "vm/reset-home-cases.nix", keywords = ["scrubPaths", "volumePath", "hostKeys", ".pub"], waived = false },
+  { id = "VT-5", expects = "eval-level: the guard returns a plain absolute path and throws on a space, a glob character, a relative path and a shell expression, and every path the shipped image carries passes it", test_file = "vm/reset-home-cases.nix", keywords = ["guestPath", "tryEval", "shippedPlain"], waived = false },
   { id = "VA-1", expects = "mutation: drop the EXIT trap's getty restart, reorder the slice stop after the rm, and drop the manager exclusion from the filter, each on a scratch copy; the named cases go red; restored" },
+  { id = "VA-2", expects = "appended after RV-004 F-3/F-4: with the manager-early row spelled `login` the filter mutation leaves the case green and with `systemd-user` it reddens; widening the guard's class to `.*` reddens its four negative verdicts; both restored" },
 ]
 specs        = []
 requirements = []
@@ -131,10 +134,15 @@ exit_criteria = [
   { id = "EX-3", text = "`clone-from` success output names the source's allocation, that the clean-source rule was not checked (DEC-007, IMP-008), `just reset-known-hosts <dest>` and the next commands" },
   { id = "EX-4", text = "docs/contract-assignment.md states the clean-source rule as not enforced, owned by IMP-001" },
   { id = "EX-5", text = "`just` green, `just check` clean" },
+  { id = "EX-6", text = "appended after RV-004 F-1/F-2: one function, `resetHomeRefusal <slot> <rc>`, in the front end's main body turns a guest status into a reason and a remedy; both `scrubPending` and the `reset-home` branch call it, 127's remedy is `just refresh-build <slot>`, and 255 is read as ssh's own status" },
+  { id = "EX-7", text = "appended after RV-004 F-6: a successful `volume reset` prints `next: just reset-known-hosts <slot>; capsule <slot> start`, and a refused one prints nothing more" },
 ]
 verification = [
   { id = "VT-1", expects = "inject with a marker: scrub, then marker removed, then inject; failing scrub: inject not called, marker kept", test_file = "host/volume-cases.nix", keywords = ["guestResetHome", "scrubPending", "marker stays"], waived = false },
   { id = "VT-2", expects = "reset-home maps guest statuses 127, 3 and 4 to their named refusals", test_file = "host/volume-cases.nix", keywords = ["predates", "127", "login arrived"], waived = false },
+  { id = "VT-3", expects = "the scrub gate and reset-home refuse by the same reason and remedy for each of 127, 3, 4, 255 and any other status, read from one per-status expectation", test_file = "host/volume-cases.nix", keywords = ["refusal", "saidWhy", "refresh-build", "255"], waived = false },
+  { id = "VT-4", expects = "a successful reset names reset-known-hosts and the start; a refused one does not", test_file = "host/volume-cases.nix", keywords = ["reset-known-hosts", "nothing is said about what to do next"], waived = false },
+  { id = "VA-3", expects = "mutation: drop the resetHomeRefusal call from scrubPending (only the gate's per-status cases go red); restore stop-then-start as 127's remedy (both 127 cases go red); move the reset's next-step line above volumeRoot (only the refused-reset case goes red); all restored" },
   { id = "VA-1", expects = "mutation: remove the marker before the scrub returns, and call scrubPending only from `start`; the named cases go red; restored" },
   { id = "VA-2", expects = "every path that execs capsule-inject from the front end goes through `work()` (grep), so the gate has no bypass inside `capsule`" },
 ]

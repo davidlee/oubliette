@@ -50,7 +50,7 @@ response = """Code only; the design's scrubPaths block in sec-4 is unchanged. In
 
 [[finding]]
 id = "F-5"
-status = "answered"
+status = "verified"
 severity = "minor"
 title = "expected the idle rule's evidence to cover the sessions the front end itself opens just before a scrub; observed start and setup each open an agent ssh session immediately before, and the rule counts closing sessions as work"
 detail = "Open question, not a demonstrated failure. start runs waitAnswers, which is answers(), which is 'ssh agent@guest true' (host/cli.nix:620-624, 1584), then 'work inject', which is scrubPending, which is 'capsule-reset-home --scrub'. setup runs provisionSlot (an agent@ push through the git channel, host/cli.nix:1945) directly before 'work inject'. workingSessions filters on Service and Class only, and by design counts a session in State=closing (sec-2, ASM-001: a detached baseline is detected by exactly that). If logind still lists the probe's session when the scrub reads, every start of a cloned slot refuses as busy (3), the gate collapses that to 'scrub did not complete' (the gate-collapse finding above), and the slot stays running and marked. The evidence table (design sec-2) was read with nobody connected, so it does not settle this. PHASE-06 exercise 3 (clone-from then start) would show it. Its sheet should say to look for this, and to read loginctl at the moment of the scrub if start refuses."

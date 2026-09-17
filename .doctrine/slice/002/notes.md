@@ -287,6 +287,11 @@ status moves.
   front end's own `waitAnswers` (or `provisionSlot`) left. If one is there the
   idle rule counts the front end's own traffic as work, and that reopens the
   design rather than getting patched in code.
+- **Criteria appended, never renumbered**, so the plan says what shipped:
+  PHASE-02 `EX-6`/`VT-5`/`VA-2` for the guard, PHASE-04 `EX-6`/`EX-7`/`VT-3`/
+  `VT-4`/`VA-3` for the shared refusal and the reset's next step. `doctrine
+  slice verify-vt SL-002` passes every VT on PHASE-01..04; PHASE-05's `VT-1`
+  fails because PHASE-05 has not run.
 
 ## Harvest
 <!-- single-copy: updated in place each harvest; ids only, never restated content -->
