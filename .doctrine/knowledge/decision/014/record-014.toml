@@ -12,7 +12,7 @@ tags = []
 
 [facet]                         # every field typed; seeded empty (captured later)
 context = "capsule all status's profile cell: `-`, `name`, `name*` (host document drifted from pin), `name!` (pin bytes differ from recorded digest). Pins exist only after a provision, which also writes the record."
-choice = "`[name]` for any resolution without a record — the declared default and the sole-rendered fallback alike. Bare name (with `*`/`!`) only for a record. Brackets never carry `*` or `!`."
+choice = "`[name]` for any resolution without a record — the declared default and the sole-document fallback alike. Bare name (with `*`/`!`) for a record. Brackets never carry `!` (it needs a recorded snapshot); they carry `*` only for a pin left by an earlier provision that never recorded, so its drift stays visible."
 alternatives = ["B: bracket only the declared default (keeps the pre-existing ambiguity; three rules for one column)", "C: a distinct mark per source (encodes why, which the refusal and --profile already say)"]
 rationale = "The distinction a reader needs is assigned or not; one rule, and it retires an ambiguity older than the field."
 consequences = ["on a one-target host unassigned rows change from `doctrine` to `[doctrine]`", "existing cases expecting a bare name for an unassigned slot change", "the absent (`-`), record, default and sole-render paths are each pinned by a case"]

@@ -70,18 +70,28 @@ today's honest refusal. The two land together or the first one lies.
    **`DEC-014`**: `[doctrine]` for *any* resolution without a record — the
    declared default and the pre-existing sole-document fallback alike —
    bare `doctrine` (with its `*`/`!` markers) for a record, `-` for neither.
-   Brackets never carry `*` or `!`, since a provision writes the record directly
-   after the pin (objective 4a). A default that renders identically to a record
-   is a default that will be read as one, and the sole-document fallback already
-   did. The profile column widens from 9 to 11 characters to hold `[doctrine]`.
+   Brackets never carry `!`, and carry `*` only for a pin an earlier provision
+   left without a record, so its drift stays visible; no new such pin can arise
+   (objective 4a). A default that renders identically to a record is a default
+   that will be read as one, and the sole-document fallback already did. The
+   profile column widens from 9 to 11 characters to hold `[doctrine]`, and the
+   memory column from 11 to 12, because its header label already overflowed it.
 
-4a. **A provision resolves its profile once and records it with the pin.** Two
-   pre-existing defects on the provision path, fixed here because objective 4's
-   rule rests on both: `provisionSlot` forwards the name it resolved to the
-   program as an explicit `--profile`, so `work`'s dispatch does not resolve a
-   second time; and `recordProvisioned` writes `profile`, `class` and
-   `profile_snapshot` beside the pin before asking the guest for its HEAD, so a
-   silent guest leaves a record without a base rather than a pin with no record.
+4c. **Every other caller of the resolver is decided** (design sec-3): a
+   misdeclared slot refuses `unit` rather than recording it (`slotNeedsUnit`
+   gains a third failure answer), a declared unassigned slot scopes by unit as
+   an assigned one does, and `handoff` says a destination *declares* a profile
+   when no record names it.
+
+4a. **A provision resolves its profile once, records only what landed, and
+   records it with the pin.** Three pre-existing defects on the provision path,
+   fixed here because objective 4's rule rests on them: `provisionSlot` forwards
+   the name it resolved to the program as an explicit `--profile`, so `work`'s
+   dispatch does not resolve a second time; it checks `work`'s status, so a
+   failed push under `handoff` (where errexit is off) is not recorded; and
+   `recordProvisioned` asks the guest for its HEAD first, then pins and writes
+   the record in one step, so a silent guest leaves a record without a base
+   rather than a pin with no record.
    This changes provision behaviour on the branch `CHR-011`'s bug 3 concerns.
 
 4b. **`-` is a reserved profile name.** It is `recordField`'s absence value
@@ -95,7 +105,10 @@ today's honest refusal. The two land together or the first one lies.
    with the reason stated), and `services.capsule-perimeter.repo` is removed via
    `lib.mkRemovedOptionModule`. Both readers are fixed by that one change —
    `capsule-provision`'s `src` and the front end's `repoFor`, which is where
-   `fetch` writes.
+   `fetch` writes. **Source is pinned with the profile** (the user's choice,
+   2026-09-18): `fetch` and `brief --from-host` read `path` from the slot's pin,
+   so a moved checkout is document drift cured by re-provision, and
+   `docs/contract-assignment.md`'s `source` row says so.
 
 5a. **`DEC-012`: a `POL-002` revision, and a `POL-003` revision beside it.**
    `POL-002`'s *"exactly two places"* list gains a third — a slot's `profile`
@@ -139,9 +152,10 @@ cell, `provisionSlot`, `recordProvisioned`), `host/wrap.nix`,
 `host/services.nix` (`repo` option removed), `host/profile.nix` (`profileLoad`'s
 hint and name check, the validator), `host/git-channel.nix` (comment),
 `host/policy-cases.nix`, `host/profile-cases.nix`, `host/wrap-cases.nix`,
-`flake.nix`, `docs/contract-assignment.md`, `docs/contract-target.md`,
-`docs/plan-d-fleet.md`, `README.md`, `CLAUDE.md`, `POL-002` and `POL-003`
-(revisions), `DEC-012` (wording).
+`host/profile-name.nix` (new), `flake.nix`, `docs/contract-assignment.md`
+(including the `source` row), `docs/contract-target.md`,
+`docs/plan-d-fleet.md`, `README.md`, `CLAUDE.md`, two memories, `POL-002` and
+`POL-003` (revisions), `DEC-012` and `DEC-014` (wording).
 Outside this repo: `~/flakes/modules/nixos/capsule.nix`'s comment names
 `repo` — the user's to edit.
 
