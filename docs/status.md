@@ -12,7 +12,7 @@ one file later.
 
 | what it held | where that is now |
 | --- | --- |
-| **Now** — what is true on this host at this moment | **derived, not authored.** `capsule all status` answers it: slots, units, purposes, profiles, policies, the `*`/`!` pin markers, and a unit column that distinguishes `running` from `auto-restart`. Ask the program, don't read one — the module's copies on `PATH` are wrappers |
+| **Now** — what is true on this host at this moment | **derived, not authored.** `capsule all status` answers it: slots, units, purposes, profiles (bracketed, `[name]`, when no record gives one — `DEC-014`), policies, the `*`/`!` pin markers, and a unit column that distinguishes `running` from `auto-restart`. Ask the program, don't read one — the module's copies on `PATH` are wrappers |
 | **Recent** — five evicting entries | `git log`. That was already the rule; the five entries were the compensation for commit messages that had stopped carrying the session, which is item 54's finding |
 | **Next, in order** | `doctrine backlog list` — `CHR-001`…`CHR-003` are the three live exercises, `IMP-001`…`IMP-004` the Plan D steps and the second target, `IDE-001` the parked skill-driven slice |
 | **Open** — claims nothing should call closed | split by the work-intake membership test, which is what it had conflated: **something to do** → `doctrine backlog list` (`RSK-001`…`RSK-006`, `ISS-001`, `ISS-002`, and seven chores); **something that is** → `doctrine knowledge list` (`CON-001`…`CON-005`, `QUE-001`…`QUE-005`) |

@@ -201,6 +201,62 @@ in
       mv tmp.json "$CASE_STATE/slot/$1/assignment.json"
     }
 
+    # One slot's profile cell off the last `run all status`, read **by its
+    # column** — the characters under the header's `profile` label up to its
+    # `policy` label — rather than by a pattern anywhere on the row, which would
+    # match another column's text. Trustworthy because the alignment round below
+    # says every value sits under its label.
+    profileOf() {
+      awk -v slot="$1" '
+        /^capsule +created / {
+          h = $0; p = index(h, " profile ") + 1; q = index(h, " policy ") + 1; next
+        }
+        h != "" && index($0, slot " ") == 1 {
+          c = substr($0, p, q - p); sub(/ +$/, "", c); print c; exit
+        }' out
+    }
+    # Whether every value on a slot's row starts where a header label starts.
+    # Row to header only: the header's `mem cur/peak` has a word with no value
+    # under it by design. `purpose` is free text, so nothing from its label on
+    # is measured.
+    aligned() {
+      awk '
+        /^capsule +created / { h = $0; lim = index(h, " purpose") + 1; next }
+        h != "" && /^(${lib.concatStringsSep "|" (builtins.attrNames fixture.instances)}) / {
+          for (i = 1; i < lim; i++) {
+            if (substr($0, i, 1) == " " || (i > 1 && substr($0, i - 1, 1) != " ")) continue
+            if (substr(h, i, 1) == " " || (i > 1 && substr(h, i - 1, 1) != " ")) {
+              print $1 ": a value at " i " sits under no label"; bad = 1
+            }
+          }
+        }
+        END { exit bad }' out
+    }
+
+    # ----------------------------- the status cell brackets what is not a record
+    #
+    # `DEC-014` (SL-001 design sec-3): a name no record gives — here the sole
+    # document, since nothing is assigned yet — is bracketed, so a human can
+    # tell a guess from an assignment. Before this, the two read the same.
+    run all status
+    ck "a status over one document answers" 0 "$rc"
+    ckt "the sole document is bracketed on a slot nothing has assigned" \
+      test "$(profileOf none)" = "[solo]"
+    ckt "the header lines up with its rows" aligned
+
+    # A pin with no record is what a provision leaves when its record write
+    # fails. It is written by hand here, then the host's document moves on: the
+    # drift is still worth saying, and brackets never hide it.
+    mkdir -p "$CASE_STATE/slot/none/profile"
+    cp profiles/solo.json "$CASE_STATE/slot/none/profile/solo.json"
+    jq '.sizes.mem = 2' profiles/solo.json > moved.json
+    mv moved.json profiles/solo.json
+    run all status
+    ckt "a record-less pin keeps its drift marker" \
+      test "$(profileOf none)" = "[solo]*"
+    rm -r "$CASE_STATE/slot/none/profile"
+    writeProfile solo
+
     # ------------------------------------- what an unassigned slot resolves to
     #
     # The operator's declaration, in both readers. `sealed` rather than the
@@ -827,8 +883,8 @@ in
     # running slot, because nothing else on this host can.
     run all status
     ck "a status says which slot has been left behind" 0 "$rc"
-    ckt "  marking the target's name on that slot's row" grep -qE '^one .+ pinned\*' out
-    ckt "  and not on a slot that has no pin at all" unsaw "built*"
+    ckt "  marking the target's name on that slot's row" test "$(profileOf one)" = "pinned*"
+    ckt "  and not on a slot whose host document has not moved" test "$(profileOf both)" = holed
     ckt "  with the column always in the header, whatever any slot resolves to" \
       grep -qE 'gen +profile +policy' out
 
@@ -861,7 +917,8 @@ in
       test "$(jq -r .unit "$CASE_STATE/slot/one/assignment.json")" = u5
     run all status
     ck "and the marker is gone" 0 "$rc"
-    ckt "  because the two copies agree again" unsaw "pinned*"
+    ckt "  because the two copies agree again, and a record is bare" \
+      test "$(profileOf one)" = pinned
 
     # The digest's own reader, and a different fault from a host that moved on:
     # bytes that are not the ones the record names are a pin somebody edited,
@@ -876,7 +933,7 @@ in
     run all status
     ck "a status still answers over a pin that has been edited" 0 "$rc"
     ckt "  marking it apart from a document the host has moved on from" \
-      grep -qE '^one .+ pinned!' out
+      test "$(profileOf one)" = "pinned!"
 
     # One pin per slot: a re-provision onto another target leaves no second
     # document behind, because a stale name here is read the moment a record

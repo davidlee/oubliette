@@ -1051,7 +1051,7 @@ in
         # (item 51, decision 3): this is one table for N slots over M targets, so
         # a shape that were a function of any one of them would change between
         # two runs on one host, silently, with no rebuild to notice it.
-        statusFmt='%-7s %-7s %-10s %-8s %-8s %-4s %-7s %-9s %-5s %-8s %-4s %-4s %-6s %-11s %-4s %-3s %-9s %-7s %-6s %s\n'
+        statusFmt='%-7s %-7s %-10s %-8s %-8s %-4s %-7s %-9s %-5s %-8s %-4s %-4s %-6s %-12s %-4s %-3s %-11s %-7s %-6s %s\n'
 
         statusHeader() {
           # shellcheck disable=SC2059
@@ -1124,6 +1124,10 @@ in
         #   name*   pinned, and this host's document has changed since — an
         #           edit to target.nix that no verb has carried to this slot
         #   name!   pinned, and the bytes are not the ones the record names
+        #   [name]  no record names it: the sole document this host has. A
+        #           guess and an assignment must not read the same (`DEC-014`).
+        #           It keeps `*` for a pin a failed record write left behind,
+        #           and never carries `!`, which compares against a record.
         #
         # A column that is always printed, whatever any slot resolves to (item
         # 51, decision 3): a marker that appeared only on a host with a drifted
@@ -1132,14 +1136,19 @@ in
           local n="$1" pin host
           useHostProfiles
           profileNameFor "$n" 2>/dev/null || { echo -; return 0; }
+          # One question decides the brackets, asked of the record rather than
+          # carried out of the resolver (`DEC-015`); the markers below are the
+          # same either side of it.
+          local shown=$profileName
+          [ "$(recordField "$n" profile)" != - ] || shown="[$profileName]"
           pin=$(pinFileOf "$n" "$profileName")
           if [ ! -f "$pin" ]; then
-            echo "$profileName"
+            echo "$shown"
             return 0
           fi
           if [ "$(recordField "$n" profile_snapshot)" != - ] \
             && [ "$(recordField "$n" profile_snapshot)" != "$(digestOf "$pin")" ]; then
-            echo "$profileName!"
+            echo "$shown!"
             return 0
           fi
           # A document this host no longer renders is a drift like any other,
@@ -1148,7 +1157,7 @@ in
           if [ -f "$hostProfileDir/$profileName.json" ]; then
             host=$(digestOf "$hostProfileDir/$profileName.json")
           fi
-          if [ "$host" != "$(digestOf "$pin")" ]; then echo "$profileName*"; else echo "$profileName"; fi
+          if [ "$host" != "$(digestOf "$pin")" ]; then echo "$shown*"; else echo "$shown"; fi
         }
 
         statusRow() {
