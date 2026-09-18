@@ -98,10 +98,11 @@ today's honest refusal. The two land together or the first one lies.
    `fetch` writes.
 
 5a. **`DEC-012`: a `POL-002` revision, and a `POL-003` revision beside it.**
-   `POL-002`'s *"exactly two places"* sentence is reworded by provenance and
-   mechanism: generic source never hardcodes a target's identity or branches on
-   it; a value the host declares may be threaded into a host-specific generated
-   front end, as `slotPolicy` threads a policy. `POL-003`'s slots row gains the
+   `POL-002`'s *"exactly two places"* list gains a third — a slot's `profile`
+   value in `capsules.nix` — so it stays checkable by search in code, and is
+   paired with the rule behind it: generic source never hardcodes a target's
+   identity or branches on it; a value the host declares may be threaded into a
+   generated front end, as `slotPolicy` threads a policy. `POL-003`'s slots row gains the
    per-slot declared profile and its resolution order gains the declared step,
    with the reason a per-slot declared value is not the implicit default it
    forbids. Both via `doctrine revision`, in this slice, with

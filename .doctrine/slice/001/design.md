@@ -37,10 +37,12 @@ a provision or a fetch for any profile uses doctrine's repo (`ISS-008`).
    (`DEC-013`): the profile document's `path` is the one home of a target's
    source on this host, and `CAPSULE_REPO` stays what a caller sets on purpose.
 7. Two policies are revised, because each states a rule this slice changes:
-   - `POL-002` is reworded by **provenance and mechanism** (`DEC-012`): generic
-     source never hardcodes or branches on a target's identity; a value the host
-     declares may be threaded into a host-specific generated front end, as
-     `slotPolicy` already threads a policy name.
+   - `POL-002`'s list of places a target's name may appear in source gains one
+     entry — a slot's `profile` value in `capsules.nix` — and states the rule
+     behind the list (`DEC-012`): generic source never hardcodes a target's
+     identity or branches on it; a value the host declares may be threaded into
+     a host-specific generated front end, as `slotPolicy` already threads a
+     policy name.
    - `POL-003`'s slots row gains the per-slot declared profile, and its
      resolution order gains the declared step. The revision says why this is not
      the implicit default the policy forbids: it is declared per slot, in the
@@ -172,16 +174,27 @@ with `doctrine revision` inside this slice, landing in the same commit as
 `docs/contract-target.md`'s matching sentence.
 
 - `POL-002` says a target's name may appear only in `target.nix` and
-  `inputs.target.url`. `DEC-012` rewords it by where a name comes from rather than
-  where it ends up: **generic source never hardcodes a target's identity or
-  branches on it; a value the host declares may be threaded into a host-specific
-  generated front end**. That wording matters because this design does put
-  `doctrine` into the generated `capsule` program — as `slotPolicy` already puts a
-  policy name there — so a revision saying "programs never carry a target name"
-  would be broken by the slice that wrote it. The policy's own review test
-  (*code changed, or only a value?*) is what the new wording states. `DEC-012`'s
-  text calls the name a "key" in a host declaration; in `capsules.nix` it is a
-  **value**, and the record is corrected to say so.
+  `inputs.target.url`. `DEC-012` revises that sentence to read:
+
+  > A target's name may appear in code only in `target.nix`,
+  > `inputs.target.url`, and as a slot's `profile` value in `capsules.nix`.
+  > Generic source never hardcodes a target's identity or branches on it; a
+  > host-declared value may be threaded into a generated front end.
+
+  **The list keeps the policy checkable by search**: outside comments, a hit
+  anywhere else is a violation, and the exception is one field of one file, not
+  a principle a later change can stretch. Comments are excluded because they
+  cite doctrine as history throughout (`host/refresh.nix`, `vm/capsule.nix`);
+  outside them, today's tree holds the name only in the two places the policy
+  already lists, plus case fixtures that build a `.doctrine/` tree as data. The
+  generated `capsule` program does carry `doctrine` — as `slotPolicy` already
+  carries a policy name — but it is built into the store, not written in the
+  repo, so the search still holds. **The second sentence gives
+  the list its reason**: a revision saying only "programs never carry a target
+  name" would be broken by the slice that wrote it, and the policy's own review
+  test (*code changed, or only a value?*) is what the sentence states. The
+  existing sentence that nothing target-shaped goes in `perimeter/`,
+  `vm/capsule.nix` or the justfile is unchanged.
 - `POL-003` gives `capsules.nix` "which slots exist and the policy set" and fixes
   resolution as *flag, then record, then the one document*. The revision adds the
   per-slot declared profile to the slots row and the declared step to the order,
