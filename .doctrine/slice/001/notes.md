@@ -63,7 +63,7 @@ cheaper option if the reviewer wants one.
 
 ## Harvest
 <!-- single-copy: updated in place each harvest; ids only, never restated content -->
-fresh-as-of: 2026-09-18 · slice started · PHASE-04 complete (e5084d4)
+fresh-as-of: 2026-09-18 · slice started · PHASE-05 complete (7030e39)
 
 ### Produced
 
@@ -73,7 +73,8 @@ fresh-as-of: 2026-09-18 · slice started · PHASE-04 complete (e5084d4)
   once); `design.md` sec-1…sec-5 with `fnd-1`…`fnd-46` integrated (Codex 1–12,
   Opus 13–30, fresh Opus 31–46); slice scope reconciled; runbook steps
   `review.scope`, `review.selectors` and `review.passes` discharged.
-- `ISS-011` (widened by `fnd-37`); `ISS-012` (`fnd-44`, parked).
+- `ISS-011` (widened by `fnd-37`); `ISS-012` (`fnd-44`, parked); `ISS-013`
+  (PHASE-05: the git-channel programs' `jq` comes from the ambient `PATH`).
 
 ### Learned
 
@@ -108,13 +109,18 @@ fresh-as-of: 2026-09-18 · slice started · PHASE-04 complete (e5084d4)
   moved), which is now red-then-green. Its pin round cannot discriminate
   (same bytes re-pinned); the generation round carries it. A local `given` in
   `provisionSlot` collided with `collectSlot`'s under shellcheck; `forward`.
+- PHASE-05: `mkRemovedOptionModule`'s two halves are checkable at eval through
+  `extendModules` plus two `tryEval`s, without a new flake attribute. A
+  `grep -vq` "does not name X" round crept into the first draft, and it passed
+  while the program never reached the question (item 37's shape).
 - The binary refuses review policy `adversarial-then-human` (22-byte label over a
   16-byte bound) — a doctrine defect; the run uses `adversarial-only`.
 
 ### Open
 
-- PHASE-01…PHASE-04 done (mutations watched red; REV-001 approved by the
-  user and applied). PHASE-05, PHASE-06 unstarted; next is
-  `/phase-plan PHASE-05`.
+- PHASE-01…PHASE-05 done (mutations watched red; REV-001 approved by the
+  user and applied). `ISS-008` is fixed in code (7030e39), and its backlog
+  status is for /reconcile or /close. PHASE-06 is next and needs the user's
+  host switch.
 - PHASE-03 `VH-1`: the user approves the POL-002/POL-003 revisions before apply.
 - PHASE-06 needs the user's host switch (`~/flakes`).
