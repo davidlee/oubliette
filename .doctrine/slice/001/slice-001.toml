@@ -1,9 +1,9 @@
 id = 1
 slug = "a-slot-may-declare-which-target-it-is-for"
 title = "A slot may declare which target it is for"
-status = "design"
+status = "plan"
 created = "2026-08-17"
-updated = "2026-08-17"
+updated = "2026-09-18"
 tags = ["area:cli", "area:target"]
 
 [relationships]
