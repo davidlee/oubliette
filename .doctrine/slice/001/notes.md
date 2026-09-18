@@ -61,9 +61,31 @@ Recommendation: no full fourth pass. The human section review should read those
 four places with the questions above; a narrow Opus pass on just them is the
 cheaper option if the reviewer wants one.
 
+## PHASE-06 evidence (2026-09-18, live host after the user's switch)
+
+- **The live module path runs this build.** The inner program the wrapper
+  `/run/current-system/sw/bin/capsule` execs contains PHASE-05's handoff
+  message ("was pinned with its checkout at") and PHASE-04's ("nothing was
+  recorded for"). Both `capsule` and `capsule-provision` wrappers export
+  exactly four `CAPSULE_*` defaults, and no `CAPSULE_REPO`. This proves the
+  wrapper text only; it does not prove which checkout a push uses. That is
+  VH-2's job.
+- **VH-1 holds.** `capsule all status`: f–j (unassigned, not created) read
+  `[doctrine]`; a–e (recorded) read bare `doctrine`; every value sits under its
+  header label. This does not exercise a declared profile no document backs, or
+  a drifted pin (`*`/`!`), on this host; `policyCases` holds those.
+- **VH-2 not yet run.** It needs a started, unassigned slot that is not `c`.
+  None exists: only `b` runs, and it is assigned (SL-254 audit). The user chose
+  to create and start `f` for it. The create is
+  `sudo microvm -c f -f /home/david/dev/microvm-spike`, which needs a password,
+  so it is the user's to run.
+- EX-2: `~/flakes/modules/nixos/capsule.nix` lines 1–3 and 59–60 describe the
+  removed `repo` default; flagged to the user (outside this repo). `~/flakes`
+  sets no `repo`, so the switch evaluated.
+
 ## Harvest
 <!-- single-copy: updated in place each harvest; ids only, never restated content -->
-fresh-as-of: 2026-09-18 · slice started · PHASE-05 complete (7030e39)
+fresh-as-of: 2026-09-18 · slice started · PHASE-06 in progress (VH-1 done, VH-2 waiting on the user's create of f)
 
 ### Produced
 
@@ -120,7 +142,7 @@ fresh-as-of: 2026-09-18 · slice started · PHASE-05 complete (7030e39)
 
 - PHASE-01…PHASE-05 done (mutations watched red; REV-001 approved by the
   user and applied). `ISS-008` is fixed in code (7030e39), and its backlog
-  status is for /reconcile or /close. PHASE-06 is next and needs the user's
-  host switch.
+  status is for /reconcile or /close. PHASE-06 is in progress: host switched,
+  VH-1 recorded above, VH-2 waits on slot `f` (see "PHASE-06 evidence").
 - PHASE-03 `VH-1`: the user approves the POL-002/POL-003 revisions before apply.
 - PHASE-06 needs the user's host switch (`~/flakes`).
