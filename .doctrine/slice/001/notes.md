@@ -140,7 +140,7 @@ directories, and was left.
 
 ## Harvest
 <!-- single-copy: updated in place each harvest; ids only, never restated content -->
-fresh-as-of: 2026-09-18 · slice audit → reconcile · RV-008 done (10 findings, 0 blockers)
+fresh-as-of: 2026-09-18 · slice done · RV-008 reconciled (d1cb53b); IMP-007 and ISS-008 resolved
 
 ### Produced
 
@@ -203,8 +203,7 @@ fresh-as-of: 2026-09-18 · slice audit → reconcile · RV-008 done (10 findings
 
 ### Open
 
-- All six phases done; `RV-008` done, and its reconciliation brief is written:
-  two selector adds (`docs/status.md`, `host/record.nix`) and design sec-3/sec-5
-  edits (`F-2`, `F-4`, `F-6`, `F-7`). `F-8` tolerated.
-- Next: `/reconcile` (the brief in `review-008.md`), then `/close`. `ISS-008` is
-  to be resolved there.
+- Closed. Carried out of the slice as owned work: `ISS-011`, `ISS-012`,
+  `ISS-013` (parked defects), `CHR-015` (no `gate` recipe for
+  `doctrine check gate`), and `IMP-006`/`CHR-011` (a second target provisioned
+  end to end). `RV-008` `F-8` is tolerated drift.
