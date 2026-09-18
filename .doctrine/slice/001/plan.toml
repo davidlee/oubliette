@@ -34,12 +34,12 @@ exit_criteria = [
   { id = "EX-2", text = "capsules.nix: `profile ? null` in recordOf; imports the predicate; exports `misprofiledIn`; asserts `misprofiled` beside `undeclared`; the field's comment carries the convenience warrant, says there is no `profiles` set, and says only the shape is checked here." },
   { id = "EX-3", text = "host/profile.nix: profileLoad refuses `-` beside `.` and `..`; the validator refuses a document whose name is `-`; the hint reads 'rendered from target.nix by the module, or placed there by hand (docs/contract-target.md)'." },
   { id = "EX-4", text = "flake.nix hands profileCases `capsules`; docs/contract-target.md says `-` is reserved." },
-  { id = "EX-5", text = "`just check` and `just build` green; committed." },
+  { id = "EX-5", text = "`just` (check, build, units) green; committed." },
 ]
 verification = [
-  { id = "VT-1", expects = "profileCases: the one-grammar-two-spellings table (solo, 'a b;c', '', '.', '..', '-', x/y, a$b, backtick, newline, tab) agrees across profileNameOk and profileLoad, except the four render-only characters", test_file = "host/profile-cases.nix", keywords = ["profileNameOk", "a$b"], waived = false },
-  { id = "VT-2", expects = "profileCases: misprofiledIn over { good.profile = \"solo\"; bad.profile = \"-\"; none = {}; } is [ \"bad\" ]", test_file = "host/profile-cases.nix", keywords = ["misprofiledIn"], waived = false },
-  { id = "VT-3", expects = "profileCases: profileLoad refuses `-` as reserved; the validator refuses a document named `-`; the missing-document refusal carries the new hint", test_file = "host/profile-cases.nix", keywords = ["placed there by hand"], waived = false },
+  { id = "VT-1", expects = "profileCases: the one-grammar-two-spellings table (solo, 'a b;c', '', '.', '..', '-', x/y, a$b, backtick, newline, tab) agrees across profileNameOk and profileLoad, except the four render-only characters", test_file = "host/profile-cases.nix", keywords = ["one grammar, two spellings", "profileNameOk"], waived = false },
+  { id = "VT-2", expects = "profileCases: misprofiledIn over { good.profile = \"solo\"; bad.profile = \"-\"; none = {}; } is [ \"bad\" ]", test_file = "host/profile-cases.nix", keywords = ["misprofiledIn is the predicate over a set"], waived = false },
+  { id = "VT-3", expects = "profileCases: profileLoad refuses `-` as reserved; the validator refuses a document named `-`; the missing-document refusal carries the new hint", test_file = "host/profile-cases.nix", keywords = ["placed there by hand", "reserved"], waived = false },
   { id = "VA-1", expects = "Mutations from design sec-5, each watched red and recorded in the phase sheet: let `-` through profileLoad; let `$` through profileNameOk; make misprofiledIn read .profiles; revert the hint." },
 ]
 specs        = []
@@ -62,12 +62,13 @@ exit_criteria = [
   { id = "EX-1", text = "profileCell decides brackets by `recordField \"$n\" profile` alone, and runs the same pin/`*`/`!` logic for both, printing the bracketed name." },
   { id = "EX-2", text = "statusFmt's profile column is %-11s and its memory column %-12s; the header text is unchanged." },
   { id = "EX-3", text = "Existing policyCases assertions that expected a bare name for an unassigned slot now expect brackets — updated, not deleted." },
-  { id = "EX-4", text = "`just build` green; committed." },
+  { id = "EX-4", text = "policyCases reads the profile field by its column (the characters under the header's `profile` label up to the `policy` label) through one helper, and every status case uses it." },
+  { id = "EX-5", text = "`just` (check, build, units) green; committed." },
 ]
 verification = [
-  { id = "VT-1", expects = "policyCases: with one document, an unassigned undeclared slot's cell is [solo]; a record is bare and still carries * and !", test_file = "host/policy-cases.nix", keywords = ["[solo]"], waived = false },
-  { id = "VT-2", expects = "policyCases: a hand-written pin in an unassigned slot's pin directory, with the host document then edited, reads [solo]*", test_file = "host/policy-cases.nix", keywords = ["[solo]*"], waived = false },
-  { id = "VT-3", expects = "policyCases: for every column the header label starts at the row value's offset (fails under the old %-11s memory column)", test_file = "host/policy-cases.nix", keywords = ["mem cur/peak"], waived = false },
+  { id = "VT-1", expects = "policyCases: with one document, an unassigned undeclared slot's cell is [solo]; a record is bare and still carries * and !", test_file = "host/policy-cases.nix", keywords = ["the sole document is bracketed"], waived = false },
+  { id = "VT-2", expects = "policyCases: a hand-written pin in an unassigned slot's pin directory, with the host document then edited, reads [solo]*", test_file = "host/policy-cases.nix", keywords = ["a record-less pin keeps its drift marker"], waived = false },
+  { id = "VT-3", expects = "policyCases: for every column the header label starts at the row value's offset (fails under the old %-11s memory column)", test_file = "host/policy-cases.nix", keywords = ["the header lines up with its rows"], waived = false },
   { id = "VA-1", expects = "Mutations watched red and recorded: drop the bracket; return early for a bracketed name, skipping the drift logic; leave the memory column at %-11s. The %-9s profile-column mutation needs a ten-character cell and is PHASE-03's (the `decl` slot)." },
 ]
 specs        = []
@@ -94,15 +95,15 @@ exit_criteria = [
   { id = "EX-3", text = "slotNeedsUnit returns 3 for resolved-but-will-not-load; recordUnit refuses on 3 with profileLoad's message; unitScope unchanged; handoff says \"'<slot>' declares X\" when no record names the profile." },
   { id = "EX-4", text = "policyCases: stub also writes out.args (argc, then each argument bracketed per line); fixture slots dflt=solo, hole=holed, decl=unbacked, odd='a b;touch pwned'; none/one/both stay undeclared." },
   { id = "EX-5", text = "POL-002 and POL-003 revisions applied; docs/contract-target.md (the resolution paragraph at lines 113–120 and the POL-002 sentence), docs/contract-assignment.md (`profile` row gains the per-slot default, no set) and docs/plan-d-fleet.md L1 updated in the same commit." },
-  { id = "EX-6", text = "A search for the target's name in *.nix, *.sh and the justfile, outside comments, .doctrine/ and tool configuration, hits only target.nix, inputs.target.url, capsules.nix's profile values and the .doctrine/ layout fixtures." },
-  { id = "EX-7", text = "`just build` green; committed." },
+  { id = "EX-6", text = "`just` (check, build, units) green; committed." },
 ]
 verification = [
   { id = "VT-1", expects = "policyCases resolution and precedence: declared resolves on a several-document host; record beats declaration; flag beats both; undeclared slots still refuse naming every document", test_file = "host/policy-cases.nix", keywords = ["the record beats the declaration", "the flag beats both"], waived = false },
-  { id = "VT-2", expects = "policyCases: odd collect's out.args carries 'a b;touch pwned' as one argument and no file pwned exists", test_file = "host/policy-cases.nix", keywords = ["touch pwned", "out.args"], waived = false },
-  { id = "VT-3", expects = "policyCases refusals at use: decl provision exits 1 naming 'unbacked' and the directory with empty out.argv; decl unit is not recorded; decl collect gets no --unit", test_file = "host/policy-cases.nix", keywords = ["no profile named 'unbacked'"], waived = false },
-  { id = "VT-4", expects = "policyCases: hole unit u1 records and hole collect gets --unit u1; handoff from a duo-recorded slot to dflt refuses with 'dflt' declares solo; status: dflt reads [solo], decl reads [unbacked] and its row lines up", test_file = "host/policy-cases.nix", keywords = ["declares solo", "[unbacked]"], waived = false },
+  { id = "VT-2", expects = "policyCases: odd collect's out.args carries 'a b;touch pwned' as one argument and no file pwned exists", test_file = "host/policy-cases.nix", keywords = ["a declared name is spliced literally", "out.args"], waived = false },
+  { id = "VT-3", expects = "policyCases refusals at use: decl provision exits 1 naming 'unbacked' and the directory with empty out.argv; decl unit is not recorded; decl collect gets no --unit", test_file = "host/policy-cases.nix", keywords = ["a misdeclared slot's provision refuses naming the directory", "a misdeclared slot's unit is not recorded"], waived = false },
+  { id = "VT-4", expects = "policyCases: hole unit u1 records and hole collect gets --unit u1; handoff from a duo-recorded slot to dflt refuses with 'dflt' declares solo; status: dflt reads [solo], decl reads [unbacked] and its row lines up", test_file = "host/policy-cases.nix", keywords = ["a declared unassigned slot scopes by unit", "handoff to a declared destination says", "a misdeclared slot reads"], waived = false },
   { id = "VA-1", expects = "Mutations watched red and recorded: drop the fourth step; move it ahead of the record; ahead of the flag; drop escapeShellArg (out.args splits, pwned exists); collapse answer 3 into 2; drop 'declares'; leave the profile column at %-9s (decl's row). Dropping the `*)` branch is recorded as not exercised." },
+  { id = "VA-2", expects = "The revised POL-002's search, run and its output kept in the phase sheet: the target's name in *.nix, *.sh and the justfile, outside comments, .doctrine/ and tool configuration, hits only target.nix, inputs.target.url, capsules.nix's profile values and the .doctrine/ layout fixtures in brief-cases and state-snapshot-cases." },
   { id = "VH-1", expects = "The user approves the POL-002 and POL-003 revisions before they are applied." },
 ]
 specs        = []
@@ -125,10 +126,10 @@ exit_criteria = [
   { id = "EX-1", text = "provisionSlot: `--profile \"$prof\"` prepended for the program only when the caller gave none; recordProvisioned still gets the original argv; `work` failure prints the nothing-recorded message and returns 1." },
   { id = "EX-2", text = "recordProvisioned: HEAD asked before pinProfile; one recordWrite sets profile, class, profile_snapshot and sets or deletes base, followed by `|| return 1`; a silent guest warns and returns 0 with a record." },
   { id = "EX-3", text = "policyCases' stub exits 1 after printing 'the code landed' when CASE_PROGRAM_FAIL is set." },
-  { id = "EX-4", text = "`just build` green; committed." },
+  { id = "EX-4", text = "`just` (check, build, units) green; committed." },
 ]
 verification = [
-  { id = "VT-1", expects = "policyCases: dflt provision <ref> carries --profile solo exactly once and record, class and pin all say solo; with --profile duo given, once", test_file = "host/policy-cases.nix", keywords = ["exactly once"], waived = false },
+  { id = "VT-1", expects = "policyCases: dflt provision <ref> carries --profile solo exactly once and record, class and pin all say solo; with --profile duo given, once", test_file = "host/policy-cases.nix", keywords = ["a provision's argv, record and pin agree"], waived = false },
   { id = "VT-2", expects = "policyCases: under handoff with CASE_PROGRAM_FAIL, exit 1, the nothing-recorded message, the destination's pin digest and record generation unchanged", test_file = "host/policy-cases.nix", keywords = ["CASE_PROGRAM_FAIL", "nothing was recorded"], waived = false },
   { id = "VT-3", expects = "policyCases: re-provision with a silent guest exits 0 with the warning, the record names profile and snapshot, .base is gone, status shows solo bare", test_file = "host/policy-cases.nix", keywords = ["a silent guest still leaves a record"], waived = false },
   { id = "VA-1", expects = "Mutations watched red and recorded: forward --profile even when given (two flags); drop the check on work; ask HEAD after the pin and skip the record when silent; leave .base in place. The race closed by forwarding, and the record-write check, are recorded as not exercised (design sec-5)." },
@@ -156,13 +157,13 @@ exit_criteria = [
   { id = "EX-3", text = "flake.nix: hostModule's `checked` evaluates the module with repo set and throws, naming which check failed — options unreadable, or no assertion naming the document's path; wrapCases handed hostPrograms.provision and a declared slot, as gitChannelCases is, with the comment saying why." },
   { id = "EX-4", text = "host/cli.nix: handoff compares the source's pinned path with this host's document of the same name before collecting, and refuses naming both." },
   { id = "EX-5", text = "Every row of design sec-4's prose table corrected (git-channel.nix, cli.nix moduleState comment, services.nix, wrap.nix, wrap-cases.nix, contract-target.md rows 75/76/352, CLAUDE.md, README.md 276 and 512–517), contract-assignment.md's source row and its bullets, 'two host-side overrides' → one, plan-d-fleet.md line 380, and both memories via `doctrine memory edit`. The post-edit sweep leaves only the readers, the cases, and the sentences saying a caller may set CAPSULE_REPO." },
-  { id = "EX-6", text = "`just build` green; committed." },
+  { id = "EX-6", text = "`just` (check, build, units) green; committed." },
 ]
 verification = [
-  { id = "VT-1", expects = "wrapCases: the set case names exactly four; the composition case runs the shipped provision, wrapped, under env -i, `--capsule \"$slot\" --profile doc` with no ref, and the refusal names /fixture/doc-repo", test_file = "host/wrap-cases.nix", keywords = ["/fixture/doc-repo"], waived = false },
-  { id = "VT-2", expects = "policyCases: a handoff whose source pin's path differs from this host's document refuses naming both paths, with no collect in out.argv and the destination's record and archive untouched", test_file = "host/policy-cases.nix", keywords = ["moved checkout"], waived = false },
-  { id = "VT-3", expects = "policyCases: a fetch with CAPSULE_REPO unset lands in the sandbox document's path", test_file = "host/policy-cases.nix", keywords = ["lands in the document's path"], waived = false },
-  { id = "VT-4", expects = "gitChannelCases' 'CAPSULE_REPO still beats the document' stays green; hostModuleUnits builds", test_file = "host/git-channel-cases.nix", keywords = ["CAPSULE_REPO"], waived = false },
+  { id = "VT-1", expects = "wrapCases: the set case names exactly four; the composition case runs the shipped provision, wrapped, under env -i, `--capsule \"$slot\" --profile doc` with no ref, and the refusal names /fixture/doc-repo", test_file = "host/wrap-cases.nix", keywords = ["/fixture/doc-repo", "exactly these and no others"], waived = false },
+  { id = "VT-2", expects = "policyCases: a handoff whose source pin's path differs from this host's document refuses naming both paths, with no collect in out.argv and the destination's record and archive untouched", test_file = "host/policy-cases.nix", keywords = ["a handoff from a moved checkout refuses"], waived = false },
+  { id = "VT-3", expects = "policyCases: a fetch with CAPSULE_REPO unset lands in the sandbox document's path", test_file = "host/policy-cases.nix", keywords = ["a fetch with nothing set lands in the document's path"], waived = false },
+  { id = "VT-4", expects = "gitChannelCases' 'CAPSULE_REPO still beats the document' stays green; hostModuleUnits builds", test_file = "host/git-channel-cases.nix", keywords = ["CAPSULE_REPO still beats the document"], waived = false },
   { id = "VA-1", expects = "Mutations watched red and recorded: put CAPSULE_REPO back in defaults with today's fixture (composition case names /fixture/repo, set case); delete or misname the shim, then drop its message (`just build` fails at checked on the first check, then the second); drop handoff's path comparison." },
 ]
 specs        = []

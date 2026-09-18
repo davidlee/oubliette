@@ -74,3 +74,15 @@ run, and it is the only evidence that the module path reaches the document's
   `host/cli.nix`, so the phases are serial. Nothing here parallelises safely.
 - `ISS-011` and `ISS-012` are parked defects the design names. No phase touches
   them.
+- PHASE-05's second module evaluation is `host.extendModules` over the
+  evaluation `hostModule` already makes (flake.nix), adding
+  `services.capsule-perimeter.repo`. It is not a second `nixosSystem`, so the
+  gate costs one more eval, not a second host.
+- PHASE-04's "the caller gave `--profile`" is a scan of the original argv for
+  `--profile` and `--profile=`, the same shape `collectSlot` uses for `--policy`.
+- The `doctrine revision` flow for PHASE-03 is `new` → `change add` →
+  `approve` (the user's, `VH-1`) → `apply`. `apply` does not write a policy's
+  prose: its prose rows are "surfaced for manual handling", so the policy text
+  is edited by hand in the same commit.
+- VT keywords are the cases' own titles, not literals such as `[solo]`, which
+  could already appear in a file and pass without the case existing.
