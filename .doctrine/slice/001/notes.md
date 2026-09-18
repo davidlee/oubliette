@@ -74,18 +74,27 @@ cheaper option if the reviewer wants one.
   `[doctrine]`; a–e (recorded) read bare `doctrine`; every value sits under its
   header label. This does not exercise a declared profile no document backs, or
   a drifted pin (`*`/`!`), on this host; `policyCases` holds those.
-- **VH-2 not yet run.** It needs a started, unassigned slot that is not `c`.
-  None exists: only `b` runs, and it is assigned (SL-254 audit). The user chose
-  to create and start `f` for it. The create is
-  `sudo microvm -c f -f /home/david/dev/microvm-spike`, which needs a password,
-  so it is the user's to run.
+- **VH-2 holds.** The user created and started `f`, which is unassigned. From
+  a neutral cwd (the scratchpad) with `CAPSULE_REPO` unset,
+  `capsule f provision --profile panopticon` with no ref exited 1. The usage
+  names `/home/david/dev/panopticon`, which is panopticon's `path` in
+  `/var/lib/capsule-profiles/panopticon.json`, and not
+  `/home/david/dev/doctrine`. Next came PHASE-04's "nothing was recorded for
+  'f'". `/var/lib/capsule/slot/f/` held only `allowlist` before and after (no
+  `profile/`, no `assignment.json`), and `status` still read `[doctrine]` with
+  no unit. This proves that the refusal on a started slot names the
+  profile's document path. It does not prove that a *completed* provision
+  pushes from that path: nothing was pushed, and no provision of a non-default
+  profile ran to completion on this host. Side finding: the "still name the
+  previous assignment" wording presumes a prior assignment, and `f` had none.
+  It is cosmetic and was not filed.
 - EX-2: `~/flakes/modules/nixos/capsule.nix` lines 1–3 and 59–60 describe the
   removed `repo` default; flagged to the user (outside this repo). `~/flakes`
   sets no `repo`, so the switch evaluated.
 
 ## Harvest
 <!-- single-copy: updated in place each harvest; ids only, never restated content -->
-fresh-as-of: 2026-09-18 · slice started · PHASE-06 in progress (VH-1 done, VH-2 waiting on the user's create of f)
+fresh-as-of: 2026-09-18 · slice started · PHASE-06 completed (VH-1, VH-2 held live)
 
 ### Produced
 
@@ -142,7 +151,7 @@ fresh-as-of: 2026-09-18 · slice started · PHASE-06 in progress (VH-1 done, VH-
 
 - PHASE-01…PHASE-05 done (mutations watched red; REV-001 approved by the
   user and applied). `ISS-008` is fixed in code (7030e39), and its backlog
-  status is for /reconcile or /close. PHASE-06 is in progress: host switched,
-  VH-1 recorded above, VH-2 waits on slot `f` (see "PHASE-06 evidence").
-- PHASE-03 `VH-1`: the user approves the POL-002/POL-003 revisions before apply.
-- PHASE-06 needs the user's host switch (`~/flakes`).
+  status is for /reconcile or /close. PHASE-06 done: host switched,
+  VH-1 and VH-2 held live (see "PHASE-06 evidence").
+- Next: `/audit` → `/reconcile` → `/close`. Use review policy
+  `adversarial-only` (see Learned).
