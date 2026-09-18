@@ -58,15 +58,36 @@ today's honest refusal. The two land together or the first one lies.
    because `profileDir` is run-time state outside the store (`item 52`) and the
    second document has no copy in this repo. A slot naming a profile no document
    backs must refuse when the slot is used, naming the directory it looked in.
+   **`DEC-015`: no new check** — `profileLoad`'s existing refusal does this, and
+   the status cell's `[name]` attributes the name to a non-record source. In
+   passing, `profileLoad`'s hint that a document is *"rendered from target.nix"*
+   is corrected: a document may be hand-written.
 
-4. **`capsule all status` distinguishes a declared default from an assignment.**
-   `[doctrine]` for a default, bare `doctrine` for a record, `-` for neither. A
-   default that renders identically to a record is a default that will be read as
-   one.
+4. **`capsule all status` distinguishes an assignment from everything else.**
+   **`DEC-014`**: `[doctrine]` for *any* resolution without a record — the
+   declared default and the pre-existing sole-rendered-document fallback alike —
+   bare `doctrine` (with its `*`/`!` markers) for a record, `-` for neither.
+   Brackets never carry `*` or `!`, since only a provision writes a pin. A
+   default that renders identically to a record is a default that will be read
+   as one, and the sole-render fallback already did.
 
 5. **`ISS-008`** — the module path reaches the profile document's `path` when
    nothing in the environment names a repo, and `CAPSULE_REPO` still beats the
    document when something does (`host/git-channel-cases.nix:150` stays green).
+   **`DEC-013`**: `host/wrap.nix` stops supplying `CAPSULE_REPO` (four defaults,
+   with the reason stated), and `services.capsule-perimeter.repo` is removed via
+   `lib.mkRemovedOptionModule`. Both readers are fixed by that one change —
+   `capsule-provision`'s `src` and the front end's `repoFor`, which is where
+   `fetch` writes.
+
+5a. **`DEC-012`: a `POL-002` revision.** Its *"exactly two places"* sentence
+   narrows to code, programs and printed text; a profile name as a key in a host
+   declaration is a value, not a learned target. Via `doctrine revision`, in this
+   slice, with `docs/contract-target.md` in the same commit as the boundary move.
+
+5b. **`DEC-016`: the values.** All ten slots declare `profile = "doctrine"` —
+   the only image this host builds. A split with a second target waits on
+   `IMP-006`.
 
 6. **Cases**, and the kinds are not interchangeable (`CLAUDE.md`). Objectives 1-4
    are the third kind — a program's own text against a fixture, in
@@ -85,9 +106,12 @@ today's honest refusal. The two land together or the first one lies.
 ### Affected surface
 
 `capsules.nix`, `host/cli.nix` (`profileNameFor`, the status table's profile
-cell), `host/wrap.nix`, `host/services.nix` (`repo` option's fate),
-`host/policy-cases.nix`, `host/profile-cases.nix`, `host/wrap-cases.nix`,
-`docs/contract-assignment.md`, `docs/plan-d-fleet.md`.
+cell), `host/wrap.nix`, `host/services.nix` (`repo` option removed),
+`host/profile.nix` (`profileLoad`'s hint), `host/policy-cases.nix`,
+`host/profile-cases.nix`, `host/wrap-cases.nix`, `docs/contract-assignment.md`,
+`docs/contract-target.md`, `docs/plan-d-fleet.md`, `POL-002` (revision).
+Outside this repo: `~/flakes/modules/nixos/capsule.nix`'s comment names
+`repo` — the user's to edit.
 
 ## Non-Goals
 
@@ -119,11 +143,9 @@ repo.
 
 ### Risks and assumptions
 
-- **Assumed**: the fix for `ISS-008` is to stop the wrapper supplying
-  `CAPSULE_REPO`, letting the document answer, rather than to have the front end
-  export it per resolved profile. Both put resolution in the front end; the first
-  removes a variable from in front of a field and the second keeps it. `/design`
-  decides, and `cfg.repo`'s fate follows from it.
+- **Decided** (`DEC-013`): the wrapper stops supplying `CAPSULE_REPO` and
+  `cfg.repo` is removed. The cost is the owner-relative default: a host whose
+  human differs corrects `target.nix`'s `path` or its document.
 - **Assumed**: `docs/contract-assignment.md`'s ownership table can gain a
   host-declared default under `profile` without disturbing *"an assigner is
   unconstrained in `profile`"* — a default is what applies when no assigner has
@@ -133,11 +155,10 @@ repo.
   status table is the one surface `IMP-004` observed working unmodified across
   two targets. A cell that changes rendering is a cell whose absent path (`-`)
   and whose record path must both stay pinned.
-- **Open**: whether the declared default participates in `pinProfile` at
-  provision time — a provision under a declared default should write the record,
-  after which the default is no longer what is consulted. Almost certainly falls
-  out of the existing order, but it is the one place the fourth step could be
-  reached twice with different answers.
+- **Settled** (design `inq-6`): a declared default and `pinProfile` do not
+  conflict. `host/cli.nix:535` resolves a provision's profile once and forwards
+  it as an explicit `--profile`, so `provisionSlot`'s second resolution takes the
+  flag step; after the record is written the record step precedes the default.
 
 ### Verification and closure intent
 

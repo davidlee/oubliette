@@ -1,0 +1,33 @@
+schema = "doctrine.knowledge"
+version = 1
+
+id = 12
+slug = "a-profile-name-in-a-host-declaration-is-a-value-not-a-learned-target"
+title = "A profile name in a host declaration is a value, not a learned target"
+record_kind = "decision"
+status = "accepted"
+created = "2026-09-18"
+updated = "2026-09-18"
+tags = []
+
+[facet]                         # every field typed; seeded empty (captured later)
+context = "A per-slot declared default target (SL-001) puts a target name in capsules.nix, which POL-002's literal wording forbids."
+choice = "Revise POL-002 via doctrine revision inside SL-001: the prohibition covers code, programs and printed text; a profile name as a key in a host declaration is permitted."
+alternatives = ["A: ship the field unset everywhere (dead on arrival)", "B: profile = target.name by reference (single-target only; couples capsules.nix to target.nix)", "D: per-slot defaults in run-time host state (breaks POL-003, two homes for slots)"]
+rationale = "The policy guards mechanism against learning a client's identity; the review test (code changed, or only a value?) is passed by a declared value, and the contract already treats profile names as host-held keys."
+consequences = ["SL-001 carries a POL-002 revision", "contract-target.md updated in the same commit as the boundary move", "which slots declare which profile is a separate values question"]
+decided_by = "user"
+decided_on = "2026-09-18"
+
+[evidence]                      # free-text citations (supports / contradicts / notes)
+supports    = []
+contradicts = []
+notes       = []
+
+[relationships]                 # verb-written edges (set by doctrine supersede)
+supersedes    = []   # record ids this one replaces (set by doctrine supersede)
+superseded_by = []   # set on superseded predecessor (verb-written, ADR-004 §5)
+
+[[relation]]
+label = "shapes"
+target = "SL-001"

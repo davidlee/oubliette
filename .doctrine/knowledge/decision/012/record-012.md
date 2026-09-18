@@ -1,0 +1,1 @@
+SL-001 inq-3. POL-002's 'exactly two places' sentence is broader than its own review test and scope list. A per-slot profile in capsules.nix is the host operator stating which client a slot serves; contract-assignment.md already calls a profile host-held, keyed by name.

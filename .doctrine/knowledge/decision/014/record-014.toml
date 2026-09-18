@@ -1,0 +1,33 @@
+schema = "doctrine.knowledge"
+version = 1
+
+id = 14
+slug = "the-status-profile-cell-brackets-every-resolution-that-is-not-a-record"
+title = "The status profile cell brackets every resolution that is not a record"
+record_kind = "decision"
+status = "accepted"
+created = "2026-09-18"
+updated = "2026-09-18"
+tags = []
+
+[facet]                         # every field typed; seeded empty (captured later)
+context = "capsule all status's profile cell: `-`, `name`, `name*` (host document drifted from pin), `name!` (pin bytes differ from recorded digest). Pins exist only after a provision, which also writes the record."
+choice = "`[name]` for any resolution without a record — the declared default and the sole-rendered fallback alike. Bare name (with `*`/`!`) only for a record. Brackets never carry `*` or `!`."
+alternatives = ["B: bracket only the declared default (keeps the pre-existing ambiguity; three rules for one column)", "C: a distinct mark per source (encodes why, which the refusal and --profile already say)"]
+rationale = "The distinction a reader needs is assigned or not; one rule, and it retires an ambiguity older than the field."
+consequences = ["on a one-target host unassigned rows change from `doctrine` to `[doctrine]`", "existing cases expecting a bare name for an unassigned slot change", "the absent (`-`), record, default and sole-render paths are each pinned by a case"]
+decided_by = "user"
+decided_on = "2026-09-18"
+
+[evidence]                      # free-text citations (supports / contradicts / notes)
+supports    = []
+contradicts = []
+notes       = []
+
+[relationships]                 # verb-written edges (set by doctrine supersede)
+supersedes    = []   # record ids this one replaces (set by doctrine supersede)
+superseded_by = []   # set on superseded predecessor (verb-written, ADR-004 §5)
+
+[[relation]]
+label = "shapes"
+target = "SL-001"

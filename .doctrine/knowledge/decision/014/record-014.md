@@ -1,0 +1,1 @@
+SL-001 inq-4. profileCell rendered the sole-rendered-document fallback identically to an assignment before this slice; a declared default would have joined it.

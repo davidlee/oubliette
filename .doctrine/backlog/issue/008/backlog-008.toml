@@ -27,5 +27,11 @@ role = "originates_from"
 target = "SL-001"
 
 [[relation]]
+label = "references"
+role = "concerns"
+descriptor = "resolved by SL-001's decision on the module path's source"
+target = "DEC-013"
+
+[[relation]]
 label = "related"
 target = "IMP-007"

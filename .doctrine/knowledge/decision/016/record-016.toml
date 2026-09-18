@@ -1,0 +1,33 @@
+schema = "doctrine.knowledge"
+version = 1
+
+id = 16
+slug = "every-slot-on-this-host-declares-doctrine-until-a-slot-can-boot-another-image"
+title = "Every slot on this host declares doctrine until a slot can boot another image"
+record_kind = "decision"
+status = "accepted"
+created = "2026-09-18"
+updated = "2026-09-18"
+tags = []
+
+[facet]                         # every field typed; seeded empty (captured later)
+context = "This host renders two profile documents but builds one guest image (doctrine's); a second image is IMP-006."
+choice = 'All ten slots in capsules.nix declare profile = "doctrine".'
+alternatives = ["A: none declared until IMP-006 (field ships, no operator-visible change)", "C: a split with panopticon (a panopticon slot would boot doctrine's image, so the front end would answer for a guest that is a different project)"]
+rationale = "The only values that describe what this host can actually run; restores unassigned slots without a refusal, rendered as [doctrine]."
+consequences = ["a split waits on IMP-006, which gives a slot its own image", "unassigned rows read [doctrine]"]
+decided_by = "user"
+decided_on = "2026-09-18"
+
+[evidence]                      # free-text citations (supports / contradicts / notes)
+supports    = []
+contradicts = []
+notes       = []
+
+[relationships]                 # verb-written edges (set by doctrine supersede)
+supersedes    = []   # record ids this one replaces (set by doctrine supersede)
+superseded_by = []   # set on superseded predecessor (verb-written, ADR-004 §5)
+
+[[relation]]
+label = "shapes"
+target = "SL-001"

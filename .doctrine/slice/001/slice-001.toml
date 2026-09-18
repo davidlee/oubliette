@@ -12,39 +12,55 @@ after = []                      # slice→work soft sequence: { to, rank }
 
 [[selector]]
 selector = "capsules.nix"
-intent = "scope-relevant"
+intent = "design-target"
 
 [[selector]]
 selector = "host/cli.nix"
-intent = "scope-relevant"
+intent = "design-target"
 
 [[selector]]
 selector = "host/wrap.nix"
-intent = "scope-relevant"
+intent = "design-target"
 
 [[selector]]
 selector = "host/services.nix"
-intent = "scope-relevant"
+intent = "design-target"
 
 [[selector]]
 selector = "host/policy-cases.nix"
-intent = "scope-relevant"
+intent = "design-target"
 
 [[selector]]
 selector = "host/profile-cases.nix"
-intent = "scope-relevant"
+intent = "design-target"
 
 [[selector]]
 selector = "host/wrap-cases.nix"
-intent = "scope-relevant"
+intent = "design-target"
 
 [[selector]]
 selector = "docs/contract-assignment.md"
-intent = "scope-relevant"
+intent = "design-target"
 
 [[selector]]
 selector = "docs/plan-d-fleet.md"
-intent = "scope-relevant"
+intent = "design-target"
+
+[[selector]]
+selector = "host/profile.nix"
+intent = "design-target"
+
+[[selector]]
+selector = "flake.nix"
+intent = "design-target"
+
+[[selector]]
+selector = "docs/contract-target.md"
+intent = "design-target"
+
+[[selector]]
+selector = "README.md"
+intent = "design-target"
 
 [[relation]]
 label = "governed_by"

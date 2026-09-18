@@ -1,0 +1,33 @@
+schema = "doctrine.knowledge"
+version = 1
+
+id = 15
+slug = "a-declared-default-naming-no-document-refuses-at-load-and-status-is-the-attribution"
+title = "A declared default naming no document refuses at load, and status is the attribution"
+record_kind = "decision"
+status = "accepted"
+created = "2026-09-18"
+updated = "2026-09-18"
+tags = []
+
+[facet]                         # every field typed; seeded empty (captured later)
+context = "A per-slot declared profile cannot be validated at eval: profileDir is run-time state outside the store (NOTES item 52)."
+choice = "No new check. profileLoad's existing refusal names the profile and the directory; the status cell's `[name]` (DEC-014) attributes it to a non-record source. In passing, correct profileLoad's hint that a document is 'rendered from target.nix' (false since a document may be hand-written)."
+alternatives = ["B: the declared step in profileNameFor checks existence and refuses naming capsules.nix (profileCell maps resolver failure to `-`, so status would read 'nothing')", "C: the resolver carries a profileSource through every caller for one line of attribution"]
+rationale = "Least code; B makes status lie and C plumbs state for a message."
+consequences = ["a case pins a declared default with no document: status `[name]`, verb refuses naming the directory", "profileLoad's hint text changes"]
+decided_by = "user"
+decided_on = "2026-09-18"
+
+[evidence]                      # free-text citations (supports / contradicts / notes)
+supports    = []
+contradicts = []
+notes       = []
+
+[relationships]                 # verb-written edges (set by doctrine supersede)
+supersedes    = []   # record ids this one replaces (set by doctrine supersede)
+superseded_by = []   # set on superseded predecessor (verb-written, ADR-004 §5)
+
+[[relation]]
+label = "shapes"
+target = "SL-001"

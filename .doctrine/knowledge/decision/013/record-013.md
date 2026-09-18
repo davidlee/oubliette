@@ -1,0 +1,1 @@
+SL-001 inq-2, resolving ISS-008. host/wrap.nix defaulted CAPSULE_REPO from cfg.repo, so ${CAPSULE_REPO:-$profile_path} in capsule-provision (src) and the front end's repoFor (fetch) never reached the document on the module path.

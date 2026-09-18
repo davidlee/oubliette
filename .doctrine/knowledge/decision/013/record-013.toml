@@ -1,0 +1,33 @@
+schema = "doctrine.knowledge"
+version = 1
+
+id = 13
+slug = "the-profile-documents-path-is-the-source-the-wrapper-stops-supplying-capsule-repo"
+title = "The profile document's path is the source; the wrapper stops supplying CAPSULE_REPO"
+record_kind = "decision"
+status = "accepted"
+created = "2026-09-18"
+updated = "2026-09-18"
+tags = []
+
+[facet]                         # every field typed; seeded empty (captured later)
+context = "ISS-008: on the module path the wrapper always sets CAPSULE_REPO to one target's checkout, so a provision or fetch for any profile uses doctrine's repo."
+choice = "Drop CAPSULE_REPO from host/wrap.nix defaults and remove services.capsule-perimeter.repo (lib.mkRemovedOptionModule). The profile document's `path` is the one home for source; CAPSULE_REPO stays a caller's deliberate override."
+alternatives = ["B: keep cfg.repo and feed it into the module's own render (two renders of one document disagree on path)", "C: front end exports CAPSULE_REPO per resolved profile (keeps a variable in front of the field; off-PATH programs still wrong)"]
+rationale = "Removes a value rather than relocating it; contract-assignment.md's source row is a host declaration keyed by profile, which the document in profileDir is."
+consequences = ["host/wrap.nix: four defaults, with the reason CAPSULE_REPO is not one", "wrapCases: with nothing set, CAPSULE_REPO reaches the program unset", "git-channel-cases.nix:150 (caller's CAPSULE_REPO beats the document) stays green", "the owner-relative default is gone; a host whose human differs corrects target.nix path or its document"]
+decided_by = "user"
+decided_on = "2026-09-18"
+
+[evidence]                      # free-text citations (supports / contradicts / notes)
+supports    = []
+contradicts = []
+notes       = []
+
+[relationships]                 # verb-written edges (set by doctrine supersede)
+supersedes    = []   # record ids this one replaces (set by doctrine supersede)
+superseded_by = []   # set on superseded predecessor (verb-written, ADR-004 §5)
+
+[[relation]]
+label = "shapes"
+target = "SL-001"
