@@ -63,10 +63,12 @@ cheaper option if the reviewer wants one.
 
 ## Harvest
 <!-- single-copy: updated in place each harvest; ids only, never restated content -->
-fresh-as-of: 2026-09-18 · design reviewing (run revision 50) · third adversarial pass integrated; runbook cleared
+fresh-as-of: 2026-09-18 · slice ready · design locked (run revision 55) · plan committed (7d434af), six phase sheets materialised
 
 ### Produced
 
+- Design locked on the user's sign-off (`RV-007` concluded, both review lanes
+  attested); `plan.toml`/`plan.md` (six phases).
 - `DEC-012`…`DEC-016` (accepted; `DEC-012` wording corrected twice, `DEC-014`
   once); `design.md` sec-1…sec-5 with `fnd-1`…`fnd-46` integrated (Codex 1–12,
   Opus 13–30, fresh Opus 31–46); slice scope reconciled; runbook steps
@@ -98,6 +100,6 @@ fresh-as-of: 2026-09-18 · design reviewing (run revision 50) · third adversari
 
 ### Open
 
-- Human review of sec-1…sec-5; section attestations; the review disposition
-  (`RV-007`); the lock; then `doctrine slice status 1 plan` and `/plan`.
-- Optional narrow pass on the four places `## Further review passes` names.
+- PHASE-01…PHASE-06 unstarted; next is `/phase-plan PHASE-01` then `/execute`.
+- PHASE-03 `VH-1`: the user approves the POL-002/POL-003 revisions before apply.
+- PHASE-06 needs the user's host switch (`~/flakes`).
