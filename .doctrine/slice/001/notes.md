@@ -140,7 +140,7 @@ directories, and was left.
 
 ## Harvest
 <!-- single-copy: updated in place each harvest; ids only, never restated content -->
-fresh-as-of: 2026-09-18 · slice started · PHASE-06 completed (VH-1, VH-2 held live)
+fresh-as-of: 2026-09-18 · slice audit → reconcile · RV-008 done (10 findings, 0 blockers)
 
 ### Produced
 
@@ -152,6 +152,8 @@ fresh-as-of: 2026-09-18 · slice started · PHASE-06 completed (VH-1, VH-2 held 
   `review.scope`, `review.selectors` and `review.passes` discharged.
 - `ISS-011` (widened by `fnd-37`); `ISS-012` (`fnd-44`, parked); `ISS-013`
   (PHASE-05: the git-channel programs' `jq` comes from the ambient `PATH`).
+- `RV-008` (closure audit): fixes committed at `35fa6de`; memory
+  `mem.fact.oubliette.checked-call-disables-errexit-inside-it` (`F-6`).
 
 ### Learned
 
@@ -190,14 +192,19 @@ fresh-as-of: 2026-09-18 · slice started · PHASE-06 completed (VH-1, VH-2 held 
   `extendModules` plus two `tryEval`s, without a new flake attribute. A
   `grep -vq` "does not name X" round crept into the first draft, and it passed
   while the program never reached the question (item 37's shape).
+- Audit: PHASE-04's `|| return 1` on the record write switched errexit off
+  inside `recordWrite`, so a failed jq emptied the record and exited 0 — a
+  regression the slice made by "checking" it (`RV-008` F-6). A corrupt record
+  is the seam the design said did not exist.
+- Commit a phase's evidence *before* flipping it `completed`: the flip stamps
+  HEAD as `code_end_oid` (`RV-008` F-1).
 - The binary refuses review policy `adversarial-then-human` (22-byte label over a
   16-byte bound) — a doctrine defect; the run uses `adversarial-only`.
 
 ### Open
 
-- PHASE-01…PHASE-05 done (mutations watched red; REV-001 approved by the
-  user and applied). `ISS-008` is fixed in code (7030e39), and its backlog
-  status is for /reconcile or /close. PHASE-06 done: host switched,
-  VH-1 and VH-2 held live (see "PHASE-06 evidence").
-- Next: `/audit` → `/reconcile` → `/close`. Use review policy
-  `adversarial-only` (see Learned).
+- All six phases done; `RV-008` done, and its reconciliation brief is written:
+  two selector adds (`docs/status.md`, `host/record.nix`) and design sec-3/sec-5
+  edits (`F-2`, `F-4`, `F-6`, `F-7`). `F-8` tolerated.
+- Next: `/reconcile` (the brief in `review-008.md`), then `/close`. `ISS-008` is
+  to be resolved there.

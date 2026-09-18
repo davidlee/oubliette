@@ -8,6 +8,7 @@ title = "closure audit of SL-001"
 facet     = "reconciliation"     # scope|design|plan|phase-plan|implementation|code-review|reconciliation
 raiser    = "auditor"
 responder = "responder"
+concluded = true
 
 [target]                   # the outbound `reviews` edge (ADR-004): RV-NNN ──reviews──▶ <ref>
 ref   = "SL-001"
