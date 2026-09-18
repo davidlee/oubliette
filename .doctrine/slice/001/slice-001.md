@@ -102,7 +102,8 @@ today's honest refusal. The two land together or the first one lies.
    value in `capsules.nix` — so it stays checkable by search in code, and is
    paired with the rule behind it: generic source never hardcodes a target's
    identity or branches on it; a value the host declares may be threaded into a
-   generated front end, as `slotPolicy` threads a policy. `POL-003`'s slots row gains the
+   generated front end, as `slotPolicy` threads a policy; and a case fixture may
+   reproduce a target's layout as data. `POL-003`'s slots row gains the
    per-slot declared profile and its resolution order gains the declared step,
    with the reason a per-slot declared value is not the implicit default it
    forbids. Both via `doctrine revision`, in this slice, with
@@ -188,9 +189,9 @@ repo.
   and whose record path must both stay pinned.
 - **Corrected** (design `inq-6` was wrong): a provision resolved its profile
   twice — `provisionSlot`, then `work`'s dispatch on the original argv — and a
-  silent guest left a pin with no record. Objective 4a fixes both. That is scope
-  beyond the approved slice: it changes provision behaviour on `CHR-011` bug 3's
-  branch, and it needs the user's confirmation.
+  silent guest left a pin with no record. Objective 4a fixes both. It changes
+  provision behaviour on `CHR-011` bug 3's branch; the user approved that scope,
+  and the `POL-003` revision, on 2026-09-18.
 - **Risk**: the profile-name grammar has two spellings, `capsules.nix`'s
   `profileNameOk` at eval and `profileLoad`'s `case` in the shell. A case holds
   them to one table of names.

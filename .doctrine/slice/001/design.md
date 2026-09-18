@@ -179,14 +179,18 @@ with `doctrine revision` inside this slice, landing in the same commit as
   > A target's name may appear in code only in `target.nix`,
   > `inputs.target.url`, and as a slot's `profile` value in `capsules.nix`.
   > Generic source never hardcodes a target's identity or branches on it; a
-  > host-declared value may be threaded into a generated front end.
+  > host-declared value may be threaded into a generated front end. A case
+  > suite's fixture may reproduce a target's layout as data, since a fixture is
+  > what a program is run against, not what it is.
 
   **The list keeps the policy checkable by search**: outside comments, a hit
   anywhere else is a violation, and the exception is one field of one file, not
   a principle a later change can stretch. Comments are excluded because they
   cite doctrine as history throughout (`host/refresh.nix`, `vm/capsule.nix`);
   outside them, today's tree holds the name only in the two places the policy
-  already lists, plus case fixtures that build a `.doctrine/` tree as data. The
+  already lists, plus case fixtures that build a `.doctrine/` tree as data
+  (`host/brief-cases.nix`, `host/state-snapshot-cases.nix`) — which the third
+  sentence names, so a hit there is never ambiguous. The
   generated `capsule` program does carry `doctrine` — as `slotPolicy` already
   carries a policy name — but it is built into the store, not written in the
   repo, so the search still holds. **The second sentence gives
