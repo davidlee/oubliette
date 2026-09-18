@@ -142,3 +142,38 @@ red, and notes.md now keeps the record (`F-3`).
 
 - `ISS-008` is fixed in code (`7030e39`) and closed live on the module path by
   PHASE-06 VH-2. Move it to resolved at `/reconcile` or `/close`.
+
+## Reconciliation Outcome
+
+### Direct edits applied (with the user's agreement)
+
+- **Selector registry:** `docs/status.md` and `host/record.nix` added as
+  `design-target` (`F-2`, `F-6`).
+- **Registry range:** PHASE-06 widened to end at the reconcile commit, so the
+  audit fix `35fa6de` is inside a recorded range. This is the only shape
+  `record-delta` accepts (one contiguous range), and it attributes the audit and
+  reconcile commits to PHASE-06. That over-attributes, deliberately.
+- **design.md sec-3:**
+  - the quoted failure message is the shipped one (`F-4`, `F-7`);
+  - "With the pin" says the check alone was the defect, and that
+    `recordWrite` exits on its own (`F-6`).
+- **design.md sec-5:**
+  - the code impact table gains `host/record.nix` and `docs/status.md`
+    (`F-2`, `F-6`);
+  - the Provision bullets gain the corrupt-record case;
+  - the mutation table's record-write row names that case;
+  - "Not exercised" drops the record-write claim and says a failed `mv` is not
+    driven (`F-6`).
+- **Backlog:** `ISS-008` resolved (fixed).
+
+### REVs completed
+
+- None needed. `REV-001` (`POL-002`, `POL-003`) was applied inside the slice.
+
+### Withdrawn / tolerated
+
+- `F-8` tolerated: `handoff` refuses a moved checkout even under
+  `CAPSULE_REPO`. The rationale is in the disposition.
+- `F-5` aligned.
+
+Reconcile pass complete. Handoff to `/close`.

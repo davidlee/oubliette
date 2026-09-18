@@ -406,8 +406,9 @@ So the front end says what it did not do, once, beside the program's own message
 local -a given=()
 [ "$profileGiven" = yes ] || given=(--profile "$prof")
 if ! work "$n" provision ${given[@]+"${given[@]}"} ${scope[@]+"${scope[@]}"} ${1+"$@"}; then
-  echo "capsule: nothing was recorded for '$n' — its record and pin still name" >&2
-  echo "  the previous assignment. A provision that completes records this one." >&2
+  echo "capsule: nothing was recorded for '$n' by this provision, which did not" >&2
+  echo "  complete — the slot's profile, pin and base are as they were. A" >&2
+  echo "  provision that completes records them." >&2
   return 1
 fi
 recordProvisioned "$n" "$prof" ${1+"$@"}
@@ -444,6 +445,12 @@ The write is checked explicitly — `recordWrite … || return 1` — and not le
 errexit, because under `handoff` errexit is off, and an unchecked failure
 followed by the silent-guest branch's `return 0` would report success with a pin
 and no record, which is the state this reorder exists to remove.
+
+The check alone is not enough, and alone it was the defect (`RV-008` F-6): a
+call behind `||` runs with errexit off *inside* it, subshell included. So
+`recordWrite` itself (`host/record.nix`) exits on a failed jq or `mv`, rather
+than moving an empty file over the record and printing a generation. On
+failure the provision says *"provisioned, but could not record it"*.
 
 So a pin has a record naming its profile unless that one file write fails, and
 then the provision exits 1 and says so. Only `.base` depends on the guest.
@@ -657,6 +664,8 @@ to `ISS-008`, and it already behaves as the pinned-source rule above says.
 | `host/profile-name.nix` | **new**: the profile-name predicate, builtins only (sec-2) |
 | `capsules.nix` | `profile ? null` in `recordOf`; `profile = "doctrine"` on all ten slots; imports the predicate; exports `misprofiledIn`; the `misprofiled` assertion; the comment carrying the warrant (sec-2) |
 | `host/cli.nix` | `slotDeclaredProfile` rendered beside `slotPolicy`, escaped, with a `*)` branch; `profileNameFor`'s fourth step and header; `slotNeedsUnit`'s answer 3 and `recordUnit`'s branch for it; `handoff`'s "declares" wording; `profileCell`'s brackets and drift marker; `statusFmt`'s profile column to `%-11s` and memory column to `%-12s`; `provisionSlot` forwards `--profile`, checks `work` and says nothing was recorded; `recordProvisioned` asks HEAD, pins, writes once and checks the write (sec-3); `handoff` refuses when the source's pinned `path` is not this host's; the `moduleState` comment (sec-4) |
+| `host/record.nix` | `recordWrite` exits its locked subshell on a failed jq or `mv` (sec-3; `RV-008` F-6) |
+| `docs/status.md` | the Now row names the brackets (`DEC-014`) |
 | `host/profile.nix` | `profileLoad` refuses `-` and its hint text changes; the validator refuses a document named `-` (sec-2, sec-3) |
 | `host/wrap.nix` | `CAPSULE_REPO` leaves `defaults`; header rewritten for four (sec-4) |
 | `host/services.nix` | `repo` option removed via `mkRemovedOptionModule`; `paths` loses `repo`; three comments (sec-4) |
@@ -759,6 +768,9 @@ Provision (sec-3):
   answering (a base is recorded), then re-provision with the guest silent: exit
   0 with the warning, the record names the profile and the snapshot, `.base` is
   gone, and status shows `solo` bare.
+- *a record the write cannot rewrite fails the provision* — a corrupt
+  `assignment.json` on `dflt`: exit 1, the provision says it could not record,
+  and the record's bytes are unchanged (`RV-008` F-6).
 
 Status:
 
@@ -864,7 +876,7 @@ the document* (line 150); `hostModuleUnits`.
 | leave either column at its old width | the alignment case |
 | forward `--profile` even when the caller gave one | *a provision's argv, record and pin agree* (two flags) |
 | drop the check on `work`'s status | *a provision that exits non-zero is not recorded* |
-| drop the `\|\| return 1` on the record write | none: a stub cannot make `recordWrite` fail without a seam. Recorded as not exercised |
+| drop `recordWrite`'s own exit on a failed jq | *a record the write cannot rewrite fails the provision* — a corrupt record is the seam |
 | drop `handoff`'s path comparison | *a handoff from a moved checkout refuses before anything destructive* |
 | let `$` through `profileNameOk` | the grammar-agreement case, on `a$b` |
 | ask HEAD after the pin and skip the record when silent, as today | *a silent guest still leaves a record* |
@@ -882,12 +894,11 @@ a seam for its own sake. Removing the forwarding therefore turns no case red,
 because `work` would re-resolve to the same name in a sandbox where nothing
 changes the record. The fix is held by its own text and the comment beside it.
 
-Two more are held by their text alone. The `|| return 1` on the record write
-has no case: a stub cannot make `recordWrite` fail without a seam added only for
-it. And the `misprofiled` **assertion** — that `capsules.nix` applies
-`misprofiledIn` to its own `declared` and throws — is not driven, as
-`undeclared`'s assertion is not today: `profileCases` pins the function it
-applies, and deleting the `assert` line turns nothing red.
+One more is held by its text alone: the `misprofiled` **assertion** — that
+`capsules.nix` applies `misprofiledIn` to its own `declared` and throws — is not
+driven, as `undeclared`'s assertion is not today: `profileCases` pins the
+function it applies, and deleting the `assert` line turns nothing red. And of
+`recordWrite`'s two exits, only the jq one is driven; a failed `mv` is not.
 
 There is no live provision on a second target; `IMP-006` and `CHR-011` own that.
 The user checks the live host after the switch with two commands that push

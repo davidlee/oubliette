@@ -74,6 +74,16 @@ intent = "design-target"
 selector = "CLAUDE.md"
 intent = "design-target"
 
+[[selector]]
+selector = "docs/status.md"
+intent = "design-target"
+note = "status's Now row names the brackets (DEC-014); RV-008 F-2"
+
+[[selector]]
+selector = "host/record.nix"
+intent = "design-target"
+note = "recordWrite exits on its own failed jq or mv; a checked caller switches errexit off (RV-008 F-6)"
+
 [[relation]]
 label = "governed_by"
 target = "POL-003"
