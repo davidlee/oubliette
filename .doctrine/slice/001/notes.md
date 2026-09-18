@@ -63,7 +63,7 @@ cheaper option if the reviewer wants one.
 
 ## Harvest
 <!-- single-copy: updated in place each harvest; ids only, never restated content -->
-fresh-as-of: 2026-09-18 · slice started · PHASE-03 complete
+fresh-as-of: 2026-09-18 · slice started · PHASE-04 complete (e5084d4)
 
 ### Produced
 
@@ -104,13 +104,17 @@ fresh-as-of: 2026-09-18 · slice started · PHASE-03 complete
 - PHASE-02: policyCases' old `unsaw "built*"` could never fail (`both` was on
   `holed` by then); status rounds now read the profile by column (`profileOf`),
   which only works because the alignment round holds.
+- PHASE-04: a failed provision under `handoff` *was* recorded (generation
+  moved), which is now red-then-green. Its pin round cannot discriminate
+  (same bytes re-pinned); the generation round carries it. A local `given` in
+  `provisionSlot` collided with `collectSlot`'s under shellcheck; `forward`.
 - The binary refuses review policy `adversarial-then-human` (22-byte label over a
   16-byte bound) — a doctrine defect; the run uses `adversarial-only`.
 
 ### Open
 
-- PHASE-01…PHASE-03 done (mutations watched red; REV-001 approved by the
-  user and applied). PHASE-04…PHASE-06 unstarted; next is
-  `/phase-plan PHASE-04`.
+- PHASE-01…PHASE-04 done (mutations watched red; REV-001 approved by the
+  user and applied). PHASE-05, PHASE-06 unstarted; next is
+  `/phase-plan PHASE-05`.
 - PHASE-03 `VH-1`: the user approves the POL-002/POL-003 revisions before apply.
 - PHASE-06 needs the user's host switch (`~/flakes`).
