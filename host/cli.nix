@@ -1270,18 +1270,12 @@ in
           # directory `provisionSlot` pointed at — this host's, because a
           # provision is the act that decides what the slot's own copy will be.
           profileLoad "$prof" || return 1
-          # The pin, and it is written **before** the record and independently of
-          # it: the bytes are what every later verb on this slot reads, and the
-          # code has already landed under them, so a guest that has since gone
-          # quiet must not leave the slot reading a document the host may edit
-          # tomorrow. The digest goes into the record's own write below, which is
-          # the half that follows the fact.
-          snap=$(pinProfile "$n" "$prof") || {
-            echo "capsule: provisioned, but '$prof' could not be pinned into" >&2
-            echo "  $(pinDirOf "$n") — so this slot reads whatever $hostProfileDir" >&2
-            echo "  holds at the time, which is the drift a pin exists to stop." >&2
-            return 1
-          }
+          # The guest first, so nothing that needs the network sits between the
+          # pin and the record: asked after the pin, a guest gone quiet left a
+          # pin with no record, which every later verb then read as the slot's
+          # document while the record named the assignment before (SL-001
+          # design sec-3). Only `.base` depends on the answer.
+          #
           # `guestHead` and not a second `observed | cut`: the same question is
           # `verifyExhibit`'s, and it is the one thing here that needs a live
           # capsule, so it is asked in one place and substituted in one place.
@@ -1289,32 +1283,46 @@ in
           # `|| oid=""` and not a bare assignment: `observed` returns 1 for a
           # guest that does not answer, `set -o pipefail` carries that out of the
           # pipeline, and `set -e` then killed this function — silently, since
-          # `observed` sends the transport's own stderr to /dev/null. So the
-          # branch below had never once been taken, and a provision whose code
-          # landed against a guest that had since gone quiet exited 1 saying
-          # nothing at all. Found by the first case ever to run this path
-          # (host/policy-cases.nix); it needs a stub, which is why a live host
-          # never found it.
+          # `observed` sends the transport's own stderr to /dev/null. Found by the
+          # first case ever to run this path (host/policy-cases.nix); it needs a
+          # stub, which is why a live host never found it.
           oid=$(guestHead "$n") || oid=""
-          if [ -z "$oid" ] || [ "$oid" = - ]; then
-            echo "capsule: provisioned, but the guest did not answer for its HEAD, so" >&2
-            echo "  no base was recorded. 'capsule $n status', then provision again." >&2
-            return 0
-          fi
+          [ "$oid" != - ] || oid=""
+          # The pin: the bytes every later verb on this slot reads. The code has
+          # already landed under them, so they are written whatever the guest
+          # says, and the digest goes into the one record write below.
+          snap=$(pinProfile "$n" "$prof") || {
+            echo "capsule: provisioned, but '$prof' could not be pinned into" >&2
+            echo "  $(pinDirOf "$n") — so this slot reads whatever $hostProfileDir" >&2
+            echo "  holds at the time, which is the drift a pin exists to stop." >&2
+            return 1
+          }
+          # One write, so one generation, and `.base` deleted rather than left
+          # when the guest is silent: a base kept from the provision before is a
+          # base this one did not take. Checked here and not left to errexit,
+          # which `handoff`'s `provisionSlot … || exit 1` switches off — an
+          # unchecked failure followed by the silent branch's `return 0` would
+          # report success with a pin and no record, the state this order
+          # exists to remove. Not exercised: a stub cannot make the write fail.
+          #
           # SC2016: `$ref`, `$oid`, `$profile`, `$class` and `$snap` are *jq*
           # variables, bound by the `--arg`/`--argjson` below. Not expanding in
           # the shell is the entire point — a value interpolated into a filter
           # would be jq code.
           # shellcheck disable=SC2016
           recordWrite "$n" \
-            '.base = {ref: $ref, oid: $oid} | .profile = $profile | .class = $class
-             | .profile_snapshot = $snap' \
+            '(if $oid == "" then del(.base) else .base = {ref: $ref, oid: $oid} end)
+             | .profile = $profile | .class = $class | .profile_snapshot = $snap' \
             --arg ref "$ref" \
             --arg oid "$oid" \
             --arg profile "$prof" \
             --arg snap "$snap" \
             --argjson class "$(printf '{"mem":%s,"vcpu":%s}' "$profile_mem" "$profile_vcpu")" \
-            > /dev/null
+            > /dev/null || return 1
+          if [ -z "$oid" ]; then
+            echo "capsule: provisioned, but the guest did not answer for its HEAD, so" >&2
+            echo "  no base was recorded. 'capsule $n status', then provision again." >&2
+          fi
         }
 
         # What provisioning a slot is, in one place: the scope this host fills
@@ -1331,7 +1339,7 @@ in
         # written.
         provisionSlot() {
           local n="$1" prof
-          local -a scope=()
+          local -a scope=() forward=()
           shift
           mapfile -t scope < <(unitScope "$n" --state-from-host ''${1+"$@"})
           # Resolved before the program runs and held in a local, because after
@@ -1343,11 +1351,26 @@ in
           useHostProfiles
           profileNameFor "$n" ''${1+"$@"} || return 1
           prof=$profileName
+          # Handed to the program as a flag, so `work` takes the flag step and
+          # resolves nothing a second time: two reads of the record either side
+          # of the program were two answers whenever it changed between them.
+          # Only when the caller gave none — a doubled flag is the program's
+          # last-wins parse deciding. The race this closes is not exercised: no
+          # seam sits between the two reads (SL-001 design sec-5).
+          [ "$profileGiven" = yes ] || forward=(--profile "$prof")
           profileLoad "$prof" || return 1
-          work "$n" provision ''${scope[@]+"''${scope[@]}"} ''${1+"$@"}
+          # Checked, because under `handoff`'s `provisionSlot … || exit 1`
+          # errexit is off and a failed program fell through to the record. A
+          # program that exited 1 after its code landed is not recorded either:
+          # it calls the provision unfinished, and so does this.
+          if ! work "$n" provision ''${forward[@]+"''${forward[@]}"} ''${scope[@]+"''${scope[@]}"} ''${1+"$@"}; then
+            echo "capsule: nothing was recorded for '$n' — its record and pin still name" >&2
+            echo "  the previous assignment. A provision that completes records this one." >&2
+            return 1
+          fi
           # The profile this provision was taken under, then the *original*
           # argv: two readers of one argv, and only the program wanted the
-          # addition.
+          # additions.
           #
           # The profile argument is **not** optional and was missing here from
           # step 4 until step 6: `recordProvisioned` takes `<name> <profile>

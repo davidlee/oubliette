@@ -178,6 +178,14 @@ in
     # bracketed on its own line. \`out.argv\` joins them, so a value split in
     # two reads the same there as one value holding a space.
     { echo "\$#"; for a in "\$@"; do echo "[\$a]"; done; } > "\$PWD/out.args"
+    # A program that fails *after* its work is done, as \`capsule-provision\`
+    # does when the brief or the refresh after its push fails. Named by verb,
+    # because a handoff collects before it provisions and a failing collect
+    # would stop it short of the branch a case is after.
+    if [ "\''${CASE_PROGRAM_FAIL:-}" = $v ]; then
+      echo "$v: the code landed, and a later step failed"
+      exit 1
+    fi
     EOF
       chmod +x "stub/capsule-$v"
     done
@@ -741,6 +749,51 @@ in
     ckt "  as the last step of the sequence" saw "baseline argv: --capsule both --profile built"
     ckt "  and says nothing about skipping" unsaw "declares no baseline"
 
+    # ---------------------------- a provision resolves once, and records it (SL-001)
+    #
+    # How many `--profile`s the program was handed, counted as whole arguments:
+    # `out.argv` joins them, so it cannot tell one flag from a value that holds
+    # the text.
+    profileFlags() { grep -cxF -- '[--profile]' out.args; }
+    recorded() { jq -r "$2" "$CASE_STATE/slot/$1/assignment.json"; }
+    mkdir -p "$CASE_STATE/head"
+    printf '%s' "$second" > "$CASE_STATE/head/dflt"
+    run dflt provision somecommit
+    ck "a provision's argv, record and pin agree" 0 "$rc"
+    ckt "  handing the program one --profile" test "$(profileFlags)" = 1
+    ckt "  naming what the slot declares" grep -qxF -- '[solo]' out.args
+    ckt "  and the record says the same" test "$(recorded dflt .profile)" = solo
+    ckt "  with a class taken off that document" \
+      test "$(recorded dflt .class.mem)" = "$(jq -r .sizes.mem profiles/solo.json)"
+    ckt "  and the pin is that document" \
+      test "$(ls "$CASE_STATE/slot/dflt/profile")" = solo.json
+    # The caller's own flag, which is the one a forward must not double: the
+    # program's parse takes the last of two, so a doubled flag is correct today
+    # and wrong the moment the two differ.
+    run dflt provision somecommit --profile duo
+    ck "  and a caller's --profile is not doubled" 0 "$rc"
+    ckt "  handing the program exactly one" test "$(profileFlags)" = 1
+    ckt "  the caller's" test "$(recorded dflt .profile)" = duo
+
+    # A guest that has gone quiet by the time the record is written. The pin is
+    # new, so a record left naming the old assignment — or no record at all —
+    # would have every later verb reading one document while the record names
+    # another. The base is the one thing that needs the guest, and a base left
+    # from the provision before is a base this one did not take.
+    rm "$CASE_STATE/head/dflt"
+    run dflt provision somecommit --profile solo
+    ck "a silent guest still leaves a record" 0 "$rc"
+    ckt "  saying no base was recorded" saw "no base was recorded"
+    ckt "  naming the profile it was taken under" test "$(recorded dflt .profile)" = solo
+    ckt "  and the pin's digest" \
+      test "$(recorded dflt .profile_snapshot)" \
+      = "sha256:$(sha256sum < "$CASE_STATE/slot/dflt/profile/solo.json" | cut -d' ' -f1)"
+    ckt "  and not the previous provision's base" test "$(recorded dflt .base)" = null
+    run all status
+    ckt "  so a status reads it as a record" test "$(profileOf dflt)" = solo
+    # Back to declaring only, for the handoff round that asks what `dflt` declares.
+    unassign dflt
+
     # ------------------------- the scope a setup carries, and NOTES item 53
     #
     # A `setup` *is* a provision, so state taken from this host's checkout is
@@ -1285,6 +1338,25 @@ in
     # not (item 52 step 3).
     ckt "  under this host's document and not the pin the handoff replaces" \
       test "$(jq -r .class.mem "$CASE_STATE/slot/one/assignment.json")" = 3072
+
+    # ---------------------------- a provision that exits non-zero (SL-001)
+    #
+    # Under `handoff`, because that is where errexit is off: it calls
+    # `provisionSlot … || exit 1`, so a failed program fell through to the
+    # record. The stub prints that the code landed before it fails, which is
+    # `capsule-provision` failing at the brief or the refresh — the guest moved,
+    # and the front end must still not claim a provision the program calls
+    # unfinished. `one` was pinned by the round above, so "no pin" would be
+    # false for correct code; what must hold is that nothing moved.
+    pinOf() { cat "$CASE_STATE/slot/$1/profile/"*.json | sha256sum; }
+    wasPin=$(pinOf one)
+    wasGen=$(gen one)
+    CASE_PROGRAM_FAIL=provision run one handoff both --purpose "a second pair of eyes"
+    ck "a provision that exits non-zero is not recorded (CASE_PROGRAM_FAIL)" 1 "$rc"
+    ckt "  after the program said the code landed" saw "the code landed"
+    ckt "  saying nothing was recorded" saw "nothing was recorded for 'one'"
+    ckt "  leaving the record's generation" test "$(gen one)" = "$wasGen"
+    ckt "  and the pin" test "$(pinOf one)" = "$wasPin"
 
     # ------------------------------------------------ land, and its report
     #
