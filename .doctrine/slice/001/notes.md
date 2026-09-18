@@ -33,13 +33,13 @@ SL-001`).
 
 ## Harvest
 <!-- single-copy: updated in place each harvest; ids only, never restated content -->
-fresh-as-of: 2026-09-18 · design reviewing (run revision 29) · 4879de8+
+fresh-as-of: 2026-09-18 · design reviewing (run revision 33) · findings integrated
 
 ### Produced
 
-- `DEC-012`…`DEC-016` (accepted); `design.md` sec-1…sec-5; 13 design-target
-  selectors; run findings `fnd-1`…`fnd-12` (Codex, all accepted, repairs in
-  each finding's `resolution`).
+- `DEC-012`…`DEC-016` (accepted; `DEC-012` wording corrected per `fnd-6`);
+  `design.md` sec-1…sec-5 revised with `fnd-1`…`fnd-12` integrated; slice scope
+  reconciled (objectives 3, 4, 4a, 4b, 5a, 6, 7; risks).
 
 ### Learned
 
@@ -48,14 +48,20 @@ fresh-as-of: 2026-09-18 · design reviewing (run revision 29) · 4879de8+
   dispatch re-resolves from the original argv.
 - `recordProvisioned` can leave a pin with no record (`fnd-2`); `profileDirFor`
   serves it.
+- `fnd-1`'s race has no seam a fixture can reach: removing the forwarded
+  `--profile` turns no case red (sec-5 says so). The finding's suggested
+  "stub rewrites the record mid-run" case was not adopted for that reason.
+- A column overflow in `statusFmt` leaves fields space-separated, so only an
+  offset check sees it (sec-5).
+- `mkRemovedOptionModule` reports through `config.assertions`, so the removal
+  message is readable at eval (`fnd-7`'s case).
 - The binary refuses review policy `adversarial-then-human` (22-byte label over
   a 16-byte admission bound) — a doctrine defect; the run uses
   `adversarial-only`.
 
 ### Open
 
-- Integrate `fnd-1`…`fnd-12` into sec-1…sec-5 and the slice scope; `POL-003`
-  now also needs a revision (`fnd-3`); `DEC-012`'s "key" wording → "value"
-  (`fnd-6`).
+- User confirmation of the scope growth: objective 4a (provision behaviour on
+  `CHR-011` bug 3's branch) and the `POL-003` revision.
 - Human review of the revised sections (the user's; the run's policy is
-  adversarial-only).
+  adversarial-only), then the `review.scope` runbook step and the lock.

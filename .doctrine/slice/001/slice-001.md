@@ -49,14 +49,17 @@ today's honest refusal. The two land together or the first one lies.
 
 2. **A fourth step in `profileNameFor`**, between the assignment record and the
    refusal: an explicit `--profile`, then the record, then the slot's declared
-   default, then the one rendered document, then refuse. Resolution stays the
-   front end's act and never a program's (`item 20`).
+   default, then the only document in the profile directory, then refuse.
+   Resolution stays the front end's act and never a program's (`item 20`).
 
-3. **The declared default is validated at run time and cannot be validated at
-   eval, and the field says so.** `policy` is checked by `capsules.nix`'s
-   `undeclared` assertion against `policies.nix`; no equivalent exists here,
-   because `profileDir` is run-time state outside the store (`item 52`) and the
-   second document has no copy in this repo. A slot naming a profile no document
+3. **The declared default's *existence* is checked at run time and cannot be
+   checked at eval, and the field says so; its *shape* is checked at eval.**
+   `policy` is checked by `capsules.nix`'s `undeclared` assertion against
+   `policies.nix`; no existence equivalent exists here, because `profileDir` is
+   run-time state outside the store (`item 52`) and the second document has no
+   copy in this repo. A shape assertion does exist — non-empty, no `/`, newline
+   or tab, not `.`, `..` or `-` — and the rendered name is shell-escaped, since
+   it is spliced into the front end's text. A slot naming a profile no document
    backs must refuse when the slot is used, naming the directory it looked in.
    **`DEC-015`: no new check** — `profileLoad`'s existing refusal does this, and
    the status cell's `[name]` attributes the name to a non-record source. In
@@ -65,11 +68,25 @@ today's honest refusal. The two land together or the first one lies.
 
 4. **`capsule all status` distinguishes an assignment from everything else.**
    **`DEC-014`**: `[doctrine]` for *any* resolution without a record — the
-   declared default and the pre-existing sole-rendered-document fallback alike —
+   declared default and the pre-existing sole-document fallback alike —
    bare `doctrine` (with its `*`/`!` markers) for a record, `-` for neither.
-   Brackets never carry `*` or `!`, since only a provision writes a pin. A
-   default that renders identically to a record is a default that will be read
-   as one, and the sole-render fallback already did.
+   Brackets never carry `*` or `!`, since a provision writes the record directly
+   after the pin (objective 4a). A default that renders identically to a record
+   is a default that will be read as one, and the sole-document fallback already
+   did. The profile column widens from 9 to 11 characters to hold `[doctrine]`.
+
+4a. **A provision resolves its profile once and records it with the pin.** Two
+   pre-existing defects on the provision path, fixed here because objective 4's
+   rule rests on both: `provisionSlot` forwards the name it resolved to the
+   program as an explicit `--profile`, so `work`'s dispatch does not resolve a
+   second time; and `recordProvisioned` writes `profile`, `class` and
+   `profile_snapshot` beside the pin before asking the guest for its HEAD, so a
+   silent guest leaves a record without a base rather than a pin with no record.
+   This changes provision behaviour on the branch `CHR-011`'s bug 3 concerns.
+
+4b. **`-` is a reserved profile name.** It is `recordField`'s absence value
+   across the front end, so a profile named `-` read as unassigned.
+   `profileLoad`, the validator and the `capsules.nix` assertion refuse it.
 
 5. **`ISS-008`** — the module path reaches the profile document's `path` when
    nothing in the environment names a repo, and `CAPSULE_REPO` still beats the
@@ -80,36 +97,49 @@ today's honest refusal. The two land together or the first one lies.
    `capsule-provision`'s `src` and the front end's `repoFor`, which is where
    `fetch` writes.
 
-5a. **`DEC-012`: a `POL-002` revision.** Its *"exactly two places"* sentence
-   narrows to code, programs and printed text; a profile name as a key in a host
-   declaration is a value, not a learned target. Via `doctrine revision`, in this
-   slice, with `docs/contract-target.md` in the same commit as the boundary move.
+5a. **`DEC-012`: a `POL-002` revision, and a `POL-003` revision beside it.**
+   `POL-002`'s *"exactly two places"* sentence is reworded by provenance and
+   mechanism: generic source never hardcodes a target's identity or branches on
+   it; a value the host declares may be threaded into a host-specific generated
+   front end, as `slotPolicy` threads a policy. `POL-003`'s slots row gains the
+   per-slot declared profile and its resolution order gains the declared step,
+   with the reason a per-slot declared value is not the implicit default it
+   forbids. Both via `doctrine revision`, in this slice, with
+   `docs/contract-target.md` in the same commit as the boundary move.
 
 5b. **`DEC-016`: the values.** All ten slots declare `profile = "doctrine"` —
    the only image this host builds. A split with a second target waits on
    `IMP-006`.
 
-6. **Cases**, and the kinds are not interchangeable (`CLAUDE.md`). Objectives 1-4
+6. **Cases**, and the kinds are not interchangeable (`CLAUDE.md`). Objectives 1-4b
    are the third kind — a program's own text against a fixture, in
    `host/policy-cases.nix` (which already owns the front end's resolution
    fixtures) and `host/profile-cases.nix`. Objective 5 is the **fourth** kind:
    the defect lives in the composition of wrapper and program, which is exactly
    what `wrapCases` exists for and exactly the gap `ISS-004` shipped through —
    `wrapCases` asks whether a caller's value survives, and nobody asks whether the
-   program's own fallback is still reachable when no caller sets one.
+   program's own fallback is still reachable when no caller sets one. The
+   removed `repo` option gets an eval-level case beside `hostModuleUnits`, which
+   never sets it and so cannot see the removal.
 
 7. **Documentation the change moves**: `docs/contract-assignment.md`'s ownership
    table (the `profile` noun gains a host-declared default without gaining a
    host-declared *set*), `docs/plan-d-fleet.md` L1's "the cheap insurance was not
-   taken" sentence, and `capsules.nix`'s own comment carrying the warrant.
+   taken" sentence, `capsules.nix`'s own comment carrying the warrant, and every
+   comment or document that says the wrapper supplies `CAPSULE_REPO` or counts
+   five wrapped directories (`host/git-channel.nix`, `host/cli.nix`,
+   `host/services.nix`, `README.md`, `CLAUDE.md`).
 
 ### Affected surface
 
 `capsules.nix`, `host/cli.nix` (`profileNameFor`, the status table's profile
-cell), `host/wrap.nix`, `host/services.nix` (`repo` option removed),
-`host/profile.nix` (`profileLoad`'s hint), `host/policy-cases.nix`,
-`host/profile-cases.nix`, `host/wrap-cases.nix`, `docs/contract-assignment.md`,
-`docs/contract-target.md`, `docs/plan-d-fleet.md`, `POL-002` (revision).
+cell, `provisionSlot`, `recordProvisioned`), `host/wrap.nix`,
+`host/services.nix` (`repo` option removed), `host/profile.nix` (`profileLoad`'s
+hint and name check, the validator), `host/git-channel.nix` (comment),
+`host/policy-cases.nix`, `host/profile-cases.nix`, `host/wrap-cases.nix`,
+`flake.nix`, `docs/contract-assignment.md`, `docs/contract-target.md`,
+`docs/plan-d-fleet.md`, `README.md`, `CLAUDE.md`, `POL-002` and `POL-003`
+(revisions), `DEC-012` (wording).
 Outside this repo: `~/flakes/modules/nixos/capsule.nix`'s comment names
 `repo` — the user's to edit.
 
@@ -155,10 +185,14 @@ repo.
   status table is the one surface `IMP-004` observed working unmodified across
   two targets. A cell that changes rendering is a cell whose absent path (`-`)
   and whose record path must both stay pinned.
-- **Settled** (design `inq-6`): a declared default and `pinProfile` do not
-  conflict. `host/cli.nix:535` resolves a provision's profile once and forwards
-  it as an explicit `--profile`, so `provisionSlot`'s second resolution takes the
-  flag step; after the record is written the record step precedes the default.
+- **Corrected** (design `inq-6` was wrong): a provision resolved its profile
+  twice — `provisionSlot`, then `work`'s dispatch on the original argv — and a
+  silent guest left a pin with no record. Objective 4a fixes both. That is scope
+  beyond the approved slice: it changes provision behaviour on `CHR-011` bug 3's
+  branch, and it needs the user's confirmation.
+- **Risk**: the profile-name grammar has two spellings, `capsules.nix`'s
+  `profileNameOk` at eval and `profileLoad`'s `case` in the shell. A case holds
+  them to one table of names.
 
 ### Verification and closure intent
 

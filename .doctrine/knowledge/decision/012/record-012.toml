@@ -12,10 +12,10 @@ tags = []
 
 [facet]                         # every field typed; seeded empty (captured later)
 context = "A per-slot declared default target (SL-001) puts a target name in capsules.nix, which POL-002's literal wording forbids."
-choice = "Revise POL-002 via doctrine revision inside SL-001: the prohibition covers code, programs and printed text; a profile name as a key in a host declaration is permitted."
+choice = "Revise POL-002 via doctrine revision inside SL-001, worded by provenance and mechanism: generic source never hardcodes a target's identity or branches on it; a value the host declares (a profile name as a value in capsules.nix) may be threaded into a host-specific generated front end, as slotPolicy threads a policy name."
 alternatives = ["A: ship the field unset everywhere (dead on arrival)", "B: profile = target.name by reference (single-target only; couples capsules.nix to target.nix)", "D: per-slot defaults in run-time host state (breaks POL-003, two homes for slots)"]
-rationale = "The policy guards mechanism against learning a client's identity; the review test (code changed, or only a value?) is passed by a declared value, and the contract already treats profile names as host-held keys."
-consequences = ["SL-001 carries a POL-002 revision", "contract-target.md updated in the same commit as the boundary move", "which slots declare which profile is a separate values question"]
+rationale = "The policy guards mechanism against learning a client's identity; the review test (code changed, or only a value?) is passed by a declared value, and the contract already treats profile names as host-held. A revision saying programs never carry a target name would be broken by this slice, which renders the declared name into the generated capsule front end."
+consequences = ["SL-001 carries a POL-002 revision", "SL-001 also revises POL-003 (slots row and resolution order)", "contract-target.md updated in the same commit as the boundary move", "which slots declare which profile is a separate values question"]
 decided_by = "user"
 decided_on = "2026-09-18"
 
