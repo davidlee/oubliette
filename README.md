@@ -273,8 +273,8 @@ The units, per capsule and per host:
 | `capsule-perimeter-guard` | one per host: verifies every namespace, every 10s, `BindsTo` from every proxy |
 
 - The module installs `capsule-provision` and `capsule-collect` **wrapped** with
-  the units' `CAPSULE_STATE` and `CAPSULE_REPO`, because unwrapped they default
-  to `$PWD/.vm/host` — the foreground path's — and would quarantine wherever you
+  the units' `CAPSULE_STATE` (and its profile, policy and allowlist
+  directories) as defaults, because unwrapped they default to `$PWD/.vm/host` — the foreground path's — and would quarantine wherever you
   happened to be standing. The devshell's copies still shadow them inside this
   repo, so each path keeps its own state; both print the path they used, so read
   that line rather than assuming.
@@ -510,11 +510,13 @@ firecracker cannot share a filesystem, so `~/.claude` (session history),
 retyped. That is what decides when the cut is cheap, and nothing else.
 
 **A provision does not have to go through `~/dev/<target>`** — `src` is
-`"${CAPSULE_REPO:-target.path}"` (`host/git-channel.nix`) and a quarantine is a
-real bare repo. What stops it on the module path is `host/services.nix`'s wrapper
-`export`ing `CAPSULE_REPO` unconditionally, which is a control rather than an
-oversight: a program whose source repo is the caller's choice can be pointed at
-any repo on the host. Step 3 is one cheap command, not a requirement.
+`"${CAPSULE_REPO:-$profile_path}"` (`host/git-channel.nix`) and a quarantine is a
+real bare repo. This section used to call the module wrapper's unconditional
+`CAPSULE_REPO` export a control. It stopped being one at `ISS-004`, which made
+every export a default a caller could override, and SL-001 removed it
+(`ISS-008`). Source is chosen by whoever writes the profile document's `path`,
+or by a caller who sets `CAPSULE_REPO`, and that caller is the human the program
+already runs as. Step 3 is one cheap command, not a requirement.
 
 ## Process lifecycle
 

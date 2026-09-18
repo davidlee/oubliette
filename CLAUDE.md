@@ -93,7 +93,7 @@ program ships**, with a short `import` in `flake.nix` (NOTES item 51 step 0).
 Seven of them are handed a fixture instead and say so in their headers: the
 guard's stubbed kernel, the front end's pool that is not this host's (twice,
 once for policy and once for the volume verb), the
-profile's target that is nobody's, the wrapper's five directories that are
+profile's target that is nobody's, the wrapper's four directories that are
 no host's, the volume root helper's sandbox roots, since a root program's
 paths are fixed at build and its shipped store path cannot be aimed anywhere else,
 and the guest reset's fixture home, for the same reason one level down. A new suite goes in
@@ -113,7 +113,7 @@ as an argument the one thing that ties it to this host** — `host/guard.nix`'s
 shipped copies stay one store path — exactly as all of them take `transport`.
 **A wrapper is a program too, and that is why `wrap` left `host/services.nix`**
 (`ISS-004`): `host/wrap.nix` takes `paths`, so `wrapCases` builds the shipped
-text against a fixture rather than re-rendering five export lines that would
+text against a fixture rather than re-rendering four export lines that would
 then agree with themselves while disagreeing with the module.
 **For the five guest-pushed scripts that argument is now a *run-time* one**
 (NOTES item 51): `state-snapshot`, `refresh`, `brief`'s runner, `observe` and

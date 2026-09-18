@@ -20,6 +20,14 @@
 # `defaults` the wrapper builds from, so no case can agree with itself about one;
 # the *set* of them is spelled out below instead, and the comment there is why.
 #
+# **One case is over a real program, and it takes two things from this host.**
+# Whether the wrapper leaves `CAPSULE_REPO` alone is only visible as what the
+# program does without it, so that case wraps the shipped `capsule-provision`.
+# Its slot is one this host declares, because the program has the declared list
+# baked in and refuses any other `--capsule` before it reads a checkout — which
+# is the program, not a borrowed fixture, exactly as in `gitChannelCases`. Its
+# paths are still nobody's.
+#
 # Both rules for writing a case apply. Each override case asserts *which* value
 # arrived and not merely that the program ran, since a wrapper that dropped the
 # variable entirely and one that honoured it are the same exit status; and the
@@ -50,11 +58,18 @@
 {
   pkgs,
   lib,
+  # The shipped `capsule-provision`, for the one case whose subject is a real
+  # program's fallback rather than the environment an echo sees (SL-001).
+  provision,
+  # A slot this host declares, and not a borrowed fixture: the program has the
+  # declared list baked in, and its direct transport refuses any other
+  # `--capsule` before `src` is read — the same reason `gitChannelCases` is
+  # handed one. The *paths* stay nobody's.
+  slot,
 }: let
   # Nobody's host. Two sets, because the second pins the escaping.
   plain = {
     stateDir = "/fixture/state";
-    repo = "/fixture/repo";
     policyDir = "/fixture/policy";
     allowlistDir = "/fixture/allow";
     profileDir = "/fixture/profiles";
@@ -70,8 +85,8 @@
 
   # The smallest inner program that can answer the question: what did the
   # wrapper leave in the environment, and did the arguments survive it. Every
-  # `CAPSULE_*` there is, not the five this suite remembers — that is what makes
-  # a sixth variable appear in the output instead of being invisible.
+  # `CAPSULE_*` there is, not the four this suite remembers — that is what makes
+  # a fifth variable appear in the output instead of being invisible.
   echoEnv = pkgs.writeShellApplication {
     name = "capsule-echo-env";
     runtimeInputs = [pkgs.coreutils pkgs.gnugrep];
@@ -92,7 +107,10 @@
   inherit (wrapWith plain) defaults;
   names = builtins.attrNames defaults;
 in
-  pkgs.runCommand "capsule-wrap-cases" {} ''
+  # `jq` for the provision case alone: the program reads its document with the
+  # `jq` on `PATH` rather than one of its own `runtimeInputs`, which
+  # `gitChannelCases` supplies the same way (`ISS-013`).
+  pkgs.runCommand "capsule-wrap-cases" {nativeBuildInputs = [pkgs.jq];} ''
     fail=0
     ck() {
       if [ "$2" = "$3" ]; then echo "ok   $1" >>"$log"
@@ -110,7 +128,7 @@ in
 
     # `env -i` and not the ambient environment: this build's own `CAPSULE_*`
     # would be indistinguishable from the wrapper's, and the "exactly these
-    # five" case below is the one that would go green for the wrong reason.
+    # four" case below is the one that would go green for the wrong reason.
     # `PATH` survives because the inner program's `runtimeInputs` prepend to it
     # rather than replacing it, so an empty one is a `writeShellApplication`
     # that cannot find `env`.
@@ -162,13 +180,39 @@ in
     # `host/wrap.nix` builds the text from, which is what stops the suite
     # agreeing with itself about a value; but a *set* read from that same place
     # cannot notice the set changing. What the module path puts in a program's
-    # environment is the interface, so a sixth variable — or a dropped one — is
-    # a deliberate act that edits this line and writes a case, rather than five
-    # generated cases quietly becoming six.
+    # environment is the interface, so a fifth variable — or a dropped one — is
+    # a deliberate act that edits this line and writes a case, rather than four
+    # generated cases quietly becoming five. It was five until SL-001 took
+    # `CAPSULE_REPO` out (`ISS-008`), which is that deliberate act.
     clean "$plain" >out 2>err
     ck "the wrapper supplies exactly these and no others" \
-      "CAPSULE_ALLOWLIST_DIR CAPSULE_POLICY_DIR CAPSULE_PROFILE_DIR CAPSULE_REPO CAPSULE_STATE" \
+      "CAPSULE_ALLOWLIST_DIR CAPSULE_POLICY_DIR CAPSULE_PROFILE_DIR CAPSULE_STATE" \
       "$(sed -n 's/^\(CAPSULE_[A-Z_]*\)=.*/\1/p' out | sort | tr '\n' ' ' | sed 's/ $//')"
+
+    # ------------------------------------ and with nothing set, the program's own
+    #
+    # The case the others cannot be: every one above asks what an echo sees, and
+    # a default the wrapper supplies *is* what an echo sees. What matters for
+    # `CAPSULE_REPO` is what the program does when nobody supplies it — its own
+    # fallback, `$profile_path`, the checkout the resolved document names
+    # (host/git-channel.nix's `src`, SL-001 design sec-4). A default in front of
+    # that is a second answer, and it is the one that pushed doctrine's checkout
+    # under another target's refs (`ISS-008`). So: the shipped provision,
+    # wrapped by the shipped builder, with no ref, which refuses naming the
+    # checkout it would have pushed from.
+    mkdir -p profiles
+    cat > profiles/doc.json <<'DOC'
+    { "schema": 1, "name": "doc", "path": "/fixture/doc-repo",
+      "guestPath": "/vol/doc", "volumePath": "/vol",
+      "cachePaths": [], "baseline": null, "refresh": null,
+      "statePaths": [], "stateMaxBytes": 0,
+      "sizes": {"vcpu": 1, "mem": 1, "volume": 1} }
+    DOC
+    provision=${lib.getExe ((wrapWith plain).wrap "capsule-provision" provision)}
+    clean env CAPSULE_PROFILE_DIR="$PWD/profiles" \
+      "$provision" --capsule ${lib.escapeShellArg slot} --profile doc >out 2>&1 || true
+    ckt "with nothing set, the program's own fallback is reached" \
+      grep -qF "any commit-ish in /fixture/doc-repo" out
 
     # ------------------------------------------------------------- the argv
     #

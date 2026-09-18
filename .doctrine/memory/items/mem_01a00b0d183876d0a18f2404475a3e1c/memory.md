@@ -23,14 +23,20 @@ a typo.
 
 ## What to do about it
 
-`host/wrap.nix` is now the wrapper, all five are `''${VAR:-<default>}`, and the
-rule is one sentence: **the module supplies defaults, it imposes nothing.** The
+`host/wrap.nix` is now the wrapper, every variable it supplies is
+`''${VAR:-<default>}`, and the rule is one sentence: **the module supplies defaults, it imposes nothing.** The
 per-variable exception table was considered and rejected — it needs a defensible
 reason each and a maintained exception, and both hazards it was for dissolve
 (`CAPSULE_STATE` already splits quarantine from record on the devshell path, so
 one rule makes that one behaviour; an overridden `CAPSULE_ALLOWLIST_DIR` fails
 *closed*, since the proxy unit takes its allowlist from `cfg.allowlistDir` at
 build). See [[mem.fact.oubliette.capsule-state-moves-the-quarantine-not-the-record]].
+
+**Four since SL-001, not five.** `CAPSULE_REPO` left the wrapper entirely
+(`ISS-008`). A default is right where the program's own fallback is baked and
+wrong off `$PATH`; `capsule-provision`'s fallback is `$profile_path`, read from
+the document the front end resolved, so a default in front of it was a second
+answer — and it pushed every target from one checkout.
 
 ## Why nothing caught it, and what now does
 

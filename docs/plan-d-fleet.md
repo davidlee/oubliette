@@ -381,8 +381,8 @@ bought something else.
   *form* of the closure is the value — it is the only limitation here answered by
   removing a field rather than by adding a mechanism. What it was:
   every other host-side target value either belonged to the guest (`sizes`,
-  `caches`, `guestConfig`) or had an override — `path` has `CAPSULE_REPO` and the
-  module's `repo` option, `allowlist` had `CAPSULE_ALLOWLIST` and its own
+  `caches`, `guestConfig`) or had an override — `path` has `CAPSULE_REPO` (and
+  had the module's `repo` option until SL-001), `allowlist` had `CAPSULE_ALLOWLIST` and its own
   option. `defaultBranch` was interpolated straight into `capsule-provision`, so
   a target switch was a rebuild for that field alone, and until it was taken the
   module path's copy refused a provision of the new target's branch — correctly,

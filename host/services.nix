@@ -176,7 +176,7 @@
   inherit
     (import ./wrap.nix {
       inherit pkgs lib;
-      paths = {inherit (cfg) stateDir repo policyDir allowlistDir profileDir;};
+      paths = {inherit (cfg) stateDir policyDir allowlistDir profileDir;};
     })
     wrap
     ;
@@ -438,6 +438,20 @@
       };
     });
 in {
+  # `repo` was the checkout every slot pushed from, whatever its target, and the
+  # wrapper exported it in front of the program's own fallback — so a slot on a
+  # second target pushed the first one's code (`ISS-008`). Source is the profile
+  # document's `path` now (SL-001, `DEC-013`), and a host that still sets the
+  # option is told so at eval rather than silently pushing from somewhere else.
+  # `flake.nix`'s `checked` holds this shim to both halves: the option is still
+  # readable, and the assertion names the replacement.
+  imports = [
+    (lib.mkRemovedOptionModule ["services" "capsule-perimeter" "repo"] ''
+      A target's source is its profile document's `path`: set `path` in
+      target.nix, or export CAPSULE_REPO for a one-off.
+    '')
+  ];
+
   options.services.capsule-perimeter = {
     enable = lib.mkEnableOption "the capsule's host-side egress proxy, under a dedicated uid";
 
@@ -447,17 +461,6 @@ in {
         The human who owns the source repo and runs the git channel. Added to
         the `capsule-proxy` group so the egress log is readable, and owns each
         capsule's ssh relay socket. Never runs the proxy.
-      '';
-    };
-
-    repo = lib.mkOption {
-      type = lib.types.str;
-      default = "/home/${cfg.owner}/dev/${target.name}";
-      defaultText = "/home/\${owner}/dev/\${target.name}";
-      description = ''
-        Repo `capsule-provision` pushes from, as `owner`. Defaults under
-        `owner`'s home rather than to `target.path`, so the module stays right
-        on a host whose human is not this one.
       '';
     };
 
@@ -774,7 +777,7 @@ in {
           ${hostPrograms.profile.dir}/*.json ${cfg.profileDir}/
       '';
 
-      # Everything that reads one of the five directories is wrapped, and the
+      # Everything that reads one of the four directories is wrapped, and the
       # list below says which and why per entry. This paragraph used to say only
       # three needed it and name `capsule-baseline` and `capsule-refresh` as
       # going on PATH as they are; `ISS-004` wrapped both — being bare is what
@@ -795,15 +798,16 @@ in {
       # nothing can make that true.
       environment.systemPackages = [
         # Wrapped for the same reason the two stateful programs are, and it is the
-        # same wrapper: `capsule <name> fetch` writes into `repo` and `capsule
-        # <name> status` counts refs in `stateDir`, and both of those are this
-        # host's rather than `target.nix`'s — a host whose human is not this one
-        # has a different home. Wrapping keeps the CLI itself one store path.
+        # same wrapper: `capsule <name> status` counts refs in `stateDir`, which
+        # is this host's rather than `target.nix`'s — a host whose human is not
+        # this one has a different home. Wrapping keeps the CLI itself one store
+        # path. (`capsule <name> fetch` writes into the slot's document's `path`
+        # since SL-001; nothing here supplies a repo.)
         (wrap "capsule" cli)
         (wrap "capsule-provision" hostPrograms.provision)
         (wrap "capsule-collect" hostPrograms.collect)
         # Bare, and it is the honest line: `inject` is not a `profileVerb` and
-        # reads none of the five — a payload's destination is on the *volume*
+        # reads none of the four — a payload's destination is on the *volume*
         # (host/programs.nix, setup.nix).
         hostPrograms.inject
         # Wrapped since `ISS-004`, where being bare is what made the defect

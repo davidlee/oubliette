@@ -4,9 +4,9 @@ schema_version = 1
 memory_type = "fact"
 status = "active"
 title = "A wrapper that hard-exports defeats its caller, including the front end the module installs"
-summary = "host/services.nix's wrap exports its five variables unconditionally, so the front end's own resolution is overwritten"
+summary = "host/services.nix's wrap once exported its variables unconditionally, so the front end's own resolution was overwritten; now four defaults, and CAPSULE_REPO none"
 created = "2026-08-16"
-updated = "2026-08-16"
+updated = "2026-09-18"
 
 [scope]
 paths = ["host/services.nix", "host/cli.nix", "host/wrap.nix"]

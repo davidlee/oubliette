@@ -1,5 +1,5 @@
 `host/services.nix`'s `wrap` builds a package under the **same name** whose whole
-text is `CAPSULE_STATE`/`CAPSULE_REPO` and `exec <inner>`. The five that keep
+text is a few `CAPSULE_*` defaults (`host/wrap.nix`) and `exec <inner>`. The five that keep
 host state (`capsule`, `capsule-collect`, `capsule-provision`, `capsule-adopt`,
 `capsule-brief`) are **three lines each** in `/run/current-system/sw/bin`.
 

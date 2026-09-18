@@ -64,7 +64,7 @@ this repo has already had to undo once.
 | **class** | machine config: `mem`, `vcpu` | the runner's JSON | stop / start | host operator declares; an assigner selects within the slot's set |
 | **policy** | egress allowlist, ingestion bounds, whether this slot may collect | host declaration, *selected* by the assignment | live — see the refresh rule | host operator declares the set; an assigner selects within it, or is refused |
 | **profile** | project semantics: baseline, caches, static guest config, tool floor, display identity | host-held, keyed by name | pinned per assignment generation | an assigner names it |
-| **source** | where *this host* has the profile's repo | host declaration, keyed by profile | host rebuild | host operator only — never an assigner |
+| **source** | where *this host* has the profile's repo | the profile document's `path`, pinned with the profile | pinned per assignment generation | host operator only — never an assigner |
 | **assignment** | binds a slot to profile + policy + class + extras + base commit + purpose | `/var/lib/capsule/<slot>/` | run time, free unless the composition is unbuilt | an assigner |
 | **volume** | everything mutable: checkout, `$HOME`, caches, build tree, host keys | the volume | verbs (Plan D D3); size fixed at creation | host operator |
 
@@ -75,9 +75,13 @@ Six consequences worth stating rather than deriving:
   checkout, not anything about the project — and the difference becomes visible
   as soon as there is more than one host, more than one checkout, or a
   controller working from its own clone. A profile is location-independent; the
-  host holds a `profile → source` binding beside it. `path` already half-admits
-  this by having two host-side overrides (`CAPSULE_REPO`, the module's `repo`
-  option) that nothing else in `target.nix` has.
+  host holds a `profile → source` binding beside it, and since SL-001 a slot
+  pins that binding with the rest of the document at provision, so a moved
+  checkout is ordinary document drift until the slot is re-provisioned.
+  `path` already half-admits this by having a host-side override
+  (`CAPSULE_REPO`) that nothing else in `target.nix` has. There were two until
+  the module's `repo` option went (`ISS-008`), and that one pushed every
+  target from one checkout.
 
   **And it must not be assigner-controlled**, which is the sharper half.
   `capsule-provision` reads that repo *as the human* — it is the one program
@@ -85,7 +89,7 @@ Six consequences worth stating rather than deriving:
   ([item 11](./ledger/011-host-side-runs-as-you.md)) — so an assigner free to
   name a path has a local-repository read primitive with a delivery mechanism
   attached. Host-declared, selected by profile
-  name, never spelled by whoever assigns.
+  name and pinned at provision, never spelled by whoever assigns.
 - **There is no work-branch field anywhere.** The guest's branch is `work`,
   fixed, a capsule constant beside the volume's mount point. If a branch name
   identifies *the work* then it is not project state — two slices against one

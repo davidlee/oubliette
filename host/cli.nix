@@ -71,8 +71,8 @@
   # allowlist links are *not* in here — they are the one thing a proxy must read,
   # and this directory is the one place it may not (NOTES item 39,
   # host/services.nix's `allowlistDir`). On the module path this is not a guess at all —
-  # that copy is wrapped with `CAPSULE_STATE` and `CAPSULE_REPO` from the host's
-  # own options (host/services.nix), and `CAPSULE_STATE` is the first thing
+  # that copy is wrapped with `CAPSULE_STATE` and three directories from the
+  # host's own options (host/services.nix, host/wrap.nix), and `CAPSULE_STATE` is the first thing
   # `quarantineOf` tries. The literal is the *devshell* copy's guess at where the
   # module put things, and the record's root on both.
   #
@@ -2230,6 +2230,25 @@ in
             if [ "$srcProfile" != "$profileName" ]; then
               echo "capsule: '$src' $(profileClaim "$src" "$srcProfile") and '$name' $(profileClaim "$name" "$profileName")," >&2
               echo "  so there is no work to hand between them." >&2
+              exit 1
+            fi
+            # One document, and still two checkouts if it moved (SL-001 design
+            # sec-4). The source's work is fetched into its *pinned* `path`, and
+            # the provision below pushes from *this host's* document, which needs
+            # the exhibit's tip in the repo it pushes from. So a checkout that
+            # moved since the source was pinned is refused here, before anything
+            # is collected, rather than as "no commit" after the destination has
+            # been archived and its chain dropped. A source pinned before pins
+            # existed reads this host's document both times, so it passes.
+            slotProfile "$src" || exit 1
+            srcPath=$profile_path
+            useHostProfiles
+            profileLoad "$srcProfile" || exit 1
+            if [ "$srcPath" != "$profile_path" ]; then
+              echo "capsule: '$src' was pinned with its checkout at $srcPath, and this" >&2
+              echo "  host's '$srcProfile' now names $profile_path — a handoff would fetch" >&2
+              echo "  into one and push from the other. Re-provision '$src' from the" >&2
+              echo "  current checkout, or restore the document's path, then hand off." >&2
               exit 1
             fi
 

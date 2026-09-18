@@ -542,8 +542,15 @@
     # the one thing neither `hostModuleUnits` nor a `*Cases` suite can see
     # (`ISS-004`, and host/wrap-cases.nix's header). Handed a fixture on
     # purpose — the paths it pins are nobody's, because the rule is the subject
-    # and not this host's directories.
-    wrapCases = import ./host/wrap-cases.nix {inherit pkgs lib;};
+    # and not this host's directories. And handed this host's provision and one
+    # declared slot, as `gitChannelCases` is, for the one case over a real
+    # program: whether the program's own fallback for `CAPSULE_REPO` is reached
+    # (SL-001). The slot is the program's baked list, not a borrowed fixture.
+    wrapCases = import ./host/wrap-cases.nix {
+      inherit pkgs lib;
+      inherit (hostPrograms) provision;
+      slot = builtins.head (builtins.attrNames capsules.instances);
+    };
 
     policyCases = import ./host/policy-cases.nix {
       inherit pkgs lib net capsules policies guestSsh;
@@ -793,6 +800,21 @@
         lib.filter (n: !(lib.elem (import ./host/proxy-restart.nix n) sudoCommands))
         (lib.filter (lib.hasPrefix "capsule-proxy-") units);
 
+      # The removed `repo` option (SL-001, `DEC-013`), which the fixture above
+      # never sets and so cannot see. A second evaluation of the same host with
+      # the option set — `extendModules`, not a second `nixosSystem` — asked two
+      # things, each under its own `tryEval`: a shim deleted or misnamed makes
+      # reading `options` throw on the unmatched definition, which must read as
+      # that and not as some other eval failure; and `mkRemovedOptionModule`
+      # reports through `config.assertions`, so its message is readable here.
+      withRepo = host.extendModules {
+        modules = [{services.capsule-perimeter.repo = "/set/by/an/old/host";}];
+      };
+      repoReadable = builtins.tryEval (withRepo.options.services.capsule-perimeter ? repo);
+      repoRedirected = builtins.tryEval (lib.any
+        (a: !a.assertion && lib.hasInfix "profile document's `path`" a.message)
+        withRepo.config.assertions);
+
       # Refused before either derivation is named, so a `nix build` of the
       # programs cannot pass a module whose units are wrong.
       checked = drv:
@@ -806,6 +828,10 @@
         then throw "capsule-perimeter: ${lib.concatStringsSep "; " unreachable} (NOTES item 39)."
         else if unrestartable != []
         then throw "capsule-perimeter: no sudoers rule permits restarting ${lib.concatStringsSep ", " unrestartable}, so `capsule <slot> policy <name>` cannot finish a selection for those slots and will undo it instead (NOTES item 41)."
+        else if !(repoReadable.success && repoReadable.value)
+        then throw "capsule-perimeter: with services.capsule-perimeter.repo set, the module's options are unreadable — the removed-option shim for `repo` is gone or misnamed, so a host that still sets it fails on an unknown option instead of being told source is the profile document's `path` (SL-001)."
+        else if !(repoRedirected.success && repoRedirected.value)
+        then throw "capsule-perimeter: with services.capsule-perimeter.repo set, no assertion names the profile document's `path` — the removed-option shim for `repo` no longer says what replaced it (SL-001)."
         else drv;
     in {
       units = checked (pkgs.writeText "capsule-units.txt" ''

@@ -4,7 +4,7 @@
 # Its own file since `ISS-004`, for the reason `host/guard.nix`'s `tools` and
 # `host/cli.nix`'s `moduleState` are: the thing tying this to a host is an
 # argument, so `wrapCases` can build the *shipped* builder against a fixture
-# instead of re-rendering five export lines that would then agree with
+# instead of re-rendering four export lines that would then agree with
 # themselves while disagreeing with `host/services.nix`.
 #
 # **Why it is wrapped at all.** These programs' own defaults are relative to
@@ -26,15 +26,23 @@
 #
 # The programs one layer down are all written for the override already —
 # `profileDir()` is `''${CAPSULE_PROFILE_DIR:-<baked>}` (host/profile.nix),
-# `capsule-provision`'s `src` is `''${CAPSULE_REPO:-$profile_path}`
-# (host/git-channel.nix), `quarantineOf` reads `''${CAPSULE_STATE:-…}`
-# (host/quarantine.nix) — so this file taking a value away was the only thing
-# stopping a caller from being heard.
+# `quarantineOf` reads `''${CAPSULE_STATE:-…}` (host/quarantine.nix) — so this
+# file taking a value away was the only thing stopping a caller from being heard.
 #
-# **All five, and no exception table.** The alternative considered and rejected
-# was to make `CAPSULE_PROFILE_DIR` and `CAPSULE_REPO` defaults and leave the
-# other three imposed. It needs a defensible reason per variable and a
-# maintained exception, and the two hazards it was for dissolve on inspection:
+# **Four, and `CAPSULE_REPO` is not one of them** (SL-001, `ISS-008`). This is
+# not the exception table rejected below. Each of the four has a *baked* fallback
+# that a program on `$PATH` would get wrong — `$PWD`-relative state, the store's
+# documents — so a default here corrects it. `capsule-provision`'s
+# `src="''${CAPSULE_REPO:-$profile_path}"` (host/git-channel.nix) falls back to a
+# value read from the document the front end just resolved, which is already
+# right. A default in front of that is a second answer, and it pushed one
+# target's checkout under another's refs. A caller who exports `CAPSULE_REPO`
+# still wins; nothing here supplies it.
+#
+# **No exception table.** The alternative considered and rejected at `ISS-004`,
+# when there were five, was to make `CAPSULE_PROFILE_DIR` and `CAPSULE_REPO`
+# defaults and leave the other three imposed. It needs a defensible reason per
+# variable and a maintained exception, and the two hazards it was for dissolve on inspection:
 # `CAPSULE_STATE` already moves the quarantine and not the record on the
 # devshell path, deliberately (`mem.fact.oubliette.capsule-state-moves-the-quarantine-not-the-record`),
 # so one rule makes that one behaviour instead of a path-dependent one; and an
@@ -46,18 +54,17 @@
 {
   pkgs,
   lib,
-  # Where this host keeps each of the five, from the module's own options. Not
-  # five positional arguments: they are all directories and a caller that
+  # Where this host keeps each of the four, from the module's own options. Not
+  # four positional arguments: they are all directories and a caller that
   # ordered two of them wrong would build a wrapper that ran.
   paths,
 }: let
   # The variable a program reads, and what this host defaults it to. One
-  # attribute set rather than five lines of text, so "which variables does the
+  # attribute set rather than four lines of text, so "which variables does the
   # module path supply" has a single answer that `wrapCases` reads from the
   # same place this builds from.
   defaults = {
     CAPSULE_STATE = paths.stateDir;
-    CAPSULE_REPO = paths.repo;
     CAPSULE_POLICY_DIR = paths.policyDir;
     CAPSULE_ALLOWLIST_DIR = paths.allowlistDir;
     CAPSULE_PROFILE_DIR = paths.profileDir;

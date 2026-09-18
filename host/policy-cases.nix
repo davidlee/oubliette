@@ -542,6 +542,23 @@ in
     ckt "  and named the one that could not" saw "both: code: refused"
     unset CAPSULE_REPO
 
+    # And with nothing set, which is the module path since SL-001: the wrapper
+    # no longer supplies `CAPSULE_REPO`, so a fetch lands in the checkout the
+    # slot's document names (`repoFor`). `solo` is edited rather than a second
+    # document written, because a second one would make an unassigned slot
+    # refuse; it is put back after the round.
+    jq --arg p "$repo" '.path = $p' profiles/solo.json > moved.json
+    mv moved.json profiles/solo.json
+    third=$(g commit-tree "$tree" -p "$second" -m 'third, fetched with nothing set')
+    g push -q "$CASE_STATE/collect/one.git" "$third:refs/capsule/one/heads/work"
+    run one fetch
+    ck "a fetch with nothing set lands in the document's path" 0 "$rc"
+    ckt "  moving the slot's ref there" \
+      test "$(g rev-parse refs/capsule/one/heads/work)" = "$third"
+    writeProfile solo
+    g push -q -f "$CASE_STATE/collect/one.git" "$second:refs/capsule/one/heads/work"
+    g update-ref refs/capsule/one/heads/work "$second"
+
     # An unassigned slot on a host with **two** targets. Not a default and not
     # the first name: a slot's name says nothing about which project it holds, so
     # there is nothing to guess from — the same refusal an unnamed slot gets when
@@ -1172,6 +1189,34 @@ in
     ckt "  naming the source's record" saw "'one' is on profile duo"
     ckt "  and the destination's declaration" saw "'dflt' declares solo"
     assign one holed
+
+    # A checkout that moved (SL-001 design sec-4). A handoff fetches the source
+    # into its *pinned* `path` and provisions the destination from *this
+    # host's* document, so once the two differ the provision refuses "no
+    # commit" — after the destination has been archived and its chain dropped.
+    # The source's pin is written by hand, naming the sandbox repo, and this
+    # host's `holed` is moved; both are put back after the round, so later
+    # rounds see what they saw before.
+    pinned=$CASE_STATE/slot/both/profile
+    mkdir -p "$pinned" kept
+    cp -a "$pinned/." kept/
+    rm -f "$pinned"/*.json
+    jq --arg p "$repo" '.path = $p' profiles/holed.json > "$pinned/holed.json"
+    cp profiles/holed.json host-holed.json
+    jq '.path = "/moved/checkout"' host-holed.json > profiles/holed.json
+    wasGen=$(gen one)
+    wasArchive=$(g for-each-ref --format='%(refname)' refs/capsule/one/gen/)
+    run one handoff both --purpose x
+    ck "a handoff from a moved checkout refuses" 1 "$rc"
+    ckt "  naming the checkout the source was pinned under" saw "$repo"
+    ckt "  and the one this host's document names now" saw "/moved/checkout"
+    ckt "  before collecting anything" test ! -e out.argv
+    ckt "  leaving the destination's record" test "$(gen one)" = "$wasGen"
+    ckt "  and its archive" \
+      test "$(g for-each-ref --format='%(refname)' refs/capsule/one/gen/)" = "$wasArchive"
+    mv host-holed.json profiles/holed.json
+    rm -f "$pinned"/*.json
+    cp -a kept/. "$pinned/"
 
     # ----------------------------------- the verify, which is the whole item
     #

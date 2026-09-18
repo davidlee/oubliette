@@ -7,7 +7,7 @@ status = "active"
 title = "The module's programs on PATH are wrappers, so reading one answers about the wrapper"
 summary = "Grepping one reports a program that does not have the flag, and a stale interactive copy corroborates the bad grep. Ask the program."
 created = "2026-08-16"
-updated = "2026-09-17"
+updated = "2026-09-18"
 
 [scope]
 paths = ["host/services.nix"]
