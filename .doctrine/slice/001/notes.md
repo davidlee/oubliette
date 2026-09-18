@@ -33,10 +33,29 @@ SL-001`).
 
 ## Harvest
 <!-- single-copy: updated in place each harvest; ids only, never restated content -->
-fresh-as-of: <yyyy-mm-dd> · <PHASE-NN | stage> · <head-commit>
+fresh-as-of: 2026-09-18 · design reviewing (run revision 29) · 4879de8+
 
 ### Produced
 
+- `DEC-012`…`DEC-016` (accepted); `design.md` sec-1…sec-5; 13 design-target
+  selectors; run findings `fnd-1`…`fnd-12` (Codex, all accepted, repairs in
+  each finding's `resolution`).
+
 ### Learned
 
+- Design `inq-6`'s disposition ("a provision resolves its profile once") is
+  **wrong** — superseded by `fnd-1`: `provisionSlot` resolves, then `work`'s
+  dispatch re-resolves from the original argv.
+- `recordProvisioned` can leave a pin with no record (`fnd-2`); `profileDirFor`
+  serves it.
+- The binary refuses review policy `adversarial-then-human` (22-byte label over
+  a 16-byte admission bound) — a doctrine defect; the run uses
+  `adversarial-only`.
+
 ### Open
+
+- Integrate `fnd-1`…`fnd-12` into sec-1…sec-5 and the slice scope; `POL-003`
+  now also needs a revision (`fnd-3`); `DEC-012`'s "key" wording → "value"
+  (`fnd-6`).
+- Human review of the revised sections (the user's; the run's policy is
+  adversarial-only).
