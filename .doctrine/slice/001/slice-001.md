@@ -57,9 +57,10 @@ today's honest refusal. The two land together or the first one lies.
    `policy` is checked by `capsules.nix`'s `undeclared` assertion against
    `policies.nix`; no existence equivalent exists here, because `profileDir` is
    run-time state outside the store (`item 52`) and the second document has no
-   copy in this repo. A shape assertion does exist — non-empty, no `/`, newline
-   or tab, not `.`, `..` or `-` — and the rendered name is shell-escaped, since
-   it is spliced into the front end's text. A slot naming a profile no document
+   copy in this repo. A shape assertion does exist — non-empty, no `/`,
+   newline, tab, `$` or backtick, not `.`, `..` or `-` — and the rendered name is
+   shell-escaped, since it is spliced into the front end's text (a `$` or
+   backtick would survive the escaping only as a shellcheck build failure). A slot naming a profile no document
    backs must refuse when the slot is used, naming the directory it looked in.
    **`DEC-015`: no new check** — `profileLoad`'s existing refusal does this, and
    the status cell's `[name]` attributes the name to a non-record source. In
@@ -71,8 +72,8 @@ today's honest refusal. The two land together or the first one lies.
    declared default and the pre-existing sole-document fallback alike —
    bare `doctrine` (with its `*`/`!` markers) for a record, `-` for neither.
    Brackets never carry `!`, and carry `*` only for a pin an earlier provision
-   left without a record, so its drift stays visible; no new such pin can arise
-   (objective 4a). A default that renders identically to a record is a default
+   left without a record, so its drift stays visible; a new one can arise only
+   from a failed record write, which the provision reports (objective 4a). A default that renders identically to a record is a default
    that will be read as one, and the sole-document fallback already did. The
    profile column widens from 9 to 11 characters to hold `[doctrine]`, and the
    memory column from 11 to 12, because its header label already overflowed it.
@@ -83,15 +84,18 @@ today's honest refusal. The two land together or the first one lies.
    an assigned one does, and `handoff` says a destination *declares* a profile
    when no record names it.
 
-4a. **A provision resolves its profile once, records only what landed, and
-   records it with the pin.** Three pre-existing defects on the provision path,
-   fixed here because objective 4's rule rests on them: `provisionSlot` forwards
-   the name it resolved to the program as an explicit `--profile`, so `work`'s
-   dispatch does not resolve a second time; it checks `work`'s status, so a
-   failed push under `handoff` (where errexit is off) is not recorded; and
-   `recordProvisioned` asks the guest for its HEAD first, then pins and writes
-   the record in one step, so a silent guest leaves a record without a base
-   rather than a pin with no record.
+4a. **A provision resolves its profile once, records only a provision that
+   completed, and records it with the pin.** Three pre-existing defects on the
+   provision path, fixed here because objective 4's rule rests on them:
+   `provisionSlot` forwards the name it resolved to the program as an explicit
+   `--profile`, so `work`'s dispatch does not resolve a second time; it checks
+   `work`'s status, so a provision that exits non-zero under `handoff` (where
+   errexit is off) is not recorded — including one whose code landed before a
+   later step failed, which leaves the guest ahead of its record, as the plain
+   verb always has, and the front end says so; and `recordProvisioned` asks the
+   guest for its HEAD first, then pins and writes the record in one checked
+   step, so a silent guest leaves a record without a base rather than a pin with
+   no record.
    This changes provision behaviour on the branch `CHR-011`'s bug 3 concerns.
 
 4b. **`-` is a reserved profile name.** It is `recordField`'s absence value
@@ -108,7 +112,9 @@ today's honest refusal. The two land together or the first one lies.
    `fetch` writes. **Source is pinned with the profile** (the user's choice,
    2026-09-18): `fetch` and `brief --from-host` read `path` from the slot's pin,
    so a moved checkout is document drift cured by re-provision, and
-   `docs/contract-assignment.md`'s `source` row says so.
+   `docs/contract-assignment.md`'s `source` row says so. Because `handoff`
+   fetches into the source's pinned `path` and provisions from this host's, it
+   refuses when the two differ, before it collects, archives or drops anything.
 
 5a. **`DEC-012`: a `POL-002` revision, and a `POL-003` revision beside it.**
    `POL-002`'s *"exactly two places"* list gains a third — a slot's `profile`
@@ -134,8 +140,9 @@ today's honest refusal. The two land together or the first one lies.
    what `wrapCases` exists for and exactly the gap `ISS-004` shipped through —
    `wrapCases` asks whether a caller's value survives, and nobody asks whether the
    program's own fallback is still reachable when no caller sets one. The
-   removed `repo` option gets an eval-level case beside `hostModuleUnits`, which
-   never sets it and so cannot see the removal.
+   removed `repo` option gets an eval-level check inside `hostModule`'s
+   `checked`, the gate `just build` already builds, since `hostModuleUnits`
+   never sets the option and so cannot see the removal.
 
 7. **Documentation the change moves**: `docs/contract-assignment.md`'s ownership
    table (the `profile` noun gains a host-declared default without gaining a
@@ -143,19 +150,21 @@ today's honest refusal. The two land together or the first one lies.
    taken" sentence, `capsules.nix`'s own comment carrying the warrant, and every
    comment or document that says the wrapper supplies `CAPSULE_REPO` or counts
    five wrapped directories (`host/git-channel.nix`, `host/cli.nix`,
-   `host/services.nix`, `README.md`, `CLAUDE.md`).
+   `host/services.nix`, `README.md`, `CLAUDE.md`), including `README.md`'s claim
+   that the wrapper's export is a control.
 
 ### Affected surface
 
 `capsules.nix`, `host/cli.nix` (`profileNameFor`, the status table's profile
-cell, `provisionSlot`, `recordProvisioned`), `host/wrap.nix`,
+cell, `provisionSlot`, `recordProvisioned`, `handoff`), `host/wrap.nix`,
 `host/services.nix` (`repo` option removed), `host/profile.nix` (`profileLoad`'s
 hint and name check, the validator), `host/git-channel.nix` (comment),
 `host/policy-cases.nix`, `host/profile-cases.nix`, `host/wrap-cases.nix`,
 `host/profile-name.nix` (new), `flake.nix`, `docs/contract-assignment.md`
 (including the `source` row), `docs/contract-target.md`,
 `docs/plan-d-fleet.md`, `README.md`, `CLAUDE.md`, two memories, `POL-002` and
-`POL-003` (revisions), `DEC-012` and `DEC-014` (wording).
+`POL-003` (revisions). `ISS-011` (widened) and `ISS-012` are parked defects the
+design names and does not fix.
 Outside this repo: `~/flakes/modules/nixos/capsule.nix`'s comment names
 `repo` — the user's to edit.
 
@@ -201,7 +210,8 @@ repo.
   status table is the one surface `IMP-004` observed working unmodified across
   two targets. A cell that changes rendering is a cell whose absent path (`-`)
   and whose record path must both stay pinned.
-- **Corrected** (design `inq-6` was wrong): a provision resolved its profile
+- **Corrected** (an early design answer said a provision resolves its profile
+  once; the code showed otherwise): a provision resolved its profile
   twice — `provisionSlot`, then `work`'s dispatch on the original argv — and a
   silent guest left a pin with no record. Objective 4a fixes both. It changes
   provision behaviour on `CHR-011` bug 3's branch; the user approved that scope,

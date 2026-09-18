@@ -27,18 +27,20 @@ a provision or a fetch for any profile uses doctrine's repo (`ISS-008`).
    fallback: the slot's declared `profile`.
 3. The status table's profile cell brackets any answer that is not a record —
    `[doctrine]` — so a default never reads as an assignment (`DEC-014`).
-4. A provision resolves its profile **once**, records only what landed, and
-   records it with the pin: the name `provisionSlot` resolved is the one the
-   program is handed, a failed push writes nothing, and the record is written in
-   the same step as the pin whether or not the guest answers for its HEAD
-   (sec-3). All three are pre-existing defects this slice's rules rest on.
+4. A provision resolves its profile **once**, records only a provision that
+   completed, and records it with the pin: the name `provisionSlot` resolved is
+   the one the program is handed, a program that exits non-zero writes nothing
+   and says so, and the record is written in the same step as the pin whether or
+   not the guest answers for its HEAD (sec-3). All three are pre-existing
+   defects this slice's rules rest on.
 5. `-` becomes a reserved profile name, because it is already the front end's
    "absent" value (sec-2).
 6. The wrapper stops supplying `CAPSULE_REPO` and the `repo` option is removed
    (`DEC-013`): a target's source is the profile document's `path`, **pinned with
    the rest of the document at provision**, and `CAPSULE_REPO` stays what a
    caller sets on purpose. `docs/contract-assignment.md`'s `source` row changes
-   to say so (sec-4).
+   to say so, and `handoff` refuses, before anything destructive, when the
+   source's pinned `path` is not this host's (sec-4).
 7. Two policies are revised, because each states a rule this slice changes:
    - `POL-002`'s list of places a target's name may appear in code gains one
      entry — a slot's `profile` value in `capsules.nix` — and states the rule
@@ -127,10 +129,14 @@ step.
 not its **existence** (`DEC-015` stands):
 
 - *Shape* — a declared profile is refused at eval unless it is non-empty,
-  contains no `/`, newline or tab, and is not `.`, `..` or `-`. That is the
-  grammar `profileLoad` applies at use (plus the reserved `-` below, plus the two
-  characters that would break a line-based consumer), refused before it can reach
-  a host. It sits beside `undeclared` as a third assertion, `misprofiled`.
+  contains no `/`, newline, tab, `$` or backtick, and is not `.`, `..` or `-`.
+  That is the grammar `profileLoad` applies at use, plus the reserved `-` below,
+  plus four characters that only matter because the name is rendered into the
+  front end: a newline or tab would break a line-based consumer, and a `$` or
+  backtick inside the single quotes `lib.escapeShellArg` produces is shellcheck's
+  `SC2016`, which `writeShellApplication` makes a build failure. Refused at eval,
+  the name gets the assertion's message instead of a shellcheck error in a host
+  rebuild. It sits beside `undeclared` as a third assertion, `misprofiled`.
 - *Existence* — whether a document backs the name. `undeclared` checks `policy`
   against `policies.nix`, but a profile's only authority is a file in
   `profileDir`, which is run-time state outside the store and, for any document
@@ -146,7 +152,7 @@ assertion uses to a fixture set no host declares:
 ```nix
 # host/profile-name.nix
 p: p != "" && p != "." && p != ".." && p != "-"
-  && builtins.match ".*[/\n\t].*" p == null
+  && builtins.match ".*[/\n\t$`].*" p == null
 
 # capsules.nix
 profileNameOk = import ./host/profile-name.nix;
@@ -198,9 +204,10 @@ with `doctrine revision` inside this slice, landing in the same commit as
 - `POL-002` says a target's name may appear only in `target.nix` and
   `inputs.target.url`. `DEC-012` revises that sentence to read:
 
-  > A target's name may appear in code (`*.nix`, `*.sh`, the justfile, outside
-  > `.doctrine/`) only in `target.nix`, `inputs.target.url`, and as a slot's
-  > `profile` value in `capsules.nix`. Generic source never hardcodes a target's
+  > A target's name may appear in code (`*.nix`, `*.sh` and the justfile,
+  > outside comments, `.doctrine/` and the tool configuration — `.mcp.json`,
+  > `.claude/`, `.codex/`) only in `target.nix`, `inputs.target.url`, and as a
+  > slot's `profile` value in `capsules.nix`. Generic source never hardcodes a target's
   > identity or branches on it; a host-declared value may be threaded into a
   > generated front end. A case suite's fixture may reproduce a target's layout
   > as data, since a fixture is what a program is run against, not what it is.
@@ -323,11 +330,23 @@ what those mean for it:
 | `provisionSlot` | provisions under the default and records it | the front end's `profileLoad` refuses; nothing reaches the program |
 | `profileCell` (status) | `[name]` | `[name]` — shown, not refused |
 | `observe` (status's guest columns) | the row's guest columns fill in, where on a two-document host they were `-` | quiet `-`, as today |
-| `repoFor` (`fetch`), `guestStages`, `guestDropState` | use the default's document | refuse, loudly, at `slotProfile` |
+| `repoFor` (`fetch`), `guestStages`, `guestDropState`, `guestHead` | use the default's document — **even when the verb was given another `--profile`**, since these take the slot and not the verb's argv (see below) | refuse, loudly, at `slotProfile` |
 | `slotNeedsUnit` | answers 0 or 1 from the default's document — so `unit`, `collect`, `brief` and `setup` now fill or refuse `--unit` as they would for an assigned slot. Intended: the default says which target the slot is for | **new answer 3**, *resolved but will not load* (today it returns 2, *nothing resolved*) |
 | `recordUnit` | records or refuses as for an assigned slot | refuses on 3 with `profileLoad`'s message; today it would write the token and exit 0 |
 | `unitScope` | fills `--unit` as for an assigned slot | treats 3 as 2 and does not intervene; the program refuses with the better message |
 | `handoff` (both slots) | compares the source's profile with the destination's default | resolves; the comparison refuses, or the provision's `profileLoad` does |
+
+The guest-reading row carries a pre-existing defect the default widens. `guestHead`
+(through `observed`), `guestStages` and `guestDropState` call `slotProfile "$n"`
+with no argv, so they read the slot's record, never the verb's `--profile`.
+Today, on a two-document host, an unassigned slot makes them fail quietly. With
+a declared default they answer from the default instead, so a first
+`provision --profile X` on a slot declaring `Y` reads its HEAD under `Y`'s
+`guestPath`, and `setup --profile X --state-from-host` probes `Y`'s state chain.
+It is unreachable on this host, where every slot declares the one target the one
+image carries; it is `ISS-011`'s class, which is widened to name it, and whose
+repair is the same — these three take the profile already resolved rather than
+the slot.
 
 `slotNeedsUnit` separates the two failures it used to merge — nothing resolved,
 and a name that will not load:
@@ -352,7 +371,7 @@ assignment, which is what `DEC-014` exists to prevent. It says *"'b' declares
 X"* instead, decided by the same question the status cell asks — whether the
 record names a profile.
 
-### A provision resolves once and records only what landed, with the pin
+### A provision resolves once and records only when it completed, with the pin
 
 Three defects in today's provision path would each make the status rule below
 false, so this slice fixes all three. None is caused by the declared default,
@@ -367,17 +386,30 @@ it resolved as an explicit `--profile`, prepended for the program alone — the
 same way it already prepends `unitScope`'s words — while `recordProvisioned`
 still gets the original argv.
 
-**Only what landed.** `work` ends in a plain `"$prog" …`, not an `exec`, and
-`provisionSlot` does not check it. Under errexit that is enough — but `handoff`
-calls `provisionSlot … || exit 1` (`host/cli.nix:2210`), which switches errexit
-off inside it, so a failed push falls through to `recordProvisioned`: the slot
-is pinned and recorded for code that never arrived. The repair is
-`|| return 1` on the `work` call.
+**Only when it completed.** `work` ends in a plain `"$prog" …`, not an `exec`,
+and `provisionSlot` does not check it. Under errexit that is enough — the plain
+`provision` verb dies with the program — but `handoff` calls
+`provisionSlot … || exit 1` (`host/cli.nix:2210`), which switches errexit off
+inside it, so a failed provision falls through to `recordProvisioned`. The
+repair is `|| return 1` on the `work` call, which makes `handoff` behave as the
+plain verb already does.
+
+The rule is *a provision that exited non-zero is not recorded*, and that is not
+the same as *a push that failed*. `capsule-provision` also exits 1 **after** the
+code has landed, when the brief (`briefState`, `briefHostState`) or the refresh
+fails. The guest is then at the new commit while the record and the pin still
+name the previous assignment — as the plain verb has always left it. Recording
+there instead would claim a provision the program itself calls unfinished.
+So the front end says what it did not do, once, beside the program's own message:
 
 ```bash
 local -a given=()
 [ "$profileGiven" = yes ] || given=(--profile "$prof")
-work "$n" provision ${given[@]+"${given[@]}"} ${scope[@]+"${scope[@]}"} ${1+"$@"} || return 1
+if ! work "$n" provision ${given[@]+"${given[@]}"} ${scope[@]+"${scope[@]}"} ${1+"$@"}; then
+  echo "capsule: nothing was recorded for '$n' — its record and pin still name" >&2
+  echo "  the previous assignment. A provision that completes records this one." >&2
+  return 1
+fi
 recordProvisioned "$n" "$prof" ${1+"$@"}
 ```
 
@@ -401,15 +433,27 @@ sequenceDiagram
   R->>G: HEAD? (a silent guest gives "")
   R->>S: pin the document (pinProfile)
   R->>S: one write: .profile, .class, .profile_snapshot, and .base set from HEAD or deleted
-  opt guest was silent
+  alt the write failed
+    Note over R: return 1
+  else guest was silent
     Note over R: warn "no base was recorded", return 0
   end
 ```
 
-So a pin always has a record naming its profile, and only `.base` depends on
-the guest. `.base` is deleted, not left, when the guest is silent, because a
-re-provision must not keep the *previous* provision's base beside the new
-profile. One write, so one generation bump, as today.
+The write is checked explicitly — `recordWrite … || return 1` — and not left to
+errexit, because under `handoff` errexit is off, and an unchecked failure
+followed by the silent-guest branch's `return 0` would report success with a pin
+and no record, which is the state this reorder exists to remove.
+
+So a pin has a record naming its profile unless that one file write fails, and
+then the provision exits 1 and says so. Only `.base` depends on the guest.
+`.base` is deleted, not left, when the guest is silent, because a re-provision
+must not keep the *previous* provision's base beside the new profile. One write,
+so one generation bump, as today.
+
+`base.ref` is taken as today, from the first original argument, so a
+`provision --force <ref>` records `--force` as the ref. That is pre-existing, not
+a rule this slice rests on, and is `ISS-012`'s.
 
 A pin already left by an earlier silent provision is not repaired by this; the
 status cell below still shows its drift.
@@ -430,10 +474,10 @@ status cell below still shows its drift.
 of the resolver in a variable, which `DEC-015` rejected. The drift markers are
 computed the same way either side of that question, so a bracketed name keeps
 its `*` when an old record-less pin has drifted. `!` cannot appear in brackets:
-it compares the pin against the record's snapshot, and there is no record. No
-new record-less pin can arise, since a provision now writes both in one step.
-This narrows `DEC-014`'s *"brackets never carry `*` or `!`"*, and the record is
-corrected to say so.
+it compares the pin against the record's snapshot, and there is no record. A new
+record-less pin can arise only from a failed record write, which the provision
+reports (above). `DEC-014` states exactly this: brackets never carry `!`, and
+carry `*` only for such a pin.
 
 ```bash
 profileCell() {
@@ -454,7 +498,9 @@ characters in the `%-11s` memory column, so every label from `refs` on sits one
 column right of its values. That column becomes `%-12s`, in the same edit,
 because the new column case measures against the header. `%-Ns` is a
 minimum, so a longer name (`[panopticon]` is twelve) still widens its own row,
-as a long name does today; the width serves the default this host declares. The
+as a long name does today. The width is a layout choice for short names, not a
+fact about any target: nothing branches on it, and a longer name costs its own
+row's alignment and nothing else. The
 header does not change. `POL-002`'s *"one table over N slots and M targets"* holds,
 because the brackets depend on the record and not on any target.
 
@@ -518,6 +564,37 @@ document — would match the contract as it was written, but it needs the front
 end to hand `brief` a path it does not hand it today, and it splits one
 document into a pinned part and a live part.
 
+**`handoff` is the one composition that reads both.** It fetches the source's
+work through `fetchSlot`, into the source's **pinned** `path`, then provisions
+the destination through `provisionSlot`, which pushes from **this host's**
+document. The provision needs the exhibit tip to be in the repo it pushes from,
+so the two must be one repo. Until now the wrapper's `CAPSULE_REPO` made them
+one; after this slice a moved checkout makes them two, and the provision refuses
+*"no commit at <tip>"* — after `handoff` has archived the destination's refs and
+dropped its state chain.
+
+So `handoff` checks, beside its existing profile comparison and before it
+collects anything: the source's pinned `path` (`slotProfile "$src"`) against
+this host's document of the same name (`useHostProfiles`, `profileLoad`). When
+they differ it refuses, naming both paths, and says to re-provision the source
+from the current checkout (or restore the document's `path`) first. A source
+recorded before pins existed reads this host's document either way, so it
+passes. `fetch` alone is not affected: it only reads the pin.
+
+```mermaid
+sequenceDiagram
+  participant F as handoff
+  participant P as source's pin
+  participant D as this host's document
+  F->>P: path? (P1)
+  F->>D: path? (P2)
+  alt P1 ≠ P2
+    F-->>F: refuse, naming P1 and P2 — nothing collected, archived or dropped
+  else P1 = P2
+    F->>F: collect, fetch into P1, archive, drop, provision from P2
+  end
+```
+
 The file's header — *"All five, and no exception table"* — becomes four, and
 says why this is not the exception table it rejected: the other four have
 **baked fallbacks** a program on `$PATH` would get wrong (`$PWD`-relative state,
@@ -547,7 +624,8 @@ the same commit as the code:
 | `host/wrap-cases.nix`, header and comments (lines 27, 33–34, 73, 113, 166) | "the five" |
 | `docs/contract-target.md`, the `name` row (line 75) | `services.capsule-perimeter.repo` as a default derived from the name |
 | `CLAUDE.md` (lines ~96 and ~116) | "the wrapper's five directories", "five export lines" |
-| `README.md` (lines 276, 513–515) | the wrapper and units supply `CAPSULE_REPO` |
+| `README.md` (line 276) | the wrapper and units supply `CAPSULE_REPO` |
+| `README.md` (lines 512–517) | the wrapper's unconditional export is *"a control rather than an oversight"*. The correction says the control was already void once `ISS-004` made the export a default a caller could override, and that source is now chosen by the profile document's author, or by a caller who sets `CAPSULE_REPO` |
 | memories `mem.fact.oubliette.wrap-hard-exports-defeat-the-caller`, `mem.fact.oubliette.module-programs-on-path-are-wrappers` | "all five are `${VAR:-default}`"; edited with `doctrine memory edit` |
 
 The list is found by a sweep, not by memory: `grep -rn` for `five`, `cfg.repo`,
@@ -578,18 +656,17 @@ to `ISS-008`, and it already behaves as the pinned-source rule above says.
 |---|---|
 | `host/profile-name.nix` | **new**: the profile-name predicate, builtins only (sec-2) |
 | `capsules.nix` | `profile ? null` in `recordOf`; `profile = "doctrine"` on all ten slots; imports the predicate; exports `misprofiledIn`; the `misprofiled` assertion; the comment carrying the warrant (sec-2) |
-| `host/cli.nix` | `slotDeclaredProfile` rendered beside `slotPolicy`, escaped, with a `*)` branch; `profileNameFor`'s fourth step and header; `slotNeedsUnit`'s answer 3 and `recordUnit`'s branch for it; `handoff`'s "declares" wording; `profileCell`'s brackets and drift marker; `statusFmt`'s profile column to `%-11s` and memory column to `%-12s`; `provisionSlot` forwards `--profile` and checks `work`; `recordProvisioned` asks HEAD, pins, writes once (sec-3); the `moduleState` comment (sec-4) |
+| `host/cli.nix` | `slotDeclaredProfile` rendered beside `slotPolicy`, escaped, with a `*)` branch; `profileNameFor`'s fourth step and header; `slotNeedsUnit`'s answer 3 and `recordUnit`'s branch for it; `handoff`'s "declares" wording; `profileCell`'s brackets and drift marker; `statusFmt`'s profile column to `%-11s` and memory column to `%-12s`; `provisionSlot` forwards `--profile`, checks `work` and says nothing was recorded; `recordProvisioned` asks HEAD, pins, writes once and checks the write (sec-3); `handoff` refuses when the source's pinned `path` is not this host's; the `moduleState` comment (sec-4) |
 | `host/profile.nix` | `profileLoad` refuses `-` and its hint text changes; the validator refuses a document named `-` (sec-2, sec-3) |
 | `host/wrap.nix` | `CAPSULE_REPO` leaves `defaults`; header rewritten for four (sec-4) |
 | `host/services.nix` | `repo` option removed via `mkRemovedOptionModule`; `paths` loses `repo`; three comments (sec-4) |
 | `host/git-channel.nix` | the comment above `src=` (sec-4) |
-| `host/policy-cases.nix` | new fixture slots; resolution, unit, handoff, provision, status and fetch cases; the existing cases whose expectations move (below) |
+| `host/policy-cases.nix` | new fixture slots; the stub also writes its argv one bracketed argument per line, and can be told to fail; resolution, unit, handoff, provision, status and fetch cases; the existing cases whose expectations move (below) |
 | `host/profile-cases.nix` | the hint; `-` refused by load and validator; the grammar-agreement table; `misprofiledIn` over a fixture set (below) |
-| `host/wrap-cases.nix` | fixture loses `repo`; the set case becomes four; the composition case; header comments (below, sec-4) |
-| `flake.nix` | `wrapCases` is handed `hostPrograms.provision`; `profileCases` is handed `capsules`; the removed-option case beside `hostModuleUnits`, in `just build` |
+| `host/wrap-cases.nix` | takes a declared slot; fixture loses `repo`; the set case becomes four; the composition case; header comments, including why a slot name that is this host's is not a borrowed fixture (below, sec-4) |
+| `flake.nix` | `wrapCases` is handed `hostPrograms.provision` and a declared slot, as `gitChannelCases` is, with its "handed a fixture" comment amended; `profileCases` is handed `capsules`; the removed-option check folded into `hostModule`'s `checked`, so no new attribute and no `justfile` change |
 | `POL-002`, `POL-003` | revisions (sec-2) |
-| `DEC-012`, `DEC-014` | wording, by knowledge edit: `DEC-012` states the enumerated revision; `DEC-014` lets brackets carry `*` |
-| `docs/contract-target.md` | `name` row (75), `path` row (76) and `CAPSULE_REPO` row (352) lose the module's `repo` option; `-` is reserved; the `POL-002` sentence |
+| `docs/contract-target.md` | `name` row (75), `path` row (76) and `CAPSULE_REPO` row (352) lose the module's `repo` option; `-` is reserved; the resolution paragraph (lines 113–120) gains the declared step, and its *"a target's name therefore appears in a program's text nowhere at all"* gains the generated front end's exception, in `POL-002`'s revised words |
 | `docs/contract-assignment.md` | the `profile` row gains *host-declared default per slot, `capsules.nix`* without gaining a set; the `source` row becomes *pinned with the profile, per assignment generation*, and the bullets under the table that describe a live `profile → source` binding follow it; *two host-side overrides* becomes one |
 | `docs/plan-d-fleet.md` | L1's *"the cheap insurance was not taken"* — taken, as `profile`; line 380's override list |
 | `README.md`, `CLAUDE.md` | the wrapper supplying `CAPSULE_REPO`; "five" directories (sec-4) |
@@ -601,7 +678,12 @@ The kinds are not interchangeable (`CLAUDE.md`), and each objective goes to the
 kind that can see it. Every case asserts the reason as well as the exit status.
 
 **Third kind — `policyCases`** (the front end's own text over a fixture pool,
-with every program a stub that prints its argv and exits 0). Fixture documents
+with every program a stub that prints its argv and exits 0). Two additions to
+the stub: it also writes `out.args`, the argument count and then each argument
+in brackets on its own line, as `wrapCases`' stub already prints them, because
+`out.argv` is `$*` and cannot tell one argument from two; and it exits 1 when
+`CASE_PROGRAM_FAIL` is set, after printing *"the code landed"*, as
+`capsule-provision` does when a step after the push fails. Fixture documents
 are the suite's existing ones — `solo`, `duo`, and `holed`, whose state paths
 have a `{unit}` hole — plus a document whose `path` is the sandbox repo for the
 fetch round. The existing slots `none`, `one` and `both` stay **undeclared**,
@@ -615,7 +697,7 @@ declarations:
 | `dflt` | `solo` | resolution, precedence, status, provision |
 | `hole` | `holed` | unit scoping |
 | `decl` | `unbacked`, which no document backs | the refusals at use, and the ten-character cell |
-| `odd` | `a b$(x)` | the literal splice |
+| `odd` | `a b;touch pwned` | the literal splice — a name shellcheck accepts both quoted and bare, and which runs a command when bare |
 
 Resolution and precedence:
 
@@ -627,8 +709,10 @@ Resolution and precedence:
 - *the flag beats both* — the same slot, with `--profile holed`, carries `holed`.
 - *an undeclared unassigned slot still refuses naming every document* — the
   existing cases on `both` and `one`, unchanged.
-- *a declared name is spliced literally* — `odd collect`'s argv carries
-  `--profile a b$(x)` exactly, and nothing was executed.
+- *a declared name is spliced literally* — `odd collect`'s `out.args` carries
+  `--profile` and then `a b;touch pwned` as **one** argument, and no file
+  `pwned` exists in the suite's directory. Unescaped, the rendered branch is
+  `echo a b;touch pwned`: it builds, prints `a b`, and creates `pwned`.
 
 Refusal at use. A stub program never loads, so these go through the paths where
 the **front end** loads:
@@ -659,8 +743,18 @@ Provision (sec-3):
   `--profile duo` given, the argv carries it once, not twice. This held before
   the change as well; it is here so the forwarding cannot break it, not as
   proof of the forwarding (see *Not exercised*).
-- *a failed push is not recorded* — under `handoff`, with the provision stub
-  exiting 1: no pin file, and the destination's record is unchanged.
+- *a provision that exits non-zero is not recorded* — under `handoff`, so
+  errexit is off, with `CASE_PROGRAM_FAIL` set: the exit is 1, the front end
+  says nothing was recorded, and the destination's pin digest and record
+  `generation` are what they were before the round. (The destination is `one`,
+  which earlier rounds pinned, so "no pin file" would be false for correct
+  code.) The stub prints *"the code landed"* before failing, so this is also the
+  landed-then-failed case.
+- *a handoff from a moved checkout refuses before anything destructive* — the
+  source pinned under a document whose `path` is the sandbox repo, then this
+  host's document of the same name edited to another path: `handoff` exits 1
+  naming both paths, `out.argv` shows no `collect`, and the destination's record
+  and archive are untouched.
 - *a silent guest still leaves a record* — provision `dflt` with the guest
   answering (a base is recorded), then re-provision with the guest silent: exit
   0 with the warning, the record names the profile and the snapshot, `.base` is
@@ -697,15 +791,18 @@ Fetch:
 - `profileLoad`'s refusal for a missing document carries the new hint text.
 - `profileLoad -` refuses as a reserved name; the validator refuses a document
   whose `name` is `-`.
-- *one grammar, two spellings* — a table of names (`doctrine`, `a b$(x)`, `''`,
-  `.`, `..`, `-`, `x/y`, a name containing a newline, a name containing a tab)
+- *one grammar, two spellings* — a table of names (`solo`, `a b;c`, `''`,
+  `.`, `..`, `-`, `x/y`, `a$b`, a name containing a backtick, a name containing a
+  newline, a name containing a tab)
   goes through `profileNameOk`, read at eval with its verdicts spliced in, and
   through `profileLoad`'s name check in the shell. Each name must be accepted by
-  both or refused by both, except the newline and the tab, which only
-  `profileNameOk` refuses: neither can reach `profileLoad` through a rendered
-  `case`.
-- *the assertion uses the predicate* — `capsules.misprofiledIn` over a fixture
-  set `{ good.profile = "solo"; bad.profile = "-"; none = {}; }` is `[ "bad" ]`.
+  both or refused by both, except the four render-only characters — newline,
+  tab, `$` and backtick — which only `profileNameOk` refuses, since they matter
+  only to the rendered `case` (sec-2).
+- *`misprofiledIn` is the predicate over a set* — `capsules.misprofiledIn` over
+  a fixture set `{ good.profile = "solo"; bad.profile = "-"; none = {}; }` is
+  `[ "bad" ]`. This pins the exported function, not the assertion that applies
+  it to `declared` (see *Not exercised*).
 
 **Fourth kind — `wrapCases`** (the composition). Two changes:
 
@@ -714,8 +811,15 @@ Fetch:
 - **new**: *with nothing set, the program's own fallback is reached*. The
   shipped `capsule-provision`, wrapped by the shipped builder over the `plain`
   fixture, run under `env -i` with `CAPSULE_PROFILE_DIR` pointed at a sandbox
-  directory holding one document whose `path` is `/fixture/doc-repo`, refuses
-  naming `/fixture/doc-repo`. The copy is `hostPrograms.provision` from the
+  directory holding one document `doc.json` whose `path` is
+  `/fixture/doc-repo`, and invoked as `--capsule "$slot" --profile doc` with no
+  ref, refuses the missing ref naming `/fixture/doc-repo`. The slot must be one
+  this host declares: the direct transport refuses any other `--capsule` before
+  `src` is read (`host/guest-ssh.nix`, `direct`). So `wrapCases` is handed
+  `slot = head (attrNames capsules.instances)`, exactly as `gitChannelCases` is,
+  and its header and `flake.nix`'s comment say that the slot is this host's
+  because the program has the declared list baked in, while the paths stay
+  nobody's. The copy is `hostPrograms.provision` from the
   flake, the direct-transport one; the module wraps an ssh-transport copy of the
   same text, and the refusal comes before any transport is used, which is what
   `gitChannelCases` already relies on. Watched red against today's `wrap.nix`
@@ -723,10 +827,15 @@ Fetch:
   `/fixture/repo`. With the new fixture, today's `wrap.nix` would fail at eval
   on the missing attribute instead, which proves nothing.
 
-**Eval — the removed option**, beside `hostModuleUnits` in `flake.nix` and in
-`just build`. `hostModuleUnits`' fixture never sets `repo`, so it cannot see the
-shim. The new case evaluates the module with `repo` set and checks two things,
-each under its own `builtins.tryEval` so a failure says which:
+**Eval — the removed option**, folded into `hostModule`'s `checked` in
+`flake.nix`, the gate both `hostModuleUnits` and `hostModulePrograms` already
+pass through. A new flake attribute would also need adding to the `justfile`'s
+`build` recipe, which lists every attribute by hand — `NOTES item 51` step 3 is
+what happens when that is forgotten — whereas `checked` is already in
+`just build` twice. `hostModuleUnits`' fixture never sets `repo`, so it cannot
+see the shim. The check evaluates the module a second time with `repo` set, and
+`checked` throws, naming which of two checks failed, each under its own
+`builtins.tryEval`:
 
 1. `options.services.capsule-perimeter ? repo` is true. With the shim deleted or
    misnamed, the module system's unmatched-definition check makes reading
@@ -746,22 +855,25 @@ the document* (line 150); `hostModuleUnits`.
 | drop the fourth step | the declared-resolution cases; the undeclared refusals stay green |
 | move the declared step ahead of the record | *the record beats the declaration* |
 | move the declared step ahead of the flag | *the flag beats both* |
-| drop `lib.escapeShellArg` from `slotDeclaredProfile` | the build fails on `odd`'s rendered text, or the literal case goes red — which one is recorded |
+| drop `lib.escapeShellArg` from `slotDeclaredProfile` | the literal case: `out.args` splits and `pwned` exists |
 | drop the `*)` branch | none: every fixture slot is rendered, so no fixture reaches it. Recorded as not exercised |
 | collapse `slotNeedsUnit`'s answer 3 into 2 | *a misdeclared slot's unit is not recorded* |
 | drop the "declares" wording | the handoff case |
 | drop the bracket | the status cases |
-| return early for a bracketed name, as the first draft did | *a record-less pin keeps its drift marker* |
+| return early for a bracketed name, skipping the drift logic | *a record-less pin keeps its drift marker* |
 | leave either column at its old width | the alignment case |
 | forward `--profile` even when the caller gave one | *a provision's argv, record and pin agree* (two flags) |
-| drop `\|\| return 1` after `work` | *a failed push is not recorded* |
+| drop the check on `work`'s status | *a provision that exits non-zero is not recorded* |
+| drop the `\|\| return 1` on the record write | none: a stub cannot make `recordWrite` fail without a seam. Recorded as not exercised |
+| drop `handoff`'s path comparison | *a handoff from a moved checkout refuses before anything destructive* |
+| let `$` through `profileNameOk` | the grammar-agreement case, on `a$b` |
 | ask HEAD after the pin and skip the record when silent, as today | *a silent guest still leaves a record* |
 | leave `.base` in place when the guest is silent | the same case, on `.base` |
 | let `-` through `profileLoad` | the reserved-name case and the grammar-agreement case |
-| make `misprofiledIn` read `.profiles` | *the assertion uses the predicate* |
+| make `misprofiledIn` read `.profiles` | *`misprofiledIn` is the predicate over a set* |
 | revert the hint | the hint case |
 | put `CAPSULE_REPO` back in `defaults` (with today's fixture) | the composition case and the set case |
-| delete or misname the shim; separately, drop its replacement text | the removed-option case, on its first check and then its second |
+| delete or misname the shim; separately, drop its replacement text | `just build` fails at `checked`, naming its first check and then its second |
 
 **Not exercised here, and said so.** The race the forwarded `--profile` closes —
 the record changing between two reads in one process — is not driven: no seam in
@@ -770,14 +882,25 @@ a seam for its own sake. Removing the forwarding therefore turns no case red,
 because `work` would re-resolve to the same name in a sandbox where nothing
 changes the record. The fix is held by its own text and the comment beside it.
 
+Two more are held by their text alone. The `|| return 1` on the record write
+has no case: a stub cannot make `recordWrite` fail without a seam added only for
+it. And the `misprofiled` **assertion** — that `capsules.nix` applies
+`misprofiledIn` to its own `declared` and throws — is not driven, as
+`undeclared`'s assertion is not today: `profileCases` pins the function it
+applies, and deleting the `assert` line turns nothing red.
+
 There is no live provision on a second target; `IMP-006` and `CHR-011` own that.
 The user checks the live host after the switch with two commands that push
 nothing:
 
 - `capsule all status` — brackets, alignment, and the declared default on every
   unassigned slot;
-- `capsule <an unassigned slot> provision --profile panopticon`, with **no
-  ref**. `capsule-provision` refuses a missing ref after resolving `src` and
+- `capsule <slot> provision --profile panopticon`, with **no ref**, on an
+  unassigned slot that is **started** and is not `c` (the slot driving
+  doctrine's `SL-251`). Started, because the module's copy reaches its guest
+  through the relay socket (`viaSocket`), which exists only while the slot is up
+  and is checked before argument parsing — on a stopped slot the refusal is
+  *"no way in"*, which names no path. `capsule-provision` refuses a missing ref after resolving `src` and
   before any push, naming `src` in the message (`host/git-channel.nix`, after
   argument parsing), so the refusal should name panopticon's `path`, not
   doctrine's. That is `ISS-008`'s closure on the module path. With `work`'s

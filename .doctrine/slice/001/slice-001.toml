@@ -62,6 +62,18 @@ intent = "design-target"
 selector = "README.md"
 intent = "design-target"
 
+[[selector]]
+selector = "host/profile-name.nix"
+intent = "design-target"
+
+[[selector]]
+selector = "host/git-channel.nix"
+intent = "design-target"
+
+[[selector]]
+selector = "CLAUDE.md"
+intent = "design-target"
+
 [[relation]]
 label = "governed_by"
 target = "POL-003"
