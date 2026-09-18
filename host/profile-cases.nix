@@ -46,7 +46,85 @@
   # itself runs — the same subject a human validating a hand-written document
   # gets.
   check,
+  # `capsules.nix` itself, for `misprofiledIn`: the function its assertion
+  # applies to this host's slots, applied here to a set no host declares.
+  capsules,
 }: let
+  # The eval spelling of a profile name's grammar (SL-001 design sec-2). Imported
+  # rather than handed down: it is a builtins-only file, and this is the file.
+  profileNameOk = import ./profile-name.nix;
+
+  # One table of names through both spellings of the grammar. `renderOnly` marks
+  # the four characters that matter only to the front end's rendered text, which
+  # `profileNameOk` refuses and `profileLoad` has no reason to.
+  names = [
+    {
+      label = "solo";
+      n = "solo";
+      ok = true;
+    }
+    {
+      label = "a name with a space and a semicolon";
+      n = "a b;c";
+      ok = true;
+    }
+    {
+      label = "the empty name";
+      n = "";
+      ok = false;
+    }
+    {
+      label = "'.'";
+      n = ".";
+      ok = false;
+    }
+    {
+      label = "'..'";
+      n = "..";
+      ok = false;
+    }
+    {
+      label = "the reserved '-'";
+      n = "-";
+      ok = false;
+    }
+    {
+      label = "a path";
+      n = "x/y";
+      ok = false;
+    }
+    {
+      label = "a dollar";
+      n = "a$b";
+      ok = false;
+      renderOnly = true;
+    }
+    {
+      label = "a backtick";
+      n = "a`b";
+      ok = false;
+      renderOnly = true;
+    }
+    {
+      label = "a newline";
+      n = "a\nb";
+      ok = false;
+      renderOnly = true;
+    }
+    {
+      label = "a tab";
+      n = "a\tb";
+      ok = false;
+      renderOnly = true;
+    }
+  ];
+
+  # A fixture set, not this host's: one good, one bad, one declaring nothing.
+  misprofiled = capsules.misprofiledIn {
+    good.profile = "solo";
+    bad.profile = "-";
+    none = {};
+  };
   # A target that satisfies every check, so each mutation below differs from a
   # rendering document in exactly one thing. Nothing here is doctrine's: a
   # fixture that borrowed live values would go on passing while the declaration
@@ -126,6 +204,16 @@
       why = "a baseline that is an empty command line";
       saw = "silently succeeds";
       t = base // {baseline = "";};
+    }
+    {
+      why = "a document named '-', which is reserved";
+      saw = "may not be `-`, which is reserved";
+      t =
+        base
+        // {
+          name = "-";
+          guestPath = "/vol/-";
+        };
     }
     {
       why = "a value with a newline in it";
@@ -370,6 +458,11 @@ in
     ck "an unrendered profile refuses" 1 "$rc"
     saw "no profile named 'nosuch'"
     saw "$CAPSULE_PROFILE_DIR"
+    # The hint was "rendered from target.nix" until a document could be
+    # hand-written (item 52); a human reading the old one looks in the wrong file.
+    ck "  and its hint says a profile may be placed there by hand" 1 \
+      "$(grep -c 'or placed there by hand (docs/contract-target.md)' err || true)"
+    saw "rendered from target.nix by the module"
 
     run
     ck "and an unnamed one refuses rather than defaulting" 1 "$rc"
@@ -384,6 +477,46 @@ in
     ck "a name that is a path refuses" 1 "$rc"
     saw "is a path, and a name is not one"
     ck "  without having read what it points at" 0 "$(grep -c alpha out || true)"
+
+    # `-` is what the front end prints for an absent field (host/record.nix), so a
+    # profile of that name would read as none. No `-.json` exists: a check that
+    # let the name through would answer "no profile named" instead.
+    run -
+    ck "a profile named '-' refuses as reserved" 1 "$rc"
+    saw "profile name '-' is reserved"
+
+    # ------------------------------------------------ one grammar, two spellings
+    #
+    # `profileNameOk` at eval, its verdicts spliced in, and `profileLoad`'s name
+    # check in the shell, over one table (SL-001 design sec-5). A directory with
+    # no documents, so the shell's verdict is its refusal: "no profile named"
+    # means the name check let the name through. Each name must get the same
+    # verdict from both, except the four render-only characters, which only
+    # `profileNameOk` refuses.
+    mkdir -p empty
+    grammar() {
+      local label=$1 n=$2 nixOk=$3 renderOnly=$4 want shellOk=false
+      rc=0
+      CAPSULE_PROFILE_DIR=$PWD/empty ${lib.getExe probe} "$n" >out 2>err || rc=$?
+      grep -qF "no profile named" err && shellOk=true
+      want=$nixOk
+      [ "$renderOnly" = true ] && want=true
+      [ "$renderOnly" = true ] && label="$label (render-only, so profileLoad lets it through)"
+      ck "one grammar, two spellings: profileLoad agrees with profileNameOk on $label" "$want" "$shellOk"
+    }
+    ${lib.concatMapStringsSep "\n    " (r: ''
+      ck ${lib.escapeShellArg "profileNameOk ${
+        if r.ok
+        then "accepts"
+        else "refuses"
+      } ${r.label}"} ${lib.boolToString r.ok} ${lib.boolToString (profileNameOk r.n)}
+      grammar ${lib.escapeShellArg r.label} ${lib.escapeShellArg r.n} ${lib.boolToString (profileNameOk r.n)} ${lib.boolToString (r.renderOnly or false)}'')
+    names}
+
+    # The exported function, not the assertion that applies it to this host's
+    # own slots: that one is held by its text (SL-001 design sec-5, not
+    # exercised).
+    ck "misprofiledIn is the predicate over a set" bad ${lib.escapeShellArg (lib.concatStringsSep " " misprofiled)}
 
     # New with item 52, and only reachable because the documents left the store:
     # a document is addressed by its filename and also names itself, and a

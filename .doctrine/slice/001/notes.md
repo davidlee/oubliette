@@ -63,7 +63,7 @@ cheaper option if the reviewer wants one.
 
 ## Harvest
 <!-- single-copy: updated in place each harvest; ids only, never restated content -->
-fresh-as-of: 2026-09-18 · slice ready · design locked (run revision 55) · plan committed (7d434af), six phase sheets materialised
+fresh-as-of: 2026-09-18 · slice started · PHASE-01 complete
 
 ### Produced
 
@@ -95,11 +95,16 @@ fresh-as-of: 2026-09-18 · slice ready · design locked (run revision 55) · pla
   accepts quoted and bare (`fnd-31`, checked with shellcheck this session).
 - `just build` lists every flake attribute by hand; a new check belongs inside
   an existing gate or in the justfile (`fnd-34`).
+- PHASE-01: an agreement check cannot see a render-only character (both sides
+  are *meant* to differ on `a$b`), so the grammar table carries each name's
+  expected `profileNameOk` verdict beside the agreement; that row is what the
+  `$` mutation turns red, not the agreement.
 - The binary refuses review policy `adversarial-then-human` (22-byte label over a
   16-byte bound) — a doctrine defect; the run uses `adversarial-only`.
 
 ### Open
 
-- PHASE-01…PHASE-06 unstarted; next is `/phase-plan PHASE-01` then `/execute`.
+- PHASE-01 done (four mutations watched red). PHASE-02…PHASE-06 unstarted;
+  next is `/phase-plan PHASE-02`.
 - PHASE-03 `VH-1`: the user approves the POL-002/POL-003 revisions before apply.
 - PHASE-06 needs the user's host switch (`~/flakes`).

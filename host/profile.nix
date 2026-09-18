@@ -146,6 +146,9 @@
         | [ (if ($d.name | length) == 0 or ($d.name | test("/")) then
                "`name` is a document filename, so it must be a name and not a path"
              else empty end),
+            (if $d.name == "-" then
+               "`name` may not be `-`, which is reserved: the front end reads it as none"
+             else empty end),
             (if ([$d.path, $d.guestPath, $d.volumePath] | any(startswith("/") | not)) then
                "`path`, `guestPath` and `volumePath` are absolute paths"
              else empty end),
@@ -361,13 +364,21 @@
           profileFail "profile name '$n' is a path, and a name is not one"
           return 1
           ;;
+        # `recordField` (host/record.nix) prints `-` for an absent field, and the
+        # front end reads it as none — so a profile of that name would read as
+        # unassigned. host/profile-name.nix is this grammar's eval spelling.
+        -)
+          profileFail "profile name '-' is reserved: the front end reads it as none"
+          return 1
+          ;;
       esac
 
       file="$pdir/$n.json"
       if [ ! -f "$file" ]; then
         profileFail "no profile named '$n' in $pdir"
-        profileFail "  A profile is <name>.json there, rendered from target.nix"
-        profileFail "  (host/profile.nix). CAPSULE_PROFILE_DIR chooses the directory."
+        profileFail "  A profile is <name>.json there, rendered from target.nix by the module,"
+        profileFail "  or placed there by hand (docs/contract-target.md)."
+        profileFail "  CAPSULE_PROFILE_DIR chooses the directory."
         return 1
       fi
 

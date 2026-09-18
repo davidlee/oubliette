@@ -25,6 +25,7 @@
 # the units, so the names differ there and the shape does not.
 let
   policies = import ./policies.nix;
+  profileNameOk = import ./host/profile-name.nix;
 
   # The slots. Names, not a count — and the index is *declared*, not taken from
   # list position: deriving it from position means deleting a name renumbers its
@@ -64,6 +65,16 @@ let
   #
   # `everything` is this host being a dev host out loud, rather than by nobody
   # having thought about it.
+  #
+  # `profile`, where a slot declares one, is which target the slot serves when
+  # nobody has said otherwise — the operator's **convenience**, not a control, so
+  # the perimeter's sentence above does not carry over: an unassigned slot with no
+  # target is a perfectly fine state. There is no `profiles` set beside it,
+  # because an assigner is unconstrained in `profile` by design
+  # (docs/contract-assignment.md, *Who may assign*). Only the name's *shape* is
+  # checked here (`misprofiled`, below); whether a document backs it is run-time
+  # state outside the store, so `profileLoad` (host/profile.nix) checks that, at
+  # use (SL-001 design sec-2).
   declared = {
     a = {
       index = 0;
@@ -148,13 +159,16 @@ let
   # `policy` and `policies` are optional *here* and required of a real slot by the
   # assertion below, so the one caller that constructs instances which are not
   # slots — `guardCases`'s fixture, which is about namespaces and knows nothing
-  # about controls — stays two lines.
+  # about controls — stays two lines. `profile` is optional everywhere: a slot
+  # that declares none falls through to the next step of the front end's
+  # resolution.
   recordOf = name: {
     index,
     policy ? null,
     policies ? [],
+    profile ? null,
   }: {
-    inherit name index policy policies;
+    inherit name index policy policies profile;
     ns = "${capLink}${name}";
     socket = socketOf name;
     uplink = {
@@ -190,6 +204,19 @@ let
       || !(builtins.elem d.policy (d.policies or [])))
     names;
 
+  # A declared profile whose name is not one — empty, `.`, `..`, the reserved
+  # `-`, or holding a character the front end's rendered text cannot carry
+  # (host/profile-name.nix). A function of the declared set so a case can apply
+  # the very function the assertion uses to a set no host declares.
+  misprofiledIn = declared:
+    builtins.filter
+    (n: let
+      p = declared.${n}.profile or null;
+    in
+      p != null && !(profileNameOk p))
+    (builtins.attrNames declared);
+  misprofiled = misprofiledIn declared;
+
   # An index is what carves a capsule's /30 out of `uplinkNet`, so two capsules
   # sharing one is two capsules on one wire — silently, and only once both are
   # up. Refuse at eval instead.
@@ -208,8 +235,15 @@ in
   assert !reused || throw "capsules.nix: two slots declare the same index, so they would share an uplink /30";
   assert undeclared
   == []
-  || throw "capsules.nix: slot '${builtins.head undeclared}' names no policy, or names one policies.nix does not declare, or one outside its own `policies` set"; {
+  || throw "capsules.nix: slot '${builtins.head undeclared}' names no policy, or names one policies.nix does not declare, or one outside its own `policies` set";
+  assert misprofiled
+  == []
+  || throw "capsules.nix: slot '${builtins.head misprofiled}' declares a profile that is not a name — empty, `.`, `..`, the reserved `-`, or holding `/`, a newline, a tab, `$` or a backtick (host/profile-name.nix)"; {
     inherit uplinkNet socketOf volumeLock volumeReserve;
+
+    # The shape check `misprofiled` applies to this host's slots, exported so
+    # `profileCases` pins the function rather than a copy of it.
+    inherit misprofiledIn;
 
     instances = instancesOf declared;
 

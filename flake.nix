@@ -526,6 +526,8 @@
       # document rules are the *reader's*, so they are refusals to run rather
       # than throws to evaluate.
       inherit render;
+      # For `misprofiledIn`, the eval half of the profile-name grammar (SL-001).
+      inherit capsules;
     };
 
     # The tenth, and the only one whose subjects are *devshell* programs: `vm`
