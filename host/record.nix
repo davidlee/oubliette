@@ -122,6 +122,12 @@
         # record written by any other verb has no provision behind it and must
         # not claim a pin. Absent here means the slot reads whatever this host
         # declares now, which is what every record said before that step.
+        #
+        # Each step that can fail exits the subshell itself, and is not left to
+        # errexit: a caller that checks `recordWrite … || …` switches errexit
+        # off in here, and then a failed jq left an empty file for `mv` to put
+        # over the record, and the `printf` after it reported success
+        # (SL-001's RV-008 F-6).
         printf '%s' "$cur" \
           | jq --argjson g "$next" ''${1+"$@"} \
             "$filter"'
@@ -131,8 +137,11 @@
               | .profile_snapshot = (.profile_snapshot // null)
               | .generation = $g
               | .schema = 1
-            ' > "$tmp"
-        mv "$tmp" "$dir/assignment.json"
+            ' > "$tmp" || {
+          rm -f "$tmp"
+          exit 1
+        }
+        mv "$tmp" "$dir/assignment.json" || exit 1
         printf '%s' "$next"
       ) 9>"$dir/.lock"
     }

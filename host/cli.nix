@@ -1303,7 +1303,8 @@ in
           # which `handoff`'s `provisionSlot … || exit 1` switches off — an
           # unchecked failure followed by the silent branch's `return 0` would
           # report success with a pin and no record, the state this order
-          # exists to remove. Not exercised: a stub cannot make the write fail.
+          # exists to remove. A corrupt record makes the write fail, which is
+          # how policyCases reaches this branch.
           #
           # SC2016: `$ref`, `$oid`, `$profile`, `$class` and `$snap` are *jq*
           # variables, bound by the `--arg`/`--argjson` below. Not expanding in
@@ -1318,7 +1319,12 @@ in
             --arg profile "$prof" \
             --arg snap "$snap" \
             --argjson class "$(printf '{"mem":%s,"vcpu":%s}' "$profile_mem" "$profile_vcpu")" \
-            > /dev/null || return 1
+            > /dev/null || {
+            echo "capsule: provisioned, but could not record it in" >&2
+            echo "  $(slotDir "$n")/assignment.json — the pin is new and the record is" >&2
+            echo "  as it was. Read the record, then provision again." >&2
+            return 1
+          }
           if [ -z "$oid" ]; then
             echo "capsule: provisioned, but the guest did not answer for its HEAD, so" >&2
             echo "  no base was recorded. 'capsule $n status', then provision again." >&2
@@ -1364,8 +1370,12 @@ in
           # program that exited 1 after its code landed is not recorded either:
           # it calls the provision unfinished, and so does this.
           if ! work "$n" provision ''${forward[@]+"''${forward[@]}"} ''${scope[@]+"''${scope[@]}"} ''${1+"$@"}; then
-            echo "capsule: nothing was recorded for '$n' — its record and pin still name" >&2
-            echo "  the previous assignment. A provision that completes records this one." >&2
+            # "As they were", not "the previous assignment": a slot nobody has
+            # assigned has none, and a `setup` has already written its unit and
+            # purpose before it gets here (RV-008 F-4).
+            echo "capsule: nothing was recorded for '$n' by this provision, which did not" >&2
+            echo "  complete — the slot's profile, pin and base are as they were. A" >&2
+            echo "  provision that completes records them." >&2
             return 1
           fi
           # The profile this provision was taken under, then the *original*

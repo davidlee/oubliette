@@ -1,0 +1,106 @@
+id    = 8
+slug  = "closure-audit-of-sl-001"
+title = "closure audit of SL-001"
+# no status — a review's status is DERIVED from its findings (ADR-007 D-C8), so
+# it is never stored (the storage rule forbids derived data in authored files).
+
+[review]
+facet     = "reconciliation"     # scope|design|plan|phase-plan|implementation|code-review|reconciliation
+raiser    = "auditor"
+responder = "responder"
+
+[target]                   # the outbound `reviews` edge (ADR-004): RV-NNN ──reviews──▶ <ref>
+ref   = "SL-001"
+
+[[finding]]
+id = "F-1"
+status = "verified"
+severity = "minor"
+title = "PHASE-06's recorded range ends at 21093bc, before the commit that holds its closing evidence"
+detail = "Expected: each phase's recorded boundary covers the commits that phase landed. Observed: .doctrine/state/slice/001/boundaries.toml records PHASE-06 as 7580f30..21093bc. VH-2's evidence and the harvest landed in b243d8d, committed after the phase flip to completed stamped code_end_oid = HEAD. The commit touches only .doctrine/slice/001/notes.md, so conformance's code cells do not move, but the registry misstates where PHASE-06 ended. PHASE-01…05's ranges were checked against git log and are right."
+disposition = "fix-now"
+response = "Fixed in this audit: doctrine slice record-delta 1 PHASE-06 --start 7580f30 --end b243d8d. boundaries.toml now ends PHASE-06 at b243d8d. The cause is ordering, not a defect: the flip to completed stamps HEAD, and the evidence commit came after it. Next time, commit the evidence before flipping the phase."
+
+[[finding]]
+id = "F-2"
+status = "verified"
+severity = "minor"
+title = "docs/status.md shipped and no design-target selector declares it"
+detail = "Expected: every non-.doctrine path the slice edited is declared by a design-target selector (conformance's undeclared cell carries only workflow artefacts). Observed: doctrine slice conformance 1 lists docs/status.md as undeclared. 7a8ae6a (PHASE-02) added to its 'Now' row that status brackets a profile no record gives (DEC-014). The edit is correct and belongs to the slice (phase-02 sheet, Findings), but design sec-5's code impact table has no row for it and slice-001.toml has no selector. The other 13 undeclared paths are .doctrine/ workflow artefacts (REV-001, the two policies, the two memories, ISS-013, notes, slice toml), as in SL-002's audit."
+disposition = "verified"
+response = "Confirmed. It goes to the reconciliation brief, because the selector registry and design sec-5's table are reconcile's surfaces. The load-bearing change is doctrine slice selector add docs/status.md (design-target, intent: 'status's Now row names the brackets, DEC-014'), and the sec-5 code impact table gains the row as its mirror. The edit itself is correct and stays."
+
+[[finding]]
+id = "F-3"
+status = "verified"
+severity = "minor"
+title = "the mutation evidence behind every VA-1 lives only in gitignored phase sheets"
+detail = "Expected: evidence that a case can fail survives rm -rf of runtime state (ADR-003: evidence has one home; SL-002's notes carry a Mutations summary per phase). Observed: PHASE-01…05's VA-1 mutation logs (each mutation, expected red, observed red), PHASE-03's VA-2 POL-002 search output, and the per-phase findings live only in .doctrine/state/slice/001/phases/phase-0N.md, which is runtime state. notes.md says 'mutations watched red' and carries some lessons, but not which mutation turned which case red, or which were recorded as not exercised."
+disposition = "fix-now"
+response = "Fixed in this audit. notes.md gains 'Mutations and searches', lifted from the phase sheets: every VA-1 mutation with the cases it turned red, the four recorded as not exercised, PHASE-03's VA-2 search result, and PHASE-05's EN-2 sweep outcome. The phase sheets stay the long form, and notes.md is the durable copy."
+
+[[finding]]
+id = "F-4"
+status = "verified"
+severity = "nit"
+title = "the nothing-recorded message says a never-assigned slot's record 'still names the previous assignment'"
+detail = "Expected: the refusal describes the slot's actual state. Observed: live on slot f (never assigned, no record, no pin), capsule f provision --profile panopticon printed 'capsule: nothing was recorded for f — its record and pin still name the previous assignment.' f has no record and no pin, so there is no previous assignment. The text is design sec-3's verbatim (host/cli.nix provisionSlot). It is cosmetic: exit status and state were right."
+disposition = "fix-now"
+response = "Fixed in this audit (host/cli.nix provisionSlot). The message is 'nothing was recorded for n by this provision, which did not complete — the slot's profile, pin and base are as they were. A provision that completes records them.' That is true on a never-assigned slot (as they were: none) and after setup's unit and purpose writes (F-7). A comment says why. Design sec-3 quotes the old text verbatim, so it goes to the reconciliation brief."
+
+[[finding]]
+id = "F-5"
+status = "verified"
+severity = "nit"
+title = "PHASE-05 VT-4 reads UNATTRIBUTABLE in verify-vt"
+detail = "Expected: every VT verifies. Observed: doctrine slice verify-vt SL-001 reports PHASE-05 VT-4 as UNATTRIBUTABLE: keyword present, but host/git-channel-cases.nix was not modified by this slice. VT-4 is design sec-5's 'Unchanged and must stay green' check: gitChannelCases' 'CAPSULE_REPO still beats the document' plus hostModuleUnits. Both are in just build, which exited 0 at b243d8d."
+disposition = "aligned"
+response = "Correct as it stands. VT-4 is a 'must stay green' check on a file this slice deliberately did not touch, so verify-vt's attribution rule cannot credit it, and that is the right answer for that rule. The check itself ran: gitChannelCases and hostModuleUnits are both in just build, which exited 0 at b243d8d. No write."
+
+[[finding]]
+id = "F-6"
+status = "verified"
+severity = "major"
+title = "a failed record write is reported as success, and the record is emptied"
+detail = """Expected (design sec-3): a pin has a record naming its profile unless that one write fails, and then the provision exits 1 and says so. Observed: recordProvisioned calls recordWrite … > /dev/null || return 1 (host/cli.nix). The || switches errexit off inside recordWrite's locked subshell (host/record.nix), so when jq fails the empty $tmp is still moved over assignment.json, and printf "$next" makes the subshell exit 0. The || never fires. Reproduced in bash, and in policyCases with a corrupt assignment.json: exit 0, record emptied. This regresses the plain provision verb. Before SL-001 the write was not behind ||, and errexit killed the run with the record intact. Under handoff it was already broken. The same class reaches every checked caller: recordUnit and recordPurpose via $(…) || exit 1, and the policy verb's gen=$(recordWrite …) || {. Design sec-5 also claims 'a stub cannot make recordWrite fail without a seam', but a corrupt record does. Found by the independent read-only pass."""
+disposition = "fix-now"
+response = "Fixed in this audit, red first. host/record.nix's recordWrite now exits its subshell itself when the jq that builds the record fails (and removes $tmp), or when the mv fails, instead of relying on errexit. That fixes every checked caller at once: provision, unit, purpose and policy. recordProvisioned now says what it did not do ('provisioned, but could not record it in …/assignment.json — the pin is new and the record is as it was'). New policyCases round 'a record the write cannot rewrite fails the provision': a corrupt assignment.json on dflt, then provision. It went red for exactly the defect (exit 0, record emptied) and is now green. Mutation: removing the jq exit turns all three of its rounds red. The design's 'not exercised: a stub cannot make the write fail' is false, and that goes to the reconciliation brief (design sec-3 and sec-5 text, and the mutation table row)."
+
+[[finding]]
+id = "F-7"
+status = "verified"
+severity = "minor"
+title = "setup's failed provision says nothing was recorded after setup recorded its unit and purpose"
+detail = "Expected: provisionSlot's failure message is true for every caller. Observed: setup writes unit and purpose (recordUnit and recordPurpose, host/cli.nix ~2094-2102) and then calls provisionSlot. On failure that prints 'nothing was recorded for n — its record and pin still name the previous assignment'. The generation has moved, and the record carries the new unit and purpose. The early writes predate the slice; the sentence is SL-001's. Same root as F-4. Found by the independent pass."
+disposition = "fix-now"
+response = "Fixed with F-4: one message, now true for every caller. 'nothing was recorded for n by this provision, which did not complete — the slot's profile, pin and base are as they were.' setup's earlier unit and purpose writes are not this provision's, and the sentence no longer claims a previous assignment. The existing case (grep 'nothing was recorded for one') still pins it, and plan VT-2's keyword is kept."
+
+[[finding]]
+id = "F-8"
+status = "verified"
+severity = "minor"
+title = "handoff refuses a moved checkout even when CAPSULE_REPO makes the fetch and the push one repo"
+detail = "Expected: handoff's path check refuses only when the fetch and the push would use two repositories. Observed: host/cli.nix ~2243-2253 compares the pinned profile_path with this host's document's path. repoFor and capsule-provision both read ${CAPSULE_REPO:-$profile_path}, so with CAPSULE_REPO exported both use one repo and the refusal is spurious. Design sec-4 does not address the override. Found by the independent pass."
+disposition = "tolerated"
+response = "Accepted drift. The refusal errs in the safe direction: it fires before collect, archive or drop, it names both paths, and its remedy (re-provision the source, or restore the document's path) works whether or not CAPSULE_REPO is set. CAPSULE_REPO is a one-off override. A handoff under it from a source pinned at another path is a mixed state that the pinned-source rule (DEC-013, fnd-18 option b) deliberately does not reconcile. Honouring the override here would add a second answer to 'which repo', which is what the design removed from the wrapper. It is revisited only if a real handoff hits it."
+
+[[finding]]
+id = "F-9"
+status = "verified"
+severity = "nit"
+title = "docs/contract-assignment.md's ownership table does not mention the per-slot default"
+detail = "Expected (design sec-5 code impact): the profile row gains 'host-declared default per slot, capsules.nix', without gaining a set. Observed: the record-field table's profile row (line 159) carries it. The ownership table's profile row (line 66: owner 'host-held, keyed by name', who may change 'an assigner names it') was not changed, so the table whose job is who may change what does not name the host operator's per-slot default. Found by the independent pass."
+disposition = "fix-now"
+response = "Fixed in this audit. The ownership table's profile row now says, in 'who may change it': 'an assigner names it; until one does, the host operator's per-slot declaration in capsules.nix answers, with no set beside it (SL-001)'. The record-field row at line 159 already had the mechanism."
+
+[[finding]]
+id = "F-10"
+status = "verified"
+severity = "nit"
+title = "flake.nix says wrap covers five programs; host/services.nix wraps seven"
+detail = "Expected: comments count correctly, or not at all. Observed: flake.nix ~672, in the wrappers derivation's comment: 'host/services.nix's wrap — five programs'. host/services.nix wraps seven. This is not the directory count SL-001 changed, and it predates the slice. The PHASE-05 sweep saw it and left it out of scope (phase-05 sheet), and it was never filed."
+disposition = "fix-now"
+response = "Fixed in this audit: 'five programs' becomes 'the programs', so the comment no longer carries a count that drifts with services.nix. A comment-only change to flake.nix, a design-target path."
+
+# Findings are append-only `[[finding]]` tables, added by `review raise` (PHASE-03).
+# Empty here at creation — a fresh review is Active, awaiting the raiser (D-C8).

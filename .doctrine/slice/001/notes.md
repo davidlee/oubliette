@@ -92,6 +92,52 @@ cheaper option if the reviewer wants one.
   removed `repo` default; flagged to the user (outside this repo). `~/flakes`
   sets no `repo`, so the switch evaluated.
 
+## Mutations and searches (lifted from the phase sheets at audit, `RV-008` F-3)
+
+Each mutation was applied by editing and then restored by editing back. Each
+turned red only the cases listed, and each built, so no red came from a
+shellcheck failure.
+
+| phase | mutation | red |
+|---|---|---|
+| 01 | let `-` through `profileLoad` | the reserved case, and the grammar table's agreement on `-` |
+| 01 | let `$` through `profileNameOk` | only the table's per-row verdict ("refuses a dollar"); the agreement row cannot see a render-only character |
+| 01 | `misprofiledIn` reads `.profiles` | the set case (got `''`) |
+| 01 | revert the hint | the hint case |
+| 02 | drop the bracket | the sole-document case and the record-less-pin case |
+| 02 | return early for a bracketed name | the record-less-pin case only |
+| 02 | memory column back to `%-11s` | alignment, plus every `profileOf` read |
+| 03 | drop the fourth step | declared, odd, decl, hole and status rounds |
+| 03 | fourth step ahead of the record, or ahead of the flag | the record round; the flag round and the record round |
+| 03 | drop `escapeShellArg` | `out.args` splits, and `pwned` is created |
+| 03 | collapse answer 3 into 2 | the misdeclared unit is recorded |
+| 03 | drop "declares" | the handoff-to-a-declared-destination case |
+| 03 | profile column `%-9s` | `decl`'s row lines up |
+| 04 | forward `--profile` even when given | "handing the program exactly one" |
+| 04 | drop the check on `work` | exit 0, no message, generation moved |
+| 04 | HEAD after the pin, and no record when the guest is silent | profile, digest, base and status rounds |
+| 04 | leave `.base` when the guest is silent | the `.base` round only |
+| 05 | `CAPSULE_REPO` back in `defaults`, with the old fixture | the composition case (names `/fixture/repo`) and the set case (five) |
+| 05 | delete or misname the shim; drop its message | `checked`: the first check's throw; the second check's throw |
+| 05 | drop `handoff`'s path comparison | its three reason rounds; the exit-1 round stays green, because a silent guest fails it later |
+
+**Not exercised, as design sec-5 says:** the rendered `*)` branch (it stays
+green, because no fixture slot reaches it); `|| return 1` on the record write;
+the race the forwarded `--profile` closes; and the `misprofiled` assertion
+(checked once by hand, `a = "-"`, then reverted).
+
+**PHASE-03 VA-2, the revised `POL-002`'s search:** `git ls-files -co
+--exclude-standard -- '*.nix' '*.sh' justfile`, without `.doctrine/`,
+`.claude/`, `.codex/` and `.mcp.json`, grepped for `doctrine` outside comment
+lines. The only hits: `capsules.nix` ×10 (`profile`), `flake.nix`'s
+`target.url`, `target.nix`, and the `.doctrine/` layout fixtures in
+`host/brief-cases.nix` and `host/state-snapshot-cases.nix`.
+
+**PHASE-05 EN-2:** 76 sweep hits before the edit. After it, only the readers,
+the cases, the sentences saying a caller may set `CAPSULE_REPO`, history, and
+other fives remain. `flake.nix`'s "five programs" counts wrapped programs, not
+directories, and was left.
+
 ## Harvest
 <!-- single-copy: updated in place each harvest; ids only, never restated content -->
 fresh-as-of: 2026-09-18 · slice started · PHASE-06 completed (VH-1, VH-2 held live)

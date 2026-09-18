@@ -669,7 +669,7 @@
 
       # Item 37's class a third time, and `installed` above is the half that
       # cannot close it: forcing an outPath evaluates a derivation and builds
-      # nothing, so `host/services.nix`'s `wrap` — five programs whose entire text
+      # nothing, so `host/services.nix`'s `wrap` — the programs whose entire text
       # is the environment this host's copies run with — had never been
       # shellchecked by anything. That matters more since item 52 put
       # `CAPSULE_PROFILE_DIR` in there. Paths and not names, which is the whole

@@ -1,0 +1,46 @@
+memory_uid = "mem_01a0b3b4635272f0b99012067b7e4b97"
+memory_key = "mem.fact.oubliette.checked-call-disables-errexit-inside-it"
+schema_version = 1
+memory_type = "fact"
+status = "active"
+title = "A checked call switches errexit off inside the callee, subshells included"
+summary = "f || x, if f, and $(f) || x run f with errexit ignored throughout, so every step in f that can fail must exit on its own"
+created = "2026-09-18"
+updated = "2026-09-18"
+
+[scope]
+paths = []
+globs = ["host/*.nix", "vm/*.nix"]
+commands = []
+tags = ["gotcha"]
+workspace = "default"
+repo = "github.com/davidlee/oubliette"
+repo_id_kind = "remote"
+repo_id_confidence = "high"
+
+[git]
+anchor_kind = "checkout_state"
+commit = ""
+tree = "a24de5e8de4346dab344d1618c027594ce9e84e8"
+ref_name = "refs/heads/main"
+checkout_state_id = "18678eb86d241adf64eb0e18d752dae3d663b3887cc3537b9c975d449bf7947a"
+base_commit = "b243d8db2b2054644fb1867c657a67888c2dc9a4"
+verified_sha = ""
+normalizer = "forget.checkout.v1"
+
+[review]
+verification_state = "unverified"
+reviewed = ""
+review_by = ""
+
+[trust]
+trust_level = "high"
+
+[ranking]
+severity = "none"
+weight = 0
+
+[[source]]
+kind = "review"
+ref = "RV-008"
+

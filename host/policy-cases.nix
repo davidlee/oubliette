@@ -808,6 +808,20 @@ in
     ckt "  and not the previous provision's base" test "$(recorded dflt .base)" = null
     run all status
     ckt "  so a status reads it as a record" test "$(profileOf dflt)" = solo
+    # A record the write cannot rewrite: `recordWrite` runs behind the
+    # provision's `|| return 1`, which switches errexit off inside it, so a jq
+    # that fails there must stop the write itself — or the empty file it leaves
+    # is moved over the record and the provision reports success (RV-008 F-6).
+    # A corrupt record is the failure a sandbox can reach without a seam.
+    cp "$CASE_STATE/slot/dflt/assignment.json" saved.json
+    printf 'not json' > "$CASE_STATE/slot/dflt/assignment.json"
+    run dflt provision somecommit --profile solo
+    ck "a record the write cannot rewrite fails the provision" 1 "$rc"
+    ckt "  saying the record was not written" saw "could not record"
+    ckt "  and leaves the record as it was" \
+      test "$(cat "$CASE_STATE/slot/dflt/assignment.json")" = "not json"
+    mv saved.json "$CASE_STATE/slot/dflt/assignment.json"
+
     # Back to declaring only, for the handoff round that asks what `dflt` declares.
     unassign dflt
 
