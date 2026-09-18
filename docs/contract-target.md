@@ -50,7 +50,11 @@ Two literals are unavoidable and nothing checks that they agree:
 - `path` in `target.nix` — where `capsule-provision` pushes from.
 
 Switching targets means editing both, or `--override-input target path:/…` for
-one build. Renaming the *input* is not free downstream either: the host's own
+one build. A third literal is chosen rather than unavoidable: each slot's
+declared `profile` in `capsules.nix` repeats `name` (`DEC-012`), so a renamed
+target leaves them naming a document that no longer exists — status shows the
+old name in brackets and every verb on those slots refuses, naming the profile
+directory. Renaming the *input* is not free downstream either: the host's own
 config (`~/flakes`) carries `inputs.target.follows`, and its next lock fails on
 an input that no longer exists.
 
@@ -115,9 +119,15 @@ programs.
 takes `--capsule` ([item 28](./ledger/028-a-slot-has-no-default.md)). The name is
 resolved by the *front end*, which is the only thing here allowed to read host
 state: an explicit `--profile` wins, then the slot's assignment record `profile`
-field, then — for a slot nothing has assigned — the one profile this host has
-rendered, refusing when there are none or several. A target's name therefore
-appears in a program's text nowhere at all.
+field, then the `profile` the slot declares in `capsules.nix`, then — for a slot
+nothing has assigned or declared — the only document in the profile directory,
+refusing when there are none or several. The declaration is the host operator's
+convenience rather than a control, so there is no set of allowed profiles beside
+it, and only its shape is checked at eval: a declared name no document backs
+resolves, reads as `[name]` in status, and refuses at use naming the directory
+(SL-001). A target's name therefore appears in no program's text, except as a
+host-declared value the generated front end is built with — a slot's `profile`
+(`POL-002`).
 
 The render also adds a set of checks that were nowhere before — `guestPath` must
 stay derived from `volumePath` and `name`, a cache must live under the volume, a

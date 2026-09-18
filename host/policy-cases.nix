@@ -55,6 +55,35 @@
           policy = "sealed";
           policies = ["build" "sealed"];
         };
+        # SL-001: slots that declare a profile. `dflt` names the document every
+        # round starts with, `hole` one with a unit hole (written later),
+        # `decl` one nothing ever backs — ten characters, as `[doctrine]` is,
+        # which is what the alignment round needs — and `odd` a name that
+        # would run a command if it were spliced into the front end unquoted.
+        dflt = {
+          index = 3;
+          policy = "build";
+          policies = ["build"];
+          profile = "solo";
+        };
+        hole = {
+          index = 4;
+          policy = "build";
+          policies = ["build"];
+          profile = "holed";
+        };
+        decl = {
+          index = 5;
+          policy = "build";
+          policies = ["build"];
+          profile = "unbacked";
+        };
+        odd = {
+          index = 6;
+          policy = "build";
+          policies = ["build"];
+          profile = "a b;touch pwned";
+        };
       };
     };
   cli = import ./cli.nix {
@@ -145,6 +174,10 @@ in
     # bytes out of the environment, and only the program can say which it got.
     echo "$v dir: \$CAPSULE_PROFILE_DIR"
     echo "\$*" > "\$PWD/out.argv"
+    # The same argv with its word boundaries kept: the count, then each word
+    # bracketed on its own line. \`out.argv\` joins them, so a value split in
+    # two reads the same there as one value holding a space.
+    { echo "\$#"; for a in "\$@"; do echo "[\$a]"; done; } > "\$PWD/out.args"
     EOF
       chmod +x "stub/capsule-$v"
     done
@@ -159,7 +192,7 @@ in
       # The stub's record of what it was handed, cleared per run: a stale one
       # would let "nothing reached the program" pass on the previous call's
       # argv, which is a round that never discriminates (item 37).
-      rm -f out.argv
+      rm -f out.argv out.args
       "$capsule" "$@" > out 2>&1 || rc=$?
     }
     ck() {
@@ -215,14 +248,15 @@ in
           c = substr($0, p, q - p); sub(/ +$/, "", c); print c; exit
         }' out
     }
-    # Whether every value on a slot's row starts where a header label starts.
-    # Row to header only: the header's `mem cur/peak` has a word with no value
+    # Whether every value on the named slots' rows starts where a header label
+    # starts. Named, because `%-Ns` is a minimum: `odd`'s long cell widens its
+    # own row by design, and nothing else. Row to header only: the header's `mem cur/peak` has a word with no value
     # under it by design. `purpose` is free text, so nothing from its label on
     # is measured.
     aligned() {
-      awk '
+      awk -v rows=" $* " '
         /^capsule +created / { h = $0; lim = index(h, " purpose") + 1; next }
-        h != "" && /^(${lib.concatStringsSep "|" (builtins.attrNames fixture.instances)}) / {
+        h != "" && index(rows, " " $1 " ") > 0 {
           for (i = 1; i < lim; i++) {
             if (substr($0, i, 1) == " " || (i > 1 && substr($0, i - 1, 1) != " ")) continue
             if (substr(h, i, 1) == " " || (i > 1 && substr(h, i - 1, 1) != " ")) {
@@ -242,7 +276,7 @@ in
     ck "a status over one document answers" 0 "$rc"
     ckt "the sole document is bracketed on a slot nothing has assigned" \
       test "$(profileOf none)" = "[solo]"
-    ckt "the header lines up with its rows" aligned
+    ckt "the header lines up with its rows" aligned none one both dflt hole
 
     # A pin with no record is what a provision leaves when its record write
     # fails. It is written by hand here, then the host's document moves on: the
@@ -532,6 +566,57 @@ in
     ck "and its neighbour still refuses" 1 "$rc"
     ckt "  naming both" saw "duo solo"
 
+    # ------------------------------------ a slot's declared profile (SL-001)
+    #
+    # The operator saying which target an unassigned slot is for, the way they
+    # say which policy it runs. A step between the record and the sole
+    # document, so it answers where the ambiguity above refuses — and loses to
+    # the record and to the flag, in that order.
+    run dflt collect
+    ck "a declared slot resolves on a host with two documents" 0 "$rc"
+    ckt "  to the profile it declares" \
+      saw "collect argv: --capsule dflt --profile solo --policy build"
+    run dflt purpose "a declared slot"
+    assign dflt duo
+    run dflt collect
+    ck "the record beats the declaration" 0 "$rc"
+    ckt "  so the recorded one is what the program gets" \
+      saw "collect argv: --capsule dflt --profile duo --policy build"
+    run dflt collect --profile other
+    ck "the flag beats both" 0 "$rc"
+    ckt "  passed through, and neither of the others added" \
+      test "$(cat out.argv)" = "--capsule dflt --policy build --profile other"
+    unassign dflt
+
+    # The name reaches the front end's text through a rendered `case`. Quoted,
+    # it is one word; bare, it is two words and a command.
+    run odd collect
+    ck "a declared name is spliced literally" 0 "$rc"
+    ckt "  arriving in out.args as one argument" \
+      grep -qxF "[a b;touch pwned]" out.args
+    ckt "  and running nothing" test ! -e pwned
+
+    # A declared name no document backs resolves (DEC-015) and refuses at use,
+    # naming the directory — never as nothing, and never with a write.
+    run decl provision somecommit
+    ck "a misdeclared slot's provision refuses naming the directory" 1 "$rc"
+    ckt "  naming the profile nobody can load" saw "no profile named 'unbacked'"
+    ckt "  and where it looked" saw "$CAPSULE_PROFILE_DIR"
+    ckt "  with nothing having reached the program" test ! -s out.argv
+    run decl purpose "misdeclared"
+    run decl unit u7
+    ck "a misdeclared slot's unit is not recorded" 1 "$rc"
+    ckt "  saying which name will not load" saw "no profile named 'unbacked'"
+    ckt "  and the record is untouched" \
+      test "$(jq -r .unit "$CASE_STATE/slot/decl/assignment.json")" = null
+    # A token recorded some other way is not filled in: the program behind a
+    # collect makes the refusal with the better message.
+    jq '.unit = "u7"' "$CASE_STATE/slot/decl/assignment.json" > tmp.json
+    mv tmp.json "$CASE_STATE/slot/decl/assignment.json"
+    run decl collect
+    ck "a misdeclared slot's collect still reaches its program" 0 "$rc"
+    ckt "  with no --unit filled in" unsaw "--unit"
+
     # ------------------------------- the unit scope, and item 51's decision 3
     #
     # `stateNeedsUnit` was an eval-time predicate over *this host's* target, so
@@ -558,6 +643,18 @@ in
     # The other side of the fork, so neither answer is a constant. Same slot,
     # same record, one different document.
     writeProfile holed '["state/{unit}/notes"]'
+
+    # A declared slot answers the unit question from its declaration, as an
+    # assigned one does from its record: the default says which target it is.
+    run hole unit u1
+    ck "a declared unassigned slot scopes by unit" 0 "$rc"
+    ckt "  the record says so" \
+      test "$(jq -r .unit "$CASE_STATE/slot/hole/assignment.json")" = u1
+    run hole collect
+    ck "  and a collect on it is filled from that record" 0 "$rc"
+    ckt "  with the unit beside the declared profile" \
+      saw "--profile holed --unit u1"
+
     assign both holed
     run both unit u1
     ck "and a unit against a holed one is taken" 0 "$rc"
@@ -600,6 +697,10 @@ in
       grep -qE 'policy +unit +purpose' out
     ckt "  with the recorded token on the row of the slot that has one" \
       grep -qE '^one .+ u2 +-$' out
+    ckt "a declared default is bracketed" test "$(profileOf dflt)" = "[solo]"
+    ckt "a misdeclared slot reads [unbacked], not -" \
+      test "$(profileOf decl)" = "[unbacked]"
+    ckt "  and its row lines up with the header" aligned decl dflt
 
     # ------------------------------ what a provision records, and what it did not
     #
@@ -1011,6 +1112,12 @@ in
     ck "a handoff across two targets refuses" 1 "$rc"
     ckt "  naming both documents" saw "on profile holed"
     ckt "  rather than the slots alone" saw "no work to hand between them"
+    # A destination answering from its declaration and not a record says so:
+    # "is on" would read as an assignment, which DEC-014 exists to prevent.
+    run dflt handoff one --purpose x
+    ck "handoff to a declared destination says it declares, not that it is on" 1 "$rc"
+    ckt "  naming the source's record" saw "'one' is on profile duo"
+    ckt "  and the destination's declaration" saw "'dflt' declares solo"
     assign one holed
 
     # ----------------------------------- the verify, which is the whole item

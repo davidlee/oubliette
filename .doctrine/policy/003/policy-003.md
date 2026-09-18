@@ -8,7 +8,7 @@ names a value implicitly.**
 | axis | the one home | what it holds |
 | --- | --- | --- |
 | addressing | **`net` in `flake.nix`** | tap name, both addresses, MAC, proxy port. Threaded to the guest via `specialArgs`. **Do not hardcode an address anywhere else.** |
-| slots | **`capsules.nix`** | which slots exist (`a`…`j`) and the policy set an assigner may select within |
+| slots | **`capsules.nix`** | which slots exist (`a`…`j`), the policy set an assigner may select within, and the profile each slot declares — a convenience, with no set beside it |
 | host controls | **`policies.nix`** | an allowlist file, an ingestion bound and `mayCollect` per named policy |
 | the confined repo | **`target.nix`** | name, path, tools package, caches, sizes |
 | a probe's fabric | **`probeFabric` in `flake.nix`** | every name, link, address and network a probe's egress fabric is built from |
@@ -23,8 +23,12 @@ lifecycle ones require one (`NOTES item 28`).
 **Resolution is the front end's act, never a program's.** The `capsule` front end
 resolves an unnamed verb to the slot that is *up* — refusing when none or several
 — and resolves which target a verb means by explicit flag, then the slot's
-record, then the one profile this host declares, refusing when several. **A
-program that reads host state to pick a target is `NOTES item 20`'s mistake.**
+record, then the slot's declared profile, then the only document in the profile
+directory, refusing when there are none or several. **A slot's declared profile
+is not the implicit default this policy forbids**: it is declared, per slot, in
+the axis's one home, and a name no document backs refuses at use rather than
+resolving to something else (`REV-001`, SL-001). **A program that reads host
+state to pick a target is `NOTES item 20`'s mistake.**
 
 **No perimeter value lives in `target.nix` and none comes back.** A control
 chosen by whoever names the project is a control the naming authority holds

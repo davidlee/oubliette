@@ -263,7 +263,11 @@ bought something else.
   allowlist, its own `target.nix`. Priced in
   [plan-c](./plan-c-multi-capsule.md#mixed-targets-defer-but-keep-it-possible);
   the cheap insurance it recommended — a `target` field on the instance record —
-  **was not taken**: `declared` carries `index` and nothing else.
+  **was not taken** then. SL-001 has since added one, `profile`, as a declared
+  convenience rather than a binding: every slot declares `doctrine`, because
+  this host builds one image and a slot declaring another target would boot it
+  anyway (`DEC-016`). A per-slot split waits on a slot having its own image
+  (`IMP-006`).
 
   What is no longer speculative is the *port*. panopticon is a second target on
   branch `second-target`, and it cost `target.nix` wholesale, one allowlist

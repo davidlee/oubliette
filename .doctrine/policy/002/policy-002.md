@@ -31,13 +31,21 @@ Three limbs:
    leniency in the flake**. Strict-and-owned beats lenient-and-coupled: it fails
    loudly here, and it is the only thing that ports.
 
-**`doctrine` may appear in exactly two places**: `target.nix`, and
-`inputs.target.url`, which cannot be computed. Nothing target-shaped goes in
+**A target's name may appear in code** (`*.nix`, `*.sh` and the justfile,
+outside comments, `.doctrine/` and the tool configuration — `.mcp.json`,
+`.claude/`, `.codex/`) **only in `target.nix`, `inputs.target.url`, and as a
+slot's `profile` value in `capsules.nix`.** Generic source never hardcodes a
+target's identity or branches on it; a host-declared value may be threaded into
+a generated front end. A case suite's fixture may reproduce a target's layout as
+data, since a fixture is what a program is run against, not what it is. The list
+keeps this checkable by search: in those files and outside comments, a hit
+anywhere else is a violation (`REV-001`, SL-001). Nothing target-shaped goes in
 `perimeter/`, `vm/capsule.nix` or the justfile; it comes from there as a value.
 **And nothing target-shaped is ever read *out of the target repo*** — the agent
 can edit that (`NOTES item 16`).
 
-**No program carries a target's values or its name — nor its own existence.**
+**No program carries a target's values or its name — except a host-declared
+value threaded into the generated front end — nor its own existence.**
 Every `capsule-<verb>` is built on every host and refuses at run time for a
 document declaring nothing, because "no program rather than one that cannot work"
 is the right absent path only while a host has one target (`NOTES item 51` step
@@ -67,7 +75,9 @@ this one lives here, and they are **separate id spaces** (`ADR-001` term 2).
 every printed string.
 
 **Excluded**: `target.nix` itself, which is where a target's values are *supposed*
-to live, and `inputs.target.url`.
+to live, `inputs.target.url`, and a slot's `profile` value in `capsules.nix` —
+the host operator saying which client a slot serves, a convenience with no set
+beside it (`docs/contract-assignment.md`).
 
 The surface this rule produces is written down field by field:
 `docs/contract-target.md` is what any repo must supply and may rely on;

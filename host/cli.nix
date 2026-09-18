@@ -410,6 +410,25 @@ in
           esac
         }
 
+        # Which target the host operator says a slot is for, when nothing has
+        # assigned it (capsules.nix, SL-001). A convenience, not a control: `-`
+        # when the slot declares none. Escaped, because unlike a policy name it is
+        # not checked against a declared set at eval — its shape check
+        # (host/profile-name.nix) does not make it safe to splice. The `*)`
+        # branch `slotPolicy` does without is here because an empty echo would
+        # pass the resolver's `!= -` test and resolve to the empty name.
+        slotDeclaredProfile() {
+          case "$1" in
+        ${lib.concatMapStringsSep "\n" (c: "    ${c.name}) echo ${
+            if c.profile == null
+            then "-"
+            else lib.escapeShellArg c.profile
+          } ;;")
+          (builtins.attrValues capsules.instances)}
+            *) echo - ;;
+          esac
+        }
+
         # The set an assigner may select within, per slot. The host operator's
         # other declaration, and the one that makes the verb below delegable: the
         # authority to say which project a slot holds stops short of saying what
@@ -799,17 +818,22 @@ in
 
         # Which target a verb on this slot is about — the *only* place that
         # question is answered, and it is answered from host state, which is why
-        # it is here (NOTES item 51, decision 4). Three sources, in the order
+        # it is here (NOTES item 51, decision 4). Four sources, in the order
         # authority runs:
         #
         #   - an explicit `--profile` in the argv, which is the one-off form and
         #     wins, exactly as `--policy` does over a slot's declaration;
         #   - the slot's assignment record, written at every provision since
         #     item 29 and read by nothing until now;
-        #   - and for a slot nothing has assigned, the one profile this host has
-        #     rendered — refusing when there are none or several.
+        #   - the profile the slot declares in capsules.nix (SL-001) — the host
+        #     operator's convenience, not this front end's latitude: the operator
+        #     wrote it down, and a name no document backs resolves anyway and
+        #     refuses at use, naming the directory (`DEC-015`);
+        #   - and for a slot nothing has assigned or declared, the only document
+        #     in the profile directory — refusing when there are none or several.
         #
-        # That last is this front end's own latitude and not a default: it is the
+        # That last is this front end's own latitude, the only thing here it
+        # chooses on its own, and not a default: it is the
         # same shape as resolving an unnamed verb to the slot that is *up*, one
         # axis over, and it degrades the right way — the moment this host renders
         # two documents, an unassigned slot has to say which. A **program** gets a
@@ -844,6 +868,9 @@ in
           profileName=$(recordField "$n" profile)
           [ "$profileName" != - ] && return 0
 
+          profileName=$(slotDeclaredProfile "$n")
+          [ "$profileName" != - ] && return 0
+
           mapfile -t rendered < <(profileNames)
           case "''${#rendered[@]}" in
             1) profileName=''${rendered[0]} ;;
@@ -875,6 +902,8 @@ in
         #   0  this slot's target scopes its state by a unit
         #   1  it does not, so a token here would scope nothing
         #   2  no target resolved at all
+        #   3  a name resolved and will not load — a declared profile no
+        #      document backs (SL-001)
         #
         # A slot nothing has assigned on a host with two documents is (2), and it
         # has nothing for a token to be *wrong* against — so the callers below
@@ -884,7 +913,8 @@ in
         slotNeedsUnit() {
           local n="$1"
           shift
-          slotProfile "$n" ''${1+"$@"} >/dev/null 2>&1 || return 2
+          slotProfileName "$n" ''${1+"$@"} 2>/dev/null || return 2
+          profileLoad "$profileName" >/dev/null 2>&1 || return 3
           profileNeedsUnit
         }
 
@@ -949,6 +979,14 @@ in
           local n="$1" token="$2" needs=0
           shift 2
           slotNeedsUnit "$n" ''${1+"$@"} || needs=$?
+          # A name that will not load is not "nothing to ask": writing the token
+          # would record a scope against a target nobody can read. The loader
+          # says why, in its own words.
+          if [ "$needs" = 3 ]; then
+            profileLoad "$profileName" >/dev/null || true
+            echo "capsule: nothing written." >&2
+            return 1
+          fi
           if [ "$needs" = 1 ]; then
             echo "capsule: '$n' is on profile $profileName, which declares no" >&2
             echo "  state paths with a place for one — so this token would scope" >&2
@@ -1124,8 +1162,9 @@ in
         #   name*   pinned, and this host's document has changed since — an
         #           edit to target.nix that no verb has carried to this slot
         #   name!   pinned, and the bytes are not the ones the record names
-        #   [name]  no record names it: the sole document this host has. A
-        #           guess and an assignment must not read the same (`DEC-014`).
+        #   [name]  no record names it: the slot's declaration, or the sole
+        #           document this host has. A default and an assignment must
+        #           not read the same (`DEC-014`).
         #           It keeps `*` for a pin a failed record write left behind,
         #           and never carries `!`, which compares against a record.
         #
@@ -1158,6 +1197,16 @@ in
             host=$(digestOf "$hostProfileDir/$profileName.json")
           fi
           if [ "$host" != "$(digestOf "$pin")" ]; then echo "$shown*"; else echo "$shown"; fi
+        }
+
+        # How a slot holds the profile it resolved to, in words: a record names
+        # it, or it does not and the slot declares one (or the host has one).
+        profileClaim() {
+          if [ "$(recordField "$1" profile)" != - ]; then
+            echo "is on profile $2"
+          else
+            echo "declares $2"
+          fi
         }
 
         statusRow() {
@@ -2150,12 +2199,14 @@ in
             # Two slots on two targets would fetch into two checkouts and push
             # one project's code into another's capsule. Refused here rather than
             # discovered at the push, and naming both documents.
+            # A slot answering from its declaration rather than a record says
+            # so — the status cell's question, asked the same way (`DEC-014`).
             slotProfileName "$src" || exit 1
             srcProfile="$profileName"
             slotProfileName "$name" || exit 1
             if [ "$srcProfile" != "$profileName" ]; then
-              echo "capsule: '$src' is on profile $srcProfile and '$name' is on" >&2
-              echo "  $profileName, so there is no work to hand between them." >&2
+              echo "capsule: '$src' $(profileClaim "$src" "$srcProfile") and '$name' $(profileClaim "$name" "$profileName")," >&2
+              echo "  so there is no work to hand between them." >&2
               exit 1
             fi
 

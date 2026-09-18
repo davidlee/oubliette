@@ -75,56 +75,73 @@ let
   # checked here (`misprofiled`, below); whether a document backs it is run-time
   # state outside the store, so `profileLoad` (host/profile.nix) checks that, at
   # use (SL-001 design sec-2).
+  #
+  # Every slot declares `doctrine` because this host builds one guest image and
+  # it is doctrine's (`DEC-016`): a slot declaring another target would boot this
+  # image anyway. A split waits on a slot having its own image (`IMP-006`). The
+  # literal repeats `target.nix`'s `name` on purpose (`DEC-012`) — renaming the
+  # target leaves these naming a document that no longer exists, and every verb
+  # on them refuses loudly, at use.
   declared = {
     a = {
       index = 0;
       policy = "build";
       policies = policies.everything;
+      profile = "doctrine";
     };
     b = {
       index = 1;
       policy = "build";
       policies = policies.everything;
+      profile = "doctrine";
     };
     c = {
       index = 2;
       policy = "build";
       policies = policies.everything;
+      profile = "doctrine";
     };
     d = {
       index = 3;
       policy = "build";
       policies = policies.everything;
+      profile = "doctrine";
     };
     e = {
       index = 4;
       policy = "build";
       policies = policies.everything;
+      profile = "doctrine";
     };
     f = {
       index = 5;
       policy = "build";
       policies = policies.everything;
+      profile = "doctrine";
     };
     g = {
       index = 6;
       policy = "build";
       policies = policies.everything;
+      profile = "doctrine";
     };
     h = {
       index = 7;
       policy = "build";
       policies = policies.everything;
+      profile = "doctrine";
     };
     i = {
       index = 8;
       policy = "build";
       policies = policies.everything;
+      profile = "doctrine";
     };
     j = {
       index = 9;
       policy = "build";
       policies = policies.everything;
+      profile = "doctrine";
     };
   };
 
