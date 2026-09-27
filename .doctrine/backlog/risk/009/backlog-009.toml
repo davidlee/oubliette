@@ -15,7 +15,7 @@ tags = []
 likelihood = "high"
 impact = "medium"
 origin = "capsule c OOM kills, 2026-09-28"
-controls = ["guest kernel OOM killer"]
+controls = ["guest kernel OOM killer", "proposed: guest zram in vm/capsule.nix (unprobed)"]
 
 # outbound-only (ADR-004). Cross-kind structural edges (e.g. references with a role
 # — `originates_from` for backlog→slice provenance — governed_by, related, drift) are
