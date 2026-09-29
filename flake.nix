@@ -24,9 +24,12 @@
     # url has to be a literal, hence the duplication; `--override-input target
     # path:/…` switches it for one build.
     #
-    # `git+file:` reads committed HEAD, so changes there need a commit before
-    # `nix flake update target` will see them.
-    target.url = "git+file:///home/david/dev/doctrine";
+    # A published url, not a checkout on one desktop (ISS-015): the lock is
+    # committed, so whatever it pins is what a stranger's clone has to fetch. A
+    # doctrine change therefore needs a *push* before `nix flake update target`
+    # sees it. To try an unpushed one, override a build — never `nix flake lock`
+    # with an override, which writes the local path back into the lock.
+    target.url = "github:davidlee/doctrine/edge";
 
     # The one tool source this host registers beyond nixpkgs and the target:
     # where the agent CLIs come from (`fragments.nix`'s `agents`). A fragment is

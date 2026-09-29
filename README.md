@@ -169,8 +169,10 @@ for it); `services.resolved` must be on or it refuses to evaluate.
 
 **The VM stays imperative.** Nothing here declares `microvm.vms.<name>`,
 deliberately: that makes the host config evaluate the guest closure, and this
-host's config is fetchable from darwin only because it does not (the `git+file:`
-target path exists on one machine). So:
+host's config is fetchable from darwin only because it does not. (That was
+first a fetchability argument — the target input was a `git+file:` path on one
+machine — and ISS-015 made the input a GitHub url, so what remains is that the
+host config need not learn what a capsule contains.) So:
 
 ```
 # the flake ref carries no fragment: `microvm` appends
@@ -237,8 +239,9 @@ failed`, naming neither the tap unit nor the absent directory. So read
 
 Wired in on Sleipnir: `~/flakes/modules/nixos/capsule.nix`, imported from
 `hosts/Sleipnir/config.nix`, with the input taking `inputs.target.follows =
-"nixpkgs"` so the graph is fetchable from darwin (the `git+file:` target path
-exists on one machine only, and nothing in the host config evaluates the guest).
+"nixpkgs"`. Nothing in the host config evaluates the guest, so that shim spares
+it a fetch; it was a fetchability requirement only while the target input was a
+`git+file:` path on one machine (ISS-015).
 That shim is exactly why the VM is created imperatively above: the VMM moves
 under systemd without the host config ever learning what a capsule contains.
 
@@ -566,7 +569,7 @@ one list. To change it:
 
 ```
 cd ~/dev/doctrine          # edit devToolPkgs in flake.nix
-git commit                 # git+file: inputs read committed HEAD
+git commit && git push     # the input is github:…/edge, so it reads what is pushed
 cd ~/dev/oubliette && nix flake update target && git commit flake.lock
 just refresh-build <slot>  # per slot; module path
 ```
@@ -602,7 +605,10 @@ takes that list unchanged.
 One duplication is unavoidable: an input's url must be a literal, so
 `inputs.target.url` in `flake.nix` has to name the same repo as `path` in
 `target.nix`, and nix will not check that for you. For a one-off, override it
-instead: `--override-input target path:/home/you/dev/other`.
+instead: `--override-input target path:/home/you/dev/other`. Keep the url one
+that anybody can fetch — the lock is committed, so a local path there makes the
+flake unbuildable on every other machine (ISS-015) — and keep overrides on
+builds: `nix flake lock --override-input` writes the override into the lock.
 
 A second target usually wants a policy of its own — half of any allowlist is
 that project's dependency hosts — so add one to `policies.nix` and put its name

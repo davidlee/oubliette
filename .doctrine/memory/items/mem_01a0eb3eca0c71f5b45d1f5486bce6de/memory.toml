@@ -1,0 +1,42 @@
+memory_uid = "mem_01a0eb3eca0c71f5b45d1f5486bce6de"
+memory_key = "mem.fact.oubliette.target-input-reads-pushed-edge"
+schema_version = 1
+memory_type = "fact"
+status = "active"
+title = "The target input is doctrine's pushed edge, so a tool-set change needs a push before a lock update"
+summary = "inputs.target is github:davidlee/doctrine/edge (ISS-015); unpushed doctrine work is invisible to nix flake update target, and an override must never be locked."
+created = "2026-09-29"
+updated = "2026-09-29"
+
+[scope]
+paths = ["flake.nix", "flake.lock"]
+globs = []
+commands = []
+tags = ["gotcha"]
+workspace = "default"
+repo = "github.com/davidlee/oubliette"
+repo_id_kind = "remote"
+repo_id_confidence = "high"
+
+[git]
+anchor_kind = "checkout_state"
+commit = ""
+tree = "1a7fe1ec0a71fc5bb01ee14c1117f278fb85fa87"
+ref_name = "refs/heads/main"
+checkout_state_id = "cec0d93c7a9a440c1748863b95e2e79a4072e38f209ee8267447260ea80c0ab2"
+base_commit = "75d50beca948ad7714b9dac0ae9034984d648d09"
+verified_sha = ""
+normalizer = "forget.checkout.v1"
+
+[review]
+verification_state = "unverified"
+reviewed = ""
+review_by = ""
+
+[trust]
+trust_level = "high"
+
+[ranking]
+severity = "medium"
+weight = 0
+

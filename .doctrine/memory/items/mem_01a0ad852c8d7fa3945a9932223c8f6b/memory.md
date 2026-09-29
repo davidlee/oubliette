@@ -6,6 +6,6 @@ fails as:
     error: getting status of '/nix/store/…-source/vm/guest-path.nix': No such file or directory
 
 `git add` the file — no commit needed. This is a different rule from
-[[mem.fact.oubliette.git-file-inputs-read-committed-head]], which is about the
-*target's* flake needing a commit before `nix flake update target` sees it;
+[[mem.fact.oubliette.target-input-reads-pushed-edge]], which is about the
+*target's* flake needing a push before `nix flake update target` sees it;
 here the tree is this repo's own and staging is enough.

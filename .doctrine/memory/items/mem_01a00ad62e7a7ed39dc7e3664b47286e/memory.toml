@@ -3,11 +3,11 @@ memory_key = "mem.fact.oubliette.git-file-inputs-read-committed-head"
 schema_version = 1
 lifespan = "semantic"
 memory_type = "fact"
-status = "active"
+status = "superseded"
 title = "git+file: inputs read committed HEAD, so uncommitted work in the target is invisible"
 summary = "Changes to the target's flake need a commit there before nix flake update target sees them."
 created = "2026-08-16"
-updated = "2026-08-16"
+updated = "2026-09-29"
 
 [scope]
 paths = ["flake.nix", "flake.lock"]
@@ -40,4 +40,8 @@ trust_level = "medium"
 [ranking]
 severity = "medium"
 weight = 0
+
+[[relation]]
+label = "superseded_by"
+target = "mem_01a0eb3eca0c71f5b45d1f5486bce6de"
 

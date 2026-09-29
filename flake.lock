@@ -516,17 +516,18 @@
         "rust-overlay": "rust-overlay"
       },
       "locked": {
-        "lastModified": 1790509693,
-        "narHash": "sha256-nlBiP14PQd0gabpQMSPsGbb8mdVzrLs5Yfo+d19rcJE=",
-        "ref": "refs/heads/edge",
-        "rev": "78b8d189aaf26e369134f3d64cb35e52df5fcc31",
-        "revCount": 7803,
-        "type": "git",
-        "url": "file:///home/david/dev/doctrine"
+        "lastModified": 1790594355,
+        "narHash": "sha256-mBEhaII4FapDeXS44edcRWSvmbQz5xdakluHm0h73PI=",
+        "owner": "davidlee",
+        "repo": "doctrine",
+        "rev": "d804787d762e64dad021dff295d4453f1da0c416",
+        "type": "github"
       },
       "original": {
-        "type": "git",
-        "url": "file:///home/david/dev/doctrine"
+        "owner": "davidlee",
+        "ref": "edge",
+        "repo": "doctrine",
+        "type": "github"
       }
     },
     "treefmt-nix": {

@@ -288,7 +288,7 @@ The index, so you know a thing exists before you trip over it:
 | `CAPSULE_STATE` moves the quarantine and not the record — and `capsule-adopt` has no transport | `fact.oubliette.capsule-state-moves-the-quarantine-not-the-record` |
 | `nix run`/devshell binaries are store paths, so an edited program is stale until rebuilt | `fact.oubliette.devshell-binaries-are-store-paths` |
 | `denyCurrentBranch` only governs the branch HEAD names | `fact.oubliette.deny-current-branch-only-governs-head` |
-| `git+file:` inputs read committed HEAD | `fact.oubliette.git-file-inputs-read-committed-head` |
+| The target input is doctrine's **pushed** `edge` — a tool-set change needs a push, and an override is never locked | `fact.oubliette.target-input-reads-pushed-edge` |
 | `~/flakes` builds this repo two ways and only one of them is the lock | `fact.oubliette.flakes-builds-this-repo-two-ways` |
 | Set `CAPSULE_KEEP=1` before a probe run you might need to read | `fact.oubliette.capsule-keep-before-a-probe-run` |
 | `environment.variables` is login-shell scope | `fact.oubliette.environment-variables-is-login-shell-scope` |

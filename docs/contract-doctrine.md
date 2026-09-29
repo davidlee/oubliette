@@ -110,11 +110,11 @@ of it is a mechanism, and none of it may become one.
 
 Three obligations that are not fields:
 
-- **Its flake input reads committed HEAD, and the lock is not the last step.**
-  `git+file:` means uncommitted work in doctrine is invisible to the capsule; a
-  tool-set change needs a commit there and `nix flake update target` here. That
-  moves the *lock*, and a lock is not an image: a created VM tracks its state
-  directory and not the flake, so the chain finishes with `nix build .#capsule`,
+- **Its flake input reads the pushed `edge`, and the lock is not the last step.**
+  The input is `github:davidlee/doctrine/edge` (ISS-015), so unpushed work in
+  doctrine is invisible to the capsule; a tool-set change needs a push there and
+  `nix flake update target` here. That moves the *lock*, and a lock is not an
+  image: a created VM tracks its state directory and not the flake, so the chain finishes with `nix build .#capsule`,
   `microvm -u <slot>` and a restart — `just refresh-build <slot>`, per slot
   ([plan-d-fleet.md](./plan-d-fleet.md) §9, class 2). **Stopping at the lock is
   silent.** The pin reads current, the guest keeps the old toolchain, and the

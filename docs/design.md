@@ -224,8 +224,9 @@ gets the unjailed CLIs from `llm-agents` instead — the `agents` fragment of
 `fragments.nix` ([item 31](./ledger/031-the-fragment-vocabulary.md)) — and its
 confinement is the VM.
 
-**`git+file:` reads committed HEAD.** Changes to doctrine's flake need a commit
-there before `nix flake update doctrine` will see them.
+**The target input reads what is pushed.** It is `github:davidlee/doctrine/edge`
+(ISS-015), so changes to doctrine's flake need a commit *and a push* there before
+`nix flake update target` will see them.
 
 ## Capsule-only setup — three problems, one name
 
