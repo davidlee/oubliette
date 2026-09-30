@@ -6,10 +6,10 @@ disposable phase sheet (`.doctrine/state/.../phase-NN.md`) that must survive
 
 ## Harvest
 <!-- single-copy: updated in place each harvest; ids only, never restated content -->
-fresh-as-of: 2026-10-01 · design/reviewing (rev 41; RV-009, RV-010 concluded) · abf0ee4+
+fresh-as-of: 2026-10-01 · design locked (rev 45), slice → plan · fa1e617+
 
 ### Produced
-- `design.md` sec-1..sec-6 (revised after RV-009 and RV-010; human section review outstanding)
+- `design.md` sec-1..sec-6 (locked 2026-10-01; human-attested)
 - DEC-017, DEC-018, DEC-019, DEC-020, DEC-021, DEC-022, DEC-023, DEC-024 (accepted)
 - RV-009 (agent pass; F-1, F-2 fixed and verified)
 - RV-010 (external pass, gpt-6-sol; F-1..F-6 fixed and verified)
