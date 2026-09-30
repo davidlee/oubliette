@@ -32,7 +32,7 @@ entrance_criteria = [
 exit_criteria = [
   { id = "EX-1", text = "`${CAPSULE_ROOT:-${MICROVM_SPIKE_ROOT:-$PWD}}` is spelled once, in perimeter/'s `root` path definition; flake.nix's capsule-host and vm, host/quarantine.nix and host/cli.nix's quarantineOf splice it (design sec-4, RV-010 F-4) — quarantineOf gains the MICROVM_SPIKE_ROOT step it had drifted from" },
   { id = "EX-2", text = "host/own-vms.nix exports one `own_vms <process name>` fragment; `vm` and `vm-stop` both splice it and pass the runner's hostName (`capsule` for every capsule, `hello` for hello), never the slot name (design sec-4, ISS-016)" },
-  { id = "EX-3", text = "`vm` refuses before building while `own_vms capsule` is non-empty, else runs `nix build --out-link booted \"$root#$name\"` in `.vm/<name>/` and execs `./booted/bin/microvm-run`" },
+  { id = "EX-3", text = "`vm` refuses before building while `own_vms` over the process name of the image it is starting (`capsule` for every capsule, `hello` for hello) is non-empty, else runs `nix build --out-link booted \"$root#$name\"` in `.vm/<name>/` and execs `./booted/bin/microvm-run`" },
   { id = "EX-4", text = "host/vm-cases.nix carries design sec-6's three vmCases cases, re-points the existing success case at the out-link, and adds a case for ISS-016: `vm-stop b` finds a `microvm@capsule` process in this netns" },
   { id = "EX-5", text = "`just` green and `just check` clean; ISS-016 moved to resolved citing the commit" },
 ]
@@ -59,9 +59,12 @@ cases over a fixture runner tree. Closes ISS-011 by refusal.
 Landing this is the disruption DEC-023 accepted: once the host module carrying
 it is switched in, every capsule booted on an unmarked image — capsule c
 included — refuses profile verbs until restarted onto a marked one. The commit
-alone disrupts nothing on the module path; the user's host switch does."""
+alone disrupts nothing on the module path; the user's host switch does. The
+devshell's `capsule` is the other door: re-entering the devshell after this
+lands rebuilds its front end, which then refuses c at once."""
 entrance_criteria = [
   { id = "EN-1", text = "PHASE-01 complete: `vm` writes `.vm/<slot>/booted`, so the devshell branch of `bootedOf` has something to read" },
+  { id = "EN-3", text = "baselines recorded in notes.md before any edit: doctrine's guest toplevel drvPath (`nixosConfigurations.capsule.config.system.build.toplevel.drvPath`) and every slot's runner drvPath — the oracles for PHASE-02 VA-2, PHASE-03 EX-8 and PHASE-04 EX-8" },
   { id = "EN-2", text = "the user has been told this phase's landing makes running capsules refuse profile verbs after their next host switch, and has said when (capsule c is driving doctrine's SL-251)" },
 ]
 exit_criteria = [
@@ -73,7 +76,7 @@ exit_criteria = [
   { id = "EX-6", text = "the `take`: after `just build-vm`, doctrine's real runner's `bin/microvm-run` names `--config-file` on the line bootedTarget's sed matches, and that config's `boot-source.boot_args` carries `capsule.target=doctrine`; the commands and output recorded in notes.md (design sec-6, STD-001)" },
 ]
 verification = [
-  { id = "VT-1", expects = "cases 1-4: proceed on a match; refuse a mismatch naming both targets; refuse an explicit --profile naming another target (ISS-011's shape); refuse an assignment record naming another target", test_file = "host/policy-cases.nix", keywords = ["capsule.target=", "runs goad-walk's image", "ISS-011", "--config-file"], waived = false },
+  { id = "VT-1", expects = "cases 1-4: proceed on a match; refuse a mismatch naming both targets; refuse an explicit --profile naming another target (ISS-011's shape); refuse an assignment record naming another target", test_file = "host/policy-cases.nix", keywords = ["capsule.target=", "'s image, and this verb is for", "ISS-011", "--config-file"], waived = false },
   { id = "VT-2", expects = "cases 5-7 and 9: unmarked config, no booted, no --config-file, and a non-JSON config all refuse as unmarked with the reason on stderr and never a silent exit", test_file = "host/policy-cases.nix", keywords = ["does not name a target", "boot-source"], waived = false },
   { id = "VT-3", expects = "case 8: with no door the devshell link under $CAPSULE_ROOT/.vm/<slot>/booted is read and a conflicting marker under the microvms root is ignored", test_file = "host/policy-cases.nix", keywords = [".vm/", "booted"], waived = false },
   { id = "VT-4", expects = "the reader and the refusal live in the front end", test_file = "host/cli.nix", keywords = ["bootedOf()", "bootedTarget()", "capsule.target=", "does not name a target"], waived = false },
@@ -108,7 +111,7 @@ exit_criteria = [
   { id = "EX-5", text = "host/profile-cases.nix re-points its first and last cases at `names` and adds the two render cases; fixtures render sets" },
   { id = "EX-6", text = "justfile: nix_paths gains targets/ and loses target.nix; `_target` removed if uncalled" },
   { id = "EX-7", text = "docs/contract-target.md says a target is a file in targets/; README's 'Pointing it at a different repo' and 'Changing the guest's tools' and CLAUDE.md's target.nix references updated" },
-  { id = "EX-8", text = "`just` green, `just check` clean, and doctrine's guest toplevel drvPath unchanged from PHASE-02's (a pure refactor of the guest)" },
+  { id = "EX-8", text = "`just` green, `just check` clean, and doctrine's guest toplevel drvPath and the rendered profile document unchanged from PHASE-02's (a pure refactor); a drvPath that moves anyway is explained with `nix-diff` and recorded before exit" },
 ]
 verification = [
   { id = "VT-1", expects = "the derived fields are computed once, from the key", test_file = "targets/default.nix", keywords = ["derive", "byName", "guestPath", "cachePaths", "volumePath"], waived = false },
@@ -137,19 +140,19 @@ entrance_criteria = [
 exit_criteria = [
   { id = "EX-1", text = "fleet.nix as design sec-3, pure, taking mkVm as an argument; flake.nix the only caller and the only file naming this host's targets, flakes, slots and probe subject" },
   { id = "EX-2", text = "vm/capsule.nix takes `targetFlake` from specialArgs and no longer reads `inputs.target`" },
-  { id = "EX-3", text = "`nixosConfigurations` is exactly hello, capsule (images.${probeTarget}) and the slots; each image is reachable only as `packages.image-<target>` (DEC-020, RSK-005 not widened)" },
+  { id = "EX-3", text = "`nixosConfigurations` is exactly hello, capsule (images.${probeTarget}) and the slots; no target's image has a `nixosConfigurations` attribute of its own; each is built as `packages.image-<target>` (DEC-020, RSK-005 not widened)" },
   { id = "EX-4", text = "fleet-cases.nix carries design sec-6's six fleetCases cases, each forcing the attribute it pins before tryEval (RV-010 F-6); wired into flake.nix and both `build` and `cases` in the justfile; CLAUDE.md's suite list names it" },
   { id = "EX-5", text = "vm/reset-home-cases.nix asserts the scrub list contains `${volumePath}/.env` in every image" },
   { id = "EX-6", text = "justfile `build-vm` builds every `image-<target>`" },
   { id = "EX-7", text = "capsules.nix comments (profile now binds a declared slot's image) and docs/contract-assignment.md ('Who may assign'; `image` unchanged) rewritten; docs/contract-target.md's porting steps gain 'declare it and bind a slot'; CLAUDE.md's one-image lever becomes one image per target" },
-  { id = "EX-8", text = "`just` green, `just check` clean, `just build-vm` builds image-doctrine; every slot's runner drvPath unchanged from PHASE-03's" },
+  { id = "EX-8", text = "`just` green, `just check` clean, `just build-vm` builds image-doctrine; every slot's runner drvPath unchanged from PHASE-03's, or the difference explained with `nix-diff` and recorded" },
 ]
 verification = [
   { id = "VT-1", expects = "throws: a slot whose profile names no target (naming the slot); a slot with no profile; targetFlakes missing a target; targetFlakes with an extra entry", test_file = "fleet-cases.nix", keywords = ["tryEval", "deepSeq", "slotImages", "targetFlakes"], waived = false },
   { id = "VT-2", expects = "structure: two slots with one profile get the same image value; each image gets its own target.name and targetFlake; vms.capsule is the probe target's image", test_file = "fleet-cases.nix", keywords = ["specialArgs", "targetFlake", "probeTarget", "vms.capsule"], waived = false },
   { id = "VT-3", expects = "the binding lives in one pure function", test_file = "fleet.nix", keywords = ["mkVm", "targetFlakes", "unbound", "slotImages", "DEC-017"], waived = false },
   { id = "VT-4", expects = "the scrub list is checked per image", test_file = "vm/reset-home-cases.nix", keywords = ["volumePath", ".env"], waived = false },
-  { id = "VA-1", expects = "mutation: drop fleet.nix's deepSeq from one throw case → the case passes vacuously is detected by re-adding it; drop the unbound check → VT-1's first two cases red; restored" },
+  { id = "VA-1", expects = "mutation: drop the unbound check from fleet.nix → VT-1's first two cases red; drop the key check → the targetFlakes cases red; remove one case's deepSeq and confirm that case then passes against the mutated fleet.nix (the vacuity RV-010 F-6 names), so the forcing is load-bearing; each restored" },
   { id = "VA-2", expects = "slot runner drvPaths compared before/after: unchanged" },
 ]
 specs        = []

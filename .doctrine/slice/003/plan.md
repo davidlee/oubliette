@@ -29,7 +29,9 @@ because the refusal is correct with one target (it closes `ISS-011`), and
 because it is the one phase that changes behaviour on this host. So it goes
 alone and early, and it is the phase whose timing the user controls
 (`DEC-023`). The disruption starts at the user's host switch, not at the
-commit: the module path runs the program that `~/flakes`' lock names.
+commit: the module path runs the program that `~/flakes`' lock names. The devshell
+is the second door: re-entering it after PHASE-02 lands rebuilds its `capsule`,
+which refuses `c` at once.
 
 **PHASE-03 and PHASE-04 split at the target/image seam.** Moving every
 consumer to the set is a wide, mechanical refactor with an exact oracle:
