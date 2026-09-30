@@ -31,6 +31,8 @@
     # with an override, which writes the local path back into the lock.
     target.url = "github:davidlee/doctrine/edge";
 
+    doctrine.url = "github:davidlee/doctrine/edge";
+
     # The one tool source this host registers beyond nixpkgs and the target:
     # where the agent CLIs come from (`fragments.nix`'s `agents`). A fragment is
     # code in the guest closure, so its source is a flake input of *this* repo,
@@ -1437,6 +1439,7 @@
         capsule-refresh
         capsule-adopt
         capsule-brief
+        inputs.doctrine.packages.${system}.default
         # Takes a file and nothing else — no state, no transport, no name to
         # resolve — so the devshell copy and the module's are the same store path
         # and neither needs the wrapper.
