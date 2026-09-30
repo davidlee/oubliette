@@ -79,7 +79,7 @@
 # finds the agent itself and refuses before booting anything if there is none.
 #
 # `probe/harness.sh` is concatenated ahead of this by flake.nix, along with the
-# values it takes from net.nix and target.nix: TAP, HOST_ADDR, GUEST_ADDR,
+# values it takes from net.nix and targets/: TAP, HOST_ADDR, GUEST_ADDR,
 # PREFIX, VM, PROXY_PORT, PROXY, ALLOWLIST and SEALED_ALLOWLIST are set there,
 # not here.
 

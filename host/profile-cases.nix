@@ -32,13 +32,20 @@
   # the refusal decision 4 turns on, and it is not reachable through `fragment`.
   select,
   inputs,
-  # The directory this host rendered, and the name of the document in it.
+  # The directory this host rendered, and the names of the documents in it —
+  # one per target this host declares (SL-003).
   dir,
-  name,
-  # The same file as a function of a target, used here only to *render fixture
-  # documents* — a fixture rather than this host's target for `guardCases`'
-  # reason, and rendered rather than spelled so a fixture cannot drift from the
-  # key set a real document has. One construction, handed down from `flake.nix`.
+  names,
+  # One target's document as a store path, the construction `dir` is built
+  # from: fixtures are rendered rather than spelled, so a fixture cannot drift
+  # from the key set a real document has.
+  jsonOf,
+  # The render's own text over a list of documents, to run over fixtures: a
+  # derivation that fails cannot be built inside this one.
+  renderDocs,
+  # The same file as a function of a target *set*, for the one round that asks
+  # what a directory of several holds — a fixture set rather than this host's
+  # for `guardCases`' reason. One construction, handed down from `flake.nix`.
   render,
   # The shipped validator as a program (host/profile.nix). Item 52 moved every
   # document rule out of nix and into the reader, so what used to be eleven
@@ -57,7 +64,7 @@
   # One table of names through both spellings of the grammar. `renderOnly` marks
   # the four characters that matter only to the front end's rendered text, which
   # `profileNameOk` refuses and `profileLoad` has no reason to.
-  names = [
+  grammarNames = [
     {
       label = "solo";
       n = "solo";
@@ -278,16 +285,22 @@ in
     #
     # No CAPSULE_PROFILE_DIR, so the baked default is what answers — the shipped
     # render read by the shipped reader.
-    run ${lib.escapeShellArg name}
-    ck "this host's own profile loads" 0 "$rc"
-    ck "  under the name it was rendered as" ${lib.escapeShellArg name} "$(field name)"
-    ck "  with a host checkout" 1 "$(field path | grep -c '^/')"
-    ck "  and a volume mount point" 1 "$(field volumePath | grep -c '^/')"
-    # Read out of the document rather than compared against nix: what is asserted
-    # is that the derivation survived the render, and a suite that spelled the
-    # expected value would be agreeing with itself instead.
-    ck "  whose checkout is derived from the two of them" \
-      "$(field guestPath)" "$(field volumePath)/$(field name)"
+    # Every target this host declares, and the directory holds exactly those.
+    ck "this host's render holds one document per declared target" \
+      ${lib.escapeShellArg (lib.concatStringsSep " " (map (n: "${n}.json") names))} \
+      "$(cd ${dir} && echo *)"
+    for n in ${lib.escapeShellArgs names}; do
+      run "$n"
+      ck "this host's own profile loads: $n" 0 "$rc"
+      ck "  under the name it was rendered as" "$n" "$(field name)"
+      ck "  with a host checkout" 1 "$(field path | grep -c '^/')"
+      ck "  and a volume mount point" 1 "$(field volumePath | grep -c '^/')"
+      # Read out of the document rather than compared against nix: what is
+      # asserted is that the derivation survived the render, and a suite that
+      # spelled the expected value would be agreeing with itself instead.
+      ck "  whose checkout is derived from the two of them" \
+        "$(field guestPath)" "$(field volumePath)/$(field name)"
+    done
     ck "  and a positive vCPU count" 1 "$(field vcpu | grep -c '^[1-9][0-9]*$')"
 
     # From here the documents are fixtures: a second target on this host is a
@@ -462,7 +475,7 @@ in
     # hand-written (item 52); a human reading the old one looks in the wrong file.
     ck "  and its hint says a profile may be placed there by hand" 1 \
       "$(grep -c 'or placed there by hand (docs/contract-target.md)' err || true)"
-    saw "rendered from target.nix by the module"
+    saw "rendered from targets/ by the module"
 
     run
     ck "and an unnamed one refuses rather than defaulting" 1 "$rc"
@@ -511,7 +524,7 @@ in
         else "refuses"
       } ${r.label}"} ${lib.boolToString r.ok} ${lib.boolToString (profileNameOk r.n)}
       grammar ${lib.escapeShellArg r.label} ${lib.escapeShellArg r.n} ${lib.boolToString (profileNameOk r.n)} ${lib.boolToString (r.renderOnly or false)}'')
-    names}
+    grammarNames}
 
     # The exported function, not the assertion that applies it to this host's
     # own slots: that one is held by its text (SL-001 design sec-5, not
@@ -581,14 +594,69 @@ in
     # checker refuses everything" from reading as a pass (item 37).
     ckdoc() { rc=0; ${lib.getExe check} "$1" >out 2>err || rc=$?; }
     ${lib.concatMapStringsSep "\n        " (m: ''
-      ckdoc ${(render m.t).json}
+      ckdoc ${jsonOf m.t}
       ck "the reader refuses ${m.why}" 1 "$rc"
       saw ${lib.escapeShellArg m.saw}'')
     mutations}
 
-    ckdoc ${(render base).json}
+    ckdoc ${jsonOf base}
     ck "and a document that breaks nothing is read" 0 "$rc"
     ck "  reporting what it holds" fixture "$(field name)"
+
+    # ------------------------------------------------------ a render of several
+    #
+    # SL-003: a host declaring two targets renders one directory holding one
+    # document per target — the real `dir` over a fixture set of two, read back
+    # by the shipped reader.
+    two=${(render {
+      byName = {
+        alpha =
+          base
+          // {
+            name = "alpha";
+            guestPath = "/vol/alpha";
+          };
+        beta =
+          base
+          // {
+            name = "beta";
+            guestPath = "/vol/beta";
+          };
+      };
+    }).dir}
+    ck "the render holds one document per target" "alpha.json beta.json" "$(cd "$two" && echo *)"
+    CAPSULE_PROFILE_DIR=$two run beta
+    ck "  each one loadable by its name" beta "$(field name)"
+
+    # And one invalid document fails the render, wherever it sits among valid
+    # ones: the render's own text, over a good document and a bad one. Nix then
+    # keeps no output at all, which is what "the whole render" means for a
+    # directory the module installs whole.
+    rc=0
+    (
+      out=$PWD/rendered
+      ${renderDocs [
+      {
+        name = "alpha";
+        json = jsonOf (base
+          // {
+            name = "alpha";
+            guestPath = "/vol/alpha";
+          });
+      }
+      {
+        name = "broken";
+        json = jsonOf (base
+          // {
+            name = "broken";
+            guestPath = "/vol/elsewhere";
+          });
+      }
+    ]}
+    ) >out 2>err || rc=$?
+    ck "one invalid document fails the whole render" 1 "$([ "$rc" -ne 0 ] && echo 1 || echo 0)"
+    saw "must stay derived from"
+    ck "  and is never installed" no "$([ -e rendered/broken.json ] && echo yes || echo no)"
 
     # ---------------------------------------------------------- the lookup itself
     #
@@ -599,8 +667,10 @@ in
     run alpha
     ck "the override chooses the directory" /home/h/alpha "$(field path)"
     unset CAPSULE_PROFILE_DIR
-    run ${lib.escapeShellArg name}
-    ck "and without it the baked render is what answers" 0 "$rc"
+    for n in ${lib.escapeShellArgs names}; do
+      run "$n"
+      ck "and without it the baked render is what answers: $n" 0 "$rc"
+    done
     ck "  which is the store path this host built" 1 \
       "$(printf '%s' ${dir} | grep -c '^/nix/store/')"
 

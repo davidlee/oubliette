@@ -3,7 +3,7 @@
 # ssh channel as you — and `capsule <name> start` runs it, so a started capsule
 # has them; `host/inject.nix` is the mechanism and knows none of the below.
 #
-# Its own file, and deliberately not `target.nix`: none of this is a property of
+# Its own file, and deliberately not a target's: none of this is a property of
 # the repo under confinement. doctrine has no opinion about which agent you sign
 # in as, and a second target would share this list unchanged. Empty is a working
 # value — a capsule with no injections is a capsule you log into by hand.
@@ -24,7 +24,7 @@
 #     than a failure — the working absent path a declaration shared by every host
 #     needs.
 #
-# The volume's mount point is the only thing taken from `target.nix`, because a
+# The volume's mount point is the only thing taken from `targets/`, because a
 # payload's destination is on the volume and `/work` may not be spelled twice.
 # Nothing else target-shaped belongs here.
 {volumePath}: let

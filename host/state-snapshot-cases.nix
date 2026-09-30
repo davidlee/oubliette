@@ -76,7 +76,7 @@ in
 
     # What a target used to bake into this text and now hands it: the
     # checkout, the ceiling, and the declared templates. Spelled here rather
-    # than taken from `target.nix`, because a suite that borrowed the live
+    # than taken from `targets/`, because a suite that borrowed the live
     # values would pass for the same reason a probe on the real /30 does
     # (NOTES item 38) — and because the three cases at the end need values no
     # target has.

@@ -258,7 +258,7 @@
     bytes=$(du -sb -- "''${take[@]}" 2>/dev/null | awk '{t += $1} END {print t + 0}')
     if [ "$bytes" -gt "$max" ]; then
       echo "capsule-state: $bytes bytes of declared state, over the $max ceiling" >&2
-      echo "  (target.nix statePaths / stateMaxBytes). Skipping the state half —" >&2
+      echo "  (the target's statePaths / stateMaxBytes). Skipping the state half —" >&2
       echo "  the code refs still collect." >&2
       printf -- '-\t%s\t0\n' "$bytes"
       exit 0

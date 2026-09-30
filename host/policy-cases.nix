@@ -1043,7 +1043,7 @@ in
     # the store, because nothing could edit one; item 52 put them in a directory
     # a human writes, and these rounds are what says the pin arrived with them.
     #
-    # Reaching this on a host means provisioning a slot, editing `target.nix`,
+    # Reaching this on a host means provisioning a slot, editing a target's file,
     # switching, and then asking the slot what it thinks — two rebuilds to
     # observe one comparison.
     mkdir -p "$CASE_STATE/head"

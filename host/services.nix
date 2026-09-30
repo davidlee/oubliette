@@ -30,7 +30,9 @@
 # this path no longer uses.
 {
   net,
-  target,
+  # This host's declared targets (targets/default.nix), for the profile render
+  # the activation installs (host/programs.nix).
+  targets,
   capsules,
   policies,
   # The guest's branch, threaded through to the git channel exactly as the
@@ -120,7 +122,7 @@
   guestSsh = import ./guest-ssh.nix {inherit lib;};
 
   hostPrograms = import ./programs.nix {
-    inherit pkgs lib net target capsules policies workBranch;
+    inherit pkgs lib net targets capsules policies workBranch;
     access = guestSsh.viaSocket {
       socat = "${pkgs.socat}/bin/socat";
       socket = capsules.socketOf ''"$capsule"'';
@@ -448,7 +450,7 @@ in {
   imports = [
     (lib.mkRemovedOptionModule ["services" "capsule-perimeter" "repo"] ''
       A target's source is its profile document's `path`: set `path` in
-      target.nix, or export CAPSULE_REPO for a one-off.
+      the target's file under targets/, or export CAPSULE_REPO for a one-off.
     '')
   ];
 
@@ -490,14 +492,14 @@ in {
         that never runs `nixos-rebuild`).
 
         **This module owns the names it renders and nothing else here.** The
-        activation script installs one document per target `target.nix` declares
+        activation script installs one document per target `targets/` declares
         and overwrites it every time, because copy-if-absent would make an edit
-        to `target.nix` invisible forever after the first boot — item 22's
+        to a target's file invisible forever after the first boot — item 22's
         write-if-absent payload rule applied to a *derived* payload, which Plan D
         §6.3 already names as the thing to get right. A document under any other
         name is its writer's and nothing here touches it. So a document edited in
         place under this host's own target name is reverted at the next
-        activation: `target.nix` is the source and the file is a render.
+        activation: `targets/` is the source and the file is a render.
       '';
     };
 
@@ -758,7 +760,7 @@ in {
       # The documents themselves, **installed rather than linked** (NOTES item 52,
       # decision 1). A symlink into the store would keep nix authoritative and
       # give up the whole point, since nobody can write the target of one; a
-      # copy-if-absent would make an edit to `target.nix` invisible forever after
+      # copy-if-absent would make an edit to a target's file invisible forever after
       # the first boot. So they are overwritten at every activation, and only
       # under the names this host renders — a document called anything else
       # belongs to whoever wrote it and nothing here touches it.
@@ -799,7 +801,7 @@ in {
       environment.systemPackages = [
         # Wrapped for the same reason the two stateful programs are, and it is the
         # same wrapper: `capsule <name> status` counts refs in `stateDir`, which
-        # is this host's rather than `target.nix`'s — a host whose human is not
+        # is this host's rather than a target's — a host whose human is not
         # this one has a different home. Wrapping keeps the CLI itself one store
         # path. (`capsule <name> fetch` writes into the slot's document's `path`
         # since SL-001; nothing here supplies a repo.)

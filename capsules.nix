@@ -1,5 +1,5 @@
 # The capsules this host runs. Its own file for the same reason as net.nix and
-# target.nix — several places need these values and none of them may spell them
+# targets/ — several places need these values and none of them may spell them
 # twice — and, like both, a *value*: it says which capsules exist and what each
 # is called on the wire. What a capsule is made of is the units' business
 # (docs/plan-c-implementation.md); nothing here reads the system or does work.
@@ -79,7 +79,7 @@ let
   # Every slot declares `doctrine` because this host builds one guest image and
   # it is doctrine's (`DEC-016`): a slot declaring another target would boot this
   # image anyway. A split waits on a slot having its own image (`IMP-006`). The
-  # literal repeats `target.nix`'s `name` on purpose (`DEC-012`) — renaming the
+  # literal repeats a target's `name` (its key in `targets/`) on purpose (`DEC-012`) — renaming the
   # target leaves these naming a document that no longer exists, and every verb
   # on them refuses loudly, at use.
   declared = {

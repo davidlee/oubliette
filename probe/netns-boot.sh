@@ -46,7 +46,7 @@
 # that reason.
 #
 # `probe/harness.sh` is concatenated ahead of this by flake.nix, along with the
-# values it takes from net.nix and target.nix — TAP, HOST_ADDR, GUEST_ADDR,
+# values it takes from net.nix and targets/ — TAP, HOST_ADDR, GUEST_ADDR,
 # PREFIX, VM and GUEST_REPO are set there, not here. The boot sequence itself
 # also lives in the harness now, because probe/freshness.sh measures the same
 # shape and two copies of it would be two answers.

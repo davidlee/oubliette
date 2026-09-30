@@ -37,7 +37,7 @@
 #
 # Judgement calls, as in probe/freshness.sh:
 #
-#   1. **Real capsules, real size.** Two guests at target.nix's declared RAM.
+#   1. **Real capsules, real size.** Two guests at the probe target's declared RAM.
 #      A shrunken second capsule would measure a capsule nobody runs, and the
 #      cost is the point of the exercise.
 #   2. **Its own state, never `.vm/capsule`.** Two state directories under
@@ -55,7 +55,7 @@
 # no branch any more, and `$WORK_BRANCH` is the other thing called one here.
 #
 # `probe/harness.sh` is concatenated ahead of this by flake.nix along with the
-# values it takes from net.nix and target.nix, and it carries the boot fixture
+# values it takes from net.nix and targets/, and it carries the boot fixture
 # these two capsules share.
 
 # Deliberately no errexit: several of these tests are supposed to fail.

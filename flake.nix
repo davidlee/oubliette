@@ -17,9 +17,9 @@
     };
 
     # The repo this capsule confines, as a flake: the source of the guest's tool
-    # set (`target.nix`'s `toolsPackage`), one list shared with that repo's own
+    # set (targets/doctrine.nix's `toolsPackage`), one list shared with that repo's own
     # devshell so the guest cannot drift from it. Everything else about the
-    # target is described in ./target.nix — this must name the same repo as
+    # target is described in ./targets/doctrine.nix — this must name the same repo as
     # `path` there, and nix cannot check that for you (NOTES item 16). An input
     # url has to be a literal, hence the duplication; `--override-input target
     # path:/…` switches it for one build.
@@ -61,9 +61,20 @@
     # host-side NixOS module needs the same values.
     net = import ./net.nix;
 
-    # Which repo is confined, and the target-shaped settings that follow from it.
-    # Same rule as net.nix: nothing below spells a target detail twice.
-    target = import ./target.nix;
+    # The repos this host confines, and the target-shaped settings that follow
+    # from each (targets/default.nix). Same rule as net.nix: nothing below
+    # spells a target detail twice, and nothing generic imports this — it is
+    # handed down as an argument, so this file is the one place binding it
+    # (SL-003 design sec-2).
+    targets = import ./targets;
+
+    # The one real target the probes are about, named once. A probe is evidence
+    # about the real capsule on this host, so it may know this host's target —
+    # `probe/netns-boot.sh` is the standing exception. `.#capsule` is this
+    # target's image, and until each slot is bound by its profile (SL-003
+    # PHASE-04, `fleet.nix`) every slot boots it too.
+    probeTarget = "doctrine";
+    probeSubject = targets.byName.${probeTarget};
 
     # Which capsules exist, and each one's namespace, socket and uplink. Same
     # rule again. Under netns the guest-facing link is *not* in here — it is
@@ -98,7 +109,7 @@
     # anything here has to grow (Plan D D7, docs/contract-flavour.md).
     #
     # The floor is *not* here: that is the target's, and `vm/capsule.nix` still
-    # reads it out of `target.nix`. Two owners, two files, one composition.
+    # reads it out of the target's file (targets/). Two owners, two files, one composition.
     extras = ["agents" "dev-facilities"];
 
     # Where a capsule's way in lives, for the probes' throwaway capsules — which
@@ -110,7 +121,10 @@
     mkVm = hostName: module:
       lib.nixosSystem {
         inherit system;
-        specialArgs = {inherit inputs net target workBranch extras;};
+        specialArgs = {
+          inherit inputs net workBranch extras;
+          target = probeSubject;
+        };
         modules = [
           microvm.nixosModules.microvm
           ./vm/common.nix
@@ -383,7 +397,7 @@
     # relay socket instead — one construction, two transports, which is the only
     # thing that differs (host/programs.nix).
     hostPrograms = import ./host/programs.nix {
-      inherit pkgs lib net target capsules policies workBranch;
+      inherit pkgs lib net targets capsules policies workBranch;
       # The same socket expression the units inject, for the opposite purpose:
       # there it is the way in, here its existence is what says this copy is the
       # wrong one (host/guest-ssh.nix).
@@ -393,7 +407,7 @@
       };
     };
 
-    # The same values, rendered instead of interpolated — `target.nix`'s run-time
+    # The same values, rendered instead of interpolated — each target's run-time
     # half as `<name>.json`, plus the one function that reads one back
     # ([item 51](./docs/ledger/051-the-target-in-four-store-paths.md) step 3).
     # Nothing consumes it yet; step 4 points the programs above at it, and until
@@ -403,14 +417,14 @@
     # reason: it is a function of `target` and of nothing else — no transport, no
     # capsule — so a second construction would have nothing to differ in, and one
     # store path is the honest statement of that.
-    # A function of a target rather than the value, because the suite beside it
-    # pins the render's *refusals* and needs to apply it to a fixture — and one
-    # construction is the rule (CLAUDE.md), so this host's own profile is that
-    # function applied to this host's target rather than a second import.
-    render = t:
+    # A function of a target *set* rather than the value, because the suite
+    # beside it renders a fixture set — one target or two — and one construction
+    # is the rule (CLAUDE.md), so this host's own profile is that function
+    # applied to this host's set rather than a second import.
+    render = ts:
       import ./host/profile.nix {
         inherit pkgs lib;
-        target = t;
+        targets = ts;
       };
     # This host's own, taken from where the programs get it rather than built a
     # second time: `host/programs.nix` constructs it because both of its callers
@@ -424,7 +438,12 @@
     # them apart. So it takes no capsule and no transport, only an identity, and
     # both paths use the one store path.
     capsule-halt = import ./host/halt.nix {inherit pkgs net guestSsh;};
-    inherit (hostPrograms) guestHost guestRepo;
+    inherit (hostPrograms) guestHost;
+    # The probe subject's checkout as a URL, for **`probe-netns-boot` and nothing
+    # else**. That probe is the deliberate exception to the addressing rule — it
+    # boots the real guest, whose image has `net.nix` and its target in it, so
+    # the real capsule *is* its subject. No program carries this.
+    guestRepo = "ssh://${guestHost}${probeSubject.guestPath}";
     capsule-provision = hostPrograms.provision;
     capsule-collect = hostPrograms.collect;
     capsule-inject = hostPrograms.inject;
@@ -524,7 +543,7 @@
     # optional on anything (host/profile-cases.nix).
     profileCases = import ./host/profile-cases.nix {
       inherit pkgs lib;
-      inherit (hostProfile) fragment select inputs dir name check;
+      inherit (hostProfile) fragment select inputs dir names check jsonOf renderDocs;
       # The same construction this host's own profile comes from, so a fixture
       # document has the key set a real one has rather than the key set this
       # suite remembered. Since item 52 it is used for `.json` alone: the eleven
@@ -589,7 +608,8 @@
     # capsule, which puts a guest *eval* (not a build) into `just build`
     # (vm/reset-home-cases.nix).
     resetHomeCases = import ./vm/reset-home-cases.nix {
-      inherit pkgs lib target;
+      inherit pkgs lib;
+      target = probeSubject;
       guest = capsuleVm.config;
     };
 
@@ -940,7 +960,7 @@
     # are pinned rather than borrowed from whatever `sudo` happens to have on
     # PATH. They need root, so they are the human's to run.
     #
-    # `prelude` is how a probe gets net.nix/target.nix values without spelling
+    # `prelude` is how a probe gets net.nix/targets/ values without spelling
     # an address itself. The harness is concatenated rather than sourced: one
     # `writeShellApplication` is one script, so shellcheck sees both halves and
     # the probe needs no path to a sibling at run time.
@@ -1188,7 +1208,7 @@
     # a run-time argument now. `socat` is bare here: a probe has it in
     # `runtimeInputs`, where a unit has no PATH to trust.
     nsPrograms = import ./host/programs.nix {
-      inherit pkgs lib net target capsules policies workBranch;
+      inherit pkgs lib net targets capsules policies workBranch;
       access = guestSsh.viaSocket {
         socat = "socat";
         socket = socketOf ''"$capsule"'';
@@ -1203,9 +1223,9 @@
         GUEST_ADDR="${net.guest}"
         PREFIX="${toString net.prefix}"
         VM="capsule"
-        GUEST_PATH="${target.guestPath}"
-        TARGET_PATH="${target.path}"
-        CACHES="${lib.concatStringsSep " " (lib.attrValues target.caches)}"
+        GUEST_PATH="${probeSubject.guestPath}"
+        TARGET_PATH="${probeSubject.path}"
+        CACHES="${lib.concatStringsSep " " (lib.attrValues probeSubject.caches)}"
         PROVISION="${nsPrograms.provision}/bin/capsule-provision"
         # Its own name, not a slot's: this probe makes and destroys volumes, so
         # it must not land on a declared slot's socket — and `socketOf` is what
@@ -1267,12 +1287,12 @@
           # It comes off `host/profile.nix` rather than being spelled here, so
           # the hole has one spelling ([item 38](./docs/ledger/038-a-probe-that-became-a-borrower.md)).
           COLLECT_ARGS=(--policy build${
-            lib.optionalString nsPrograms.profile.needsUnit " --unit probe"
+            lib.optionalString (nsPrograms.profile.needsUnitOf probeSubject) " --unit probe"
           })
-          GUEST_PATH="${target.guestPath}"
-          TARGET_PATH="${target.path}"
+          GUEST_PATH="${probeSubject.guestPath}"
+          TARGET_PATH="${probeSubject.path}"
           WORK_BRANCH="${workBranch}"
-          MEM_MIB="${toString target.sizes.mem}"
+          MEM_MIB="${toString probeSubject.sizes.mem}"
           # Where a collect lands, from the one construction that decides it
           # rather than from this file's memory of it. The probe used to spell
           # `refs/capsule/<name>/<branch>` and was two assertions red from the
@@ -1394,7 +1414,7 @@
     # host that wants it as its real posture. Opt-in: `capsule-host` in the
     # devshell stays the development path and needs no rebuild. Import it in the
     # host's config and set `services.capsule-perimeter.{enable,owner}`.
-    nixosModules.capsule-perimeter = import ./host/services.nix {inherit net target capsules policies workBranch;};
+    nixosModules.capsule-perimeter = import ./host/services.nix {inherit net targets capsules policies workBranch;};
 
     packages.${system} =
       lib.mapAttrs (_: cfg: cfg.config.microvm.declaredRunner) vms
@@ -1410,7 +1430,7 @@
         # guard decides, and which policy a slot resolves to.
         inherit hostModuleUnits hostModulePrograms guardCases policyCases observeCases;
         inherit profileCases gitChannelCases vmCases wrapCases volumeRootCases resetHomeCases volumeCases;
-        # The rendered run-time half of `target.nix`, so a human can read what a
+        # The rendered run-time half of every target, so a human can read what a
         # program will resolve (host/profile.nix). `nix build .#capsule-profiles`.
         capsule-profiles = hostProfile.dir;
         # The validator as a program, and it was reachable by nobody: built only

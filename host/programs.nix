@@ -22,16 +22,19 @@
 #
 # Everything else here is derivation, not decision: who the host talks to
 # (`agent@`, the unprivileged guest user), where the checkout is, and which
-# payloads leave this host. All of it comes from `net.nix`, `target.nix` and
+# payloads leave this host. All of it comes from `net.nix`, `targets/` and
 # `setup.nix` — nothing target-shaped is spelled here.
 {
   pkgs,
   lib,
   net,
-  target,
+  # This host's declared targets (targets/default.nix): the profile render reads
+  # every one, and `inject` the volume's mount point, which is the capsule's and
+  # not any one target's. No program here is built from one target's values.
+  targets,
   # The host's policy vocabulary (policies.nix). Only the git channel reads it —
   # `capsule-collect` selects an ingestion bound and a permission by name — but it
-  # is threaded here for `target`'s reason: three call sites build this set, and a
+  # is threaded here for `targets`' reason: three call sites build this set, and a
   # value each of them looks up separately is a value one of them can look up
   # differently.
   policies,
@@ -72,9 +75,9 @@
   # (host/profile.nix, NOTES item 51). Built **here** rather than at each of this
   # file's three call sites for `observe`'s reason: a thing constructed twice is a
   # thing one of them can construct differently, and the front end and the module
-  # both need this one. It is a function of `target` and of nothing else, so
+  # both need this one. It is a function of `targets` and of nothing else, so
   # there is nothing for a second construction to differ in.
-  profile = import ./profile.nix {inherit pkgs lib target;};
+  profile = import ./profile.nix {inherit pkgs lib targets;};
 
   # Which *target* an invocation is about, spliced where `transport` puts which
   # *capsule* — the reader plus the `--profile` parse, as one thing a program
@@ -91,7 +94,7 @@
   # (host/observe.nix) — and two spellings of one path is how the two ends drift.
   # Not a field of the document: where a *capsule* keeps a record is this repo's
   # business and not the target's, so it is derived from `volumePath` here rather
-  # than declared in `target.nix`.
+  # than declared in a target's file.
   baselineRecordFragment = ''
     baselineRecordDir() { printf '%s/baseline' "$profile_volume_path"; }
   '';
@@ -125,12 +128,6 @@
   # Who the host talks to when it talks to a capsule. Named once: the git
   # channel needs it inside a URL, the other two as an ssh destination.
   guestHost = "agent@${net.guest}";
-
-  # The same URL as a build-time string, for **`probe-netns-boot` and nothing
-  # else** (flake.nix). That probe is the deliberate exception to the addressing
-  # rule — it boots the real guest, whose image has `net.nix` and `target.nix` in
-  # it, so the real capsule *is* its subject. No program carries this any more.
-  guestRepo = "ssh://${guestHost}${target.guestPath}";
 
   # The guest half of a collect's sideband — a store path, like `observe` below
   # and for the same reasons, pushed on stdin at each collect rather than baked
@@ -214,7 +211,7 @@
     refresh = refreshHook.invoke;
   };
 in {
-  inherit guestHost guestRepo profile;
+  inherit guestHost profile;
 
   # The one thing here with no transport, built here anyway: the guest-side half
   # of a status is a *store path* the front end pushes over whichever door it
@@ -342,13 +339,13 @@ in {
   # The non-git half of provisioning: credentials, secrets and anything else a
   # fresh capsule needs that no repository carries. The list is ./setup.nix,
   # which is handed the volume's mount point — a payload's destination is in the
-  # guest, and `/work` is `target.nix`'s to say. Its `tools` are nixpkgs attr
+  # guest, and `/work` is the capsule's to say (targets/default.nix). Its `tools` are nixpkgs attr
   # names, resolved here so that a declaration file stays data.
   inject = import ./inject.nix {
     inherit pkgs guestHost transport;
     injections =
       map (i: i // {tools = map (name: pkgs.${name}) i.tools;})
-      (import ../setup.nix {inherit (target) volumePath;});
+      (import ../setup.nix {inherit (targets) volumePath;});
   };
 
   # The last step of making a fresh capsule usable, and the only one that

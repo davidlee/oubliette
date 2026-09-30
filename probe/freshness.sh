@@ -36,7 +36,7 @@
 # same escape hatches as probe-netns-boot.
 #
 # `probe/harness.sh` is concatenated ahead of this by flake.nix, along with the
-# values it takes from net.nix and target.nix. The boot sequence is the harness's
+# values it takes from net.nix and targets/. The boot sequence is the harness's
 # too — this probe and probe/netns-boot.sh measure and assert the same shape.
 
 # Deliberately no errexit: several of these tests are supposed to fail.
@@ -206,7 +206,7 @@ check "temporary: /work/tmp is empty" deny \
   g "find $WORK/tmp -mindepth 1 | grep -q ."
 #
 # Not "empty", though it used to be: the seed links this capsule's static config
-# (target.nix's `guestConfig`) into these directories, and a cache holding a
+# (the target's `guestConfig`) into these directories, and a cache holding a
 # store symlink is a cache holding nothing a previous capsule wrote. So the
 # question is whether anything here came from outside the closure — which is the
 # property freshness actually wants, and it does not soften with each config

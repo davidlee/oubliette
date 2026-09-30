@@ -1,6 +1,6 @@
 # The target's run-time half, as a document — NOTES item 51 step 3.
 #
-# `host/programs.nix` builds every host-side program with `target.nix`'s values
+# `host/programs.nix` used to build every host-side program with a target's values
 # **interpolated into their text**, so each program's store path is a function of
 # which project this host confines. One target makes that invisible; two make it
 # four programs per target, which is [item 20](../docs/ledger/020-which-capsule-a-program-means.md)
@@ -34,10 +34,11 @@
 # document is the reader's now**. Eleven of them were `throw`s here. See
 # `validator` below.
 #
-# **The document's keys are `target.nix`'s field names.** Identity, on purpose:
-# a renamed key is a second vocabulary and a place the two can disagree. `path`
-# is therefore the *host* checkout and reads oddly beside `guestPath` — it is
-# the field `target.nix` documents and `CAPSULE_REPO` already overrides, and one
+# **The document's keys are a target's field names** (`targets/<name>.nix`, and
+# the fields `targets/default.nix` derives). Identity, on purpose: a renamed key
+# is a second vocabulary and a place the two can disagree. `path` is therefore
+# the *host* checkout and reads oddly beside `guestPath` — it is the field
+# `targets/doctrine.nix` documents and `CAPSULE_REPO` already overrides, and one
 # awkward name is cheaper than two spellings of it.
 #
 # **What is not here.** `toolsPackage`, `extraTools`, `caches`, `guestConfig` and
@@ -54,17 +55,21 @@
 # slot is pointed at *that directory* (host/cli.nix's `pinProfile` and
 # `slotProfileName`), so the second place `profileLoad` looks is the same place
 # named differently and there is still one reader and one lookup.
+#
+# **Over this host's set of targets** (SL-003 design sec-2): `targets` is
+# `targets/default.nix` as `flake.nix` imports it, and every export that was one
+# target's is a function of a target now. `dir` holds one document per target.
 {
   pkgs,
   lib,
-  target,
+  targets,
 }: let
   # Bumped when a field changes meaning or leaves, never when one is added: a
   # reader that refuses an unknown schema and accepts an unknown key is a reader
   # a new field does not have to be switched into.
   schemaVersion = 1;
 
-  document = {
+  documentOf = target: {
     schema = schemaVersion;
     inherit (target) name path guestPath volumePath cachePaths sizes;
     baseline = target.baseline or null;
@@ -376,7 +381,7 @@
       file="$pdir/$n.json"
       if [ ! -f "$file" ]; then
         profileFail "no profile named '$n' in $pdir"
-        profileFail "  A profile is <name>.json there, rendered from target.nix by the module,"
+        profileFail "  A profile is <name>.json there, rendered from targets/ by the module,"
         profileFail "  or placed there by hand (docs/contract-target.md)."
         profileFail "  CAPSULE_PROFILE_DIR chooses the directory."
         return 1
@@ -428,29 +433,51 @@
   # ([item 38](../docs/ledger/038-a-probe-that-became-a-borrower.md) is what that
   # costs). So they are the reader's, once, and the render **runs the reader**:
   # `check` below is the shipped validator's own text, and `dir` cannot be built
-  # without it passing. A broken `target.nix` is therefore a failed build rather
+  # without it passing. A broken target file is therefore a failed build rather
   # than a failed eval, which is a worse message and a better boundary.
   # A fixed store name, not `${target.name}.json`: what names the document is the
   # file the render installs, and a `name` that is not a filename is a *document*
   # to refuse rather than a store path to fail on. Getting that the wrong way
   # round would make one of the eleven rules unreachable — `writeText "a/b.json"`
   # throws before anything can read it.
-  json = pkgs.writeText "profile.json" (builtins.toJSON document);
+  jsonOf = target: pkgs.writeText "profile.json" (builtins.toJSON (documentOf target));
 
-  dir = pkgs.runCommand "capsule-profiles" {nativeBuildInputs = [pkgs.jq];} ''
-    # Pretty-printed and key-sorted, so a human can read the thing a program
-    # resolves — and parsed by jq at build, which is the render asserting for
-    # itself that the reader's parser will accept it.
-    jq -S . ${json} > profile.json
-    # Then read by the reader that programs use, which is the only check this
-    # file makes (item 52, decision 2). It prints what it loaded, so a build log
-    # says what this host declares rather than merely that it declared something.
-    # **Before the install and not after**: the name is what the file is called,
-    # so a document that fails is one this derivation never writes.
-    ${lib.getExe check} profile.json
-    mkdir -p "$out"
-    cp profile.json "$out/${target.name}.json"
+  # The render's text over a list of `{name, json}`, as a fragment so a suite
+  # can run it over fixture documents — a derivation that fails cannot be built
+  # inside another, and "one invalid document fails the render" is a property of
+  # this text rather than of this host's documents (host/profile-cases.nix).
+  # Needs `jq` on PATH and `$out` set. Every step fails explicitly rather than
+  # by errexit, which a caller's `||` or `if` would silently suspend.
+  renderDocs = docs: ''
+    mkdir -p "$out" || exit 1
+    ${lib.concatMapStringsSep "
+" (d: ''
+        # Pretty-printed and key-sorted, so a human can read the thing a program
+        # resolves — and parsed by jq at build, which is the render asserting
+        # for itself that the reader's parser will accept it.
+        jq -S . ${d.json} > profile.json || exit 1
+        # Then read by the reader that programs use, which is the only check
+        # this file makes (item 52, decision 2). It prints what it loaded, so a
+        # build log says what this host declares rather than merely that it
+        # declared something. **Before the install and not after**: the name is
+        # what the file is called, so a document that fails is one this render
+        # never writes.
+        ${lib.getExe check} profile.json || exit 1
+        cp profile.json "$out"/${lib.escapeShellArg "${d.name}.json"} || exit 1
+      '')
+      docs}
   '';
+
+  # Every target this host declares, in one directory: the build log lists them
+  # all, and one invalid document fails the whole render — the right grain,
+  # since the module installs the directory whole (host/services.nix).
+  dir =
+    pkgs.runCommand "capsule-profiles" {nativeBuildInputs = [pkgs.jq];}
+    (renderDocs (lib.mapAttrsToList (name: t: {
+        inherit name;
+        json = jsonOf t;
+      })
+      targets.byName));
 
   # The validator as a program: `capsule-profile-check <file>` loads a document
   # and prints it, or refuses and says why. Three callers and each is a reason it
@@ -475,8 +502,9 @@
     '';
   };
 in {
-  inherit dir document json check;
-  inherit (target) name;
+  inherit dir documentOf jsonOf renderDocs check;
+  # The names of the documents `dir` holds.
+  names = builtins.attrNames targets.byName;
 
   # The same predicate as `profileNeedsUnit` below, at eval, and it has **one
   # caller**: `probe/two-capsules.sh`'s command line in `flake.nix`. A probe is
@@ -486,7 +514,7 @@ in {
   # here so the probe's spelling of `${hole}` is this file's and not a third one
   # ([item 38](../docs/ledger/038-a-probe-that-became-a-borrower.md) is what a
   # separately-maintained copy of a live value costs).
-  needsUnit = lib.any (lib.hasInfix hole) document.statePaths;
+  needsUnitOf = target: lib.any (lib.hasInfix hole) (documentOf target).statePaths;
 
   # Callers add these to their own `runtimeInputs`, so the dependency is visible
   # at each call site rather than assumed — `host/record.nix`'s arrangement, for

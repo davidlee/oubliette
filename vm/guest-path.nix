@@ -2,7 +2,7 @@
 # where it is *built* — SL-002 `RV-004` F-4.
 #
 # `capsule-reset-home` runs `rm -rf` as root over `home` and `scrubPaths`
-# (vm/reset-home.nix), and both come from `target.nix`'s `volumePath` by way of
+# (vm/reset-home.nix), and both come from `targets/`'s `volumePath` by way of
 # `setup.nix`. Under POL-002 a different target supplies only a different value,
 # so a `volumePath` carrying a space or a glob character would still build,
 # still pass shellcheck, and word-split inside `rm -f -- "''${scrubPaths[@]}"`

@@ -22,7 +22,7 @@
 # happens to be running.
 
 # Every nix file that is ours. Explicit, so nothing walks .direnv or .vm.
-nix_paths := "flake.nix net.nix target.nix capsules.nix fragments.nix setup.nix perimeter host vm"
+nix_paths := "flake.nix net.nix targets capsules.nix fragments.nix setup.nix perimeter host vm"
 
 # the gate: everything parses and is formatted
 default: check build units
@@ -31,10 +31,6 @@ default: check build units
 # --json, not --raw: the ports are integers and --raw refuses to coerce one
 _net key:
   @nix eval --json --file net.nix {{key}} | tr -d '"'
-
-# same for the repo under confinement — target.nix or it drifts
-_target key:
-  @nix eval --json --file target.nix {{key}} | tr -d '"'
 
 # and for the host's controls, which are not the target's — policies.nix
 _policy key:

@@ -3,7 +3,7 @@
 #
 # [docs/contract-flavour.md](./docs/contract-flavour.md) is the design and this
 # is its build-time half: a flavour is `compose(floor, extras)`, the **floor** is
-# the project's (`target.nix`'s `toolsPackage` and `extraTools`, threaded through
+# the project's (its target's `toolsPackage` and `extraTools`, threaded through
 # `vm/capsule.nix` as it always was) and the **extras** are the host operator's,
 # drawn from a vocabulary the host declares. This file is that vocabulary;
 # `extras` in `flake.nix` is the selection. Neither owner can quietly become the
@@ -20,8 +20,8 @@
 #     host owns, so adding a tool source is a deliberate act with a rebuild
 #     behind it (NOTES item 26).
 #   - **A tool that is target-shaped does not come here.** The smell is the same
-#     one CLAUDE.md names: a toolchain's name outside `target.nix`. `rg` and
-#     `tmux` are nobody's project, which is exactly why `target.nix` was the
+#     one CLAUDE.md names: a toolchain's name outside `targets/`. `rg` and
+#     `tmux` are nobody's project, which is exactly why a target's file is the
 #     wrong home for them.
 #
 # Two things deliberately absent, so neither reads as an oversight:

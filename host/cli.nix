@@ -1247,7 +1247,7 @@ in
         #
         #   name    the bytes this slot reads are this host's document
         #   name*   pinned, and this host's document has changed since — an
-        #           edit to target.nix that no verb has carried to this slot
+        #           edit to targets/ that no verb has carried to this slot
         #   name!   pinned, and the bytes are not the ones the record names
         #   [name]  no record names it: the slot's declaration, or the sole
         #           document this host has. A default and an assignment must
@@ -2432,7 +2432,7 @@ in
           #
           # `--branch <name>` is permitted because a name arriving as an argument
           # is a value, and two rules keep it one: there is **no default**, since
-          # a default branch name is `target.nix` leaking back through a program
+          # a default branch name is a target's file leaking back through a program
           # (items 28, 36), and it **refuses an existing name** rather than
           # updating it, so nothing a land does can lose a commit.
           land)

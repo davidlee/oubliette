@@ -1,40 +1,26 @@
-# The repo the capsule confines, and the settings that follow from it. Its own
-# file for the same reason as net.nix: several places need these values and none
-# of them may spell them twice.
+# doctrine: the repo capsules confine today, and the settings that follow from
+# it. One target of this host's declared set — listed by hand in
+# `targets/default.nix`, which is the axis's one home (POL-003) and derives what
+# is a function of a target's name: `name` itself (the key there), `guestPath`,
+# `cachePaths`, and the capsule's `volumePath`. This file is also the reference
+# for what each field means; `docs/contract-target.md` is the contract.
 #
 # What cannot live here is the flake reference itself — an input's url must be a
-# literal in flake.nix — so `inputs.target` there and `path` here name the same
-# repo and nothing checks that they agree. Change both to switch targets, or
-# `--override-input target path:/…` for a one-off. See NOTES item 16.
+# literal in flake.nix — so `inputs.target` there (`targetFlakes.doctrine`) and
+# `path` here name the same repo and nothing checks that they agree. See NOTES
+# item 16.
 #
 # Everything here is host-side on purpose. Nothing below is read *from* the
 # target repo: the allowlist is a control, and a control the confined thing can
 # edit is not a control. Only the tool set comes from the target, because that is
 # a build input rather than a control.
 #
-# `rec`, for one reason: the guest paths below are paths both sides must agree
-# on, and deriving them keeps the target — and the volume's mount point — named
-# once each.
+# `rec`, because `guestConfig` renders from `caches` and `sizes`.
 rec {
-  # The guest's checkout directory name, and the motd.
-  name = "doctrine";
-
   # Read by `capsule-provision` only, and always as the human — it is the source
   # of the push that provisions a capsule. Nothing serves it and nothing else
   # reads it.
   path = "/home/david/dev/doctrine";
-
-  # The guest's checkout, absolute. Both sides need it: `vm/capsule.nix` creates
-  # it on the volume, and the host's git channel pushes to it and fetches from
-  # it.
-  guestPath = "${volumePath}/${name}";
-
-  # Where the capsule's volume is mounted in the guest. What the guest arranges
-  # *under* it is the guest's own business; the mount point itself is shared,
-  # because `caches`, `cachePaths` and `guestConfig` are all declared relative to
-  # it and all three are read host-side as well as guest-side. Named here so
-  # neither side spells it twice — `vm/capsule.nix` takes it from here too.
-  volumePath = "/work";
 
   # Package in the target's own flake carrying its devshell tool set, so the
   # guest and that devshell cannot drift. `null` for a target with no flake:
@@ -61,12 +47,6 @@ rec {
     CARGO_HOME = ".cargo";
     BUN_INSTALL_CACHE_DIR = ".bun-cache";
   };
-
-  # The same directories, absolute — what anything that is not setting an env
-  # var actually wants. The guest's seed creates and chowns exactly these, and
-  # `capsule-baseline` sizes them before and after a run, which is what makes a
-  # recorded build checkably cold or warm. Derived, so a cache is declared once.
-  cachePaths = map (dir: "${volumePath}/${dir}") (builtins.attrValues caches);
 
   # No branch field, deliberately, and nothing replaces it. The guest's branch is
   # the constant `work` (`workBranch` in flake.nix): a name that identifies the

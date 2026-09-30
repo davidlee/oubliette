@@ -25,7 +25,7 @@
   # is one expression rather than a list assembled twice.
   flavour = import ../fragments.nix {inherit pkgs inputs;};
 
-  # The two paths the host also knows, so both come from target.nix rather than
+  # The two paths the host also knows, so both come from the target (targets/) rather than
   # being derived twice — the host pushes to `repo` and fetches from it, and it
   # resolves the caches and the baseline's record directory against `work`.
   work = target.volumePath;
@@ -58,7 +58,7 @@
   };
 
   # Static configuration the capsule renders from its own declared reservation
-  # (target.nix's `guestConfig`), rather than carrying one in from a machine
+  # (its target's `guestConfig`), rather than carrying one in from a machine
   # that is not this one. It is config, not secret, so it rides in the closure
   # and needs no transport — but the tools look for it on the volume, so the
   # seed links it there.
@@ -217,7 +217,7 @@ in {
   # what the second target's first baseline hit, one second in, after resolving
   # 31 packages through the proxy perfectly well (NOTES item 23).
   #
-  # Not a `target.nix` field, and that is the finding rather than a shortcut:
+  # Not a target's field, and that is the finding rather than a shortcut:
   # every non-nix-native toolchain needs this and none of them parameterises it,
   # so it belongs beside `TMPDIR` and the caches in what the capsule *supplies*
   # (docs/contract-target.md). doctrine never hit it only because cargo links

@@ -1,5 +1,5 @@
 # The egress and ingestion policies this host declares. Its own file for the same
-# reason as net.nix, target.nix and capsules.nix — several places need these
+# reason as net.nix, targets/ and capsules.nix — several places need these
 # values and none of them may spell them twice — and, like all three, a *value*:
 # nothing here reads the system or does work.
 #
@@ -48,7 +48,7 @@ rec {
       # fetch writes — the packfile — and nothing else. A backstop rather than a
       # bound on the transfer: a pack of a million small objects never trips it
       # and still fills the disk (NOTES item 18). It is here rather than in
-      # `target.nix` because what may come back is host policy about ingestion,
+      # a target's file because what may come back is host policy about ingestion,
       # not a property of the project (item 25). 512 MiB against a target whole
       # history of 32 MiB, which leaves room for a working history.
       collectMaxPackBytes = 536870912;
