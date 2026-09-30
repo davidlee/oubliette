@@ -248,13 +248,17 @@
     # The target the slot's running image was built for, or nothing: no VMM
     # up, a runner whose layout this does not recognise, or an image built
     # before `capsule.target` existed. Never a guess. Every step that can fail
-    # ends in `return 0` or `|| true`: this runs under errexit and pipefail, and
-    # an unguarded failure would end the front end with no message instead of
-    # reaching the unmarked refusal.
+    # ends in `return 0` or `|| true`, so the reader itself never fails: the
+    # front end runs under errexit and pipefail, and although its one caller
+    # (`imageServes … || exit 1`) suspends errexit, a caller that did not would
+    # end the front end with no message instead of reaching the unmarked
+    # refusal. Defensive, then, and not pinned — dropping the last `|| true`
+    # turns no case red (SL-003 PHASE-02).
     #
     # The layout is microvm.nix's firecracker runner: `bin/microvm-run` execs
     # firecracker with `--config-file <json>`, and that JSON's boot args are
-    # `microvm.kernelParams` (mem.fact.oubliette.booted-is-the-running-runner).
+    # `microvm.kernelParams` (mem.fact.oubliette.booted-is-the-running-runner),
+    # among which vm/capsule.nix puts one `capsule.target=<name>`.
     # If it moves, this prints nothing and every profile verb refuses as
     # unmarked — closed, and saying so.
     bootedTarget() {
