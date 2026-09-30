@@ -12,19 +12,19 @@ after = []                      # slice→work soft sequence: { to, rank }
 
 [[selector]]
 selector = "flake.nix"
-intent = "scope-relevant"
+intent = "design-target"
 
 [[selector]]
 selector = "target.nix"
-intent = "scope-relevant"
+intent = "design-target"
 
 [[selector]]
 selector = "targets/**"
-intent = "scope-relevant"
+intent = "design-target"
 
 [[selector]]
 selector = "capsules.nix"
-intent = "scope-relevant"
+intent = "design-target"
 
 [[selector]]
 selector = "vm/**"
@@ -32,7 +32,7 @@ intent = "scope-relevant"
 
 [[selector]]
 selector = "host/cli.nix"
-intent = "scope-relevant"
+intent = "design-target"
 
 [[selector]]
 selector = "host/record.nix"
@@ -44,23 +44,59 @@ intent = "scope-relevant"
 
 [[selector]]
 selector = "host/services.nix"
-intent = "scope-relevant"
+intent = "design-target"
 
 [[selector]]
 selector = "host/policy-cases.nix"
-intent = "scope-relevant"
+intent = "design-target"
 
 [[selector]]
 selector = "docs/contract-target.md"
-intent = "scope-relevant"
+intent = "design-target"
 
 [[selector]]
 selector = "docs/contract-assignment.md"
-intent = "scope-relevant"
+intent = "design-target"
 
 [[selector]]
 selector = "README.md"
-intent = "scope-relevant"
+intent = "design-target"
+
+[[selector]]
+selector = "fleet.nix"
+intent = "design-target"
+
+[[selector]]
+selector = "fleet-cases.nix"
+intent = "design-target"
+
+[[selector]]
+selector = "vm/capsule.nix"
+intent = "design-target"
+
+[[selector]]
+selector = "vm/reset-home-cases.nix"
+intent = "design-target"
+
+[[selector]]
+selector = "host/profile.nix"
+intent = "design-target"
+
+[[selector]]
+selector = "host/programs.nix"
+intent = "design-target"
+
+[[selector]]
+selector = "host/profile-cases.nix"
+intent = "design-target"
+
+[[selector]]
+selector = "justfile"
+intent = "design-target"
+
+[[selector]]
+selector = "CLAUDE.md"
+intent = "design-target"
 
 [[relation]]
 label = "fulfils"
