@@ -156,6 +156,10 @@ pkgs.runCommand "capsule-vm-cases" {} ''
     grep -qx "argv build --out-link booted $CAPSULE_ROOT#c" "$NIX_LOG"
   ckt "  and the runner run is the one booted names" \
     grep -qx "ran from $CAPSULE_ROOT/.vm/c" "$RUN_LOG"
+  ck "  and booted names the runner the build produced" "$RUNNER" \
+    "$(readlink "$CAPSULE_ROOT/.vm/c/booted")"
+  ckt "  whose booted/bin/microvm-run is what the front end will read" \
+    test -x "$CAPSULE_ROOT/.vm/c/booted/bin/microvm-run"
 
   # --------------------------------------------------- a build that fails
   #
