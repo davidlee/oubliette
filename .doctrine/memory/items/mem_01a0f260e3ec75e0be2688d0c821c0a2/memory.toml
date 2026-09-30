@@ -1,0 +1,46 @@
+memory_uid = "mem_01a0f260e3ec75e0be2688d0c821c0a2"
+memory_key = "mem.fact.oubliette.booted-is-the-running-runner"
+schema_version = 1
+memory_type = "fact"
+status = "active"
+title = "booted names the runner a slot is running, and only while it runs"
+summary = "/var/lib/microvms/<slot>/booted is linked from current before the VMM starts and removed at stop; its bin/microvm-run names the firecracker config via --config-file, whose boot-source.boot_args carries microvm.kernelParams (which never reach the guest toplevel)"
+created = "2026-09-30"
+updated = "2026-09-30"
+
+[scope]
+paths = ["host/cli.nix", "vm/capsule.nix"]
+globs = []
+commands = []
+tags = ["gotcha"]
+workspace = "default"
+repo = "github.com/davidlee/oubliette"
+repo_id_kind = "remote"
+repo_id_confidence = "high"
+
+[git]
+anchor_kind = "commit"
+commit = "3c75a2957de253ce27fa45457deb946850e8d509"
+tree = "b3004ad8f1a7c095c49a7b489d0a384e6fc4e58f"
+ref_name = "refs/heads/main"
+checkout_state_id = ""
+base_commit = "3c75a2957de253ce27fa45457deb946850e8d509"
+verified_sha = ""
+normalizer = ""
+
+[review]
+verification_state = "unverified"
+reviewed = ""
+review_by = ""
+
+[trust]
+trust_level = "high"
+
+[ranking]
+severity = "medium"
+weight = 0
+
+[[source]]
+kind = "inspection"
+ref = "locked microvm.nix 68f2670 nixos-modules/host/default.nix:254-270, options.nix:586, lib/runners/firecracker.nix:28,79"
+

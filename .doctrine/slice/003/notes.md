@@ -6,13 +6,23 @@ disposable phase sheet (`.doctrine/state/.../phase-NN.md`) that must survive
 
 ## Harvest
 <!-- single-copy: updated in place each harvest; ids only, never restated content -->
-fresh-as-of: <yyyy-mm-dd> · <PHASE-NN | stage> · <head-commit>
+fresh-as-of: 2026-09-30 · design/drafting (rev 25, runbook cleared) · 3c75a29
 
 ### Produced
+- `design.md` sec-1..sec-6 (drafted, unreviewed)
+- DEC-017, DEC-018, DEC-019, DEC-020, DEC-021, DEC-022, DEC-023 (accepted)
+- IMP-015 (filed; needs SL-003)
+- mem.fact.oubliette.booted-is-the-running-runner
 
 ### Learned
+- mem.fact.oubliette.booted-is-the-running-runner
+- user preference (session memory, not corpus): don't design around live capsules
 
 ### Open
+- DEC-016 supersession — at reconcile
+- POL-002 / POL-003 / CON-001 revisions — at reconcile (design sec-2, sec-6)
+- ISS-011 — closed by DEC-023 refusal once built
+- user preconditions for goad-walk (design sec-5)
 
 ## Design surface triage (2026-09-30, exploring)
 
