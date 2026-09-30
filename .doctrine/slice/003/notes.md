@@ -6,16 +6,18 @@ disposable phase sheet (`.doctrine/state/.../phase-NN.md`) that must survive
 
 ## Harvest
 <!-- single-copy: updated in place each harvest; ids only, never restated content -->
-fresh-as-of: 2026-10-01 · design locked (rev 45), slice → plan · 692849a
+fresh-as-of: 2026-10-01 · PHASE-01 complete · 412b77f
 
 ### Produced
 - `design.md` sec-1..sec-6 (locked 2026-10-01; human-attested)
 - DEC-017, DEC-018, DEC-019, DEC-020, DEC-021, DEC-022, DEC-023, DEC-024 (accepted)
 - RV-009 (agent pass; F-1, F-2 fixed and verified)
 - RV-010 (external pass, gpt-6-sol; F-1..F-6 fixed and verified)
-- ISS-016 (filed; vm-stop's own_vms matches only slot c; fixed by sec-4's lift)
+- ISS-016 (filed, then resolved fixed in 412b77f)
 - IMP-015 (filed; needs SL-003)
 - mem.fact.oubliette.booted-is-the-running-runner
+- plan.toml/plan.md (five phases); PHASE-01: host/own-vms.nix, perimeter/root.nix, vm's booted link (412b77f)
+- CHR-016 (filed: root spellings left in probes/justfile)
 
 ### Learned
 - mem.fact.oubliette.booted-is-the-running-runner
@@ -24,7 +26,8 @@ fresh-as-of: 2026-10-01 · design locked (rev 45), slice → plan · 692849a
 ### Open
 - DEC-016 supersession — at reconcile
 - POL-002 / POL-003 / CON-001 revisions — at reconcile (design sec-2, sec-6)
-- ISS-011 — closed by DEC-023 refusal once built
+- ISS-011 — closed by DEC-023 refusal once built (PHASE-02)
+- PHASE-02 EN-2: user replied "ok, begin" to "build PHASE-01 and PHASE-02 now, you switch when SL-251 can take a restart" (2026-10-01)
 - user preconditions for goad-walk (design sec-5)
 
 ## Design surface triage (2026-09-30, exploring)
