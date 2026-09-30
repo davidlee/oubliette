@@ -314,7 +314,9 @@ The `images`, `unbound` and `slotImages` code above, together with sec-2's
 }
 ```
 
-`flake.nix` applies it once, to this host's values, which keeps `flake.nix` the
+`hello` is not a target's image, so it stays out of the fleet:
+`flake.nix` builds `vms = {hello = mkVm "hello" ./vm/hello.nix {};} //
+fleet.vms`. `flake.nix` applies the function once, to this host's values, which keeps `flake.nix` the
 one binding site. Because `mkVm` is an argument, a suite can hand it a stub and
 pin the throws without building a NixOS system (sec-6). This function is also
 what `IMP-015`'s exported builder grows from, so it is named for the fleet and
@@ -324,8 +326,10 @@ not for this host.
 
 Changing a slot's `profile` changes `nixosConfigurations.<slot>`. The slot
 picks the new image up on `microvm -u` (`just refresh-build <slot>`) and a
-restart, or on the module's `install-microvm-<slot>` re-pointing `current` at
-the next switch (`services.nix:565-593`). On the devshell path, `vm <slot>`
+restart, and in no other way. A host switch does not do it, because the
+module keeps `microvm.vms` empty, and asserts it, precisely so that no
+`install-microvm-<slot>` repoints `current` (`services.nix:565-593`, NOTES
+item 49). On the devshell path, `vm <slot>`
 builds `.#<slot>` at every start, so the next start takes the new image. The volume is **not** reset by this:
 the last target's checkout, caches and `$HOME` stay (`ISS-009`,
 `mem.fact.oubliette.a-provision-resets-tracked-files-only`). Until `ISS-009`'s
@@ -359,15 +363,35 @@ The observation is the link a runner was started from, and each path has one.
 
   ```bash
   # flake.nix, `vm`. Today: exec nix run "$root#$name"
+  if [ -n "$(own_vms capsule)" ]; then
+    echo "vm: a capsule is already running in this namespace; vm-stop it first" >&2
+    exit 1
+  fi
   nix build --out-link booted "$root#$name"
   exec ./booted/bin/microvm-run
   ```
 
   `--out-link` also registers the link as a gcroot, so the running image cannot
-  be collected under it. Unlike microvm.nix's link, this one is not removed at
-  stop: after a stop or a crash it names the image that last booted in that
-  directory. The refusal does not mind, because a stopped capsule fails every
-  profile verb at the door anyway.
+  be collected under it. A failed build leaves the link as it was.
+
+  **The link may only change while nothing is running from it.** Every
+  devshell capsule is at `net.guest` on a tap in the root namespace, so only
+  one can run at a time, and a second start would fail at the tap *after* the
+  build had already replaced the link. So `vm` refuses before building while
+  any capsule VMM runs in this namespace. The lookup is `vm-stop`'s `own_vms`
+  (`flake.nix:1325`), lifted into a fragment both programs splice, as
+  `host/vm-name.nix` already is. It takes the runner's process name, which is
+  the image's hostName and not the slot's name: `capsule` for every capsule
+  (`DEC-020`), and `hello` for `hello`. It then keeps only the VMMs in this
+  shell's netns. Today `own_vms` greps `microvm@$name`, which matches slot `c`
+  only by accident of prefix. So `vm-stop b` reports "down" without ever
+  waiting for or reaping the VMM, and the lift fixes that too. Two `vm` invocations racing inside the gap between the check and the
+  build are not guarded; that is one human, typing twice.
+
+  Unlike microvm.nix's link, this one is not removed at stop: after a stop or
+  a crash it names the image that last booted in that directory. The refusal
+  does not mind, because a stopped capsule fails every profile verb at the door
+  anyway.
 
 **Nothing is pinned**
 (`DEC-022`). The record's `image` field stays `null` and keeps its contract
@@ -396,7 +420,7 @@ bootedOf() {
   if [ -S "$(sockOf "$1")" ]; then
     printf '%s/%s/booted' "${microvms}" "$1"
   else
-    printf '%s/.vm/%s/booted' "${CAPSULE_ROOT:-$PWD}" "$1"
+    printf '%s/.vm/%s/booted' "$root" "$1"
   fi
 }
 
@@ -417,6 +441,14 @@ bootedTarget() {
     | tr ' ' '\n' | sed -n 's/^capsule\.target=//p' | head -n1 || true
 }
 ```
+
+`$root` is the devshell root, and it must be the one `vm` wrote under. Today
+the expression `${CAPSULE_ROOT:-${MICROVM_SPIKE_ROOT:-$PWD}}` is spelled at
+four sites (`flake.nix:335, :893`, `perimeter/default.nix:78`,
+`host/quarantine.nix:29`), and a fifth has already drifted: `quarantineOf`
+omits `MICROVM_SPIKE_ROOT` (`host/cli.nix:705`). So `perimeter/`'s `root`
+path definition becomes the one fragment, and every one of those sites,
+`bootedOf` included, splices it in.
 
 A wrong guess of path fails closed. A module-path capsule with no door reads a
 devshell link that is normally absent. If one is left over from a devshell run
@@ -598,12 +630,15 @@ Both directions, since a presence-only check passes for the wrong reason
 | `targets/goad-walk.nix` (new) | sec-5's values; lands last, once goad-walk is fetchable |
 | `target.nix` | deleted |
 | `fleet.nix` (new) | `{lib, mkVm}: {targets, targetFlakes, capsules, probeTarget}: {images, slotImages, vms}`, with the key check and the `unbound` throw (sec-3) |
-| `flake.nix` | `inputs.goad-walk`; `targets = import ./targets`; `targetFlakes`; `probeTarget = "doctrine"`; `mkVm` takes extra `specialArgs`; `vms` from `fleet.nix`; `packages.image-<target>`; `render = ts:`; every `target` consumer names its target or takes the set; probe preludes and `guestRepo` from `probeTarget`; `resetHomeCases` over every image; `fleetCases` wired; `vm` builds with `--out-link booted` and execs the link (`DEC-024`) |
+| `flake.nix` | `inputs.goad-walk`; `targets = import ./targets`; `targetFlakes`; `probeTarget = "doctrine"`; `mkVm` takes extra `specialArgs`; `vms` from `fleet.nix`; `packages.image-<target>`; `render = ts:`; every `target` consumer names its target or takes the set; probe preludes and `guestRepo` from `probeTarget`; `resetHomeCases` over every image; `fleetCases` wired; `vm` refuses while a capsule VMM runs in this namespace, builds with `--out-link booted` and execs the link (`DEC-024`); `vm` and `vm-stop` splice one `own_vms` fragment; `capsule-host` and `vm` splice the one `root` fragment |
 | `vm/capsule.nix` | takes `targetFlake` instead of reading `inputs.target`; `microvm.kernelParams = ["capsule.target=…"]`; asserts `profileNameOk target.name` |
 | `host/profile.nix` | `{…, targets}`; `documentOf`, `jsonOf`, `needsUnitOf`; `dir` renders every target; `names` replaces `name` |
 | `host/programs.nix` | `targets` in place of `target`; `inject` uses `targets.volumePath`; `guestRepo` removed |
 | `host/services.nix` | `targets` in place of `target`; option text for `profileDir` unchanged in meaning |
-| `host/cli.nix` | `bootedOf` and `bootedTarget`; the refusal at the profile-verb dispatch (`:546-556`) |
+| `host/cli.nix` | `bootedOf` and `bootedTarget`; the refusal at the profile-verb dispatch (`:546-556`); `bootedOf` and `quarantineOf` take the shared `root` fragment |
+| `host/own-vms.nix` (new) | `own_vms <process name>`, lifted out of `vm-stop`, for `vm` and `vm-stop`; each passes the runner's hostName (`capsule`, or `hello`), never the slot name |
+| `host/quarantine.nix` | takes the shared `root` fragment in place of its own spelling |
+| `host/vm-cases.nix` | the success case stubs `nix build --out-link` and makes an executable `booted/bin/microvm-run`; the refusal case below |
 | `capsules.nix` | `j.profile = "goad-walk"` (last); comments at `:7-10, :69-84, :156-160` rewritten for one image per target |
 | `host/profile-cases.nix` | takes `names`/`dir` of a set; fixtures via `render` over sets |
 | `host/policy-cases.nix` | the refusal cases below, over a fixture `microvms` tree, a fixture `CAPSULE_ROOT` and a substituted `socketOf` |
@@ -645,7 +680,10 @@ watch 1 and 8 go red; drop `bootedTarget`'s `|| true` and watch 9 go red.
 
 **`fleetCases`: the binding** (eval throws read with `builtins.tryEval` and
 asserted in the shell, `hostModuleUnits`' arrangement; a stub `mkVm` returns
-its arguments):
+its arguments). `fleet.nix`'s result is a lazy attribute set and `tryEval`
+forces only its outermost layer, so each case forces the attribute it pins,
+e.g. `tryEval (builtins.deepSeq f.slotImages f.slotImages)`. Otherwise a throw
+case would pass without the throw ever being evaluated:
 
 1. *a slot whose profile names no target throws, naming the slot*
 2. *a slot with no profile throws*
@@ -654,6 +692,18 @@ its arguments):
 5. *each image is given its own target and its own flake*: `specialArgs.target.name`
    and `specialArgs.targetFlake` per image
 6. *`vms.capsule` is the probe target's image*
+
+**`vmCases`: the devshell start** (run; `nix` is the host's and is stubbed
+on `PATH`, as today):
+
+1. *a declared name builds its own attribute and execs through the link*: the
+   stub records `build --out-link booted $CAPSULE_ROOT#c` from `.vm/c`, and the
+   stub runner it links records that it ran
+2. *a start while a capsule VMM runs in this namespace refuses before
+   building*: a process started as `exec -a microvm@capsule sleep` in the
+   sandbox, which `own_vms` sees without a stub; `nix` never called, the link
+   unchanged
+3. *a failed build leaves an existing link as it was*
 
 **`profileCases`**: *the render holds one document per target*, and *one
 invalid document fails the whole render*. The existing first and last cases are
@@ -672,6 +722,7 @@ image. This puts one guest eval per target into `just build`.
 |---|---|---|
 | the binding throws on an unbound slot or a mismatched flake map | trigger | `fleetCases` |
 | the refusal's three outcomes, and `ISS-011` closed | run | `policyCases`, on a fixture tree |
+| `vm` keeps its link naming the running image | run | `vmCases` |
 | a real runner carries the marker where `bootedTarget` looks | take | `jq` over `image-doctrine`'s firecracker config after `just build-vm`; recorded in the phase notes |
 | every image builds, goad-walk's with its absent values | build | `just build-vm` |
 | goad-walk boots, a verb under it proceeds, one under doctrine refuses | start | VH: the user's `capsule j start` |

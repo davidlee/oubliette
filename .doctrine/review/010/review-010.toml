@@ -1,0 +1,71 @@
+id    = 10
+slug  = "external-design-review-of-sl-003-gpt-6-sol"
+title = "external design review of SL-003 (gpt-6-sol)"
+# no status — a review's status is DERIVED from its findings (ADR-007 D-C8), so
+# it is never stored (the storage rule forbids derived data in authored files).
+
+[review]
+facet     = "design"     # scope|design|plan|phase-plan|implementation|code-review|reconciliation
+raiser    = "raiser"
+responder = "responder"
+concluded = true
+
+[target]                   # the outbound `reviews` edge (ADR-004): RV-NNN ──reviews──▶ <ref>
+ref   = "SL-003"
+
+[[finding]]
+id = "F-1"
+status = "verified"
+severity = "major"
+title = "A host switch will not rebind a slot"
+detail = "sec-3 (design.md:325) says install-microvm-<slot> repoints current at the next switch. host/services.nix:565-593 keeps microvm.vms empty and asserts it (NOTES item 49) precisely so that no installer repoints current. The only update path is microvm -u (just refresh-build) plus a restart."
+disposition = "fixed"
+response = "Confirmed at services.nix:565-593. sec-3 now says the only rebinding is microvm -u plus a restart, and that a switch never does it (NOTES item 49)."
+
+[[finding]]
+id = "F-2"
+status = "verified"
+severity = "major"
+title = "The devshell booted link can name an image other than the running one"
+detail = "vm (design.md:360) replaces booted during nix build, before exec. A second 'vm <slot>' while one VMM runs replaces the link even if its start then fails at the tap, so bootedTarget may accept a target the running VM was not built for. Serialize or refuse concurrent starts; test a second vm against a running slot."
+disposition = "fixed"
+response = "Confirmed. Repair: vm refuses before building while any capsule VMM runs in this namespace (the devshell runs one at a time, since every guest is at net.guest). A failed build leaves the link alone. own_vms is lifted from vm-stop into a shared fragment keyed on the runner's hostName. vmCases case 2 checks against a real exec -a microvm@capsule process. The residual race between two simultaneous vm invocations is stated as unguarded. The same lookup also exposed ISS-016 (vm-stop's pattern matches only slot c), which the lift fixes."
+
+[[finding]]
+id = "F-3"
+status = "verified"
+severity = "major"
+title = "The vm change breaks vmCases, which the impact table omits"
+detail = "host/vm-cases.nix:110 asserts 'argv run …#c', and its nix stub (:44) creates no booted/bin/microvm-run, so build-then-exec fails that case at exec. Update vmCases to stub nix build --out-link, create an executable runner, and assert both the build argv and the exec through the link."
+disposition = "fixed"
+response = "Confirmed at vm-cases.nix:44,110. host/vm-cases.nix is added to the code-impact table, with three cases: build + exec through the link, refuse while running, and a failed build leaving the link alone."
+
+[[finding]]
+id = "F-4"
+status = "verified"
+severity = "major"
+title = "The devshell reader resolves a different root from vm"
+detail = "vm (flake.nix:893) resolves CAPSULE_ROOT, then MICROVM_SPIKE_ROOT, then PWD. bootedOf (design.md:395) uses CAPSULE_ROOT or PWD only, so with MICROVM_SPIKE_ROOT set it reads a different .vm/<slot>/booted and refuses a valid image. Use one shared root resolver."
+disposition = "fixed"
+response = "Confirmed. Four sites spell the root expression and a fifth (quarantineOf, cli.nix:705) had drifted. perimeter/'s root pathDef becomes the one fragment for vm, capsule-host, quarantine.nix, bootedOf and quarantineOf."
+
+[[finding]]
+id = "F-5"
+status = "verified"
+severity = "minor"
+title = "fleet.nix's vms drops hello"
+detail = "sec-3 keeps hello (design.md:222) and flake.nix:123 exports it, but fleet.nix's shown vms (design.md:308) holds only capsule and slotImages. Include hello, or say that flake.nix adds it."
+disposition = "fixed"
+response = "Confirmed. sec-3 now says flake.nix builds vms = {hello = …} // fleet.vms, and hello stays out of the fleet because it is not a target's image."
+
+[[finding]]
+id = "F-6"
+status = "verified"
+severity = "minor"
+title = "fleetCases' tryEval must force the attribute under test"
+detail = "fleet.nix's result is a lazy attrset (design.md:308), and tryEval over it forces nothing, so a throw case can pass without evaluating the key check or the unbound throw. Force slotImages/images/vms attributes explicitly and keep a positive case."
+disposition = "fixed"
+response = "Confirmed: tryEval forces only the outermost layer. sec-6 now requires each fleetCases case to force the attribute it pins (deepSeq); positive cases 4-6 stay."
+
+# Findings are append-only `[[finding]]` tables, added by `review raise` (PHASE-03).
+# Empty here at creation — a fresh review is Active, awaiting the raiser (D-C8).

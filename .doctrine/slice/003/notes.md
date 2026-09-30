@@ -6,12 +6,14 @@ disposable phase sheet (`.doctrine/state/.../phase-NN.md`) that must survive
 
 ## Harvest
 <!-- single-copy: updated in place each harvest; ids only, never restated content -->
-fresh-as-of: 2026-10-01 · design/reviewing (rev 35; RV-009 concluded) · 525dba1+
+fresh-as-of: 2026-10-01 · design/reviewing (rev 41; RV-009, RV-010 concluded) · abf0ee4+
 
 ### Produced
-- `design.md` sec-1..sec-6 (revised after RV-009; human section review outstanding)
+- `design.md` sec-1..sec-6 (revised after RV-009 and RV-010; human section review outstanding)
 - DEC-017, DEC-018, DEC-019, DEC-020, DEC-021, DEC-022, DEC-023, DEC-024 (accepted)
 - RV-009 (agent pass; F-1, F-2 fixed and verified)
+- RV-010 (external pass, gpt-6-sol; F-1..F-6 fixed and verified)
+- ISS-016 (filed; vm-stop's own_vms matches only slot c; fixed by sec-4's lift)
 - IMP-015 (filed; needs SL-003)
 - mem.fact.oubliette.booted-is-the-running-runner
 
@@ -83,3 +85,17 @@ An external adversarial pass (gpt-6-sol, per the user's standing preference
 for design reviews) aimed at those four would be proportionate. A full
 inquisition would not: the governance picture has not moved since
 `governance-confirmed`.
+
+### After RV-010 (2026-10-01)
+
+The external pass covered all four probes above. It confirmed from the locked
+microvm.nix source that `microvm-run` names `--config-file` on its one `exec`
+line, that `kernelParams` land in `boot-source.boot_args`, and that
+`microvm.kernelParams` stays out of the guest toplevel. Those are *read*, not
+*taken*: sec-6's `take` row still stands. It found nothing missing from the
+consumer sweep. Its six findings were all about the devshell path and the
+test mechanics, which is where RV-009 had also found the gap.
+
+**No further pass is needed before human section review.** The remaining
+unknowns are empirical (the `take` and `start` rows in sec-6), and another
+reading pass cannot settle them.

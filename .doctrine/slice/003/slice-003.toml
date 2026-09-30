@@ -98,6 +98,22 @@ intent = "design-target"
 selector = "CLAUDE.md"
 intent = "design-target"
 
+[[selector]]
+selector = "host/own-vms.nix"
+intent = "design-target"
+
+[[selector]]
+selector = "host/vm-cases.nix"
+intent = "design-target"
+
+[[selector]]
+selector = "host/quarantine.nix"
+intent = "design-target"
+
+[[selector]]
+selector = "perimeter/default.nix"
+intent = "design-target"
+
 [[relation]]
 label = "fulfils"
 target = "IMP-012"

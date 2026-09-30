@@ -81,8 +81,11 @@ profile renders, probe preludes), `fleet.nix` (new: the pure target → image �
 slot binding), `target.nix` → `targets/`, `capsules.nix` (slot `profile`
 binds; comments), `vm/capsule.nix` (tool set from `targetFlake`, the marker),
 `host/cli.nix` (the marker reader and the refusal at profile-verb dispatch),
-`host/profile.nix`, `host/programs.nix`, `host/services.nix`, the case suites
-(`policyCases`, `profileCases`, `resetHomeCases`, and a new `fleetCases`),
+`host/profile.nix`, `host/programs.nix`, `host/services.nix`, the devshell's
+`vm`/`vm-stop` (a `booted` link, one shared `own_vms`, `DEC-024`), one devshell
+root fragment (`perimeter/`, `host/quarantine.nix`), the case suites
+(`policyCases`, `profileCases`, `resetHomeCases`, `vmCases`, and a new
+`fleetCases`),
 `justfile`, `docs/contract-target.md`, `docs/contract-assignment.md`,
 `README.md`, `CLAUDE.md`.
 
