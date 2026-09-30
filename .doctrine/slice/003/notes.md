@@ -6,7 +6,7 @@ disposable phase sheet (`.doctrine/state/.../phase-NN.md`) that must survive
 
 ## Harvest
 <!-- single-copy: updated in place each harvest; ids only, never restated content -->
-fresh-as-of: 2026-10-01 · design locked (rev 45), slice → plan · fa1e617+
+fresh-as-of: 2026-10-01 · design locked (rev 45), slice → plan · 692849a
 
 ### Produced
 - `design.md` sec-1..sec-6 (locked 2026-10-01; human-attested)
