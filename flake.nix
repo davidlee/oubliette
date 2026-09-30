@@ -334,7 +334,7 @@
       pkgs.writeShellApplication {
         name = "capsule-host";
         text = ''
-          root="''${CAPSULE_ROOT:-''${MICROVM_SPIKE_ROOT:-$PWD}}"
+          ${rootFragment}
           case "''${1:-}" in
             --policy)
               [ -n "''${2:-}" ] || { echo "capsule-host: --policy takes a name" >&2; exit 1; }
@@ -881,22 +881,56 @@
     # of a human. One text, spliced ahead of both (host/vm-name.nix, `ISS-002`).
     vmName = import ./host/vm-name.nix;
 
+    # The devshell path's root (perimeter/root.nix), for the two programs here
+    # that spell it; the rest import the file themselves.
+    rootFragment = import ./perimeter/root.nix;
+
+    # Which VMMs in this netns run a given image, and which image a name boots —
+    # shared by `vm` and `vm-stop` (host/own-vms.nix, ISS-016).
+    ownVms = import ./host/own-vms.nix {
+      inherit lib;
+      capsuleNames = ["capsule"] ++ builtins.attrNames capsules.instances;
+    };
+
     # Each VM's runner keeps mutable state (volume images, API socket) in $PWD,
     # so give every one its own directory under .vm/.
+    #
+    # It builds the runner into `.vm/<name>/booted` and runs it *through* that
+    # link, so the link names the image that is running — the devshell path's
+    # counterpart of microvm.nix's `/var/lib/microvms/<slot>/booted`, and what
+    # the front end reads a running image's target from (DEC-024). The out-link
+    # is also a gcroot, so the running image cannot be collected under it, and a
+    # failed build leaves it as it was.
     vm = pkgs.writeShellApplication {
       name = "vm";
+      # `nix` is not here: it is the host's, as it always was.
+      runtimeInputs = [pkgs.procps pkgs.coreutils];
       # No default, since `capsules.default` went with slots being abstract: an
       # omitted name used to mean the capsule that was called `capsule`. What
       # reads argv is `host/vm-name.nix`, shared with `vm-stop` — and every
       # refusal in it lands ahead of the `mkdir` below, which is `ISS-002`.
       text =
         vmName {prog = "vm";}
+        + ownVms
         + ''
-          root="''${CAPSULE_ROOT:-''${MICROVM_SPIKE_ROOT:-$PWD}}"
+          ${rootFragment}
+
+          # The link may only change while nothing runs from it. Every devshell
+          # capsule is ${net.guest} on a tap in the root namespace, so one runs at
+          # a time, and a second start would fail at the tap only *after* its
+          # build had repointed `booted` at an image that is not the one running.
+          # So refuse first — before the build, and before any state is made.
+          # Two starts racing inside this gap are one human typing twice.
+          if [ -n "$(own_vms "$(vmmOf "$name")")" ]; then
+            echo "vm: a capsule is already running in this namespace; vm-stop it first" >&2
+            exit 1
+          fi
+
           dir="$root/.vm/$name"
           mkdir -p "$dir"
           cd "$dir"
-          exec nix run "$root#$name"
+          nix build --out-link booted "$root#$name"
+          exec ./booted/bin/microvm-run
         '';
     };
 
@@ -1277,6 +1311,7 @@
       runtimeInputs = [capsule-halt pkgs.procps pkgs.coreutils];
       text =
         vmName {prog = "vm-stop";}
+        + ownVms
         + ''
             # `capsule-halt` is namespace-relative and takes no transport, by design:
           # it is always run somewhere ${net.guest} is directly routable — the unit
@@ -1304,34 +1339,18 @@
           fi
 
           # One link, one guest: the devshell path runs a single capsule at
-          # ${net.guest}, and every name below is that same guest — the image under
-          # its own name, and each declared slot, which are one value in this flake.
-          # Anything else (`hello`) is a VM this cannot talk to and is reaped rather
-          # than asked. The list follows the slots because the alternative is a
-          # literal that silently stops asking the moment a slot is renamed, and a
-          # stop that does not ask is a power cut on a mounted volume.
-          guests=(capsule ${lib.concatStringsSep " " (builtins.attrNames capsules.instances)})
+          # ${net.guest}, and every name whose image is a capsule's is that same
+          # guest — the image under its own name, and each declared slot. Anything
+          # else (`hello`) is a VM this cannot talk to and is reaped rather than
+          # asked. `vmmOf` follows the slots because the alternative is a literal
+          # that silently stops asking the moment a slot is renamed, and a stop
+          # that does not ask is a power cut on a mounted volume.
+          #
+          # And its answer is the process name the VMMs below are found by: every
+          # capsule image is `microvm@capsule`, whatever slot it serves (ISS-016).
+          vmm=$(vmmOf "$name")
           halted=0
-          for g in "''${guests[@]}"; do
-            [ "$name" = "$g" ] || continue
-            if capsule-halt; then halted=1; fi
-            break
-          done
-
-          # Only VMMs this shell can prove are its own. Every capsule is
-          # `microvm@capsule` in the process table, so a bare `pkill -f` is a power
-          # cut for any namespaced sibling the module path is running — and it
-          # reads as a clean teardown while doing it. A VMM in a namespace is
-          # root's and lives in another netns, so both tests exclude it: the
-          # readlink fails, or it does not match this shell's.
-          own_vms() {
-            local self pid
-            self=$(readlink /proc/self/ns/net)
-            for pid in $(pgrep -f "microvm@$name" || true); do
-              [ "$(readlink "/proc/$pid/ns/net" 2>/dev/null)" = "$self" ] \
-                && echo "$pid"
-            done
-          }
+          if [ "$vmm" = capsule ] && capsule-halt; then halted=1; fi
 
           # A guest that took the reboot exits its own VMM — that is what
           # `reboot=k` buys, measured (docs/probes.md) — so the one correct move
@@ -1341,26 +1360,26 @@
           # took the request and then hung still has to be reaped.
           if [ "$halted" = 1 ]; then
             for _ in $(seq 300); do
-              mapfile -t pids < <(own_vms)
+              mapfile -t pids < <(own_vms "$vmm")
               [ "''${#pids[@]}" -gt 0 ] || { echo "vm-stop: $name is down"; exit 0; }
               sleep 0.2
             done
             echo "vm-stop: the guest took a reboot but its VMM outlived it" >&2
           fi
 
-          mapfile -t pids < <(own_vms)
+          mapfile -t pids < <(own_vms "$vmm")
           [ "''${#pids[@]}" -gt 0 ] || { echo "vm-stop: $name is down"; exit 0; }
 
           echo "vm-stop: terminating the VMM"
           kill "''${pids[@]}" 2>/dev/null || true
           for _ in $(seq 50); do
-            mapfile -t pids < <(own_vms)
+            mapfile -t pids < <(own_vms "$vmm")
             [ "''${#pids[@]}" -gt 0 ] || { echo "vm-stop: $name is down"; exit 0; }
             sleep 0.1
           done
           kill -9 "''${pids[@]}" 2>/dev/null || true
           sleep 0.5
-          mapfile -t pids < <(own_vms)
+          mapfile -t pids < <(own_vms "$vmm")
           [ "''${#pids[@]}" -gt 0 ] && {
             echo "vm-stop: $name will not die" >&2
             exit 1

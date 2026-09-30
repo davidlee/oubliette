@@ -276,6 +276,10 @@ in
         ++ record.inputs;
       text = ''
         declared=(${lib.concatMapStringsSep " " lib.escapeShellArg names})
+        # The devshell path's root, spelled once (perimeter/root.nix): where a
+        # devshell capsule's collected work lands, and the link its runner was
+        # started from.
+        ${import ../perimeter/root.nix}
 
         usage() {
           echo "capsule [<name>|all] <verb> [args…]"
@@ -702,7 +706,7 @@ in
         # without having to infer it from what is running now.
         quarantineOf() {
           local n="$1" state
-          for state in "''${CAPSULE_STATE:-}" ${moduleState} "''${CAPSULE_ROOT:-$PWD}/.vm/host"; do
+          for state in "''${CAPSULE_STATE:-}" ${moduleState} "$root/.vm/host"; do
             [ -n "$state" ] || continue
             [ -d "$state/collect/$n.git" ] && {
               echo "$state/collect/$n.git"

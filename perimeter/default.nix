@@ -75,7 +75,7 @@
   pathDefs = [
     {
       name = "root";
-      text = ''root="''${CAPSULE_ROOT:-''${MICROVM_SPIKE_ROOT:-$PWD}}"'';
+      text = import ./root.nix;
     }
     {
       name = "state";

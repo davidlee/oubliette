@@ -26,7 +26,7 @@ rec {
   # has the second and must not derive it from `$PWD`, which is the trap the
   # module's `wrap` exists for.
   fragment = ''
-    root="''${CAPSULE_ROOT:-''${MICROVM_SPIKE_ROOT:-$PWD}}"
+    ${import ../perimeter/root.nix}
     state="''${CAPSULE_STATE:-$root/.vm/host}"
   '';
 
