@@ -1,0 +1,186 @@
+# Implementation plan for SL-003 — the authored, durable phase plan.
+#
+# Runtime status lives under .doctrine/state/ (phase tracking) — never record
+# progress here. Hand-edit freely: the tool reads this file but does not rewrite
+# it. Ids are immutable; edits append.
+schema  = "doctrine.plan.overview"
+version = 1
+slice   = "SL-003"
+
+[specs]
+primary       = []
+collaborators = []
+
+[requirements]
+targets      = []
+dependencies = []
+
+[[phase]]
+id        = "PHASE-01"
+name      = "The devshell's one root, one own_vms, and vm's booted link"
+objective = """
+Lay the devshell half of DEC-024 before anything reads it: one spelling of the
+devshell root (perimeter/'s `root` path definition) spliced at every site that
+spells it today, `own_vms` lifted out of `vm-stop` into host/own-vms.nix and
+keyed by the runner's process name (fixing ISS-016), and `vm` refusing while a
+capsule VMM runs in this namespace, then `nix build --out-link booted` and exec
+the link. Nothing reads `booted` yet, so no running capsule is affected."""
+entrance_criteria = [
+  { id = "EN-1", text = "SL-003 design locked (run rev 45) and the slice at `ready`" },
+  { id = "EN-2", text = "`just` green on the starting commit" },
+]
+exit_criteria = [
+  { id = "EX-1", text = "`${CAPSULE_ROOT:-${MICROVM_SPIKE_ROOT:-$PWD}}` is spelled once, in perimeter/'s `root` path definition; flake.nix's capsule-host and vm, host/quarantine.nix and host/cli.nix's quarantineOf splice it (design sec-4, RV-010 F-4) — quarantineOf gains the MICROVM_SPIKE_ROOT step it had drifted from" },
+  { id = "EX-2", text = "host/own-vms.nix exports one `own_vms <process name>` fragment; `vm` and `vm-stop` both splice it and pass the runner's hostName (`capsule` for every capsule, `hello` for hello), never the slot name (design sec-4, ISS-016)" },
+  { id = "EX-3", text = "`vm` refuses before building while `own_vms capsule` is non-empty, else runs `nix build --out-link booted \"$root#$name\"` in `.vm/<name>/` and execs `./booted/bin/microvm-run`" },
+  { id = "EX-4", text = "host/vm-cases.nix carries design sec-6's three vmCases cases, re-points the existing success case at the out-link, and adds a case for ISS-016: `vm-stop b` finds a `microvm@capsule` process in this netns" },
+  { id = "EX-5", text = "`just` green and `just check` clean; ISS-016 moved to resolved citing the commit" },
+]
+verification = [
+  { id = "VT-1", expects = "vm: a declared name builds `--out-link booted $CAPSULE_ROOT#c` from `.vm/c` and execs the linked stub runner; a start while an `exec -a microvm@capsule` process runs in this netns refuses with nix never called and the link unchanged; a failed build leaves an existing link as it was", test_file = "host/vm-cases.nix", keywords = ["--out-link booted", "microvm@capsule", "booted/bin/microvm-run"], waived = false },
+  { id = "VT-2", expects = "vm-stop for a slot other than c finds the capsule VMM in this netns (ISS-016's regression)", test_file = "host/vm-cases.nix", keywords = ["ISS-016", "vm-stop"], waived = false },
+  { id = "VT-3", expects = "the lifted fragment is keyed by process name and scoped to this shell's netns", test_file = "host/own-vms.nix", keywords = ["own_vms", "microvm@", "/proc/self/ns/net"], waived = false },
+  { id = "VA-1", expects = "grep: the root expression appears once in the tree (perimeter/default.nix), and no `.vm/` path in host/ or flake.nix derives its root any other way" },
+  { id = "VA-2", expects = "mutation: revert own_vms to grep `microvm@$name`; the ISS-016 case goes red; restored. Remove the running-VMM refusal from vm; the refusal case goes red; restored" },
+]
+specs        = []
+requirements = []
+
+[[phase]]
+id        = "PHASE-02"
+name      = "A runner names its target, and a profile verb refuses unless it matches"
+objective = """
+Put `capsule.target=<name>` on doctrine's image (microvm.kernelParams, with a
+profileNameOk assertion), add `bootedOf` and `bootedTarget` to host/cli.nix,
+and refuse at the one profile-verb dispatch unless the booted marker equals the
+resolved profile (DEC-021, DEC-022, DEC-023). Pin it with policyCases' nine
+cases over a fixture runner tree. Closes ISS-011 by refusal.
+
+Landing this is the disruption DEC-023 accepted: once the host module carrying
+it is switched in, every capsule booted on an unmarked image — capsule c
+included — refuses profile verbs until restarted onto a marked one. The commit
+alone disrupts nothing on the module path; the user's host switch does."""
+entrance_criteria = [
+  { id = "EN-1", text = "PHASE-01 complete: `vm` writes `.vm/<slot>/booted`, so the devshell branch of `bootedOf` has something to read" },
+  { id = "EN-2", text = "the user has been told this phase's landing makes running capsules refuse profile verbs after their next host switch, and has said when (capsule c is driving doctrine's SL-251)" },
+]
+exit_criteria = [
+  { id = "EX-1", text = "vm/capsule.nix sets `microvm.kernelParams = [\"capsule.target=${target.name}\"]` and asserts `profileNameOk target.name` beside its guest-path guard; the guest toplevel is unchanged by it (design sec-3)" },
+  { id = "EX-2", text = "host/cli.nix defines `bootedOf` (door → module path's `booted`, else `$root/.vm/<slot>/booted` via the PHASE-01 root fragment) and `bootedTarget` exactly as design sec-4, every failing step ending in `return 0` or `|| true` (RV-009 F-2)" },
+  { id = "EX-3", text = "the profile-verb dispatch in host/cli.nix refuses after name resolution with design sec-4's mismatch and unmarked messages, exit 1, for every profile verb; `status` does not call bootedTarget" },
+  { id = "EX-4", text = "host/policy-cases.nix carries design sec-6's nine refusal cases over a fixture `microvms` tree, a fixture CAPSULE_ROOT and a substituted socketOf, each asserting the reason as well as the status" },
+  { id = "EX-5", text = "`just` green and `just check` clean" },
+  { id = "EX-6", text = "the `take`: after `just build-vm`, doctrine's real runner's `bin/microvm-run` names `--config-file` on the line bootedTarget's sed matches, and that config's `boot-source.boot_args` carries `capsule.target=doctrine`; the commands and output recorded in notes.md (design sec-6, STD-001)" },
+]
+verification = [
+  { id = "VT-1", expects = "cases 1-4: proceed on a match; refuse a mismatch naming both targets; refuse an explicit --profile naming another target (ISS-011's shape); refuse an assignment record naming another target", test_file = "host/policy-cases.nix", keywords = ["capsule.target=", "runs goad-walk's image", "ISS-011", "--config-file"], waived = false },
+  { id = "VT-2", expects = "cases 5-7 and 9: unmarked config, no booted, no --config-file, and a non-JSON config all refuse as unmarked with the reason on stderr and never a silent exit", test_file = "host/policy-cases.nix", keywords = ["does not name a target", "boot-source"], waived = false },
+  { id = "VT-3", expects = "case 8: with no door the devshell link under $CAPSULE_ROOT/.vm/<slot>/booted is read and a conflicting marker under the microvms root is ignored", test_file = "host/policy-cases.nix", keywords = [".vm/", "booted"], waived = false },
+  { id = "VT-4", expects = "the reader and the refusal live in the front end", test_file = "host/cli.nix", keywords = ["bootedOf()", "bootedTarget()", "capsule.target=", "does not name a target"], waived = false },
+  { id = "VT-5", expects = "the marker and its guard are on the image", test_file = "vm/capsule.nix", keywords = ["microvm.kernelParams", "capsule.target=", "profileNameOk"], waived = false },
+  { id = "VA-1", expects = "mutation (design sec-6): delete the dispatch check → 2-7 and 9 red; swap bootedOf's branches → 1 and 8 red; drop bootedTarget's final `|| true` → 9 red; each restored" },
+  { id = "VA-2", expects = "the take (EX-6) run and recorded; `nix eval` shows doctrine's guest toplevel drvPath unchanged by the marker (RV-010's read of microvm.nix, now compared)" },
+  { id = "VH-1", expects = "after the user's host switch and a restart of c onto the marked image, a profile verb on c proceeds — the real runner's layout observed live. At the user's chosen time; not a gate on this phase's exit" },
+]
+specs        = []
+requirements = []
+
+[[phase]]
+id        = "PHASE-03"
+name      = "Targets as a declared set, doctrine the only entry"
+objective = """
+Replace target.nix with targets/ (default.nix listing by hand and deriving
+`name`, `volumePath`, `guestPath`, `cachePaths`; doctrine.nix carrying today's
+values and commentary). Move every consumer to name its target or take the set:
+host/profile.nix over a set (documentOf, jsonOf, needsUnitOf, `dir` of every
+target, `names`), host/programs.nix and host/services.nix taking `targets`,
+`guestRepo` and the probe preludes computed from `probeTarget` in flake.nix,
+`render = ts:` for fixtures. mkVm still binds doctrine's target by name; the
+image binding is PHASE-04. No behaviour change on this host."""
+entrance_criteria = [
+  { id = "EN-1", text = "PHASE-02 complete (the marker reads `target.name`, which targets/default.nix now derives)" },
+]
+exit_criteria = [
+  { id = "EX-1", text = "targets/default.nix and targets/doctrine.nix as design sec-2; target.nix deleted; only flake.nix imports targets/" },
+  { id = "EX-2", text = "no consumer takes a default target: every `target` in scope is `targets.byName.<explicit name>` or a function argument (design sec-2 invariants)" },
+  { id = "EX-3", text = "host/profile.nix takes `targets`; `dir` renders, checks and copies every target's document; `names` replaces `name`; `needsUnitOf` is applied to `probeTarget` in the two-capsules prelude" },
+  { id = "EX-4", text = "host/programs.nix and host/services.nix take `targets`; inject uses `targets.volumePath`; `guestRepo` leaves programs.nix and is computed in flake.nix's probe block from `probeTarget = \"doctrine\"`" },
+  { id = "EX-5", text = "host/profile-cases.nix re-points its first and last cases at `names` and adds the two render cases; fixtures render sets" },
+  { id = "EX-6", text = "justfile: nix_paths gains targets/ and loses target.nix; `_target` removed if uncalled" },
+  { id = "EX-7", text = "docs/contract-target.md says a target is a file in targets/; README's 'Pointing it at a different repo' and 'Changing the guest's tools' and CLAUDE.md's target.nix references updated" },
+  { id = "EX-8", text = "`just` green, `just check` clean, and doctrine's guest toplevel drvPath unchanged from PHASE-02's (a pure refactor of the guest)" },
+]
+verification = [
+  { id = "VT-1", expects = "the derived fields are computed once, from the key", test_file = "targets/default.nix", keywords = ["derive", "byName", "guestPath", "cachePaths", "volumePath"], waived = false },
+  { id = "VT-2", expects = "the render holds one document per target, and one invalid document fails the whole render", test_file = "host/profile-cases.nix", keywords = ["one document per target", "fails the whole render", "names"], waived = false },
+  { id = "VT-3", expects = "the profile library is a function of the set", test_file = "host/profile.nix", keywords = ["targets", "documentOf", "jsonOf", "needsUnitOf", "names"], waived = false },
+  { id = "VA-1", expects = "grep: `import ./targets` only in flake.nix; no `target.nix` reference left outside the ledger; no generic file defaults a target" },
+  { id = "VA-2", expects = "doctrine's guest toplevel drvPath and packages.capsule-cli's behaviour unchanged: drvPath compared before and after" },
+]
+specs        = []
+requirements = []
+
+[[phase]]
+id        = "PHASE-04"
+name      = "One image per target, each slot bound by its profile"
+objective = """
+Add fleet.nix — `{lib, mkVm}: {targets, targetFlakes, capsules, probeTarget}:
+{images, slotImages, vms}` — with the targetFlakes key check and the unbound-slot
+throw (DEC-017, DEC-019, DEC-020). flake.nix applies it once: `targetFlakes =
+{doctrine = inputs.target;}`, mkVm takes extra specialArgs, vm/capsule.nix reads
+`targetFlake`, `packages.image-<target>`, vms = hello // fleet.vms. Pin it with
+fleetCases over a stub mkVm and resetHomeCases per image. Doctrine is still the
+only target, so every slot resolves to today's image."""
+entrance_criteria = [
+  { id = "EN-1", text = "PHASE-03 complete" },
+]
+exit_criteria = [
+  { id = "EX-1", text = "fleet.nix as design sec-3, pure, taking mkVm as an argument; flake.nix the only caller and the only file naming this host's targets, flakes, slots and probe subject" },
+  { id = "EX-2", text = "vm/capsule.nix takes `targetFlake` from specialArgs and no longer reads `inputs.target`" },
+  { id = "EX-3", text = "`nixosConfigurations` is exactly hello, capsule (images.${probeTarget}) and the slots; each image is reachable only as `packages.image-<target>` (DEC-020, RSK-005 not widened)" },
+  { id = "EX-4", text = "fleet-cases.nix carries design sec-6's six fleetCases cases, each forcing the attribute it pins before tryEval (RV-010 F-6); wired into flake.nix and both `build` and `cases` in the justfile; CLAUDE.md's suite list names it" },
+  { id = "EX-5", text = "vm/reset-home-cases.nix asserts the scrub list contains `${volumePath}/.env` in every image" },
+  { id = "EX-6", text = "justfile `build-vm` builds every `image-<target>`" },
+  { id = "EX-7", text = "capsules.nix comments (profile now binds a declared slot's image) and docs/contract-assignment.md ('Who may assign'; `image` unchanged) rewritten; docs/contract-target.md's porting steps gain 'declare it and bind a slot'; CLAUDE.md's one-image lever becomes one image per target" },
+  { id = "EX-8", text = "`just` green, `just check` clean, `just build-vm` builds image-doctrine; every slot's runner drvPath unchanged from PHASE-03's" },
+]
+verification = [
+  { id = "VT-1", expects = "throws: a slot whose profile names no target (naming the slot); a slot with no profile; targetFlakes missing a target; targetFlakes with an extra entry", test_file = "fleet-cases.nix", keywords = ["tryEval", "deepSeq", "slotImages", "targetFlakes"], waived = false },
+  { id = "VT-2", expects = "structure: two slots with one profile get the same image value; each image gets its own target.name and targetFlake; vms.capsule is the probe target's image", test_file = "fleet-cases.nix", keywords = ["specialArgs", "targetFlake", "probeTarget", "vms.capsule"], waived = false },
+  { id = "VT-3", expects = "the binding lives in one pure function", test_file = "fleet.nix", keywords = ["mkVm", "targetFlakes", "unbound", "slotImages", "DEC-017"], waived = false },
+  { id = "VT-4", expects = "the scrub list is checked per image", test_file = "vm/reset-home-cases.nix", keywords = ["volumePath", ".env"], waived = false },
+  { id = "VA-1", expects = "mutation: drop fleet.nix's deepSeq from one throw case → the case passes vacuously is detected by re-adding it; drop the unbound check → VT-1's first two cases red; restored" },
+  { id = "VA-2", expects = "slot runner drvPaths compared before/after: unchanged" },
+]
+specs        = []
+requirements = []
+
+[[phase]]
+id        = "PHASE-05"
+name      = "goad-walk declared, and slot j bound to it"
+objective = """
+Add `inputs.goad-walk`, `targetFlakes.goad-walk`, targets/goad-walk.nix with
+design sec-5's values, and `j.profile = \"goad-walk\"`. Build image-goad-walk —
+the first real target on RSK-002's absent paths at the build rung. The user
+boots j (VH): tools present, goad's source absent, and a doctrine verb on j
+refused as a mismatch."""
+entrance_criteria = [
+  { id = "EN-1", text = "PHASE-04 complete" },
+  { id = "EN-2", text = "design sec-5 preconditions 1-3 hold, confirmed by the user: goad's main pushed; goad-walk's goad input is github:davidlee/goad with its lock committed and pushed to github:davidlee/goad-walk; fetch credentials wherever the image is built" },
+  { id = "EN-3", text = "slot j has no /var/lib/microvms/j, or has had `capsule j volume reset` (ISS-009)" },
+]
+exit_criteria = [
+  { id = "EX-1", text = "flake.nix has `inputs.goad-walk.url = \"github:davidlee/goad-walk\"` (inputs.nixpkgs followed) and `targetFlakes.goad-walk`; flake.lock updated" },
+  { id = "EX-2", text = "targets/goad-walk.nix spells every absent value as a value (design sec-5); listed in targets/default.nix" },
+  { id = "EX-3", text = "capsules.nix: `j.profile = \"goad-walk\"`" },
+  { id = "EX-4", text = "`just` green and `just build-vm` builds image-doctrine and image-goad-walk" },
+  { id = "EX-5", text = "the user told that ~/flakes needs `inputs.goad-walk.follows` (sec-5 precondition 4) before their next switch" },
+]
+verification = [
+  { id = "VT-1", expects = "goad-walk's values carry every absent path as a value", test_file = "targets/goad-walk.nix", keywords = ["toolsPackage = \"default\"", "caches = {}", "guestConfig = {}", "baseline = null", "refresh = null"], waived = false },
+  { id = "VT-2", expects = "the second target and its slot are declared", test_file = "capsules.nix", keywords = ["goad-walk"], waived = false },
+  { id = "VH-1", expects = "`capsule j start` succeeds; a profile verb on j under goad-walk proceeds; the same verb with --profile doctrine refuses as a mismatch" },
+  { id = "VH-2", expects = "in the guest: goad, goad-emit, ruby and jq on PATH; /work/goad-walk is goad-walk's checkout; no goad source tree in /nix/store; the motd names goad-walk" },
+]
+specs        = []
+requirements = []
