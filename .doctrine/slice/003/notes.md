@@ -102,3 +102,13 @@ test mechanics, which is where RV-009 had also found the gap.
 **No further pass is needed before human section review.** The remaining
 unknowns are empirical (the `take` and `start` rows in sec-6), and another
 reading pass cannot settle them.
+
+## Baselines (PHASE-02 EN-3, taken at 7989a87, before any PHASE-02 edit)
+
+The oracles for PHASE-02 VA-2, PHASE-03 EX-8 and PHASE-04 EX-8. Taken with
+`nix eval --raw`.
+
+- guest toplevel (`nixosConfigurations.capsule.config.system.build.toplevel.drvPath`):
+  `/nix/store/jk300x5gblhb28lliz7i3lnvfxsj8x1z-nixos-system-capsule-26.11.20260925.e94cb15.drv`
+- runner (`packages.x86_64-linux.<n>.drvPath`, identical for `capsule` and every
+  slot a–j): `/nix/store/k5vj289vfjmxh45534871lyfzp61p2wz-microvm-firecracker-capsule.drv`
