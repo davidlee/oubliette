@@ -132,3 +132,6 @@ Make slot → image a per-slot answer so goad-walk can run beside doctrine:
 
 - `IMP-013` (staleness) once `image` is written.
 - `IMP-003` (per-assignment extras) remains open; this slice is its image tier.
+- `IMP-015` — oubliette carries no target; the fleet's declarations move to a
+  consumer flake. Out of scope here, but this slice lays its seam: generic code
+  takes the target set as an argument and `flake.nix` is the one binding site.

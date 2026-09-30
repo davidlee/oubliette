@@ -1,0 +1,33 @@
+schema = "doctrine.knowledge"
+version = 1
+
+id = 17
+slug = "a-slots-declared-profile-also-selects-its-image"
+title = "A slot's declared profile also selects its image"
+record_kind = "decision"
+status = "proposed"
+created = "2026-09-30"
+updated = "2026-09-30"
+tags = []
+
+[facet]                         # every field typed; seeded empty (captured later)
+context = "SL-003: slots must boot per-target images; capsules.nix slots already declare `profile` (SL-001, DEC-012, DEC-016)."
+choice = "The slot's `profile` field is required for a declared slot and selects the image; flake.nix throws when it names no declared target."
+alternatives = ["Rename the field to `target` (same semantics, more churn)", "A separate `target` field plus an eval check that it equals `profile`"]
+rationale = "A slot can only serve the target its image is for, so default profile and image are one fact; two fields would be forced equal."
+consequences = ["`profile` is a binding, not a convenience, for a declared slot", "a run-time profile different from the slot's is refused (inq-8)", "DEC-016 superseded: slots may declare different profiles"]
+decided_by = "user"
+decided_on = "2026-09-30"
+
+[evidence]                      # free-text citations (supports / contradicts / notes)
+supports    = []
+contradicts = []
+notes       = []
+
+[relationships]                 # verb-written edges (set by doctrine supersede)
+supersedes    = []   # record ids this one replaces (set by doctrine supersede)
+superseded_by = []   # set on superseded predecessor (verb-written, ADR-004 §5)
+
+[[relation]]
+label = "shapes"
+target = "SL-003"
