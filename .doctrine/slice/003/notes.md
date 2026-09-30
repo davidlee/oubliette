@@ -112,3 +112,31 @@ The oracles for PHASE-02 VA-2, PHASE-03 EX-8 and PHASE-04 EX-8. Taken with
   `/nix/store/jk300x5gblhb28lliz7i3lnvfxsj8x1z-nixos-system-capsule-26.11.20260925.e94cb15.drv`
 - runner (`packages.x86_64-linux.<n>.drvPath`, identical for `capsule` and every
   slot a–j): `/nix/store/k5vj289vfjmxh45534871lyfzp61p2wz-microvm-firecracker-capsule.drv`
+
+## The take (PHASE-02 EX-6 / VA-2, 2026-10-01, at 7df94bd)
+
+`nix build .#capsule` → `/nix/store/hqvm649jhskys2q4mv12abgycifjj4wm-microvm-firecracker-capsule`.
+
+- `bin/microvm-run` line 21: `exec -a "microvm@capsule" …/firecracker-1.16.1/bin/firecracker --config-file /nix/store/l17x74m9p9001213kq194gzrj40m64ym-firecracker-capsule.json --api-sock capsule.sock --enable-pci ${runtime_args:-}`.
+  bootedTarget's sed picks out the config path. This matches the shape of the
+  policyCases fixture.
+- `boot-source.boot_args` ends `… init=/nix/store/qldhwhj3…-nixos-system-capsule-…/init regInfo=… capsule.target=doctrine`.
+  bootedTarget's pipeline over it prints `doctrine`.
+- The guest toplevel drvPath is unchanged from the baseline (`jk300x5…`); the
+  runner drvPath moved `k5vj289…` → `ds4b4vw…`, as expected. DEC-021's premise
+  is compared, not just read.
+
+Not taken: the reader run through the shipped front end against a live slot.
+That is VH-1, at the user's switch.
+
+## Findings carried to reconcile
+
+- design sec-3 says `profileNameOk` rules out whitespace. It does not (space is
+  allowed). vm/capsule.nix now also requires a `[A-Za-z0-9._-]+` token (7df94bd).
+  Amend sec-3's sentence at reconcile.
+- design sec-6's third mutation (drop bootedTarget's final `|| true` → case 9
+  red) does not hold. imageServes runs under `|| exit 1`, which suspends
+  errexit, so the guard is defensive. Amend sec-6 at reconcile.
+- host/cli.nix gained a `bootedControl` seam, which is not in the design's
+  code-impact table (see 7df94bd). Add it to sec-6 at reconcile.
+- policyCases case 8 reads the record case 4 wrote, so the cases are ordered.

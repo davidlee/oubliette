@@ -35,3 +35,10 @@ reachable shapes once a slot declares a default:
 Both are unreachable while every slot declares the one target the one image
 carries. The repair is the same for all three functions: take the profile the
 caller already resolved, not the slot.
+
+**Closed by refusal (2026-10-01, 7df94bd, SL-003 PHASE-02).** A profile verb
+now proceeds only when the running image names the resolved target (DEC-023),
+so a re-provision under another target is refused before any `guestPath` is
+read. Pinned by policyCases, "an explicit --profile naming another target
+refuses (ISS-011)", which goes red when the check is removed. The fix reaches a
+live host only with the user's host switch.
