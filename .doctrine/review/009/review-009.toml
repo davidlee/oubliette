@@ -1,0 +1,35 @@
+id    = 9
+slug  = "design-review-of-sl-003"
+title = "design review of SL-003"
+# no status — a review's status is DERIVED from its findings (ADR-007 D-C8), so
+# it is never stored (the storage rule forbids derived data in authored files).
+
+[review]
+facet     = "design"     # scope|design|plan|phase-plan|implementation|code-review|reconciliation
+raiser    = "raiser"
+responder = "responder"
+concluded = true
+
+[target]                   # the outbound `reviews` edge (ADR-004): RV-NNN ──reviews──▶ <ref>
+ref   = "SL-003"
+
+[[finding]]
+id = "F-1"
+status = "verified"
+severity = "major"
+title = "sec-4's refusal breaks profile verbs on the devshell path"
+detail = "bootedTarget reads /var/lib/microvms/<slot>/booted, which only microvm-set-booted@ (the module path's host units) writes. The front end also serves devshell-path capsules: program() (host/cli.nix ~:509) falls back to the PATH copy, and ssh goes direct over the tap in this namespace. A devshell capsule has no booted link, so under DEC-023 every profile verb through 'capsule' refuses as unmarked. CLAUDE.md requires that the devshell path keep working with no rebuild and no root. The design never mentions the devshell path. The rule needs a devshell answer: exempt it (its runner is always .#capsule = the probe target's image, but then an explicit --profile goad-walk against it proceeds unchecked — ISS-011's shape again), or find the runner another way (e.g. the VMM process in this namespace -> --config-file), or refuse there too and say the devshell path is doctrine-only."
+disposition = "fixed"
+response = "User chose option 1, recorded as DEC-024, which extends DEC-022 to the devshell path. vm now builds with --out-link .vm/<slot>/booted and execs from that link. bootedOf picks the module link when the capsule has a door and the devshell link otherwise. sec-1, sec-3, sec-4 and sec-6 were revised, and policyCases gains case 8 (a capsule with no door reads its devshell link). A real devshell start is listed under not exercised."
+
+[[finding]]
+id = "F-2"
+status = "verified"
+severity = "minor"
+title = "bootedTarget's sample exits abruptly under set -e on a malformed config"
+detail = "The final pipeline (jq | tr | sed | head) is the function's return status. writeShellApplication sets errexit and pipefail, so if jq fails on an unreadable or malformed JSON, or is SIGPIPEd by head, then name=$(bootedTarget n) kills the front end with no message instead of reaching the 'unmarked' refusal. sec-4 promises every unreadable case is unmarked. Fix: end the pipeline with '|| true' (or use jq's own first/select), and add a case: a config that is not JSON refuses as unmarked."
+disposition = "fixed"
+response = "bootedTarget now guards every step (|| true / return 0) and sec-4 says why. A sibling in the same sample is fixed too: the --config-file regex required a trailing space, which would refuse falsely when the flag is last. policyCases gains case 9 (a config that is not JSON refuses as unmarked, with the reason on stderr), plus a mutation check on || true."
+
+# Findings are append-only `[[finding]]` tables, added by `review raise` (PHASE-03).
+# Empty here at creation — a fresh review is Active, awaiting the raiser (D-C8).

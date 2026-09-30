@@ -42,8 +42,9 @@ flowchart LR
 ```
 
 The diagram shows where each fact lives. Everything left of the run-time box
-is a value in this repo; the only run-time observation is `booted`, which
-microvm.nix writes and removes itself.
+is a value in this repo. The only run-time observation is `booted`, the link
+a runner was started from. On the module path microvm.nix writes and removes
+it. On the devshell path `vm` writes it under `.vm/<slot>/` (`DEC-024`).
 
 **The boundary.** This slice is per-*slot* and per-*target*. Extras stay
 fleet-wide (`CON-001` holds for extras), and per-assignment composition is
@@ -59,7 +60,8 @@ onto a marked one. That is the user's call (`DEC-023`), not an oversight.
 Decisions this design rests on: `DEC-017` (a slot's profile selects its
 image), `DEC-018` (targets as an argument), `DEC-019` (a literal input per
 target), `DEC-020` (hostName and attributes), `DEC-021` (the marker),
-`DEC-022` (read live), `DEC-023` (fail closed).
+`DEC-022` (read live), `DEC-023` (fail closed), `DEC-024` (the devshell
+path's `booted`).
 
 <!-- doctrine:section sec-2 -->
 ## Targets as a declared set, and the one binding site
@@ -323,7 +325,8 @@ not for this host.
 Changing a slot's `profile` changes `nixosConfigurations.<slot>`. The slot
 picks the new image up on `microvm -u` (`just refresh-build <slot>`) and a
 restart, or on the module's `install-microvm-<slot>` re-pointing `current` at
-the next switch (`services.nix:565-593`). The volume is **not** reset by this:
+the next switch (`services.nix:565-593`). On the devshell path, `vm <slot>`
+builds `.#<slot>` at every start, so the next start takes the new image. The volume is **not** reset by this:
 the last target's checkout, caches and `$HOME` stay (`ISS-009`,
 `mem.fact.oubliette.a-provision-resets-tracked-files-only`). Until `ISS-009`'s
 refusal exists, re-binding a used slot is `capsule <slot> volume reset` first, which
@@ -344,11 +347,29 @@ under another target reads the old target's `guestPath`.
 
 ### What is read, and from where
 
-The observation is microvm.nix's own. `microvm-set-booted@<slot>` links
-`/var/lib/microvms/<slot>/booted` to `current` before the VMM starts, and
-removes it when the VMM stops (locked microvm.nix,
-`nixos-modules/host/default.nix:254-270`). So `booted` exists exactly while the
-VM is up, and names the runner that is actually running. **Nothing is pinned**
+The observation is the link a runner was started from, and each path has one.
+
+- **Module path.** `microvm-set-booted@<slot>` links
+  `/var/lib/microvms/<slot>/booted` to `current` before the VMM starts, and
+  removes it when the VMM stops (locked microvm.nix,
+  `nixos-modules/host/default.nix:254-270`). So `booted` exists exactly while
+  the VM is up, and names the runner that is actually running.
+- **Devshell path.** There is no unit, so `vm <slot>` makes the same link
+  itself (`DEC-024`). It already runs in `.vm/<slot>/`:
+
+  ```bash
+  # flake.nix, `vm`. Today: exec nix run "$root#$name"
+  nix build --out-link booted "$root#$name"
+  exec ./booted/bin/microvm-run
+  ```
+
+  `--out-link` also registers the link as a gcroot, so the running image cannot
+  be collected under it. Unlike microvm.nix's link, this one is not removed at
+  stop: after a stop or a crash it names the image that last booted in that
+  directory. The refusal does not mind, because a stopped capsule fails every
+  profile verb at the door anyway.
+
+**Nothing is pinned**
 (`DEC-022`). The record's `image` field stays `null` and keeps its contract
 meaning, a composition store path with a gcroot, for `IMP-003`.
 
@@ -363,27 +384,48 @@ so both immutable:
                                                "… init=/nix/store/…/init capsule.target=goad-walk"
 ```
 
-One function in `host/cli.nix`, beside `created` (`:96`), which already reads
-the same root:
+Two functions in `host/cli.nix`, beside `created` (`:366`), which already reads
+the module path's root:
 
 ```bash
+# Where the runner this slot is running was started from. The module path's link
+# when the capsule has a door, the devshell's otherwise. The door is the half of
+# program()'s test that says which path a capsule is on; program() also asks
+# whether the module's copy is installed, which is about the host (DEC-024).
+bootedOf() {
+  if [ -S "$(sockOf "$1")" ]; then
+    printf '%s/%s/booted' "${microvms}" "$1"
+  else
+    printf '%s/.vm/%s/booted' "${CAPSULE_ROOT:-$PWD}" "$1"
+  fi
+}
+
 # The target the slot's *running* image was built for, or nothing: no VMM up,
 # a runner whose layout this does not recognise, or an image built before
 # capsule.target existed. Never a guess. Reads the store only, through the
-# link microvm.nix itself keeps (`booted`), so it is an observation of this
-# host rather than a program choosing its own target (item 20).
+# link the runner was started from, so it is an observation of this host rather
+# than a program choosing its own target (item 20). Every step that can fail
+# ends in `return 0` or `|| true`: the front end runs under errexit and
+# pipefail, so an unguarded failure here would end it with no message instead
+# of reaching the unmarked refusal.
 bootedTarget() {
   local run cfg
-  run=$(readlink -e "${microvms}/$1/booted") || return 0
-  cfg=$(sed -n 's/.* --config-file \([^ ]*\) .*/\1/p' "$run/bin/microvm-run") || return 0
-  [ -r "$cfg" ] || return 0
-  jq -r '."boot-source".boot_args // ""' "$cfg" \
-    | tr ' ' '\n' | sed -n 's/^capsule\.target=//p' | head -n1
+  run=$(readlink -e "$(bootedOf "$1")") || return 0
+  cfg=$(sed -n 's/.* --config-file \([^ ]*\).*/\1/p' "$run/bin/microvm-run" | head -n1) || true
+  [ -n "$cfg" ] && [ -r "$cfg" ] || return 0
+  jq -r '."boot-source".boot_args // ""' "$cfg" 2>/dev/null \
+    | tr ' ' '\n' | sed -n 's/^capsule\.target=//p' | head -n1 || true
 }
 ```
 
-`microvms` is already an argument with a default (`host/cli.nix:96`), so a
-suite points it at a fixture tree (sec-6).
+A wrong guess of path fails closed. A module-path capsule with no door reads a
+devshell link that is normally absent. If one is left over from a devshell run
+of the same slot name, the verb still fails at the door, because the devshell
+copy of the program cannot reach a tap inside another namespace.
+
+`microvms` is already an argument with a default (`host/cli.nix:96`), and
+`socketOf` comes from the `capsules` the suite substitutes (as `volumeCases`
+does). So a suite points both branches at a fixture tree (sec-6).
 
 ### The rule
 
@@ -408,7 +450,7 @@ The three outcomes and what each says:
 |---|---|---|
 | proceed | marker equals the resolved profile | none |
 | mismatch | marker names another target | `capsule j: runs goad-walk's image, and this verb is for doctrine.` / `  the slot can only serve the target its image was built for (DEC-017):` / `  name --profile goad-walk, or declare j's profile and just refresh-build j.` |
-| unmarked | no `booted`, unreadable runner, or no `capsule.target` | `capsule c: its running image does not name a target —` / `  not running, or booted before capsule.target existed.` / `  start it, or just refresh-build c and restart it onto the current image.` |
+| unmarked | no `booted`, unreadable runner, or no `capsule.target` | `capsule c: its running image does not name a target —` / `  not running, or booted before capsule.target existed.` / `  start it, or restart it onto the current image (module path: just refresh-build c first).` |
 
 **Unmarked refuses** (`DEC-023`). An image that cannot say what it is has no
 claim to be acted on. The cost is that every capsule running today refuses
@@ -556,15 +598,15 @@ Both directions, since a presence-only check passes for the wrong reason
 | `targets/goad-walk.nix` (new) | sec-5's values; lands last, once goad-walk is fetchable |
 | `target.nix` | deleted |
 | `fleet.nix` (new) | `{lib, mkVm}: {targets, targetFlakes, capsules, probeTarget}: {images, slotImages, vms}`, with the key check and the `unbound` throw (sec-3) |
-| `flake.nix` | `inputs.goad-walk`; `targets = import ./targets`; `targetFlakes`; `probeTarget = "doctrine"`; `mkVm` takes extra `specialArgs`; `vms` from `fleet.nix`; `packages.image-<target>`; `render = ts:`; every `target` consumer names its target or takes the set; probe preludes and `guestRepo` from `probeTarget`; `resetHomeCases` over every image; `fleetCases` wired |
+| `flake.nix` | `inputs.goad-walk`; `targets = import ./targets`; `targetFlakes`; `probeTarget = "doctrine"`; `mkVm` takes extra `specialArgs`; `vms` from `fleet.nix`; `packages.image-<target>`; `render = ts:`; every `target` consumer names its target or takes the set; probe preludes and `guestRepo` from `probeTarget`; `resetHomeCases` over every image; `fleetCases` wired; `vm` builds with `--out-link booted` and execs the link (`DEC-024`) |
 | `vm/capsule.nix` | takes `targetFlake` instead of reading `inputs.target`; `microvm.kernelParams = ["capsule.target=…"]`; asserts `profileNameOk target.name` |
 | `host/profile.nix` | `{…, targets}`; `documentOf`, `jsonOf`, `needsUnitOf`; `dir` renders every target; `names` replaces `name` |
 | `host/programs.nix` | `targets` in place of `target`; `inject` uses `targets.volumePath`; `guestRepo` removed |
 | `host/services.nix` | `targets` in place of `target`; option text for `profileDir` unchanged in meaning |
-| `host/cli.nix` | `bootedTarget`; the refusal at the profile-verb dispatch (`:546-556`) |
+| `host/cli.nix` | `bootedOf` and `bootedTarget`; the refusal at the profile-verb dispatch (`:546-556`) |
 | `capsules.nix` | `j.profile = "goad-walk"` (last); comments at `:7-10, :69-84, :156-160` rewritten for one image per target |
 | `host/profile-cases.nix` | takes `names`/`dir` of a set; fixtures via `render` over sets |
-| `host/policy-cases.nix` | the refusal cases below, over a fixture `microvms` tree |
+| `host/policy-cases.nix` | the refusal cases below, over a fixture `microvms` tree, a fixture `CAPSULE_ROOT` and a substituted `socketOf` |
 | `fleet-cases.nix` (new) | the binding's throws, over a stub `mkVm` |
 | `vm/reset-home-cases.nix` | takes every image's config and asserts the scrub list per image |
 | `justfile` | `build-vm` builds every `image-<target>`; `cases` and `build` list `fleetCases`; `nix_paths` gains `targets/`, loses `target.nix`; `_target` removed if still uncalled |
@@ -579,7 +621,9 @@ ledger items 21, 28, 51 and 52.
 
 **`policyCases`: the refusal** (run; a fixture `microvms` root with a runner
 tree in microvm.nix's shape: `bin/microvm-run` naming `--config-file`, and a
-config JSON with `boot-source.boot_args`):
+config JSON with `boot-source.boot_args`. Cases 1–7 and 9 give the slot a door,
+through a socket at the substituted `socketOf` path, so they take the module
+branch. Case 8 gives it none):
 
 1. *a profile verb proceeds when the booted image names the resolved profile*
 2. *a mismatch refuses, naming both targets*: marker `goad-walk`, declared
@@ -589,9 +633,15 @@ config JSON with `boot-source.boot_args`):
 5. *an unmarked runner refuses as unmarked*: config with no `capsule.target`
 6. *a slot with no `booted` refuses as unmarked*
 7. *a runner whose `microvm-run` names no `--config-file` refuses as unmarked*
+8. *a capsule with no door reads its devshell link*: the marker sits under
+   `$CAPSULE_ROOT/.vm/<slot>/booted` and the verb proceeds, while a conflicting
+   marker under the `microvms` root is ignored
+9. *a config that is not JSON refuses as unmarked* and does not end the front
+   end silently: the reason is on stderr
 
-Each asserts the reason as well as the status. Mutation check: delete the
-dispatch check and watch 2–7 go red.
+Each asserts the reason as well as the status. Mutation checks: delete the
+dispatch check and watch 2–7 and 9 go red; swap `bootedOf`'s branches and
+watch 1 and 8 go red; drop `bootedTarget`'s `|| true` and watch 9 go red.
 
 **`fleetCases`: the binding** (eval throws read with `builtins.tryEval` and
 asserted in the shell, `hostModuleUnits`' arrangement; a stub `mkVm` returns
@@ -627,7 +677,10 @@ image. This puts one guest eval per target into `just build`.
 | goad-walk boots, a verb under it proceeds, one under doctrine refuses | start | VH: the user's `capsule j start` |
 | goad's tools are present and goad's source is absent | exercise | VH, both directions (sec-5) |
 
-**Not exercised by this design:** the refusal against a *live* mismatched
+**Not exercised by this design:** `vm` writing its link at a real devshell
+start. The `vm` text is built, so shellcheck checks it, and case 8 runs the
+reader over the link's shape, but no devshell capsule is started. Nor is the
+refusal run against a *live* mismatched
 slot. That would need a slot re-declared and deliberately not refreshed. The
 fixture covers the logic, and the live case is left to the first real
 occurrence, which `IMP-013` would report. The second image's erofs size is not

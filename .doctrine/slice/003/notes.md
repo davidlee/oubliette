@@ -6,11 +6,12 @@ disposable phase sheet (`.doctrine/state/.../phase-NN.md`) that must survive
 
 ## Harvest
 <!-- single-copy: updated in place each harvest; ids only, never restated content -->
-fresh-as-of: 2026-09-30 · design/drafting (rev 25, runbook cleared) · 3c75a29
+fresh-as-of: 2026-10-01 · design/reviewing (rev 35; RV-009 concluded) · 525dba1+
 
 ### Produced
-- `design.md` sec-1..sec-6 (drafted, unreviewed)
-- DEC-017, DEC-018, DEC-019, DEC-020, DEC-021, DEC-022, DEC-023 (accepted)
+- `design.md` sec-1..sec-6 (revised after RV-009; human section review outstanding)
+- DEC-017, DEC-018, DEC-019, DEC-020, DEC-021, DEC-022, DEC-023, DEC-024 (accepted)
+- RV-009 (agent pass; F-1, F-2 fixed and verified)
 - IMP-015 (filed; needs SL-003)
 - mem.fact.oubliette.booted-is-the-running-runner
 
@@ -58,3 +59,27 @@ second guest eval in `just build`; `~/flakes` lock must fetch the new input.
 
 **Dependencies:** user-owned fetchability of goad-walk and goad; a
 never-created slot for goad-walk.
+
+## Further review passes (2026-10-01, reviewing)
+
+RV-009 was one agent pass. It found that the refusal broke the devshell path
+(F-1, now DEC-024), which suggests the design's reach beyond the module path
+had not been attacked. A further pass would probe:
+
+- **The consumer sweep in sec-2/sec-3.** Is every reader of `target` in the
+  seam table? Probe preludes, `hostPrograms`' two call sites and
+  `host/services.nix` need a grep, not recall. A missed one fails at eval, so
+  it is cheap to find but costs a phase if found late.
+- **The runner layout sec-4 depends on.** The `take` row checks the
+  firecracker config. It does not check that `bin/microvm-run` names
+  `--config-file` in the form the regex expects, and it should.
+- **DEC-020's claim** that `microvm.kernelParams` stays out of the guest
+  toplevel, so that doctrine's guest system is unchanged apart from its runner.
+  It rests on one line of microvm.nix's options and was never compared.
+- **The devshell path's other state.** Beyond `booted`, does anything else in
+  the design (sec-3's re-binding, sec-5's slot) assume `/var/lib/microvms`?
+
+An external adversarial pass (gpt-6-sol, per the user's standing preference
+for design reviews) aimed at those four would be proportionate. A full
+inquisition would not: the governance picture has not moved since
+`governance-confirmed`.

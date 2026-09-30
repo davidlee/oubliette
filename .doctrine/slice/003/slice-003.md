@@ -76,13 +76,15 @@ Revised after the design inquiry (2026-09-30); the decisions are `DEC-017` to
 
 ## Affected surface
 
-`flake.nix` (inputs, `mkVm`, `capsuleVm`, instance binding, profile renders),
-`target.nix` → `targets/`, `capsules.nix` (required slot `profile`),
-`vm/capsule.nix` and anything else reading `target` at build time,
+`flake.nix` (inputs, `targetFlakes`, `mkVm`, `packages.image-<target>`,
+profile renders, probe preludes), `fleet.nix` (new: the pure target → image →
+slot binding), `target.nix` → `targets/`, `capsules.nix` (slot `profile`
+binds; comments), `vm/capsule.nix` (tool set from `targetFlake`, the marker),
 `host/cli.nix` (the marker reader and the refusal at profile-verb dispatch),
-`host/profile.nix`, `host/services.nix`, the case suites pinning those
-(`policyCases`, `profileCases`, `vmCases`, `hostModuleUnits`),
-`docs/contract-target.md`, `docs/contract-assignment.md`, `README.md`.
+`host/profile.nix`, `host/programs.nix`, `host/services.nix`, the case suites
+(`policyCases`, `profileCases`, `resetHomeCases`, and a new `fleetCases`),
+`justfile`, `docs/contract-target.md`, `docs/contract-assignment.md`,
+`README.md`, `CLAUDE.md`.
 
 ## Preconditions (user-owned)
 
@@ -96,8 +98,9 @@ Revised after the design inquiry (2026-09-30); the decisions are `DEC-017` to
 
 - **Doctrine's image changes** — by the `capsule.target` kernel parameter
   (`DEC-021`) at least. Accepted; no preservation goal.
-- **Process identity.** Per-slot images must not make `pkill -f` by name look
-  safe; a VMM is still identified by its namespace (`IMP-003`'s warning).
+- **Process identity.** A second image must not make `pkill -f` by name look
+  safe. Every image keeps `hostName = "capsule"` (`DEC-020`), so every VMM is
+  still `microvm@capsule` and is identified by its namespace alone.
 - **Build cost.** Each target is another ~3.0 GiB erofs (Plan C's figure, not
   probed) and another toolchain closure in `just build`.
 - **goad-walk's guest needs.** panopticon needed nix-ld (`NOTES item 23`); goad

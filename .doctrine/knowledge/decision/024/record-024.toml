@@ -1,0 +1,39 @@
+schema = "doctrine.knowledge"
+version = 1
+
+id = 24
+slug = "on-the-devshell-path-vm-writes-the-booted-link-the-refusal-reads"
+title = "On the devshell path, vm writes the booted link the refusal reads"
+record_kind = "decision"
+status = "accepted"
+created = "2026-09-30"
+updated = "2026-09-30"
+tags = []
+
+[facet]                         # every field typed; seeded empty (captured later)
+context = "DEC-022 reads the running image through /var/lib/microvms/<slot>/booted, which only the module path's microvm-set-booted@ unit writes. The capsule front end also serves devshell-path capsules (program() falls back to PATH; ssh goes direct over the local tap), so under DEC-023 every profile verb through it would refuse on the devshell path (RV-009 F-1), which must keep working."
+choice = "vm <slot> builds the slot's runner with nix build --out-link .vm/<slot>/booted and execs it from that link. bootedTarget reads <microvms>/<slot>/booted when the capsule has a door (the module path; the door half of program()'s test) and ${CAPSULE_ROOT:-$PWD}/.vm/<slot>/booted otherwise. One reader, one rule, both paths; no link still refuses as unmarked."
+alternatives = ["Exempt the devshell path (an explicit --profile against a devshell VM goes unchecked: ISS-011's shape)", "Refuse on the devshell path too (withdraws the devshell-must-keep-working rule)", "Find the VMM process and read its --config-file (module-path VMMs belong to another user", " so the namespace scan needs root)"]
+rationale = "The link is the thing the runner is executed from, so it is the source rather than a copy of one (DEC-022's reasoning holds). --out-link also makes it an indirect gcroot, so a running image's store path cannot be collected under it."
+consequences = ["Unlike microvm.nix's", " the devshell link is not removed at stop: after a stop or crash it names the image that last booted in that directory", "host/cli.nix gains a path choice ahead of bootedTarget; policyCases pins both branches", "the vm program in flake.nix changes from nix run to nix build --out-link + exec"]
+decided_by = "user"
+decided_on = "2026-10-01"
+
+[evidence]                      # free-text citations (supports / contradicts / notes)
+supports    = []
+contradicts = []
+notes       = []
+
+[relationships]                 # verb-written edges (set by doctrine supersede)
+supersedes    = []   # record ids this one replaces (set by doctrine supersede)
+superseded_by = []   # set on superseded predecessor (verb-written, ADR-004 §5)
+
+[[relation]]
+label = "references"
+role = "concerns"
+descriptor = "extends DEC-022's reading of booted to the devshell path"
+target = "DEC-022"
+
+[[relation]]
+label = "shapes"
+target = "SL-003"
