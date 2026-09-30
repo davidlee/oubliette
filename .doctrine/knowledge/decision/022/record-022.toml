@@ -1,0 +1,33 @@
+schema = "doctrine.knowledge"
+version = 1
+
+id = 22
+slug = "the-booted-image-is-read-live-at-use-and-the-records-image-field-stays-imp-003s"
+title = "The booted image is read live at use, and the record's image field stays IMP-003's"
+record_kind = "decision"
+status = "proposed"
+created = "2026-09-30"
+updated = "2026-09-30"
+tags = []
+
+[facet]                         # every field typed; seeded empty (captured later)
+context = "SL-003/IMP-012 proposed pinning the booted runner into the assignment record at start. DEC-021 makes a runner name its own target, so `booted` (present exactly while the VM is up) is already an authoritative observation."
+choice = "Nothing is pinned. Every check reads /var/lib/microvms/<slot>/booted and its capsule.target marker at use. The record's `image` field stays null and keeps its contract meaning (a composition store path with a gcroot), for IMP-003."
+alternatives = ["Pin into the record at start (generation bump per start, CON-002 ref naming; stale after a bypassing start, CON-003; redefines `image`)", "Pin beside the record in <slotDir>/booted.json (a second copy to keep in step)"]
+rationale = "A copy of an on-disk observation can only go stale; reading the source cannot. Keeps desired state and observation apart (Plan D D1) without a new file."
+consequences = ["IMP-012 is fulfilled in intent (a slot's running image is known and checked) but not in its literal shape (no pin, field stays inert); IMP-012's text is revised at reconcile", "IMP-013 reads the same observation"]
+decided_by = "user"
+decided_on = "2026-09-30"
+
+[evidence]                      # free-text citations (supports / contradicts / notes)
+supports    = []
+contradicts = []
+notes       = []
+
+[relationships]                 # verb-written edges (set by doctrine supersede)
+supersedes    = []   # record ids this one replaces (set by doctrine supersede)
+superseded_by = []   # set on superseded predecessor (verb-written, ADR-004 §5)
+
+[[relation]]
+label = "shapes"
+target = "SL-003"

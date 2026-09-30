@@ -5,8 +5,9 @@
 The trigger is a real second target: `~/dev/goad-walk`, a flake whose
 `packages.x86_64-linux.default` is the tool set a goad kit walk runs with (goad,
 goad-emit, ruby, jq; goad-check and goad-kit once goad exports them). It must run
-**beside** doctrine, not instead of it — capsule `c` is driving doctrine's
-`SL-251` and must not be restarted or re-imaged by this work.
+**beside** doctrine, not instead of it. Existing capsules may be disrupted by
+this work — the user's call, 2026-09-30: the design going forward matters, not
+preserving what is running (`DEC-023`).
 
 Today that is impossible by values alone:
 
@@ -45,9 +46,9 @@ capsules.nix  a..j ──all──▶ capsuleVm  (flake.nix: lib.mapAttrs (_: _:
    the declared `profile` and the bound image must agree at eval.
 4. **goad-walk declared as the second target** and one slot bound to it.
    `DEC-016` superseded by a decision recording the split.
-5. **Capsule `c` is untouched.** Rolling this out does not restart, re-image or
-   re-provision any running slot; each slot picks up a new image only on its own
-   `microvm -u` / restart.
+5. ~~Capsule `c` is untouched.~~ **Withdrawn by the user (2026-09-30).**
+   Every capsule booted before this slice refuses profile verbs until restarted
+   onto a marked image (`DEC-023`), and that is accepted.
 
 ## Non-Goals
 
@@ -82,11 +83,8 @@ capsules.nix  a..j ──all──▶ capsuleVm  (flake.nix: lib.mapAttrs (_: _:
 
 ## Risks
 
-- **Doctrine's runner store path moves.** Refactoring `vm/capsule.nix` to take
-  a target argument may change doctrine's image derivation even with identical
-  values. Harmless to `c` while it runs (a VMM keeps the path it launched), but
-  its next restart boots the new one. Goal: doctrine's image derivation is
-  byte-identical before and after objectives 2–3; if not, say so.
+- **Doctrine's image changes** — by the `capsule.target` kernel parameter
+  (`DEC-021`) at least. Accepted; no preservation goal.
 - **Process identity.** Per-slot images must not make `pkill -f` by name look
   safe; a VMM is still identified by its namespace (`IMP-003`'s warning).
 - **Build cost.** Each target is another ~3.0 GiB erofs (Plan C's figure, not
@@ -117,10 +115,8 @@ capsules.nix  a..j ──all──▶ capsuleVm  (flake.nix: lib.mapAttrs (_: _:
 - `just` green, including new/extended cases for: the `image` pin and its
   refusal; a slot bound to a target with no image (eval throw); declared
   `profile` vs bound image disagreement (eval throw).
-- Doctrine's image derivation compared before/after (identical, or the delta
-  explained).
 - goad-walk's image builds from a fetchable input; one slot boots it, the agent
-  sees goad's tools and no goad source, while `c` keeps running. Boot is
+  sees goad's tools and no goad source. Boot is
   VH (by the human), since starting a slot is the user's act on this host.
 
 ## Summary

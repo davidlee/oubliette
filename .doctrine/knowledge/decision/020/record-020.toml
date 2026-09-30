@@ -1,0 +1,33 @@
+schema = "doctrine.knowledge"
+version = 1
+
+id = 20
+slug = "every-targets-image-is-hostname-capsule-and-only-slots-are-instantiable"
+title = "Every target's image is hostName capsule, and only slots are instantiable"
+record_kind = "decision"
+status = "proposed"
+created = "2026-09-30"
+updated = "2026-09-30"
+tags = []
+
+[facet]                         # every field typed; seeded empty (captured later)
+context = "SL-003: per-target images need names; hostName is in the closure and is the process name microvm@<hostName> that probes match (probe/harness.sh:294, NOTES item 28)."
+choice = "Every image keeps hostName = capsule. nixosConfigurations stays hello, capsule (doctrine's image, bound by name in flake.nix as the probes' subject) and one attr per slot resolving to its profile's image. Each target's runner is a packages-only attr (image-<target>) for building, never a nixosConfigurations attr."
+alternatives = ["hostName per target (splits the process name; any_vm_running and vm-stop miss VMMs)", "A nixosConfigurations attr per target (widens RSK-005)"]
+rationale = "Keeps a VMM identified by its namespace and every VMM matchable as microvm@capsule; adds no attr microvm -c can instantiate outside a slot, so RSK-005 does not widen."
+consequences = ["the guest prompt and ps still do not say which target", "`.#capsule` names doctrine's image until IMP-015 gives probes a fixture target"]
+decided_by = "user"
+decided_on = "2026-09-30"
+
+[evidence]                      # free-text citations (supports / contradicts / notes)
+supports    = []
+contradicts = []
+notes       = []
+
+[relationships]                 # verb-written edges (set by doctrine supersede)
+supersedes    = []   # record ids this one replaces (set by doctrine supersede)
+superseded_by = []   # set on superseded predecessor (verb-written, ADR-004 §5)
+
+[[relation]]
+label = "shapes"
+target = "SL-003"

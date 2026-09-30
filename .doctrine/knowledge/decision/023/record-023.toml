@@ -1,0 +1,33 @@
+schema = "doctrine.knowledge"
+version = 1
+
+id = 23
+slug = "a-profile-verb-refuses-unless-the-running-image-names-the-profiles-target"
+title = "A profile verb refuses unless the running image names the profile's target"
+record_kind = "decision"
+status = "proposed"
+created = "2026-09-30"
+updated = "2026-09-30"
+tags = []
+
+[facet]                         # every field typed; seeded empty (captured later)
+context = "SL-003: IMP-012's refusal and ISS-011 (cross-target re-provision) are one rule once slots boot different images. Every profile verb passes one dispatch point in host/cli.nix after its profile name is resolved."
+choice = "At the profile-verb dispatch, after resolution: proceed only when the booted runner's capsule.target equals the resolved profile. A mismatch refuses, naming both targets and the fix. No booted runner, or a runner with no marker, also refuses (fail closed)."
+alternatives = ["Unknown passes with a notice (kept pre-marker capsules working)", "Additionally warn at start"]
+rationale = "The user cares about the design going forward, not about preserving existing capsules (2026-09-30); an image that cannot say what it is has no claim to be acted on."
+consequences = ["every capsule booted before SL-003 refuses profile verbs until restarted onto a marked image", "ISS-011 is closed by refusal rather than by fixing the stale guestPath read", "the rule lives in the front end only; off-PATH programs are not checked (mem.fact.oubliette.two-copies-refuse-in-different-orders)"]
+decided_by = "user"
+decided_on = "2026-09-30"
+
+[evidence]                      # free-text citations (supports / contradicts / notes)
+supports    = []
+contradicts = []
+notes       = []
+
+[relationships]                 # verb-written edges (set by doctrine supersede)
+supersedes    = []   # record ids this one replaces (set by doctrine supersede)
+superseded_by = []   # set on superseded predecessor (verb-written, ADR-004 §5)
+
+[[relation]]
+label = "shapes"
+target = "SL-003"

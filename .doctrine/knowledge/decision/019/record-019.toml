@@ -1,0 +1,33 @@
+schema = "doctrine.knowledge"
+version = 1
+
+id = 19
+slug = "each-targets-tool-set-flake-is-a-literal-input-mapped-by-name-in-flakenix-and-passed-to-the-image"
+title = "Each target's tool-set flake is a literal input, mapped by name in flake.nix and passed to the image as a value"
+record_kind = "decision"
+status = "proposed"
+created = "2026-09-30"
+updated = "2026-09-30"
+tags = []
+
+[facet]                         # every field typed; seeded empty (captured later)
+context = "SL-003: vm/capsule.nix read inputs.target by name; a second target needs its own flake."
+choice = "Keep inputs.target for doctrine and add inputs.goad-walk. flake.nix holds targetFlakes = { doctrine = inputs.target; goad-walk = inputs.goad-walk; }, and eval throws unless its names equal the target set's. vm/capsule.nix receives targetFlake as a specialArg value."
+alternatives = ["Rename inputs.target to inputs.doctrine for symmetry"]
+rationale = "Leaves doctrine's lock node and ~/flakes' inputs.target.follows untouched, favouring an unchanged doctrine image; IMP-015 removes these inputs from oubliette anyway, so symmetry churn would be moved twice."
+consequences = ["~/flakes adds inputs.goad-walk.follows (the user's edit)", "the input name `target` means doctrine until IMP-015"]
+decided_by = "user"
+decided_on = "2026-09-30"
+
+[evidence]                      # free-text citations (supports / contradicts / notes)
+supports    = []
+contradicts = []
+notes       = []
+
+[relationships]                 # verb-written edges (set by doctrine supersede)
+supersedes    = []   # record ids this one replaces (set by doctrine supersede)
+superseded_by = []   # set on superseded predecessor (verb-written, ADR-004 §5)
+
+[[relation]]
+label = "shapes"
+target = "SL-003"

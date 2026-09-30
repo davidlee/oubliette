@@ -1,0 +1,33 @@
+schema = "doctrine.knowledge"
+version = 1
+
+id = 21
+slug = "an-image-names-its-target-in-its-own-kernel-command-line"
+title = "An image names its target in its own kernel command line"
+record_kind = "decision"
+status = "proposed"
+created = "2026-09-30"
+updated = "2026-09-30"
+tags = []
+
+[facet]                         # every field typed; seeded empty (captured later)
+context = "SL-003/IMP-012: the front end must learn which target a booted runner is for, without an eval or a program probing host state; every image has hostName capsule, so runners differ only by hash. A live runner's only identifying datum is the init= path in the firecracker config's boot_args (observed on slot c, 2026-09-30)."
+choice = "Each image carries capsule.target=<name> as a kernel parameter. The front end reads it from the booted runner's firecracker config (booted -> bin/microvm-run -> firecracker-*.json -> boot-source.boot_args)."
+alternatives = ["A runner-path-to-target map written by the host module at activation (doctrine image unchanged; unknown on the devshell path and for older generations)", "Record the runner path only, with no target identity (cannot catch the harm IMP-012 insures against)"]
+rationale = "Self-describing: works on both paths and for any generation, and serves IMP-013. The per-target parameter is not NOTES item 21's per-slot cmdline mistake, because the image is already per-target."
+consequences = ["doctrine's image changes once, by one kernel parameter: an explained delta, not byte-identical; c picks it up only on its next restart", "the reader depends on microvm.nix's firecracker runner layout and must fail as unknown, never as a mismatch, when that layout moves"]
+decided_by = "user"
+decided_on = "2026-09-30"
+
+[evidence]                      # free-text citations (supports / contradicts / notes)
+supports    = []
+contradicts = []
+notes       = []
+
+[relationships]                 # verb-written edges (set by doctrine supersede)
+supersedes    = []   # record ids this one replaces (set by doctrine supersede)
+superseded_by = []   # set on superseded predecessor (verb-written, ADR-004 §5)
+
+[[relation]]
+label = "shapes"
+target = "SL-003"
