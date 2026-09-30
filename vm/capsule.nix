@@ -98,9 +98,30 @@
     then lib.removeSuffix "\n" (builtins.readFile ./stop-key.pub)
     else throw "vm/stop-key.pub is missing: generate this host's capsule stop key and commit its public half (README, 'Host requirements').";
   proxy = "http://${net.host}:${toString net.proxyPort}";
+
+  # Which target this image is for, as the runner a slot booted says it —
+  # without an eval, through the link the runner was started from
+  # (host/cli.nix, `bootedTarget`; DEC-021). A kernel command line is split on
+  # spaces, and a profile name may hold one (`profileNameOk` rules out only
+  # newline, tab, `/`, `$` and backtick), so a target name must also be one
+  # plain token or the image is not built: a marker the reader would split is a
+  # marker that names another target.
+  marker = let
+    n = target.name;
+    profileNameOk = import ../host/profile-name.nix;
+  in
+    if profileNameOk n && builtins.match "[A-Za-z0-9._-]+" n != null
+    then "capsule.target=${n}"
+    else throw "vm/capsule.nix: target name '${n}' cannot be a kernel-command-line marker; a target name is one token of [A-Za-z0-9._-] (SL-003 DEC-021)";
 in {
   microvm = {
     inherit (target.sizes) vcpu mem;
+    # `microvm.kernelParams`, not `boot.kernelParams`: it reaches the runner's
+    # firecracker config (`boot-source.boot_args`) and **not** the guest's
+    # toplevel, so the guest system is unchanged by it
+    # (mem.fact.oubliette.booted-is-the-running-runner). A list definition, so it
+    # is appended to what microvm.nix itself defines there.
+    kernelParams = [marker];
     volumes = [
       {
         image = "capsule-work.img";

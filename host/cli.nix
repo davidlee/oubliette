@@ -219,6 +219,53 @@
     proxyActive() { systemctl is-active --quiet "$1"; }
     proxyRestart() { sudo ${import ./proxy-restart.nix "\"$1\""}; }
   '',
+  # Which target the image a slot is *running* was built for — the one
+  # observation the profile-verb refusal turns on (SL-003 design sec-4,
+  # DEC-021..DEC-023). Read through the link the runner was started from, into
+  # the store, so it is this host's state rather than a program choosing its own
+  # target (item 20).
+  #
+  # An argument for `proxyControl`'s reason, one field over: `policyCases` drives
+  # dozens of profile and coarse verbs to pin which *name* resolves, and what
+  # image is running is beside that point, so that render substitutes this. The
+  # refusal itself is pinned by a second render that keeps this default and
+  # points `microvms` and `socketOf` at a fixture runner tree. Every real call
+  # site takes the default, so both shipped copies are still one store path.
+  bootedControl ? ''
+    # Where the runner this slot is running was started from: microvm.nix's
+    # link when the capsule has a door, the devshell's (`vm`, DEC-024)
+    # otherwise. The door is the half of `program`'s test that says which path
+    # a capsule is on; `program` also asks whether the module's copy is
+    # installed, which is about the host and not the capsule.
+    bootedOf() {
+      if [ -S "$(sockOf "$1")" ]; then
+        printf '%s/%s/booted' ${microvms} "$1"
+      else
+        printf '%s/.vm/%s/booted' "$root" "$1"
+      fi
+    }
+
+    # The target the slot's running image was built for, or nothing: no VMM
+    # up, a runner whose layout this does not recognise, or an image built
+    # before `capsule.target` existed. Never a guess. Every step that can fail
+    # ends in `return 0` or `|| true`: this runs under errexit and pipefail, and
+    # an unguarded failure would end the front end with no message instead of
+    # reaching the unmarked refusal.
+    #
+    # The layout is microvm.nix's firecracker runner: `bin/microvm-run` execs
+    # firecracker with `--config-file <json>`, and that JSON's boot args are
+    # `microvm.kernelParams` (mem.fact.oubliette.booted-is-the-running-runner).
+    # If it moves, this prints nothing and every profile verb refuses as
+    # unmarked — closed, and saying so.
+    bootedTarget() {
+      local run cfg
+      run=$(readlink -e "$(bootedOf "$1")") || return 0
+      cfg=$(sed -n 's/.* --config-file \([^ ]*\).*/\1/p' "$run/bin/microvm-run" 2>/dev/null | head -n1) || true
+      if [ -z "$cfg" ] || [ ! -r "$cfg" ]; then return 0; fi
+      jq -r '."boot-source".boot_args // ""' "$cfg" 2>/dev/null \
+        | tr ' ' '\n' | sed -n 's/^capsule\.target=//p' | head -n1 || true
+    }
+  '',
 }: let
   # Verbs this file implements itself, as opposed to the ones it hands on.
   # `collect` stays a program's verb and is merely *intercepted* below, the way
@@ -558,6 +605,7 @@ in
               provision) profileNameFor "$n" ''${1+"$@"} || exit 1 ;;
               *) slotProfileName "$n" ''${1+"$@"} || exit 1 ;;
             esac
+            imageServes "$n" "$profileName" || exit 1
             if [ "$profileGiven" = no ]; then
               set -- --profile "$profileName" ''${1+"$@"}
             fi
@@ -1021,6 +1069,37 @@ in
         ${proxyControl}
         ${guestControl}
         ${volumeControl}
+        ${bootedControl}
+
+        # A slot serves the one target its running image was built for
+        # (DEC-017), so a profile verb proceeds only when that image names the
+        # target the verb resolved to — from whichever step resolved it: an
+        # explicit `--profile` (ISS-011's re-provision under another target), an
+        # assignment naming a target this slot's image is not for, or a
+        # declaration changed and not yet refreshed onto (IMP-012). An image that
+        # cannot say what it is refuses too (DEC-023): not running and booted
+        # before the marker are one outcome, because every profile verb talks to
+        # the guest and a stopped slot would fail anyway, and the message names
+        # both causes rather than guessing between them.
+        #
+        # Here and not in the programs, which are handed a profile and never
+        # resolve one (item 20); a program off `PATH` is not checked, exactly as
+        # it is not for any other refusal of this front end's.
+        imageServes() {
+          local n="$1" want="$2" booted
+          booted=$(bootedTarget "$n")
+          [ "$booted" = "$want" ] && return 0
+          if [ -z "$booted" ]; then
+            echo "capsule $n: its running image does not name a target —" >&2
+            echo "  not running, or booted before capsule.target existed." >&2
+            echo "  start it, or restart it onto the current image (module path: just refresh-build $n first)." >&2
+          else
+            echo "capsule $n: runs $booted's image, and this verb is for $want." >&2
+            echo "  the slot can only serve the target its image was built for (DEC-017):" >&2
+            echo "  name --profile $booted, or declare $n's profile and just refresh-build $n." >&2
+          fi
+          return 1
+        }
 
         # What the guest says about itself: one round trip, one line, the field
         # order defined in host/observe.nix and nowhere else. This *is* the

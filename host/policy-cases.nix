@@ -86,7 +86,14 @@
         };
       };
     };
-  cli = import ./cli.nix {
+  # Two renders of the front end, differing in what the image a slot is
+  # running says (SL-003). Everything above the refusal section pins which
+  # *name* a verb resolves to, and dozens of those runs are profile and coarse
+  # verbs, which now proceed only when the running image names that target. So
+  # that render substitutes the reader: the image is whatever the verb is for.
+  # The refusal section at the end uses `cliImage`, which keeps the shipped
+  # reader and points it at a fixture runner tree instead.
+  cliArgs = {
     inherit pkgs lib net policies guestSsh;
     inherit observe observeFragment programVerbs profileVerbs stateRefPrefix volumeRootHelper;
     capsules = fixture;
@@ -132,10 +139,27 @@
       }
     '';
   };
+  cli = import ./cli.nix (cliArgs
+    // {
+      bootedControl = ''
+        bootedTarget() { printf '%s' "$profileName"; }
+      '';
+    });
+  # The refusal's own render: the shipped reader, over a fixture tree. A door
+  # is a socket under the sandbox (as volumeCases makes one), so both of
+  # `bootedOf`'s branches are reachable; `microvms` is the module path's root
+  # of runner links, and the devshell's is `$CAPSULE_ROOT/.vm`. A state root of
+  # its own, so no record from the rounds above resolves a name here.
+  cliImage = import ./cli.nix (cliArgs
+    // {
+      capsules = fixture // {socketOf = name: ''"$IMG_ROOT"/run/${name}/ssh.sock'';};
+      microvms = ''"$IMG_ROOT/microvms"'';
+      moduleState = ''"$IMG_STATE"'';
+    });
   buildFile = policies.policies.build.allowlist;
   sealedFile = policies.policies.sealed.allowlist;
 in
-  pkgs.runCommand "capsule-policy-cases" {nativeBuildInputs = [pkgs.jq pkgs.git];} ''
+  pkgs.runCommand "capsule-policy-cases" {nativeBuildInputs = [pkgs.jq pkgs.git pkgs.python3];} ''
     export CASE_STATE=$PWD/state
     mkdir -p "$CASE_STATE" stub policies allow profiles
     touch policies/${buildFile} policies/${sealedFile}
@@ -1514,6 +1538,131 @@ in
     ck "a host with no documents refuses too" 1 "$rc"
     ckt "  and names where it looked" saw "$CAPSULE_PROFILE_DIR"
     ckt "  rather than reporting an ambiguity" saw "has rendered no"
+
+    # ------------------------------------------ the image a slot is running
+    #
+    # SL-003 design sec-4: a profile verb proceeds only when the image the slot
+    # is running names the target the verb resolved to (DEC-017, DEC-023). The
+    # reader is the shipped one; what is fixture is the tree it reads — runners
+    # in microvm.nix's firecracker shape: `bin/microvm-run` execs firecracker
+    # with `--config-file <json>`, and the JSON's `boot-source.boot_args` carries
+    # `microvm.kernelParams`, where the image puts `capsule.target=<name>`.
+    # The target names are this suite's own documents, not a real target's.
+    capsule=${lib.getExe cliImage}
+    export IMG_ROOT=$PWD/img IMG_STATE=$PWD/img/state
+    mkdir -p "$IMG_ROOT/microvms" "$IMG_STATE"
+    writeProfile solo
+    writeProfile duo
+
+    # A runner in the shape the reader expects, at a directory of its own.
+    runner() {
+      mkdir -p "$1/bin"
+      jq -n --arg a "$2" '{"boot-source": {kernel_image_path: "/k", boot_args: $a}}' > "$1/fc.json"
+      printf '#!/bin/sh\nexec -a "microvm@capsule" /x/bin/firecracker --config-file %s --api-sock capsule.sock\n' \
+        "$1/fc.json" > "$1/bin/microvm-run"
+    }
+    # Boot slot $1 on an image naming $2 (empty: an image from before the
+    # marker). Module path by default: microvm.nix's link, and a door. With
+    # `devshell`, `vm`'s link under `$CAPSULE_ROOT/.vm` and no door.
+    boot() {
+      local r="$IMG_ROOT/runners/$1-''${2:-unmarked}-''${3:-module}" link
+      runner "$r" "console=ttyS0 reboot=k init=/nix/store/x-init''${2:+ capsule.target=$2}"
+      if [ "''${3:-}" = devshell ]; then
+        link="$CAPSULE_ROOT/.vm/$1/booted"
+      else
+        link="$IMG_ROOT/microvms/$1/booted"
+        mkdir -p "$IMG_ROOT/run/$1"
+        [ -S "$IMG_ROOT/run/$1/ssh.sock" ] || python3 -c \
+          'import socket, sys; socket.socket(socket.AF_UNIX).bind(sys.argv[1])' \
+          "$IMG_ROOT/run/$1/ssh.sock"
+      fi
+      mkdir -p "$(dirname "$link")"
+      ln -sfn "$r" "$link"
+      booted_runner=$r
+    }
+    # Nothing running: neither link, and no door.
+    down() { rm -rf "$IMG_ROOT/microvms/$1" "$IMG_ROOT/run/$1" "''${CAPSULE_ROOT:-/nonexistent}/.vm/$1"; }
+
+    # 1. The declared profile, and an image built for it.
+    boot dflt solo
+    run dflt collect
+    ck "a profile verb proceeds when the running image names its target" 0 "$rc"
+    ckt "  and the program is handed that target" saw "collect argv: --capsule dflt --profile solo"
+
+    # 2. The same slot on another target's image.
+    boot dflt duo
+    run dflt collect
+    ck "a slot running another target's image refuses" 1 "$rc"
+    ckt "  naming both targets" saw "capsule dflt: runs duo's image, and this verb is for solo."
+    ckt "  and why the slot cannot serve it" saw "(DEC-017)"
+    ckt "  and the program never ran" test ! -e out.argv
+
+    # 3. ISS-011's shape: a re-provision under an explicit other target, which
+    # would have read the running target's checkout at the other's guestPath.
+    boot dflt solo
+    run dflt provision somecommit --profile duo
+    ck "an explicit --profile naming another target refuses (ISS-011)" 1 "$rc"
+    ckt "  naming the image and the flag's target" saw "runs solo's image, and this verb is for duo."
+    ckt "  before the program is reached" test ! -e out.argv
+
+    # 4. An assignment naming a target this slot's image is not for. The
+    # record is written by a provision the image allows, then the slot is
+    # booted on its declared target's image: without `--profile`, only the
+    # record says `duo`, so this refusal is the record being read.
+    boot dflt duo
+    run dflt provision somecommit --profile duo
+    ck "  (a provision the image serves is recorded)" 0 "$rc"
+    boot dflt solo
+    run dflt collect
+    ck "an assignment naming another target refuses" 1 "$rc"
+    ckt "  naming the record's target, not the declaration's" \
+      saw "runs solo's image, and this verb is for duo."
+
+    # 5. An image from before the marker: what every capsule running when this
+    # landed is, until it restarts (DEC-023).
+    boot dflt ""
+    run dflt collect
+    ck "an unmarked image refuses" 1 "$rc"
+    ckt "  saying it names no target" saw "its running image does not name a target"
+    ckt "  and both reasons that can be" saw "not running, or booted before capsule.target existed."
+    ckt "  and the program never ran" test ! -e out.argv
+
+    # 6. A door and no link: microvm.nix removes `booted` when the VMM stops.
+    rm "$IMG_ROOT/microvms/dflt/booted"
+    run dflt collect
+    ck "a slot with no booted link refuses as unmarked" 1 "$rc"
+    ckt "  saying so" saw "its running image does not name a target"
+
+    # 7. A runner whose layout the reader does not know — microvm.nix moving
+    # its config — fails closed, as unmarked, rather than guessing.
+    boot dflt duo
+    printf '#!/bin/sh\nexec -a "microvm@capsule" /x/bin/firecracker --no-api\n' \
+      > "$booted_runner/bin/microvm-run"
+    run dflt collect
+    ck "a runner that names no --config-file refuses as unmarked" 1 "$rc"
+    ckt "  saying so" saw "its running image does not name a target"
+
+    # 8. No door, so the devshell's link is the one read — and a conflicting
+    # module link for the same name is not.
+    down dflt
+    export CAPSULE_ROOT=$IMG_ROOT/checkout
+    boot dflt duo devshell
+    mkdir -p "$IMG_ROOT/microvms/dflt"
+    ln -sfn "$IMG_ROOT/runners/dflt-solo-module" "$IMG_ROOT/microvms/dflt/booted"
+    run dflt collect
+    ck "a capsule with no door reads the devshell's link" 0 "$rc"
+    ckt "  and proceeds on the target that link names" saw "collect argv: --capsule dflt --profile duo"
+    down dflt
+    unset CAPSULE_ROOT
+
+    # 9. A config that is not JSON. The front end runs under errexit and
+    # pipefail, so this is the round that says a failing reader reaches the
+    # refusal rather than ending the front end with nothing on stderr.
+    boot dflt duo
+    echo 'not json {' > "$booted_runner/fc.json"
+    run dflt collect
+    ck "a config that is not JSON refuses as unmarked" 1 "$rc"
+    ckt "  with the reason on stderr, not a silent exit" saw "its running image does not name a target"
 
     [ "$fail" = 0 ] || exit 1
     cp "$log" $out
