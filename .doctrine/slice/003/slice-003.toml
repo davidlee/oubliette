@@ -1,0 +1,101 @@
+id = 3
+slug = "per-slot-image"
+title = "A slot boots its own image, so a second target runs beside doctrine"
+status = "design"
+created = "2026-09-30"
+updated = "2026-09-30"
+tags = []
+
+[relationships]
+needs = []                      # slice→work hard prerequisite
+after = []                      # slice→work soft sequence: { to, rank }
+
+[[selector]]
+selector = "flake.nix"
+intent = "scope-relevant"
+
+[[selector]]
+selector = "target.nix"
+intent = "scope-relevant"
+
+[[selector]]
+selector = "targets/**"
+intent = "scope-relevant"
+
+[[selector]]
+selector = "capsules.nix"
+intent = "scope-relevant"
+
+[[selector]]
+selector = "vm/**"
+intent = "scope-relevant"
+
+[[selector]]
+selector = "host/cli.nix"
+intent = "scope-relevant"
+
+[[selector]]
+selector = "host/record.nix"
+intent = "scope-relevant"
+
+[[selector]]
+selector = "host/profile*.nix"
+intent = "scope-relevant"
+
+[[selector]]
+selector = "host/services.nix"
+intent = "scope-relevant"
+
+[[selector]]
+selector = "host/policy-cases.nix"
+intent = "scope-relevant"
+
+[[selector]]
+selector = "docs/contract-target.md"
+intent = "scope-relevant"
+
+[[selector]]
+selector = "docs/contract-assignment.md"
+intent = "scope-relevant"
+
+[[selector]]
+selector = "README.md"
+intent = "scope-relevant"
+
+[[relation]]
+label = "fulfils"
+target = "IMP-012"
+
+[[relation]]
+label = "fulfils"
+degree = "partial"
+target = "IMP-006"
+
+[[relation]]
+label = "governed_by"
+target = "POL-003"
+
+[[relation]]
+label = "governed_by"
+target = "POL-002"
+
+[[relation]]
+label = "references"
+role = "concerns"
+descriptor = "superseded once a slot boots its own image"
+target = "DEC-016"
+
+[[relation]]
+label = "references"
+role = "concerns"
+descriptor = "extras stay fleet-wide; this slice relaxes only the image half"
+target = "CON-001"
+
+# STRUCTURAL relations are uniform `[[relation]]` rows, never a typed
+# `[relationships]` axis (SL-048 "the cut"). Slices carry no typed STRUCTURAL
+# relation axes — the `[relationships]` table above holds only the dep/seq payload
+# (`needs`/`after`, SL-060). Author a structural edge with the `doctrine link` verb
+# — it validates the (source, label) pair and resolves the target:
+#   doctrine link SL-NNN specs SPEC-018
+#   doctrine link SL-NNN governed_by ADR-010
+# `doctrine inspect SL-NNN` renders the inbound + outbound edges.
