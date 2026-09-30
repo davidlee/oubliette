@@ -2,27 +2,21 @@ schema = "doctrine.backlog"
 version = 1
 
 id = 16
-slug = "vm-stop-finds-its-vmm-by-slot-name-and-every-runner-is-microvmcapsule"
-title = "vm-stop finds its VMM by slot name, and every runner is microvm@capsule"
-kind = "issue"
-status = "resolved"
-resolution = "fixed"
+slug = "the-probes-and-the-justfile-spell-the-devshell-root-their-own-way"
+title = "The probes and the justfile spell the devshell root their own way"
+kind = "chore"
+status = "open"
+resolution = ""                 # seeded empty so `backlog edit` sets it in place
 created = "2026-09-30"
 updated = "2026-09-30"
 tags = []
 
-# outbound-only (ADR-004). Cross-kind structural edges (e.g. references with a role
+# outbound-only. Cross-kind structural edges (e.g. references with a role
 # — `originates_from` for backlog→slice provenance — governed_by, related, drift) are
-# uniform `[[relation]]` rows (SL-048 "the cut") — author them with
+# uniform `[[relation]]` rows — author them with
 # `doctrine link ITEM-NNN <label> <target>`; `doctrine inspect ITEM-NNN` renders
 # them. The dep/seq axes below stay typed (they carry per-edge payloads).
 [relationships]
 needs    = []                   # item→item hard prerequisite
 after    = []                   # item→item soft sequence: { to, rank? }
 triggers = []                   # watched source globs: { globs, note? }
-
-[[relation]]
-label = "references"
-role = "concerns"
-descriptor = "fixed by the own_vms lift in design sec-4"
-target = "SL-003"

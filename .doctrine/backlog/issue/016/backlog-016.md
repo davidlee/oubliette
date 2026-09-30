@@ -17,3 +17,10 @@ Found reading the code during SL-003's design review (RV-010 F-2). Not run.
 SL-003's design lifts `own_vms` into a fragment that `vm` and `vm-stop` share,
 and passes it the runner's hostName instead of the slot name. That fixes this
 if SL-003 lands. If it does not, the one-line fix is the same pattern.
+
+**Resolved (2026-10-01, 412b77f, SL-003 PHASE-01).** `own_vms` is
+host/own-vms.nix, keyed by process name through `vmmOf` and anchored
+`^microvm@<name>( |$)`. `vmCases` pins it: `vm-stop b` terminates a
+`microvm@capsule` process in its netns, and the process's exit status (143,
+not the suite's 137) shows that `vm-stop` killed it. Turned red by re-keying
+on the slot name. Run in a sandbox only, not against a live devshell capsule.
