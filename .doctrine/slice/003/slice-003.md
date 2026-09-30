@@ -102,8 +102,15 @@ capsules.nix  a..j ──all──▶ capsuleVm  (flake.nix: lib.mapAttrs (_: _:
   image selector, or a separate field. Two fields can disagree; one field
   conflates the operator's convenience with the build (`SL-001` called `profile`
   a convenience, not a control). Choose in `/design`.
-- What goad-walk's target values are: `toolsPackage = "default"`,
-  `caches`, `statePaths`, `baseline`, `refresh`, `commands` — ask the user.
+- ~~What goad-walk's target values are~~ — **answered by the user
+  (2026-09-30):** every field at its absent path. `toolsPackage = "default"`
+  and nothing else in the guest: no `extraTools`, `caches = {}`, no
+  `statePaths`, `baseline = null`, `refresh = null`. The walk is stdlib-only
+  ruby building a new script against an included SDK and test harness, so
+  there is nothing to prebuild. This makes goad-walk the first real target on
+  `RSK-002`'s absent paths (`IMP-006`'s "what only this tier can buy"). A later
+  language may need a new package source through the proxy; that is a policy
+  change, not this slice.
 
 ## Verification / closure intent
 
