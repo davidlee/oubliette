@@ -31,21 +31,32 @@ capsules.nix  a..j ──all──▶ capsuleVm  (flake.nix: lib.mapAttrs (_: _:
 
 ## Scope & Objectives
 
-1. **`IMP-012` first — a slot records which image it booted.** At `start`, pin
-   the runner store path the VMM launched (`/var/lib/microvms/<slot>/booted`)
-   into the record's `image`, the way `profile_snapshot` is pinned at provision.
-   Refuse when the record's assigned profile and the booted image are for
-   different targets. Lands alone, while there is still one image, as insurance.
-2. **Targets become a declared set.** `target.nix` (one target) becomes one
-   declaration per target, one home for the axis (`POL-003`); each target's
-   flake input is its own literal in `flake.nix`. The profile render already
-   takes a target as an argument (`IMP-004`); the guest build must too.
-3. **One `capsuleVm` per declared target, and each slot bound to one.** The slot
-   declaration in `capsules.nix` says which target's image it boots. The
-   binding is declared, never inferred from the slot's name (`Plan D` §0), and
-   the declared `profile` and the bound image must agree at eval.
+Revised after the design inquiry (2026-09-30); the decisions are `DEC-017` to
+`DEC-023`.
+
+1. **A runner names its target, and a profile verb checks it** (`IMP-012` in
+   intent). Every image carries `capsule.target=<name>` on its kernel command
+   line (`DEC-021`). The front end reads it through `booted` at use and pins
+   nothing; the record's `image` field stays `IMP-003`'s (`DEC-022`). A
+   profile verb refuses unless the running image names the resolved profile's
+   target, and an image with no marker refuses too (`DEC-023`). That one rule
+   also closes `ISS-011`.
+2. **Targets become a declared set, passed as an argument.** `target.nix` is
+   replaced by `targets/<name>.nix`, listed by hand in `targets/default.nix`,
+   which derives `name`, `guestPath` and `cachePaths` once; `volumePath` is the
+   capsule's (`DEC-018`). Generic code (`mkVm`, `vm/capsule.nix`,
+   `host/profile.nix`, `host/services.nix`) takes the set and a name→flake map
+   as arguments, and `flake.nix` is the one site binding this host's values —
+   the seam `IMP-015` needs. Each tool-set flake is a literal input: `target`
+   stays doctrine's and `goad-walk` is added (`DEC-019`).
+3. **One image per target, each slot bound by its `profile`.** A declared
+   slot's `profile` is required and selects its image; eval throws when it
+   names no target (`DEC-017`). Every image is `hostName = "capsule"`;
+   `nixosConfigurations` stays `hello`, `capsule` (doctrine's, the probes'
+   subject) and the slots, and each target's runner is a packages-only
+   `image-<target>` (`DEC-020`).
 4. **goad-walk declared as the second target** and one slot bound to it.
-   `DEC-016` superseded by a decision recording the split.
+   `DEC-016` is superseded at reconcile, once the split is true on this host.
 5. ~~Capsule `c` is untouched.~~ **Withdrawn by the user (2026-09-30).**
    Every capsule booted before this slice refuses profile verbs until restarted
    onto a marked image (`DEC-023`), and that is accepted.
@@ -55,8 +66,8 @@ capsules.nix  a..j ──all──▶ capsuleVm  (flake.nix: lib.mapAttrs (_: _:
 - **`IMP-003` / Plan D D7** — per-*assignment* extras selection, gcroots, and
   the dirty-volume recompose refusal. This slice is per-*slot* and per-*target*;
   extras stay fleet-wide (`CON-001` holds for extras).
-- **`IMP-013`** staleness reporting in `status`. It consumes `IMP-012`'s field
-  and can follow; not required to run goad-walk.
+- **`IMP-013`** staleness reporting in `status`. It reads the same `booted`
+  observation (`DEC-022`) and can follow; not required to run goad-walk.
 - **Making goad-walk fetchable.** Owned by the user, upstream, and a
   precondition of objective 4 (below). This repo refuses a `git+file:` or
   path input for a target (`ISS-015`).
@@ -66,9 +77,9 @@ capsules.nix  a..j ──all──▶ capsuleVm  (flake.nix: lib.mapAttrs (_: _:
 ## Affected surface
 
 `flake.nix` (inputs, `mkVm`, `capsuleVm`, instance binding, profile renders),
-`target.nix` → per-target declarations, `capsules.nix` (slot → target),
+`target.nix` → `targets/`, `capsules.nix` (required slot `profile`),
 `vm/capsule.nix` and anything else reading `target` at build time,
-`host/cli.nix` / `host/record.nix` (the `image` field and its refusal),
+`host/cli.nix` (the marker reader and the refusal at profile-verb dispatch),
 `host/profile.nix`, `host/services.nix`, the case suites pinning those
 (`policyCases`, `profileCases`, `vmCases`, `hostModuleUnits`),
 `docs/contract-target.md`, `docs/contract-assignment.md`, `README.md`.
@@ -94,12 +105,8 @@ capsules.nix  a..j ──all──▶ capsuleVm  (flake.nix: lib.mapAttrs (_: _:
 
 ## Open questions
 
-- Shape of the target set: a `targets/` directory of one file per target, or one
-  attrset file. Either keeps one home; choose in `/design`.
-- Where the slot → target binding lives: reuse the slot's `profile` field as the
-  image selector, or a separate field. Two fields can disagree; one field
-  conflates the operator's convenience with the build (`SL-001` called `profile`
-  a convenience, not a control). Choose in `/design`.
+- ~~Shape of the target set~~ — `targets/`, listed by hand (`DEC-018`).
+- ~~Where the slot → target binding lives~~ — the slot's `profile` (`DEC-017`).
 - ~~What goad-walk's target values are~~ — **answered by the user
   (2026-09-30):** every field at its absent path. `toolsPackage = "default"`
   and nothing else in the guest: no `extraTools`, `caches = {}`, no
@@ -112,9 +119,11 @@ capsules.nix  a..j ──all──▶ capsuleVm  (flake.nix: lib.mapAttrs (_: _:
 
 ## Verification / closure intent
 
-- `just` green, including new/extended cases for: the `image` pin and its
-  refusal; a slot bound to a target with no image (eval throw); declared
-  `profile` vs bound image disagreement (eval throw).
+- `just` green, including new/extended cases for: the marker reader and
+  `DEC-023`'s three outcomes (match, mismatch, unmarked), over a fixture runner
+  tree; eval throws for a slot `profile` naming no target and for a
+  `targetFlakes` map that disagrees with the target set; every `image-<target>`
+  built, and the reset-home scrub list checked per image.
 - goad-walk's image builds from a fetchable input; one slot boots it, the agent
   sees goad's tools and no goad source. Boot is
   VH (by the human), since starting a slot is the user's act on this host.
@@ -122,11 +131,12 @@ capsules.nix  a..j ──all──▶ capsuleVm  (flake.nix: lib.mapAttrs (_: _:
 ## Summary
 
 Make slot → image a per-slot answer so goad-walk can run beside doctrine:
-`IMP-012`, then `IMP-006`, then declare goad-walk.
+a runner that names its target and a fail-closed check, then targets as an
+argument with one image each, then declare goad-walk.
 
 ## Follow-Ups
 
-- `IMP-013` (staleness) once `image` is written.
+- `IMP-013` (staleness) reads `booted` live, as the refusal does.
 - `IMP-003` (per-assignment extras) remains open; this slice is its image tier.
 - `IMP-015` — oubliette carries no target; the fleet's declarations move to a
   consumer flake. Out of scope here, but this slice lays its seam: generic code
