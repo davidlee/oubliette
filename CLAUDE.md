@@ -46,7 +46,7 @@ evaluates). `just` (default) runs the build, units, and fmt.
 the NixOS module — what it says, including its programs, since a unit graph does
 not mention them. `guardCases`, `briefCases`, `snapshotCases`, `refreshCases`, `observeCases`,
 `baselineCases`, `policyCases`, `profileCases`, `vmCases`, `gitChannelCases`,
-`volumeRootCases`, `resetHomeCases` and `volumeCases` *run* a
+`volumeRootCases`, `resetHomeCases`, `volumeCases` and `fleetCases` *run* a
 program's own text with a substitute for the one thing tying it to this host
 (`just cases`), and are the answer whenever the interesting branches are ones a
 live host can only reach destructively or expensively — the guard's by unnaming a
@@ -90,20 +90,24 @@ written, wired into `just cases`, and left out of `just build` for a session
 (NOTES item 51 step 3). **One suite per file, beside the program it pins** —
 `host/<name>-cases.nix`, or `vm/<name>-cases.nix` for a guest program, a function of `pkgs`, `lib` and **the store path the
 program ships**, with a short `import` in `flake.nix` (NOTES item 51 step 0).
-Seven of them are handed a fixture instead and say so in their headers: the
+Eight of them are handed a fixture instead and say so in their headers: the
 guard's stubbed kernel, the front end's pool that is not this host's (twice,
 once for policy and once for the volume verb), the
 profile's target that is nobody's, the wrapper's four directories that are
 no host's, the volume root helper's sandbox roots, since a root program's
 paths are fixed at build and its shipped store path cannot be aimed anywhere else,
-and the guest reset's fixture home, for the same reason one level down. A new suite goes in
+the guest reset's fixture home, for the same reason one level down, and the
+fleet's targets and slots that are nobody's (`fleet-cases.nix`). A new suite goes in
 its own file and takes its subject as an argument — never a second render of the
 text it claims to pin. **A suite whose subject is a *library* rather than a
 program** takes the fragment its callers get and splices it into the smallest
 `main` that exercises it (`host/profile-cases.nix`); and when what it pins is a
 `throw` rather than a program, the verdicts are read at eval with
 `builtins.tryEval` and asserted in the shell, which is `hostModuleUnits`'
-arrangement one level down.
+arrangement one level down. **Force what you pin** — `tryEval` stops at the
+outer layer, so a throw inside an attrset's values passes unseen without
+`deepSeq` — and **pin the reason too**: a verdict carries no message, so a
+library that throws exposes the string it throws (`fleet.nix`'s `reasons`).
 
 The seam that makes the third and fourth kinds possible is worth reusing rather
 than reinventing: `writeShellApplication` prepends `runtimeInputs` to `PATH`, so a
@@ -191,9 +195,10 @@ the first time one is edited. Same rule, same file, for **the egress fabric** �
 `guest_connect` — since `netns-egress.sh` and `two-capsules.sh` both put a proxy
 in a namespace and ask the guest to get out.
 
-**A VMM is identified by its namespace, never by its name.** The one-image lever
-means every capsule runs the same runner from the same store path, so all of
-them are `microvm@capsule` in the process table: `pkill -f` on that name is a
+**A VMM is identified by its namespace, never by its name.** There is one image
+per target, and every slot bound to a target runs that image's runner from one
+store path (`fleet.nix`). Every image is hostName `capsule` (`DEC-020`), so every
+VMM, whichever target, is `microvm@capsule` in the process table: `pkill -f` on that name is a
 power cut for the siblings, and it reads as a clean teardown while doing it.
 `vm_running`, `wait_vm` and `halt_guest` all take a namespace and scope
 themselves with `ip netns pids`; the unscoped question survives as
@@ -334,6 +339,6 @@ behind it is the ratchet starting again in a new file.
   docs/contract-flavour.md). A fragment's source is a flake input of *this*
   repo, pinned here, and convenience is **declared** — never scraped from a
   human's `$HOME`, which would describe a machine the capsule is not. One list
-  for the fleet today, so one image; per-slot selection is Plan D D7. The jailed
+  for the fleet today, so one image per target; per-slot selection is Plan D D7. The jailed
   `claude`/`codex` bwrap wrappers are still excluded — they bind host paths that
   do not exist in the VM.

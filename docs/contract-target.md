@@ -169,9 +169,11 @@ render, so an edit in place is reverted.
 
 **What has *not* moved, and it is the honest limit.** The guest **image** still
 knows the project's name — the seed builds the checkout directory from the
-build-time half — so a second target on one host is still a second image
-([Plan D](./plan-d-fleet.md) §6.2). What has stopped being a rebuild apart is
-everything host-side.
+build-time half — so a second target on one host is a second image
+([Plan D](./plan-d-fleet.md) §6.2). That is now built rather than priced:
+`fleet.nix` builds one image per target, as `packages.image-<target>`, and each
+declared slot boots the image its `profile` names (SL-003, `DEC-017`). What has
+stopped being a rebuild apart is everything host-side.
 
 **Two of those rows are struck out, and that is what the column was for.**
 `allowlist` and `collectMaxPackBytes` were host controls — what a capsule may
@@ -388,8 +390,10 @@ module's vendored helper all need a `/lib64` loader and none of them supplies a
 different one. Nothing else generic moved. In order:
 
 1. A file in `targets/`, listed under its name in `targets/default.nix` —
-   `targets/doctrine.nix` is the template. `inputs.target.url` in `flake.nix` and
-   `path` in that file are the two literals above. Check `~/flakes` if you renamed the input.
+   `targets/doctrine.nix` is the template. Give it a flake input and an entry in
+   `flake.nix`'s `targetFlakes` — the build refuses a map that does not name
+   exactly the declared targets. That input's url and `path` in the file are the
+   two literals above. Check `~/flakes` if you renamed the input.
 2. `commands`, `baseline`, and `refresh` if the target derives anything
    from its checkout that a commit does not carry. Not a branch: there is no such
    field, and the guest's is the constant `work` whatever the target calls its
@@ -406,6 +410,11 @@ different one. Nothing else generic moved. In order:
 5. `sizes`, and `guestConfig` derived from them — not copied from a human's
    machine, which describes a machine the capsule is not.
 6. `caches` for its toolchain, `{}` if it has none.
+7. **Declare it and bind a slot**: set a slot's `profile` in `capsules.nix` to the
+   target's name, then `just refresh-build <slot>` and restart it. A slot naming
+   no declared target fails the build, naming the slot. Re-binding a used slot
+   keeps the last target's volume, so reset it first
+   (`capsule <slot> volume reset`, `ISS-009`).
 
 The likely friction is all in the last three: `extraTools`, `caches` and `sizes`
 are doctrine's toolchain wearing a general name — panopticon took half the
@@ -413,7 +422,7 @@ memory and a quarter of the volume, which is what inheriting them would have got
 wrong. The review question, every time, is CLAUDE.md's: *would a different
 target need this code changed, or only a different value?*
 
-Concurrent capsules on *different* targets is a much larger job than a different
-one — a different tool set is a different guest image, which is exactly the
-sharing the one-image design buys — and it is priced in
-[plan-c-multi-capsule.md](./plan-c-multi-capsule.md), not here.
+Concurrent capsules on *different* targets cost one image per target, since a
+different tool set is a different guest image. Slots bound to the same target
+still share one. What N capsules cost on one host is priced in
+[plan-c-multi-capsule.md](./plan-c-multi-capsule.md).

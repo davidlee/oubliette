@@ -7,7 +7,7 @@
 # What is deliberately NOT here is the host<->guest link. Under netns every
 # capsule gets the same tap name, the same /30 and the same MAC, because each
 # lives in its own namespace — that is the whole point of the shape, and it is
-# what makes one guest image serve all of them (NOTES item 17). Those stay flat
+# what lets one target's image serve every slot bound to it (NOTES item 17). Those stay flat
 # in net.nix. The only addressing that cannot be identical is each namespace's
 # uplink to the aggregator, since the aggregator has a single routing table:
 #
@@ -66,22 +66,27 @@ let
   # `everything` is this host being a dev host out loud, rather than by nobody
   # having thought about it.
   #
-  # `profile`, where a slot declares one, is which target the slot serves when
-  # nobody has said otherwise — the operator's **convenience**, not a control, so
-  # the perimeter's sentence above does not carry over: an unassigned slot with no
-  # target is a perfectly fine state. There is no `profiles` set beside it,
-  # because an assigner is unconstrained in `profile` by design
-  # (docs/contract-assignment.md, *Who may assign*). Only the name's *shape* is
+  # `profile` is which target the slot serves when nobody has said otherwise.
+  # For *resolution* it is the operator's **convenience**, not a control. There is
+  # no `profiles` set beside it, because an assigner is unconstrained in `profile`
+  # by design (docs/contract-assignment.md, *Who may assign*). Only the name's *shape* is
   # checked here (`misprofiled`, below); whether a document backs it is run-time
   # state outside the store, so `profileLoad` (host/profile.nix) checks that, at
   # use (SL-001 design sec-2).
   #
-  # Every slot declares `doctrine` because this host builds one guest image and
-  # it is doctrine's (`DEC-016`): a slot declaring another target would boot this
-  # image anyway. A split waits on a slot having its own image (`IMP-006`). The
-  # literal repeats a target's `name` (its key in `targets/`) on purpose (`DEC-012`) — renaming the
-  # target leaves these naming a document that no longer exists, and every verb
-  # on them refuses loudly, at use.
+  # **For a declared slot, `profile` is also the build binding** (SL-003,
+  # `DEC-017`): the slot boots the image of the target it names (fleet.nix), and
+  # a declared slot naming no target in `targets/`, or none at all, throws at
+  # eval there. This file does not import `targets/` to check it (`DEC-012` alt
+  # B). So the convenience above is still true of *resolution*: an assigner may
+  # name another target. But a verb under an assignment whose target is not the
+  # image this slot booted is refused at use (host/cli.nix, `bootedTarget`),
+  # because this slot cannot serve it. Moving a slot to another target is a
+  # change here, then `just refresh-build <slot>` and a restart.
+  #
+  # Every slot declares `doctrine` because it is the only target. The literal
+  # repeats a target's `name` (its key in `targets/`) on purpose (`DEC-012`):
+  # renaming the target fails the build, naming these slots.
   declared = {
     a = {
       index = 0;
@@ -154,8 +159,8 @@ let
   capLink = "cap-";
 
   # Where a capsule's way in lives. Its identity is its namespace and this
-  # socket, never the VMM's name — one image means every VMM is `microvm@capsule`
-  # (CLAUDE.md). Exposed as a function because a probe's throwaway capsule is not
+  # socket, never the VMM's name — every image is hostName `capsule`, so every VMM is
+  # `microvm@capsule` whichever target it runs (fleet.nix, DEC-020). Exposed as a function because a probe's throwaway capsule is not
   # an instance and must not invent a second convention for the same path.
   socketOf = name: "/run/capsule/${name}/ssh.sock";
 

@@ -210,11 +210,13 @@ and fails rather than reporting a start it did not finish.
 namespace, proxy and relay units exist, then create and start it exactly as
 above under its own name. The declared names are **slots** — `a` and `b` today
 — and a slot's name carries no meaning on purpose: what a capsule is working on
-is a record this repo does not keep yet (docs/contract-assignment.md). Every declared capsule is the *same*
-`nixosConfigurations` value, so they share one runner store path and one 12 GiB
-image — what differs is the namespace, the volume and the state directory. The
-hostname is `capsule` in all of them for that reason, so the shell prompt inside
-one does not say which one you are in.
+is a record this repo does not keep yet (docs/contract-assignment.md). Its
+declared `profile` must name a target in `targets/`, since that is the image it
+boots (`fleet.nix`). Every slot bound to one target is the *same*
+`nixosConfigurations` value, so they share one runner store path and one image —
+what differs is the namespace, the volume and the state directory. Every image's
+hostname is `capsule`, so the shell prompt inside one does not say which slot you
+are in.
 
 ```
 sudo microvm -c b -f /home/david/dev/microvm-spike

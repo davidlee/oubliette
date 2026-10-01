@@ -337,6 +337,16 @@ The profile's *floor* is not in either list, and that is deliberate: it belongs
 to the project, arrives pinned with the profile, and an assigner names a profile
 rather than editing one. What an assigner adds is extras, from the vocabulary.
 
+**Unconstrained in `profile` is not "served in any profile".** A declared slot
+boots the image of the target its `capsules.nix` `profile` names (SL-003,
+`DEC-017`, `fleet.nix`), so what that slot can serve is fixed at build. An
+assigner may still *name* any profile, and nothing refuses the assignment. A
+verb under it is refused at use when the profile is not the target the running
+image was built for, with both names in the message (`bootedTarget`,
+host/cli.nix). The host operator moves a slot to another target in
+`capsules.nix` and a rebuild, not an assigner by naming one. `image` above is
+unchanged: it is still the store path the composition resolved to.
+
 ## What is deliberately not here
 
 **Execution.** There is no request/result shape in this file, and the omission
