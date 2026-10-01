@@ -5,6 +5,9 @@
   inputs,
   net,
   target,
+  # That target's own flake, for its tool set (fleet.nix, DEC-019). `inputs` is
+  # still the fleet's, for `fragments.nix`; it no longer says which target.
+  targetFlake,
   # The branch the checkout sits on. A constant, and not the target's to name:
   # what the work is called does not identify the project, and two slices of one
   # project at once is what refutes any version that lets a project say
@@ -189,7 +192,7 @@ in {
         # The target's devshell tool set, built from the target's own nixpkgs
         # pin so the guest and that devshell cannot drift.
         lib.optional (target.toolsPackage != null)
-        inputs.target.packages.${pkgs.stdenv.hostPlatform.system}.${target.toolsPackage}
+        targetFlake.packages.${pkgs.stdenv.hostPlatform.system}.${target.toolsPackage}
         # What that list leaves out because it assumes a host which has them.
         ++ map (name: pkgs.${name}) target.extraTools;
     };

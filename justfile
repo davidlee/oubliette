@@ -22,7 +22,7 @@
 # happens to be running.
 
 # Every nix file that is ours. Explicit, so nothing walks .direnv or .vm.
-nix_paths := "flake.nix net.nix targets capsules.nix fragments.nix setup.nix perimeter host vm"
+nix_paths := "flake.nix fleet.nix fleet-cases.nix net.nix targets capsules.nix policies.nix fragments.nix setup.nix perimeter host vm"
 
 # the gate: everything parses and is formatted
 default: check build units
@@ -87,7 +87,7 @@ build:
     '.#guardCases' '.#policyCases' '.#briefCases' '.#snapshotCases' \
     '.#refreshCases' '.#observeCases' '.#baselineCases' '.#profileCases' \
     '.#gitChannelCases' '.#vmCases' '.#wrapCases' '.#volumeRootCases' \
-    '.#resetHomeCases' '.#volumeCases'
+    '.#resetHomeCases' '.#volumeCases' '.#fleetCases'
 
 # which units the host module generates, without rebuilding a host — the only
 # mechanical check the NixOS half has
@@ -117,10 +117,18 @@ cases:
   @cat "$(nix build --no-link --print-out-paths '.#volumeRootCases')"
   @cat "$(nix build --no-link --print-out-paths '.#resetHomeCases')"
   @cat "$(nix build --no-link --print-out-paths '.#volumeCases')"
+  @cat "$(nix build --no-link --print-out-paths '.#fleetCases')"
 
-# the guest closure and its runner — the slow one
+# every target's guest closure and runner (`image-<target>`) — the slow one.
+# The list comes from the flake, so this file names no target.
 build-vm:
-  nix build --no-link '.#capsule'
+  #!/usr/bin/env bash
+  set -euo pipefail
+  mapfile -t images < <(nix eval --raw '.#packages.x86_64-linux' --apply \
+    'ps: builtins.concatStringsSep "\n" (builtins.filter (n: builtins.match "image-.*" n != null) (builtins.attrNames ps))')
+  # errexit cannot see a failure inside `< <(…)`, so an empty list is the tell.
+  [ "${#images[@]}" -gt 0 ] || { echo "build-vm: the flake lists no image-<target>" >&2; exit 1; }
+  nix build --no-link "${images[@]/#/.#}"
 
 # is the host-side perimeter loaded? dropped / latent / open
 verify:

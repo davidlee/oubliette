@@ -156,3 +156,28 @@ That is VH-1, at the user's switch.
 - host/cli.nix gained a `bootedControl` seam, which is not in the design's
   code-impact table (see 7df94bd). Add it to sec-6 at reconcile.
 - policyCases case 8 reads the record case 4 wrote, so the cases are ordered.
+
+### PHASE-04 (fleet.nix)
+
+- **The reason is asserted, not just the throw.** This was the user's call on
+  2026-10-01, because nix's own errors are hard to read. fleet.nix exposes
+  `reasons.{images,slotImages}`, the exact string each attribute throws (or
+  `null`), and fleetCases checks that it names the slot or the key. design sec-3's
+  sketch has no `reasons`. Add it there at reconcile.
+- **VA-1's mutations go red at eval for the missing half, not by name.** Dropping
+  the unbound check or the key check makes the next lookup an
+  `attribute 'gamma'/'beta' missing`, which `tryEval` cannot catch, so the whole
+  suite fails at eval instead of failing a named case. That is still red, but the
+  message is nix's. The *extra-flake* half does fail by name (3 cases). Nothing
+  reasonable makes an uncatchable eval error catchable.
+- **VA-1's deepSeq clause has the direction backwards.** Removing `deepSeq`
+  from `throws` does not make a case pass against a broken fleet. It turns
+  "the slots, which are images, throw with it" **red against a correct fleet**:
+  that throw lives inside the slot values, so WHNF never reaches it. The forcing
+  is load-bearing, which is the point of RV-010 F-6, but the plan's sentence
+  describes the opposite effect. Amend VA-1's text at reconcile.
+- Oracles at PHASE-04's code commit: toplevel `7mf2xav…`, runner `6alppgz…`
+  for `capsule`, every slot and `image-doctrine`, `hello` `4vj5406…`. All exact
+  (VA-2). `just build-vm` built `image-doctrine` = `6alppgz…`.
+- Also fixed: justfile `nix_paths` was missing `policies.nix`, so `just check`
+  never parsed or formatted it. It now also lists fleet.nix and fleet-cases.nix.

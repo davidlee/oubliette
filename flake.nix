@@ -116,15 +116,20 @@
     # are not instances, and must not spell that path a second time.
     inherit (capsules) socketOf;
 
+    # Each target's own flake, for its tool set. A flake input's url must be a
+    # literal, so a target's file cannot carry it; the map lives here beside the
+    # inputs, and fleet.nix refuses one that does not name exactly the declared
+    # targets (DEC-019). `inputs.target` keeps its name: ~/flakes follows it.
+    targetFlakes = {doctrine = inputs.target;};
+
     # `hostName`, not the instance's name: the hostname is in the closure, so a
     # per-instance one is a per-instance image (docs/plan-c-implementation.md).
-    mkVm = hostName: module:
+    # `args` are the specialArgs a VM needs beyond the fleet's — for a capsule
+    # image, its target and that target's flake.
+    mkVm = hostName: module: args:
       lib.nixosSystem {
         inherit system;
-        specialArgs = {
-          inherit inputs net workBranch extras;
-          target = probeSubject;
-        };
+        specialArgs = {inherit inputs net workBranch extras;} // args;
         modules = [
           microvm.nixosModules.microvm
           ./vm/common.nix
@@ -133,33 +138,30 @@
         ];
       };
 
-    # The agent jail. One value, however many capsules run it.
-    capsuleVm = mkVm "capsule" ./vm/capsule.nix;
+    # One image per target, and each slot bound to the image its declared
+    # `profile` names (fleet.nix, SL-003 sec-3). Applied once, here, to this
+    # host's values. Two slots with one profile get the same value rather than a
+    # rebuild of it, so identical modules make an identical derivation and "one
+    # image per target, N capsules" is structural rather than a claim.
+    fleet = import ./fleet.nix {inherit lib mkVm;} {
+      inherit targets targetFlakes capsules probeTarget;
+    };
 
     vms =
       {
         # Smoke test: does firecracker boot at all on this host. No network.
-        hello = mkVm "hello" ./vm/hello.nix;
-
-        # The guest itself, under the hostname it carries — as against a *slot*,
-        # which is one of the names below and is where a capsule's namespace,
-        # socket and units live. They are the same value, and this one exists
-        # because a runner is `microvm@<hostName>` in the process table: every
-        # probe matches on that string and builds `.#capsule` to get it, so the
-        # attribute and the process name have to be the one word. `.#capsule` is
-        # also what `vm capsule` and `just build-vm` have always meant.
-        capsule = capsuleVm;
+        hello = mkVm "hello" ./vm/hello.nix {};
       }
-      # An attribute per declared capsule, because `microvm -c <name> -f .` is
-      # what creates one and it resolves `nixosConfigurations.<name>` (CLAUDE.md
-      # — the CLI appends that itself and takes no fragment). Every one of them
-      # is the *same* value rather than a rebuild of it, so identical modules
-      # make an identical derivation and "one image, N capsules" is structural
-      # instead of a claim: nothing has to remember to keep two guests in step,
-      # because there are not two. The cost is that the prompt no longer says
-      # which capsule you are in — priced in plan-c-implementation.md, not
-      # solved.
-      // lib.mapAttrs (_: _: capsuleVm) capsules.instances;
+      # `capsule` is the probe target's image under the hostname it carries — as
+      # against a *slot*, which is where a capsule's namespace, socket and units
+      # live. It exists because a runner is `microvm@<hostName>` in the process
+      # table: every probe matches on that string and builds `.#capsule` to get
+      # it. And an attribute per declared slot, because `microvm -c <name> -f .`
+      # resolves `nixosConfigurations.<name>` (the CLI appends that itself and
+      # takes no fragment). An image is never a `nixosConfigurations` attribute
+      # of its own (DEC-020): it builds as `packages.image-<target>`, so
+      # `microvm -c` cannot create one outside a slot.
+      // fleet.vms;
 
     # Is the host-side half of the perimeter loaded? Injected into the
     # jail-agnostic perimeter as `preflight` + `watch` and shared verbatim with
@@ -607,10 +609,20 @@
     # reason as the helper's roots; and the scrub list is read off the evaluated
     # capsule, which puts a guest *eval* (not a build) into `just build`
     # (vm/reset-home-cases.nix).
+    # The binding from this host's declarations to its VMs (SL-003 sec-3), run
+    # against a stub mkVm and fixtures that are no host's, so no NixOS system is
+    # built. Its subject is the unapplied function, as flake.nix's own `fleet`
+    # applies it (fleet-cases.nix).
+    fleetCases = import ./fleet-cases.nix {
+      inherit pkgs lib;
+      fleet = import ./fleet.nix;
+    };
+
     resetHomeCases = import ./vm/reset-home-cases.nix {
       inherit pkgs lib;
-      target = probeSubject;
-      guest = capsuleVm.config;
+      inherit targets;
+      guest = fleet.images.${probeTarget}.config;
+      images = lib.mapAttrs (_: image: image.config) fleet.images;
     };
 
     # The host module has no build of its own — it is a NixOS module, and this
@@ -1418,6 +1430,10 @@
 
     packages.${system} =
       lib.mapAttrs (_: cfg: cfg.config.microvm.declaredRunner) vms
+      # Every target's image, by the target's name, for `just build-vm`.
+      // lib.mapAttrs' (name: cfg:
+        lib.nameValuePair "image-${name}" cfg.config.microvm.declaredRunner)
+      fleet.images
       // {
         # Four programs and four suites that were conditional on `target.nix`
         # until step 6 (NOTES item 51). They are outputs like any other now,
@@ -1429,7 +1445,7 @@
         # The checks that need no root and no host: what the module says, what the
         # guard decides, and which policy a slot resolves to.
         inherit hostModuleUnits hostModulePrograms guardCases policyCases observeCases;
-        inherit profileCases gitChannelCases vmCases wrapCases volumeRootCases resetHomeCases volumeCases;
+        inherit profileCases gitChannelCases vmCases wrapCases volumeRootCases resetHomeCases volumeCases fleetCases;
         # The rendered run-time half of every target, so a human can read what a
         # program will resolve (host/profile.nix). `nix build .#capsule-profiles`.
         capsule-profiles = hostProfile.dir;

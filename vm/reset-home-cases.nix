@@ -26,17 +26,26 @@
 # **And it reads the scrub list off the guest this flake builds**, not a
 # recomputation of it: `guest` is the evaluated capsule's `config`, the program
 # is found in its `systemPackages` by name, and its `passthru.scrubPaths` is the
-# list the image carries. Every expected value comes from `target` or that same
-# `config`, so no target value is spelled here (POL-002).
+# list the image carries. That is checked for every target's image (`images`).
+# Every expected value comes from `targets` or the image's `config`, so no
+# target value is spelled here (POL-002).
 #
 # Both rules for writing a case apply: each refusal asserts its reason as well as
 # its status, and each case starts from `fresh`.
 {
   pkgs,
   lib,
-  # The evaluated capsule guest's `config` (flake.nix `capsuleVm`).
+  # The evaluated `config` of the image whose shipped program the run cases
+  # execute: the probe target's (flake.nix `fleet.images`). The program is the
+  # same store path in every image, since its scrub list comes from setup.nix
+  # and the one `volumePath`, but the image block below checks that per image
+  # rather than assuming it.
   guest,
-  target,
+  # Every target's image, name -> evaluated `config`: the scrub-list verdicts
+  # run once per image (SL-003 PHASE-04).
+  images,
+  # For `volumePath`, the capsule's and every target's.
+  targets,
 }: let
   # The guard over the paths the shipped program is built with (vm/guest-path.nix,
   # called from vm/capsule.nix). It is a `throw` rather than a program, so the
@@ -94,21 +103,41 @@
   # guest rather than recomputed. This says the shipped paths are plain; it does
   # not say vm/capsule.nix would refuse a bad one, which needs a guest evaluated
   # against a hostile target (noted as open on SL-002).
-  shippedPlain =
+  plainOf = g:
     (builtins.tryEval (
       lib.deepSeq
       (map (guestPath "a shipped scrub path")
-        (shipped.scrubPaths ++ [guest.users.users.agent.home]))
+        ((shippedOf g).scrubPaths ++ [g.users.users.agent.home]))
       true
     ))
     .success;
 
-  # The program the evaluated guest ships, found by name and never rebuilt here:
+  # The program an evaluated guest ships, found by name and never rebuilt here:
   # a check that recomputed the list would agree with itself.
-  shipped =
+  shippedOf = g:
     lib.findFirst (p: lib.getName p == "capsule-reset-home")
     (throw "resetHomeCases: capsule-reset-home is not in the evaluated guest's environment.systemPackages")
-    guest.environment.systemPackages;
+    g.environment.systemPackages;
+  shipped = shippedOf guest;
+
+  # Verdicts about one image's scrub list, from the values it was built with.
+  # The expected values are read from `targets` and that image's `config`, and
+  # nothing target-shaped is spelled here.
+  imageCases = name: g: ''
+    shippedPaths=(${lib.escapeShellArgs (shippedOf g).scrubPaths})
+    agentHome=${lib.escapeShellArg g.users.users.agent.home}
+
+    ckt "image ${name}: every path it carries passes the same guard" \
+      test ${lib.boolToString (plainOf g)} = true
+    ckt "  its shipped scrub list is not empty" test "''${#shippedPaths[@]}" -gt 0
+    ck "  and has nothing under \$HOME, which the reset already removes" "" \
+      "$(printf '%s\n' "''${shippedPaths[@]}" | grep -F -- "$agentHome/" || true)"
+    ckt "  and has the volume's .env" listed ${lib.escapeShellArg "${targets.volumePath}/.env"}
+    for key in ${lib.escapeShellArgs (map (k: k.path) g.services.openssh.hostKeys)}; do
+      ckt "  and has the declared host key $key" listed "$key"
+      ckt "  and its public half" listed "$key.pub"
+    done
+  '';
 in
   pkgs.runCommand "capsule-reset-home-cases" {} ''
     fail=0
@@ -270,23 +299,9 @@ in
 
     # ---------------------------------------------------------------- the image
     #
-    # Verdicts about this host's scrub list, from the values the guest was built
-    # with. The expected values are read from `target` and the guest's `config`,
-    # and nothing target-shaped is spelled here.
-    shippedPaths=(${lib.escapeShellArgs shipped.scrubPaths})
-    agentHome=${lib.escapeShellArg guest.users.users.agent.home}
+    # Once per target's image (imageCases, above).
     listed() { printf '%s\n' "''${shippedPaths[@]}" | grep -qxF -- "$1"; }
-
-    ckt "every path the image carries passes the same guard" \
-      test ${lib.boolToString shippedPlain} = true
-    ckt "the shipped scrub list is not empty" test "''${#shippedPaths[@]}" -gt 0
-    ck "  and has nothing under \$HOME, which the reset already removes" "" \
-      "$(printf '%s\n' "''${shippedPaths[@]}" | grep -F -- "$agentHome/" || true)"
-    ckt "  and has the target volume's .env" listed ${lib.escapeShellArg "${target.volumePath}/.env"}
-    for key in ${lib.escapeShellArgs (map (k: k.path) guest.services.openssh.hostKeys)}; do
-      ckt "  and has the declared host key $key" listed "$key"
-      ckt "  and its public half" listed "$key.pub"
-    done
+    ${lib.concatStrings (lib.mapAttrsToList imageCases images)}
 
     # The guard that stands between a target's `volumePath` and a root `rm`. Each
     # verdict was taken at eval; the shell only reads them out (CLAUDE.md).
