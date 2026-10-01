@@ -6,7 +6,7 @@ disposable phase sheet (`.doctrine/state/.../phase-NN.md`) that must survive
 
 ## Harvest
 <!-- single-copy: updated in place each harvest; ids only, never restated content -->
-fresh-as-of: 2026-10-01 · PHASE-01, PHASE-02 complete; PHASE-03 in progress · ff412b1
+fresh-as-of: 2026-10-01 · PHASE-01..04 complete; PHASE-05 next · d116b50
 
 ### Produced
 - `design.md` sec-1..sec-6 (locked 2026-10-01; human-attested)
@@ -19,7 +19,8 @@ fresh-as-of: 2026-10-01 · PHASE-01, PHASE-02 complete; PHASE-03 in progress · 
 - plan.toml/plan.md (five phases); PHASE-01: host/own-vms.nix, perimeter/root.nix, vm's booted link (412b77f)
 - CHR-016 (filed: root spellings left in probes/justfile)
 - PHASE-02: marker + bootedOf/bootedTarget/imageServes + bootedControl seam (7df94bd); take recorded below
-- PHASE-03 (part): targets/, profile.nix over a set, renderDocs (ff412b1)
+- PHASE-03: targets/, profile.nix over a set, renderDocs (ff412b1); docs (0b6ca11); guestConfig string re-baseline (7034b86)
+- PHASE-04: fleet.nix + fleet-cases.nix, targetFlake, image-<target>, resetHomeCases per image (7229a9d); docs (d116b50)
 
 ### Learned
 - mem.fact.oubliette.booted-is-the-running-runner
@@ -28,11 +29,12 @@ fresh-as-of: 2026-10-01 · PHASE-01, PHASE-02 complete; PHASE-03 in progress · 
 ### Open
 - DEC-016 supersession — at reconcile
 - POL-002 / POL-003 / CON-001 revisions — at reconcile (design sec-2, sec-6)
-- VH-1 (PHASE-02): user's host switch + c restart, then a profile verb on c
+- VH-1 (PHASE-02): the user switched and restarted c (2026-10-01), but c's `current` is still 6fzl0q3… (2026-09-28, unmarked), so a profile verb on c now refuses as unmarked. Needs the user's `just refresh-build c`, then a marker re-read and a profile verb
 - ~~memory candidate~~ errexit under `||`/`if`: already recorded as `mem.fact.oubliette.checked-call-disables-errexit-inside-it` (scoped `host/*.nix`). It bit twice anyway (PHASE-02 M3, PHASE-03 renderDocs), so what failed was retrieval, not the corpus. Run `/retrieve-memory` on the paths before editing a fragment.
 - reconcile findings: see ## Findings carried to reconcile
 - PHASE-02 EN-2: user replied "ok, begin" to "build PHASE-01 and PHASE-02 now, you switch when SL-251 can take a restart" (2026-10-01)
-- user preconditions for goad-walk (design sec-5)
+- goad-walk preconditions (design sec-5): 1-3 hold. Both repos are public; goad-walk b4bc42f pins github:davidlee/goad 68f8ec4; the user confirmed 2026-10-01. Precondition 4 (~/flakes follows) is the user's, after PHASE-05 adds the input (EX-5)
+- reconcile: design sec-3 gains `reasons`; PHASE-04 VA-1's deepSeq wording (see ### PHASE-04)
 
 ## Design surface triage (2026-09-30, exploring)
 
