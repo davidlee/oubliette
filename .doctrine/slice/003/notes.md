@@ -183,3 +183,24 @@ That is VH-1, at the user's switch.
   (VA-2). `just build-vm` built `image-doctrine` = `6alppgz…`.
 - Also fixed: justfile `nix_paths` was missing `policies.nix`, so `just check`
   never parsed or formatted it. It now also lists fleet.nix and fleet-cases.nix.
+
+### PHASE-05 (goad-walk)
+
+- **EX-1's "(inputs.nixpkgs followed)" is not what landed** (user, 2026-10-01).
+  goad-walk has no nixpkgs input: it imports `goad.inputs.nixpkgs`, so the
+  follow EX-1 names would be a no-op with a warning. The only real alternative,
+  `inputs.goad-walk.inputs.goad.inputs.nixpkgs.follows`, moves goad's toolchain
+  off goad's own pin, so the guest drifts from goad's devshell. No follow, which
+  is the same as `inputs.target`. The lock gains a second nixpkgs set
+  (goad's, rust-overlay's, pub's). Amend EX-1's text at reconcile.
+- `nix flake lock --update-input` no longer exists. Plain `nix flake lock` adds
+  the missing input and moves nothing else. Checked by revision, not by node key
+  (adding an input renumbers `nixpkgs_N`): no locked revision was lost, and every
+  old root input has the same rev.
+- Red: listing goad-walk in `targets/default.nix` without a `targetFlakes` entry
+  fails eval with fleet.nix's reason ("no flake for goad-walk (DEC-019)").
+- Oracles: toplevel, hello, `capsule`, a–i and `image-doctrine` are exact.
+  `j` = `image-goad-walk` = `q1zl3fn…`.
+- plan-d-fleet.md L1 still says "every slot declares `doctrine`" and cites
+  DEC-016. It is a plan, so it is not present tense. Settle it with the DEC-016
+  supersession at reconcile.

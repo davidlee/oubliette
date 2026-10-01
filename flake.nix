@@ -31,6 +31,13 @@
     # with an override, which writes the local path back into the lock.
     target.url = "github:davidlee/doctrine/edge";
 
+    # goad-walk's tool set (targets/goad-walk.nix): goad's binaries plus ruby and
+    # jq, and not goad's source. Same rules as `target` above. Deliberately no
+    # `follows`: goad-walk has no nixpkgs input of its own (it builds with goad's),
+    # and like `target` it keeps its own pin so the guest cannot drift from the
+    # tool set's own devshell.
+    goad-walk.url = "github:davidlee/goad-walk";
+
     doctrine.url = "github:davidlee/doctrine/edge";
 
     # The one tool source this host registers beyond nixpkgs and the target:
@@ -120,7 +127,10 @@
     # literal, so a target's file cannot carry it; the map lives here beside the
     # inputs, and fleet.nix refuses one that does not name exactly the declared
     # targets (DEC-019). `inputs.target` keeps its name: ~/flakes follows it.
-    targetFlakes = {doctrine = inputs.target;};
+    targetFlakes = {
+      doctrine = inputs.target;
+      goad-walk = inputs.goad-walk;
+    };
 
     # `hostName`, not the instance's name: the hostname is in the closure, so a
     # per-instance one is a per-instance image (docs/plan-c-implementation.md).

@@ -84,9 +84,12 @@ let
   # because this slot cannot serve it. Moving a slot to another target is a
   # change here, then `just refresh-build <slot>` and a restart.
   #
-  # Every slot declares `doctrine` because it is the only target. The literal
-  # repeats a target's `name` (its key in `targets/`) on purpose (`DEC-012`):
-  # renaming the target fails the build, naming these slots.
+  # Every slot but `j` declares `doctrine`; `j` serves `goad-walk` (SL-003 design
+  # sec-5), chosen as the highest index and for nothing else. A slot moved to
+  # another target takes its volume reset before its first start under it
+  # (`ISS-009`): a provision resets tracked files only. The literal repeats a
+  # target's `name` (its key in `targets/`) on purpose (`DEC-012`): renaming the
+  # target fails the build, naming these slots.
   declared = {
     a = {
       index = 0;
@@ -146,7 +149,7 @@ let
       index = 9;
       policy = "build";
       policies = policies.everything;
-      profile = "doctrine";
+      profile = "goad-walk";
     };
   };
 

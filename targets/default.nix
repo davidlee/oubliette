@@ -28,5 +28,6 @@ in {
   inherit volumePath;
   byName = builtins.mapAttrs derive {
     doctrine = import ./doctrine.nix;
+    goad-walk = import ./goad-walk.nix;
   };
 }
