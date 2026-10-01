@@ -255,7 +255,10 @@ is S1's problem and not this one: both capsules still run one target.
 Structural, numbered for citation. None is a bug; each is a place the design
 bought something else.
 
-- **L1 — one target per *image*, so one at a time on this host.** The target
+- ~~**L1 — one target per *image*, so one at a time on this host.**~~ **Closed**
+  by SL-003: one image per target in `targets/`, and a declared slot boots the
+  image its `profile` names (`fleet.nix`). What follows is the limitation as
+  it stood. The target
   reaches the guest as a flake input literal, which cannot be computed, and
   every declared capsule is bound to one `capsuleVm` value so that "one image, N
   capsules" is structural rather than a promise (`flake.nix`, NOTES item 21). A
@@ -278,7 +281,8 @@ bought something else.
   two targets on one host is `git switch` plus a rebuild, and two targets *at
   once* is D7.
 - **L2 — sizes are global, and needn't be, but they are not uniformly cheap.**
-  vcpu, mem and volume come from `target.nix` for every capsule alike. `mem`
+  vcpu, mem and volume come from `target.nix` for every capsule alike (since
+  SL-003, from the slot's target in `targets/`: per target, still not per slot). `mem`
   lives in the runner rather than the erofs, so per-slot memory costs a kilobyte
   — settled by eval in §5. `vcpu` does not: this target renders it into
   `guestConfig`, so per-slot vCPU is a 3.0 GiB image and a `microvm -u` per slot

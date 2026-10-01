@@ -1643,15 +1643,17 @@ in
     ckt "  saying so" saw "its running image does not name a target"
 
     # 8. No door, so the devshell's link is the one read — and a conflicting
-    # module link for the same name is not.
+    # module link for the same name is not. The target is named with
+    # `--profile`, which outranks the record and the declaration, so the verdict
+    # turns on which link is read and not on what an earlier case assigned.
     down dflt
     export CAPSULE_ROOT=$IMG_ROOT/checkout
     boot dflt duo devshell
     mkdir -p "$IMG_ROOT/microvms/dflt"
     ln -sfn "$IMG_ROOT/runners/dflt-solo-module" "$IMG_ROOT/microvms/dflt/booted"
-    run dflt collect
+    run dflt collect --profile duo
     ck "a capsule with no door reads the devshell's link" 0 "$rc"
-    ckt "  and proceeds on the target that link names" saw "collect argv: --capsule dflt --profile duo"
+    ckt "  and the program is handed it" saw "collect argv: --capsule dflt --policy build --profile duo"
     down dflt
     unset CAPSULE_ROOT
 
