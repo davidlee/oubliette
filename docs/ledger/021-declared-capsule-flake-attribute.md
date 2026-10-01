@@ -1,6 +1,8 @@
 # NOTES item 21 — a declared capsule needs a flake attribute, and all of them are one value
 
-*State: built and run at N=2.*
+*State: built and run at N=2. Since SL-003 (`DEC-017`) it is one value **per
+target** rather than one: a declared slot's attribute is the image its `profile`
+names (`fleet.nix`), and every image keeps hostName `capsule` (`DEC-020`).*
 One item of the [ledger](./index.md) — the number is the citation, and it
 never moves.
 

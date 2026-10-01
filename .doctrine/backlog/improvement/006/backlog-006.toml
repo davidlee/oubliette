@@ -5,10 +5,10 @@ id = 6
 slug = "a-second-target-at-once-which-is-a-second-guest-image"
 title = "A second target at once, which is a second guest image"
 kind = "improvement"
-status = "open"
-resolution = ""                 # seeded empty so `backlog edit` sets it in place
+status = "resolved"
+resolution = "done"
 created = "2026-08-17"
-updated = "2026-08-17"
+updated = "2026-10-01"
 tags = ["area:target"]
 
 # outbound-only (ADR-004). Cross-kind structural edges (e.g. references with a role

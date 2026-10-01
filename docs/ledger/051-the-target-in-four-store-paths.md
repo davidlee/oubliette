@@ -23,7 +23,9 @@ file. All of it is
 file names as **D7's first task rather than a detail of it** and says is worth
 doing even if flavours never happen. Written up here rather than left as a
 paragraph in a plan because the implementation will not fit one session, and a
-plan is not a thing anyone hands over.*
+plan is not a thing anyone hands over. SL-003 carried the same property to the
+guest: the build-time half is one image per target in `targets/`, selected by a
+slot's `profile` (`DEC-017`, `DEC-018`).*
 One item of the [ledger](./index.md) — the number is the citation, and it
 never moves.
 

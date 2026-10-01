@@ -5,10 +5,10 @@ id = 12
 slug = "a-slot-says-which-image-it-is-and-the-records-image-field-stops-being-inert"
 title = "A slot says which image it is, and the record's image field stops being inert"
 kind = "improvement"
-status = "open"
-resolution = ""                 # seeded empty so `backlog edit` sets it in place
+status = "resolved"
+resolution = "done"
 created = "2026-09-17"
-updated = "2026-09-17"
+updated = "2026-10-01"
 tags = ["area:cli", "area:target"]
 
 # outbound-only (ADR-004). Cross-kind structural edges (e.g. references with a role

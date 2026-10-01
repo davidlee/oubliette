@@ -114,6 +114,91 @@ intent = "design-target"
 selector = "perimeter/default.nix"
 intent = "design-target"
 
+[[selector]]
+selector = "perimeter/root.nix"
+intent = "design-target"
+note = "RV-011 F-1: touched on purpose, missing from sec-6"
+
+[[selector]]
+selector = "flake.lock"
+intent = "design-target"
+note = "RV-011 F-1: touched on purpose, missing from sec-6"
+
+[[selector]]
+selector = "fragments.nix"
+intent = "design-target"
+note = "RV-011 F-1: target.nix -> targets/ reference sweep (PHASE-03)"
+
+[[selector]]
+selector = "host/state-snapshot.nix"
+intent = "design-target"
+note = "RV-011 F-1: target.nix -> targets/ reference sweep (PHASE-03)"
+
+[[selector]]
+selector = "host/state-snapshot-cases.nix"
+intent = "design-target"
+note = "RV-011 F-1: target.nix -> targets/ reference sweep (PHASE-03)"
+
+[[selector]]
+selector = "policies.nix"
+intent = "design-target"
+note = "RV-011 F-1: target.nix -> targets/ reference sweep (PHASE-03)"
+
+[[selector]]
+selector = "setup.nix"
+intent = "design-target"
+note = "RV-011 F-1: target.nix -> targets/ reference sweep (PHASE-03)"
+
+[[selector]]
+selector = "vm/guest-path.nix"
+intent = "design-target"
+note = "RV-011 F-1: target.nix -> targets/ reference sweep (PHASE-03)"
+
+[[selector]]
+selector = "probe/freshness.sh"
+intent = "design-target"
+note = "RV-011 F-1: target.nix -> targets/ reference sweep (PHASE-03)"
+
+[[selector]]
+selector = "probe/netns-boot.sh"
+intent = "design-target"
+note = "RV-011 F-1: target.nix -> targets/ reference sweep (PHASE-03)"
+
+[[selector]]
+selector = "probe/netns-egress.sh"
+intent = "design-target"
+note = "RV-011 F-1: target.nix -> targets/ reference sweep (PHASE-03)"
+
+[[selector]]
+selector = "probe/two-capsules.sh"
+intent = "design-target"
+note = "RV-011 F-1: target.nix -> targets/ reference sweep (PHASE-03)"
+
+[[selector]]
+selector = "docs/architecture-walkthrough.md"
+intent = "design-target"
+note = "RV-011 F-1: target.nix -> targets/ reference sweep (PHASE-03)"
+
+[[selector]]
+selector = "docs/contract-doctrine.md"
+intent = "design-target"
+note = "RV-011 F-1: target.nix -> targets/ reference sweep (PHASE-03)"
+
+[[selector]]
+selector = "docs/contract-flavour.md"
+intent = "design-target"
+note = "RV-011 F-1: target.nix -> targets/ reference sweep (PHASE-03)"
+
+[[selector]]
+selector = "docs/design.md"
+intent = "design-target"
+note = "RV-011 F-1: target.nix -> targets/ reference sweep (PHASE-03)"
+
+[[selector]]
+selector = ".doctrine/project-orientation.md"
+intent = "design-target"
+note = "RV-011 F-1: target.nix -> targets/ reference sweep (PHASE-03)"
+
 [[relation]]
 label = "fulfils"
 target = "IMP-012"

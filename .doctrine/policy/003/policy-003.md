@@ -8,9 +8,9 @@ names a value implicitly.**
 | axis | the one home | what it holds |
 | --- | --- | --- |
 | addressing | **`net` in `flake.nix`** | tap name, both addresses, MAC, proxy port. Threaded to the guest via `specialArgs`. **Do not hardcode an address anywhere else.** |
-| slots | **`capsules.nix`** | which slots exist (`a`…`j`), the policy set an assigner may select within, and the profile each slot declares — a convenience, with no set beside it |
+| slots | **`capsules.nix`** | which slots exist (`a`…`j`), the policy set an assigner may select within, and the profile each slot declares — for resolution a convenience, with no set beside it; for a declared slot also the build binding, since the slot boots that target's image (`DEC-017`) |
 | host controls | **`policies.nix`** | an allowlist file, an ingestion bound and `mayCollect` per named policy |
-| the confined repo | **`target.nix`** | name, path, tools package, caches, sizes |
+| the confined repos | **`targets/`**, listed by hand in `default.nix` | per target: path, tools package, caches, sizes; its name is its key. Its tool-set flake is in `flake.nix`'s `targetFlakes`, because an input url must be a literal, and eval throws unless the two name the same targets (`DEC-018`, `DEC-019`) |
 | a probe's fabric | **`probeFabric` in `flake.nix`** | every name, link, address and network a probe's egress fabric is built from |
 
 **And nothing has a default.** The four host programs take `--capsule <name>` or
@@ -30,7 +30,7 @@ the axis's one home, and a name no document backs refuses at use rather than
 resolving to something else (`REV-001`, SL-001). **A program that reads host
 state to pick a target is `NOTES item 20`'s mistake.**
 
-**No perimeter value lives in `target.nix` and none comes back.** A control
+**No perimeter value lives in a target's file and none comes back.** A control
 chosen by whoever names the project is a control the naming authority holds
 (`NOTES item 36`, `NOTES item 25`).
 
@@ -75,7 +75,7 @@ Two related shapes that follow from the same rule:
 and is the other thing called a branch here.
 
 Also excluded: `target.guestPath`, the one path both sides share, which is why it
-is derived in `target.nix` rather than spelled in the guest and again in the
+is derived in `targets/default.nix` rather than spelled in the guest and again in the
 host's git channel.
 
 ## Verification

@@ -17,7 +17,8 @@ which is the whole of what making a target run-time state was for
 `nixos-rebuild`). This item moves the documents out, and it carries the two
 things item 51 deliberately did not do — **step 5's `profileDir` pairing** and
 **`profile_snapshot`** — because both become real in the same commit and neither
-is real before it.*
+is real before it. SL-003 added the guest-side half of the pin: a profile verb
+proceeds only when the slot's running image names the same target (`DEC-023`).*
 One item of the [ledger](./index.md) — the number is the citation, and it never
 moves.
 

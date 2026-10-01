@@ -20,11 +20,11 @@ Three limbs:
    cargo", and emphatically not "copy the human's `~/.cargo/config.toml`" —
    which is a third failure, a config describing a machine the capsule is not.
    **The smell is a toolchain's name (`cargo`, `bun`, `sccache`) appearing
-   anywhere but `target.nix`.**
+   anywhere but `targets/`.**
 2. **Anything beyond the contract is declared and optional.** The contract is
    *be a git repo on this host, and expose one flake package that is your
-   devshell's tool set* (`NOTES item 16`). Everything else is a `target.nix`
-   field with a **working absent path** — and a second target must be able to
+   devshell's tool set* (`NOTES item 16`). Everything else is a field of the
+   target's file in `targets/`, with a **working absent path** — and a second target must be able to
    omit any field doctrine happens to set.
 3. **Fix transient local state out-of-band.** A one-off in `~/flakes`, this
    host's disk, or one repo's history is fixed by hand and **not by permanent
@@ -33,8 +33,9 @@ Three limbs:
 
 **A target's name may appear in code** (`*.nix`, `*.sh` and the justfile,
 outside comments, `.doctrine/` and the tool configuration — `.mcp.json`,
-`.claude/`, `.codex/`) **only in `target.nix`, `inputs.target.url`, and as a
-slot's `profile` value in `capsules.nix`.** Generic source never hardcodes a
+`.claude/`, `.codex/`) **only in `targets/`, in `flake.nix`'s target inputs
+and its `targetFlakes` map, as the probe subject (`probeTarget` in `flake.nix`),
+and as a slot's `profile` value in `capsules.nix`** (SL-003, `REV-002`). Generic source never hardcodes a
 target's identity or branches on it; a host-declared value may be threaded into
 a generated front end. A case suite's fixture may reproduce a target's layout as
 data, since a fixture is what a program is run against, not what it is. The list
@@ -74,10 +75,11 @@ this one lives here, and they are **separate id spaces** (`ADR-001` term 2).
 **Applies to** every host-side program, `perimeter/`, `vm/`, the justfile, and
 every printed string.
 
-**Excluded**: `target.nix` itself, which is where a target's values are *supposed*
-to live, `inputs.target.url`, and a slot's `profile` value in `capsules.nix` —
-the host operator saying which client a slot serves, a convenience with no set
-beside it (`docs/contract-assignment.md`).
+**Excluded**: `targets/` itself, which is where a target's values are *supposed*
+to live; `flake.nix`'s target inputs, `targetFlakes` and `probeTarget`; and a
+slot's `profile` value in `capsules.nix` — the host operator saying which client
+a slot serves, which for a declared slot also selects its image (`DEC-017`,
+`docs/contract-assignment.md`).
 
 The surface this rule produces is written down field by field:
 `docs/contract-target.md` is what any repo must supply and may rely on;
@@ -108,5 +110,5 @@ the honest reading and it is why `IMP-004` matters more than its size suggests.
 - `NOTES item 51`, `NOTES item 52` — the target leaving the store, and the
   document leaving it.
 - `NOTES item 31`, `docs/contract-flavour.md` — the ownership smell pointed the
-  other way: a convenience in `target.nix` says doctrine needs it.
+  other way: a convenience in a target's file says that target needs it.
 - `docs/contract-target.md`, `docs/contract-doctrine.md`.

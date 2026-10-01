@@ -38,3 +38,10 @@ was true of all three and is now true of two.
 `caches = {}` and `guestConfig = {}` stay **reasoned**. Both are build-time, so
 no document and no `*Cases` fixture can reach them — only a guest image built
 without them, which is `IMP-006`.
+
+**Mitigated (2026-10-01, SL-003 PHASE-05).** goad-walk genuinely omits all
+three fields (`caches = {}`, `guestConfig = {}`, `baseline = null`). Its image
+built (`just build-vm`, 77dfbe8; build rung). The user booted it on slot `j`
+with the tools present and the checkout provisioned (start rung). Run-time
+behaviour on those absent paths, such as a walk using the volume, is not
+exercised beyond the boot.

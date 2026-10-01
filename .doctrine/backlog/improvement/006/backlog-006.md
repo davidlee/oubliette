@@ -56,3 +56,9 @@ Evidence rung (`STD-001`): the capability is **reasoned**. The port's price is
 **taken** — a diff (`NOTES item 23`). The image's price is hand-measured and
 `docs/probes.md` says so of itself: the 3.0 GiB per-instance erofs figure is
 Plan C's, and *the probe does not measure it*. What is unbuilt is concurrency.
+
+**Done by SL-003 (2026-10-01, 7229a9d and 77dfbe8).** There is one image per
+target in `targets/`, and a declared slot boots the image its `profile` names
+(`fleet.nix`, DEC-017). goad-walk runs on slot `j` beside doctrine, so two
+targets at once is a declaration, not a `git switch`. Per-*assignment*
+composition is still `IMP-003`.

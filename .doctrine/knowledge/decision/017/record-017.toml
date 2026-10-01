@@ -7,7 +7,7 @@ title = "A slot's declared profile also selects its image"
 record_kind = "decision"
 status = "accepted"
 created = "2026-09-30"
-updated = "2026-09-30"
+updated = "2026-10-01"
 tags = []
 
 [facet]                         # every field typed; seeded empty (captured later)
@@ -25,7 +25,7 @@ contradicts = []
 notes       = []
 
 [relationships]                 # verb-written edges (set by doctrine supersede)
-supersedes    = []   # record ids this one replaces (set by doctrine supersede)
+supersedes    = ["DEC-016"]   # record ids this one replaces (set by doctrine supersede)
 superseded_by = []   # set on superseded predecessor (verb-written, ADR-004 §5)
 
 [[relation]]

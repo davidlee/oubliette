@@ -242,10 +242,12 @@ rejected second-image-per-string.
 microvm.kernelParams = ["capsule.target=${target.name}"];
 ```
 
-The name is safe on a kernel command line because `host/profile-name.nix`
-already restricts target names to a shape with no whitespace. `vm/capsule.nix`
-asserts `profileNameOk target.name` beside its existing guest-path guard, so an
-image cannot be built with a marker the reader would split.
+The name is safe on a kernel command line because `vm/capsule.nix` refuses to
+build an image whose target name is not one `[A-Za-z0-9._-]+` token.
+`profileNameOk` (`host/profile-name.nix`) is not enough alone: it rules out
+newline, tab, `/`, `$` and backtick, but not a space. So the image checks both,
+beside its existing guest-path guard, and an image cannot be built with a
+marker the reader would split (RV-011 F-2).
 
 This is not item 21's `systemd.hostname=` mistake. That was per-*slot*
 identity on the command line, which would force an image per slot. This one is
@@ -311,6 +313,8 @@ The `images`, `unbound` and `slotImages` code above, together with sec-2's
   images = …;        # name -> nixosSystem, one per target
   slotImages = …;    # slot -> images.${slot.profile}, or throw
   vms = {capsule = images.${probeTarget};} // slotImages;
+  reasons = …;       # {images, slotImages}: each refusal's message, or null —
+                     # exactly what that attribute throws (RV-011 F-5)
 }
 ```
 
@@ -629,13 +633,13 @@ Both directions, since a presence-only check passes for the wrong reason
 | `targets/doctrine.nix` (new) | today's `target.nix` less the derived fields and `volumePath`; commentary moves with it |
 | `targets/goad-walk.nix` (new) | sec-5's values; lands last, once goad-walk is fetchable |
 | `target.nix` | deleted |
-| `fleet.nix` (new) | `{lib, mkVm}: {targets, targetFlakes, capsules, probeTarget}: {images, slotImages, vms}`, with the key check and the `unbound` throw (sec-3) |
+| `fleet.nix` (new) | `{lib, mkVm}: {targets, targetFlakes, capsules, probeTarget}: {images, slotImages, vms, reasons}`, with the key check and the `unbound` throw (sec-3); `reasons` is each throw's message, so fleetCases pins the text as well as the verdict |
 | `flake.nix` | `inputs.goad-walk`; `targets = import ./targets`; `targetFlakes`; `probeTarget = "doctrine"`; `mkVm` takes extra `specialArgs`; `vms` from `fleet.nix`; `packages.image-<target>`; `render = ts:`; every `target` consumer names its target or takes the set; probe preludes and `guestRepo` from `probeTarget`; `resetHomeCases` over every image; `fleetCases` wired; `vm` refuses while a capsule VMM runs in this namespace, builds with `--out-link booted` and execs the link (`DEC-024`); `vm` and `vm-stop` splice one `own_vms` fragment; `capsule-host` and `vm` splice the one `root` fragment |
 | `vm/capsule.nix` | takes `targetFlake` instead of reading `inputs.target`; `microvm.kernelParams = ["capsule.target=…"]`; asserts `profileNameOk target.name` |
 | `host/profile.nix` | `{…, targets}`; `documentOf`, `jsonOf`, `needsUnitOf`; `dir` renders every target; `names` replaces `name` |
 | `host/programs.nix` | `targets` in place of `target`; `inject` uses `targets.volumePath`; `guestRepo` removed |
 | `host/services.nix` | `targets` in place of `target`; option text for `profileDir` unchanged in meaning |
-| `host/cli.nix` | `bootedOf` and `bootedTarget`; the refusal at the profile-verb dispatch (`:546-556`); `bootedOf` and `quarantineOf` take the shared `root` fragment |
+| `host/cli.nix` | `bootedOf` and `bootedTarget`; the refusal at the profile-verb dispatch (`:546-556`); `bootedOf` and `quarantineOf` take the shared `root` fragment; a `bootedControl` argument (default: the real `bootedOf` + `bootedTarget`), as `proxyControl`/`guestControl`, so policyCases' resolution cases run without a booted image (RV-011 F-4) |
 | `host/own-vms.nix` (new) | `own_vms <process name>`, lifted out of `vm-stop`, for `vm` and `vm-stop`; each passes the runner's hostName (`capsule`, or `hello`), never the slot name |
 | `host/quarantine.nix` | takes the shared `root` fragment in place of its own spelling |
 | `host/vm-cases.nix` | the success case stubs `nix build --out-link` and makes an executable `booted/bin/microvm-run`; the refusal case below |
@@ -644,6 +648,9 @@ Both directions, since a presence-only check passes for the wrong reason
 | `host/policy-cases.nix` | the refusal cases below, over a fixture `microvms` tree, a fixture `CAPSULE_ROOT` and a substituted `socketOf` |
 | `fleet-cases.nix` (new) | the binding's throws, over a stub `mkVm` |
 | `vm/reset-home-cases.nix` | takes every image's config and asserts the scrub list per image |
+| `perimeter/root.nix` (new) | the one devshell root, `${CAPSULE_ROOT:-${MICROVM_SPIKE_ROOT:-$PWD}}`, exported by `perimeter/default.nix` as the `root` fragment (sec-4) |
+| `flake.lock` | the `goad-walk` input and its graph; no other input moves (PHASE-05) |
+| `target.nix` reference sweep | comments and one message rewritten to `targets/`: `fragments.nix`, `host/state-snapshot{,-cases}.nix`, `policies.nix`, `setup.nix`, `vm/guest-path.nix`, `probe/{freshness,netns-boot,netns-egress,two-capsules}.sh`, `docs/{architecture-walkthrough,contract-doctrine,contract-flavour,design}.md`, `.doctrine/project-orientation.md` (PHASE-03; RV-011 F-1) |
 | `justfile` | `build-vm` builds every `image-<target>`; `cases` and `build` list `fleetCases`; `nix_paths` gains `targets/`, loses `target.nix`; `_target` removed if still uncalled |
 | docs | `contract-target.md` (a target is a file in `targets/`, and porting adds "declare it and bind a slot"), `contract-assignment.md` (`profile` binds for a declared slot; `image` unchanged), `README.md` ("Pointing it at a different repo", "A second capsule…", "Changing the guest's tools"), `CLAUDE.md` (the one-image lever becomes one image per target; `target.nix` references) |
 
@@ -676,7 +683,10 @@ branch. Case 8 gives it none):
 
 Each asserts the reason as well as the status. Mutation checks: delete the
 dispatch check and watch 2–7 and 9 go red; swap `bootedOf`'s branches and
-watch 1 and 8 go red; drop `bootedTarget`'s `|| true` and watch 9 go red.
+watch 1–4 and 8 go red (as observed at 77310cc). `bootedTarget`'s final
+`|| true` is defensive and nothing pins it: its only caller runs it under
+`|| exit 1`, which suspends errexit, so dropping it turns no case red (PHASE-02,
+RV-011 F-3).
 
 **`fleetCases`: the binding** (eval throws read with `builtins.tryEval` and
 asserted in the shell, `hostModuleUnits`' arrangement; a stub `mkVm` returns

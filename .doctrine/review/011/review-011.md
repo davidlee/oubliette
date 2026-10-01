@@ -108,3 +108,47 @@ and this ledger hold what was actually verified.
   (PHASE-05, j's boot). IMP-015: its SL-003 dependency is delivered → backlog
   edits.
 - **F-9** — ledger items 21, 28, 51, 52: the *State:* header only (ADR-002).
+
+## Reconciliation Outcome
+
+Agreed by the user on 2026-10-01 ("agreed").
+
+### Direct edits applied
+- **F-1**: selector registry, `slice selector add` (design-target) for
+  `perimeter/root.nix`, `flake.lock` and the 15 sweep paths. `conformance`:
+  0 undelivered, 42 conformant; the 9 undeclared are `.doctrine/` bookkeeping
+  (backlog, notes, slice toml). `docs/plan-d-fleet.md` was added and then removed
+  again: its change is this audit's fix (77310cc), outside every phase's
+  recorded range. Mirror: sec-6 gains `perimeter/root.nix`, `flake.lock` and
+  rename-sweep rows.
+- **F-2**: sec-3, the marker's safety is the token check in vm/capsule.nix;
+  `profileNameOk` alone allows a space.
+- **F-3**: sec-6, the swap mutation reddens 1–4 and 8; the final `|| true` is
+  defensive and nothing pins it.
+- **F-4**: sec-6, host/cli.nix row gains `bootedControl`.
+- **F-5**: sec-3 sketch and sec-6 fleet.nix row gain `reasons`.
+
+### REVs completed
+- **REV-002** (`reconcile-sl-003`): done. POL-002's name list and *Excluded*
+  list, POL-003's slots and confined-repo rows, and every present-tense
+  `target.nix` in both are rewritten for `targets/`/`targetFlakes`/`probeTarget`
+  (F-9). Narrative in revision-002.md.
+
+### Other governance writes (F-9)
+- **CON-001**: statement and body narrowed. One extras list means one
+  composition, which is one image per target.
+- **DEC-016**: superseded by **DEC-017**, which already recorded the split. Its
+  body gains the ledger citations (items 21, 28, 51, 52) in prose. The brief's
+  "new decision" was not needed.
+- **Backlog**: IMP-006 resolved (done), IMP-012 resolved (done; the record's
+  `image` field deliberately stays IMP-003's, per DEC-022), RSK-002 resolved
+  (mitigated: build and start rungs). ISS-011 was already resolved. IMP-015 is
+  unblocked when SL-003 closes.
+- **Ledger** items 21, 28, 51, 52: one sentence appended to each *State:* line
+  (ADR-002 allows this).
+
+### Withdrawn / tolerated
+- **F-7** tolerated: plan criteria are append-only. F-6 and F-8 were fixed in
+  77310cc. F-10 aligned.
+
+Reconcile pass complete; hand off to /close.

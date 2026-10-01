@@ -1,6 +1,9 @@
 # NOTES item 28 — a slot has no default, and a front end is where one is guessed
 
-*State: built, unrun on this host — it wants the guest rebuild the rename wants.*
+*State: built, unrun on this host — it wants the guest rebuild the rename wants.
+Since SL-003 the build axis refuses the same way: a declared slot whose `profile`
+is missing or names no target in `targets/` throws at eval, naming the slot
+(`DEC-017`).*
 One item of the [ledger](./index.md) — the number is the citation, and it
 never moves.
 

@@ -71,3 +71,11 @@ per-slot image identity must not read as a per-slot process identity —
 Unbuilt. The divergence above is *observed* (three runner store paths, one of
 them a month old); the harm it insures against is *reasoned*, and stays reasoned
 until a second image exists.
+
+**Done by SL-003 (2026-10-01, 7df94bd).** A slot says which image it is
+through the marker on its own kernel command line (`capsule.target=<name>`,
+DEC-021), read live from the booted runner at use. A profile verb whose target
+is not the running image's is refused (DEC-023). The second half of the title
+was deliberately **not** taken: the record's `image` field stays null and keeps
+its contract meaning for `IMP-003` (DEC-022), because a pin would only be a
+second copy of what `booted` already says.
