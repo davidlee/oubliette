@@ -6,7 +6,7 @@ disposable phase sheet (`.doctrine/state/.../phase-NN.md`) that must survive
 
 ## Harvest
 <!-- single-copy: updated in place each harvest; ids only, never restated content -->
-fresh-as-of: 2026-10-01 · PHASE-01..05 complete; audit next · 77dfbe8
+fresh-as-of: 2026-10-01 · audit done (RV-011); reconcile next · 77310cc
 
 ### Produced
 - `design.md` sec-1..sec-6 (locked 2026-10-01; human-attested)
@@ -22,17 +22,19 @@ fresh-as-of: 2026-10-01 · PHASE-01..05 complete; audit next · 77dfbe8
 - PHASE-03: targets/, profile.nix over a set, renderDocs (ff412b1); docs (0b6ca11); guestConfig string re-baseline (7034b86)
 - PHASE-04: fleet.nix + fleet-cases.nix, targetFlake, image-<target>, resetHomeCases per image (7229a9d); docs (d116b50)
 - PHASE-05: targets/goad-walk.nix, inputs.goad-walk, j bound (77dfbe8); VH-1/VH-2 passed (### PHASE-05)
+- RV-011 (audit, done): F-6/F-8 fixed (77310cc); Reconciliation Brief in review-011.md
 
 ### Learned
 - mem.fact.oubliette.booted-is-the-running-runner
 - user preference (session memory, not corpus): don't design around live capsules
+- mem.fact.oubliette.stubbing-a-vmm-process-in-a-case-suite
 
 ### Open
 - DEC-016 supersession — at reconcile
 - POL-002 / POL-003 / CON-001 revisions — at reconcile (design sec-2, sec-6)
 - VH-1 (PHASE-02): the user switched and restarted c (2026-10-01), but c's `current` is still 6fzl0q3… (2026-09-28, unmarked), so a profile verb on c now refuses as unmarked. Needs the user's `just refresh-build c`, then a marker re-read and a profile verb
 - ~~memory candidate~~ errexit under `||`/`if`: already recorded as `mem.fact.oubliette.checked-call-disables-errexit-inside-it` (scoped `host/*.nix`). It bit twice anyway (PHASE-02 M3, PHASE-03 renderDocs), so what failed was retrieval, not the corpus. Run `/retrieve-memory` on the paths before editing a fragment.
-- reconcile findings: see ## Findings carried to reconcile
+- reconcile: RV-011's Reconciliation Brief is the work list (supersedes ## Findings carried to reconcile as the index)
 - PHASE-02 EN-2: user replied "ok, begin" to "build PHASE-01 and PHASE-02 now, you switch when SL-251 can take a restart" (2026-10-01)
 - goad-walk preconditions (design sec-5): 1-3 hold. Both repos are public; goad-walk b4bc42f pins github:davidlee/goad 68f8ec4; the user confirmed 2026-10-01. Precondition 4 (~/flakes follows) given to the user with PHASE-05 (EX-5); the user then switched and booted j
 - reconcile: design sec-3 gains `reasons`; PHASE-04 VA-1's deepSeq wording (see ### PHASE-04); PHASE-05 EX-1's follow wording, plan-d L1 (see ### PHASE-05)
@@ -214,3 +216,19 @@ That is VH-1, at the user's switch.
   `remote -v` is empty by design: the seed runs `git init` and provision pushes
   in (`vm/capsule.nix:333`), so a remote is never evidence of whose checkout it is.
   This is RSK-002's start rung for `caches = {}` / `guestConfig = {}`.
+
+## Audit harvest (RV-011, lifted from the phase sheets)
+
+- **`vmmOf` is a rule over `["capsule"] ++ slots`**, not an eval of each VM's
+  hostName (PHASE-01). The rule keeps guest evals out of the devshell. It is
+  true only while DEC-020 (every image is hostName `capsule`) holds. A
+  per-target hostname would break it silently.
+- `own_vms` anchors `pgrep -f "^microvm@$1( |$)"`. ISS-016 was a prefix match,
+  and the anchor goes beyond the design's text in its spirit.
+- **resetHomeCases' run cases use one shipped store path for every image.** This
+  is true because the scrub list derives from setup.nix and the shared
+  `volumePath`. A per-target scrub list would need a run per image.
+- `just build-vm` enumerates `image-*` with `nix eval`, so the justfile names no
+  target (POL-002).
+- fleetCases' subject is `import ./fleet.nix` applied to a stub `mkVm`, which is
+  the library-suite rule in CLAUDE.md.

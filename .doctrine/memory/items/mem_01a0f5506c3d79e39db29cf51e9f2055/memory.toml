@@ -1,0 +1,46 @@
+memory_uid = "mem_01a0f5506c3d79e39db29cf51e9f2055"
+memory_key = "mem.fact.oubliette.stubbing-a-vmm-process-in-a-case-suite"
+schema_version = 1
+memory_type = "fact"
+status = "active"
+title = "Stubbing a named VMM process in a case suite: exec -a breaks coreutils sleep, and a bare wait hangs on the bug"
+summary = "To fake microvm@<name> in a *Cases suite use bash -c 'sleep N; :' under exec -a, and KILL then read 143 vs 137 rather than a bare wait"
+created = "2026-10-01"
+updated = "2026-10-01"
+
+[scope]
+paths = []
+globs = ["host/*-cases.nix", "vm/*-cases.nix"]
+commands = []
+tags = ["gotcha", "testing"]
+workspace = "default"
+repo = "github.com/davidlee/oubliette"
+repo_id_kind = "remote"
+repo_id_confidence = "high"
+
+[git]
+anchor_kind = "checkout_state"
+commit = ""
+tree = "598117798ea7a990a6fb4e8fc4e51c26b3000562"
+ref_name = "refs/heads/main"
+checkout_state_id = "5fb1b977cd743bebf2b5d2ba3ece66cd08de68ce72b50777672a59753e34fa67"
+base_commit = "77310cce3a49ff6112988448f0be5f284e770724"
+verified_sha = ""
+normalizer = "forget.checkout.v1"
+
+[review]
+verification_state = "unverified"
+reviewed = ""
+review_by = ""
+
+[trust]
+trust_level = "medium"
+
+[ranking]
+severity = "medium"
+weight = 0
+
+[[source]]
+kind = "commit"
+ref = "412b77f"
+

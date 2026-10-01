@@ -1,0 +1,321 @@
+id    = 11
+slug  = "reconciliation-review-of-sl-003"
+title = "reconciliation review of SL-003"
+# no status — a review's status is DERIVED from its findings, so
+# it is never stored (the storage rule forbids derived data in authored files).
+
+[review]
+facet     = "reconciliation"     # scope|design|plan|phase-plan|implementation|code-review|reconciliation
+raiser    = "raiser"
+responder = "responder"
+rounds_base = 0
+contests_base = 0
+concluded = true
+
+[[review.turn]]
+act = "conclude"
+role = "raiser"
+note = """
+Conformance audit of SL-003 PHASE-01..05 (412b77f..77dfbe8) in-tree on main. Examined: `slice conformance 3` (26 undeclared, each traced to its commit; 0 undelivered); design sec-2 invariants by grep; drvPath oracles across PHASE-03..05; policyCases' refusal cases by mutation (dropping case 4, swapping bootedOf's branches); `just` and `just check` at 77310cc; verify-vt (all phases pass); every carried finding in notes.md; the governance sec-6 sets aside for reconcile; PHASE-05 VH-1/VH-2 from the user's boot of j. Two fix-now findings (F-6, F-8) landed in 77310cc. Five design-wrong per-slice and one governance finding go to the Reconciliation Brief. One finding is tolerated (plan text is immutable) and one is aligned.
+"""
+
+[target]                   # the outbound `reviews` edge: RV-NNN ──reviews──▶ <ref>
+ref   = "SL-003"
+
+[[finding]]
+id = "F-1"
+status = "verified"
+severity = "minor"
+title = "Expected sec-6 and the selector registry to name every path the slice touched; observed 15 code/doc paths undeclared"
+detail = """
+`doctrine slice conformance 3` lists these as undeclared. Each was touched on purpose:
+- perimeter/root.nix (412b77f, PHASE-01): the shared `root` fragment. sec-6 says "the shared `root` fragment" but has no perimeter row.
+- flake.lock (77dfbe8, PHASE-05): the goad-walk input.
+- The `target.nix` → `targets/` rename sweep (ff412b1, 0b6ca11, PHASE-03). Only comments and one echo string changed: fragments.nix, host/state-snapshot.nix, host/state-snapshot-cases.nix, policies.nix, setup.nix, vm/guest-path.nix, probe/{freshness,netns-boot,netns-egress,two-capsules}.sh, docs/{architecture-walkthrough,contract-doctrine,contract-flavour,design}.md, .doctrine/project-orientation.md.
+The rest of the undeclared paths are .doctrine bookkeeping (backlog, notes, slice toml).
+"""
+disposition = "design-wrong"
+response = """
+The touches were intended. The registry and sec-6 are what fall short. Reconciliation Brief, per-slice: `doctrine slice selector add` with design-target for perimeter/root.nix and flake.lock, and for the rename-sweep paths, so `slice conformance` reads clean. Mirror it in sec-6 with a perimeter/ row, a flake.lock row, and one "target.nix references rewritten" row listing the sweep.
+"""
+
+[[finding.turn]]
+act = "raise"
+role = "raiser"
+
+[[finding.turn]]
+act = "dispose"
+role = "responder"
+disposition = "design-wrong"
+response = """
+The touches were intended. The registry and sec-6 are what fall short. Reconciliation Brief, per-slice: `doctrine slice selector add` with design-target for perimeter/root.nix and flake.lock, and for the rename-sweep paths, so `slice conformance` reads clean. Mirror it in sec-6 with a perimeter/ row, a flake.lock row, and one "target.nix references rewritten" row listing the sweep.
+"""
+
+[[finding.turn]]
+act = "verify"
+role = "raiser"
+
+[[finding]]
+id = "F-2"
+status = "verified"
+severity = "minor"
+title = "Expected sec-3's profileNameOk to rule out whitespace as it says; observed it allows a space"
+detail = """
+notes.md "Findings carried to reconcile": design sec-3 says `profileNameOk` rules out whitespace, but it allows a space. vm/capsule.nix also requires a `[A-Za-z0-9._-]+` token (7df94bd), so the image is safe, but the design's sentence is false.
+"""
+disposition = "design-wrong"
+response = """
+The code is right: profileNameOk plus vm/capsule.nix's token check is what ships and is tested. Reconciliation Brief, per-slice: correct sec-3's sentence to say what profileNameOk rules out, and name vm/capsule.nix's `[A-Za-z0-9._-]+` assertion as the image-side guard.
+"""
+
+[[finding.turn]]
+act = "raise"
+role = "raiser"
+
+[[finding.turn]]
+act = "dispose"
+role = "responder"
+disposition = "design-wrong"
+response = """
+The code is right: profileNameOk plus vm/capsule.nix's token check is what ships and is tested. Reconciliation Brief, per-slice: correct sec-3's sentence to say what profileNameOk rules out, and name vm/capsule.nix's `[A-Za-z0-9._-]+` assertion as the image-side guard.
+"""
+
+[[finding.turn]]
+act = "verify"
+role = "raiser"
+
+[[finding]]
+id = "F-3"
+status = "verified"
+severity = "minor"
+title = "Expected sec-6's third mutation (drop bootedTarget's final || true) to turn case 9 red; observed it does not"
+detail = """
+The caller runs imageServes under `|| exit 1`, which suspends errexit inside it, so the trailing `|| true` is defensive and removing it changes nothing observable. Found in the PHASE-02 VA-1 run (notes.md). sec-6's mutation list states an effect that does not happen.
+"""
+disposition = "design-wrong"
+response = """
+The `|| true` is defensive by design, and host/cli.nix:255-256 says it is not pinned. Reconciliation Brief, per-slice: drop or rewrite sec-6's third mutation to say the guard is defensive because its only caller suspends errexit, so no case pins it.
+"""
+
+[[finding.turn]]
+act = "raise"
+role = "raiser"
+
+[[finding.turn]]
+act = "dispose"
+role = "responder"
+disposition = "design-wrong"
+response = """
+The `|| true` is defensive by design, and host/cli.nix:255-256 says it is not pinned. Reconciliation Brief, per-slice: drop or rewrite sec-6's third mutation to say the guard is defensive because its only caller suspends errexit, so no case pins it.
+"""
+
+[[finding.turn]]
+act = "verify"
+role = "raiser"
+
+[[finding]]
+id = "F-4"
+status = "verified"
+severity = "minor"
+title = "Expected sec-6's code-impact table to list host/cli.nix's seams; observed bootedControl missing"
+detail = """
+host/cli.nix gained a `bootedControl` seam in 7df94bd, so policyCases can substitute the runner tree. sec-6's host/cli.nix row names bootedOf/bootedTarget and the refusal only.
+"""
+disposition = "design-wrong"
+response = """
+This is a seam POL-004 asks for: a program takes the one thing tying it to this host as an argument. Reconciliation Brief, per-slice: add `bootedControl` to sec-6's host/cli.nix row.
+"""
+
+[[finding.turn]]
+act = "raise"
+role = "raiser"
+
+[[finding.turn]]
+act = "dispose"
+role = "responder"
+disposition = "design-wrong"
+response = """
+This is a seam POL-004 asks for: a program takes the one thing tying it to this host as an argument. Reconciliation Brief, per-slice: add `bootedControl` to sec-6's host/cli.nix row.
+"""
+
+[[finding.turn]]
+act = "verify"
+role = "raiser"
+
+[[finding]]
+id = "F-5"
+status = "verified"
+severity = "minor"
+title = "Expected sec-3's fleet.nix sketch to match the shipped interface; observed fleet.nix also exports reasons"
+detail = """
+At the user's request (2026-10-01), fleet.nix exposes `reasons.{images,slotImages}`, the string each attribute throws or null, and fleetCases asserts it. sec-3's sketch has `{images, slotImages, vms}` only, and sec-6's fleet.nix row has the same omission.
+"""
+disposition = "design-wrong"
+response = """
+`reasons` was the user's call (2026-10-01) and is pinned by fleetCases. Reconciliation Brief, per-slice: add `reasons` to sec-3's fleet.nix signature, and to sec-6's fleet.nix row.
+"""
+
+[[finding.turn]]
+act = "raise"
+role = "raiser"
+
+[[finding.turn]]
+act = "dispose"
+role = "responder"
+disposition = "design-wrong"
+response = """
+`reasons` was the user's call (2026-10-01) and is pinned by fleetCases. Reconciliation Brief, per-slice: add `reasons` to sec-3's fleet.nix signature, and to sec-6's fleet.nix row.
+"""
+
+[[finding.turn]]
+act = "verify"
+role = "raiser"
+
+[[finding]]
+id = "F-6"
+status = "verified"
+severity = "minor"
+title = "Expected each policyCases case to set up its own state; observed case 8 proceeds only because case 4 left a record naming duo"
+detail = """
+host/policy-cases.nix:1645. Slot `dflt` declares `solo`. Case 8 boots a devshell image for `duo` and asserts the verb proceeds with `--profile duo`. Without an assignment record, resolution would give `solo` and the image check would refuse. The only record naming `duo` is the one case 4 wrote (:1608). So case 8 passes on another case's leftover state, and reordering or deleting case 4 changes its verdict for a reason the case does not state (CLAUDE.md: never inherit the previous round's wreckage). To be confirmed by mutation.
+"""
+disposition = "fix-now"
+response = """
+Fixed in 77310cc. Case 8 passes `--profile duo`, so its verdict turns only on which link is read. Mutation evidence: without the fix, deleting case 4 turned case 8 red. With the fix, deleting case 4 keeps the suite green, and swapping bootedOf's branches still turns case 8 red (with 1-4).
+"""
+
+[[finding.turn]]
+act = "raise"
+role = "raiser"
+
+[[finding.turn]]
+act = "dispose"
+role = "responder"
+disposition = "fix-now"
+response = """
+Fixed in 77310cc. Case 8 passes `--profile duo`, so its verdict turns only on which link is read. Mutation evidence: without the fix, deleting case 4 turned case 8 red. With the fix, deleting case 4 keeps the suite green, and swapping bootedOf's branches still turns case 8 red (with 1-4).
+"""
+
+[[finding.turn]]
+act = "verify"
+role = "raiser"
+
+[[finding]]
+id = "F-7"
+status = "verified"
+severity = "nit"
+title = "Expected plan criteria text to describe what verified; observed PHASE-04 VA-1's deepSeq clause and PHASE-05 EX-1's follow are wrong"
+detail = """
+- PHASE-04 VA-1 says removing deepSeq makes a case pass against a broken fleet. It actually turns a case red against a correct one, because the throw is inside the slot values. The forcing is load-bearing either way (notes.md ### PHASE-04).
+- PHASE-05 EX-1 says "(inputs.nixpkgs followed)". goad-walk has no nixpkgs input, and the user chose no follow (notes.md ### PHASE-05). The design already shows no follow (sec-2).
+"""
+disposition = "tolerated"
+response = """
+Plan criteria are append-only (boot rule), so they are not a reconcile surface. What was actually verified is recorded in notes.md (### PHASE-04, ### PHASE-05) and in this finding. design.md is already correct on both: sec-2 shows the goad-walk input with no follow, and sec-6 asks only that the forcing be load-bearing. A wrong sentence in a closed phase's criterion misleads nobody who reads the notes beside it, and fixing it would mean editing an immutable row.
+"""
+
+[[finding.turn]]
+act = "raise"
+role = "raiser"
+
+[[finding.turn]]
+act = "dispose"
+role = "responder"
+disposition = "tolerated"
+response = """
+Plan criteria are append-only (boot rule), so they are not a reconcile surface. What was actually verified is recorded in notes.md (### PHASE-04, ### PHASE-05) and in this finding. design.md is already correct on both: sec-2 shows the goad-walk input with no follow, and sec-6 asks only that the forcing be load-bearing. A wrong sentence in a closed phase's criterion misleads nobody who reads the notes beside it, and fixing it would mean editing an immutable row.
+"""
+
+[[finding.turn]]
+act = "verify"
+role = "raiser"
+
+[[finding]]
+id = "F-8"
+status = "verified"
+severity = "minor"
+title = "Expected docs to stop describing one image for the fleet; observed plan-d-fleet.md L1 still says every slot declares doctrine"
+detail = """
+docs/plan-d-fleet.md:258-270 (L1): "one target per image, so one at a time on this host … every slot declares `doctrine`, because this host builds one image … A per-slot split waits on a slot having its own image (IMP-006)." SL-003 delivered that split, and slot j now serves goad-walk. A plan is not present tense, but this paragraph reads as a current limitation and cites DEC-016, which this slice supersedes.
+"""
+disposition = "fix-now"
+response = """
+Fixed in 77310cc. L1 is struck through and closed by SL-003, matching L3's form, and L2's sizes now say they come from the slot's target. No present-tense host state was added to the plan.
+"""
+
+[[finding.turn]]
+act = "raise"
+role = "raiser"
+
+[[finding.turn]]
+act = "dispose"
+role = "responder"
+disposition = "fix-now"
+response = """
+Fixed in 77310cc. L1 is struck through and closed by SL-003, matching L3's form, and L2's sizes now say they come from the slot's target. No present-tense host state was added to the plan.
+"""
+
+[[finding.turn]]
+act = "verify"
+role = "raiser"
+
+[[finding]]
+id = "F-9"
+status = "verified"
+severity = "major"
+title = "Expected governance to match the shipped binding; observed POL-002/POL-003/CON-001/DEC-016 and linked backlog still describe one target"
+detail = """
+design sec-6 sets aside the governance edits for reconcile: POL-002's list of where a target's name may appear (now targets/, flake.nix's inputs and targetFlakes, the probe subject, a slot's profile), POL-003's rows, CON-001 narrowed to extras, DEC-016 superseded by a decision recording the split (citing NOTES items 21, 28, 51, 52 in prose, per ADR-002), IMP-012/IMP-006/ISS-011/RSK-002 updated, and the *State:* headers of ledger items 21, 28, 51 and 52. Also IMP-015 says it "needs SL-003", which is now delivered. Until reconcile lands, a required policy (POL-002) names fewer places than the code uses.
+"""
+disposition = "design-wrong"
+response = """
+Planned: design sec-6 sets these aside for reconcile, and none can be written before the binding ships. Reconciliation Brief, governance (REV): POL-002 name list; POL-003 rows; CON-001 narrowed to extras; a new decision superseding DEC-016; IMP-012, IMP-006, ISS-011 and RSK-002 updated (RSK-002's build and start rungs are now exercised, by PHASE-05 and j's boot); IMP-015 unblocked. The *State:* headers of ledger items 21, 28, 51 and 52 are the only ledger edit ADR-002 allows.
+"""
+
+[[finding.turn]]
+act = "raise"
+role = "raiser"
+
+[[finding.turn]]
+act = "dispose"
+role = "responder"
+disposition = "design-wrong"
+response = """
+Planned: design sec-6 sets these aside for reconcile, and none can be written before the binding ships. Reconciliation Brief, governance (REV): POL-002 name list; POL-003 rows; CON-001 narrowed to extras; a new decision superseding DEC-016; IMP-012, IMP-006, ISS-011 and RSK-002 updated (RSK-002's build and start rungs are now exercised, by PHASE-05 and j's boot); IMP-015 unblocked. The *State:* headers of ledger items 21, 28, 51 and 52 are the only ledger edit ADR-002 allows.
+"""
+
+[[finding.turn]]
+act = "verify"
+role = "raiser"
+
+[[finding]]
+id = "F-10"
+status = "verified"
+severity = "minor"
+title = "Expected PHASE-02 VH-1 (a profile verb proceeding on a real marked runner) to be observed; observed it on j, not on c"
+detail = """
+PHASE-02 VH-1 wanted the real runner's layout read live after a restart of c. c is still on the unmarked 6fzl0q3… and runs SL-251, so it has not been refreshed. PHASE-05 VH-1 observed the same path on j instead: a marked module-path runner, a profile verb proceeding, and a mismatch refusing (2026-10-01). Until `just refresh-build c`, c refuses its own profile verbs as unmarked, which is designed behaviour (DEC-023).
+"""
+disposition = "aligned"
+response = """
+VH-1's purpose was to see the real runner's layout read live, and that was seen on j (PHASE-05 VH-1, 2026-10-01). It was the same module-path runner shape, with the marker present, a verb proceeding and a mismatch refusing. The criterion says it is not a gate. c refusing its profile verbs until `just refresh-build c` is DEC-023 working as designed. That refresh is the user's to schedule around SL-251, and the hand-off says so.
+"""
+
+[[finding.turn]]
+act = "raise"
+role = "raiser"
+
+[[finding.turn]]
+act = "dispose"
+role = "responder"
+disposition = "aligned"
+response = """
+VH-1's purpose was to see the real runner's layout read live, and that was seen on j (PHASE-05 VH-1, 2026-10-01). It was the same module-path runner shape, with the marker present, a verb proceeding and a mismatch refusing. The criterion says it is not a gate. c refusing its profile verbs until `just refresh-build c` is DEC-023 working as designed. That refresh is the user's to schedule around SL-251, and the hand-off says so.
+"""
+
+[[finding.turn]]
+act = "verify"
+role = "raiser"
+
+# Findings are append-only `[[finding]]` tables, added by `review raise`.
+# Empty here at creation — a fresh review is Active, awaiting the raiser.
