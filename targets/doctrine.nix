@@ -238,7 +238,7 @@ rec {
   # imposition on it.
   guestConfig = {
     "${caches.CARGO_HOME}/config.toml" = ''
-      # Rendered from target.nix by the capsule. Edits here go on the next boot.
+      # Rendered from targets/doctrine.nix by the capsule. Edits here go on the next boot.
       [build]
       # The capsule's vCPUs, not the host's threads.
       jobs = ${toString sizes.vcpu}

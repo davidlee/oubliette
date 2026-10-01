@@ -117,6 +117,18 @@ The oracles for PHASE-02 VA-2, PHASE-03 EX-8 and PHASE-04 EX-8. Taken with
 - runner (`packages.x86_64-linux.<n>.drvPath`, identical for `capsule` and every
   slot a–j): `/nix/store/k5vj289vfjmxh45534871lyfzp61p2wz-microvm-firecracker-capsule.drv`
 
+### Re-baselined at the end of PHASE-03 (the oracle for PHASE-04 EX-8 / VA-2)
+
+targets/doctrine.nix's `guestConfig` comment now says `targets/doctrine.nix`
+instead of `target.nix`. That moves the toplevel on purpose, in its own commit.
+`nix-diff` from the old to the new toplevel: the only change is the `text` of
+`capsule-.cargo-config.toml` (`←target.nix←→targets/doctrine.nix→`), which
+reaches the toplevel through seed-start, unit, system-units, etc and activate.
+
+- guest toplevel: `/nix/store/7mf2xavmzlxvfgz0fgmd2k4n5b587i2l-nixos-system-capsule-26.11.20260925.e94cb15.drv`
+- runner (`capsule` and every slot a–j, the same for all 11):
+  `/nix/store/6alppgz5z2kx7ifhrb9jbcq91mpib55b-microvm-firecracker-capsule.drv`
+
 ## The take (PHASE-02 EX-6 / VA-2, 2026-10-01, at 7df94bd)
 
 `nix build .#capsule` → `/nix/store/hqvm649jhskys2q4mv12abgycifjj4wm-microvm-firecracker-capsule`.
