@@ -6,7 +6,7 @@ disposable phase sheet (`.doctrine/state/.../phase-NN.md`) that must survive
 
 ## Harvest
 <!-- single-copy: updated in place each harvest; ids only, never restated content -->
-fresh-as-of: 2026-10-01 · audit done (RV-011); reconcile next · 77310cc
+fresh-as-of: 2026-10-01 · closed (done) · 8652a48
 
 ### Produced
 - `design.md` sec-1..sec-6 (locked 2026-10-01; human-attested)
@@ -23,6 +23,8 @@ fresh-as-of: 2026-10-01 · audit done (RV-011); reconcile next · 77310cc
 - PHASE-04: fleet.nix + fleet-cases.nix, targetFlake, image-<target>, resetHomeCases per image (7229a9d); docs (d116b50)
 - PHASE-05: targets/goad-walk.nix, inputs.goad-walk, j bound (77dfbe8); VH-1/VH-2 passed (### PHASE-05)
 - RV-011 (audit, done): F-6/F-8 fixed (77310cc); Reconciliation Brief in review-011.md
+- REV-002 (done): POL-002, POL-003, CON-001 revised; DEC-016 superseded by DEC-017; IMP-006, IMP-012 resolved, RSK-002 mitigated (8652a48)
+- closed: slice `done`
 
 ### Learned
 - mem.fact.oubliette.booted-is-the-running-runner
@@ -30,14 +32,8 @@ fresh-as-of: 2026-10-01 · audit done (RV-011); reconcile next · 77310cc
 - mem.fact.oubliette.stubbing-a-vmm-process-in-a-case-suite
 
 ### Open
-- DEC-016 supersession — at reconcile
-- POL-002 / POL-003 / CON-001 revisions — at reconcile (design sec-2, sec-6)
-- VH-1 (PHASE-02): the user switched and restarted c (2026-10-01), but c's `current` is still 6fzl0q3… (2026-09-28, unmarked), so a profile verb on c now refuses as unmarked. Needs the user's `just refresh-build c`, then a marker re-read and a profile verb
-- ~~memory candidate~~ errexit under `||`/`if`: already recorded as `mem.fact.oubliette.checked-call-disables-errexit-inside-it` (scoped `host/*.nix`). It bit twice anyway (PHASE-02 M3, PHASE-03 renderDocs), so what failed was retrieval, not the corpus. Run `/retrieve-memory` on the paths before editing a fragment.
-- reconcile: RV-011's Reconciliation Brief is the work list (supersedes ## Findings carried to reconcile as the index)
-- PHASE-02 EN-2: user replied "ok, begin" to "build PHASE-01 and PHASE-02 now, you switch when SL-251 can take a restart" (2026-10-01)
-- goad-walk preconditions (design sec-5): 1-3 hold. Both repos are public; goad-walk b4bc42f pins github:davidlee/goad 68f8ec4; the user confirmed 2026-10-01. Precondition 4 (~/flakes follows) given to the user with PHASE-05 (EX-5); the user then switched and booted j
-- reconcile: design sec-3 gains `reasons`; PHASE-04 VA-1's deepSeq wording (see ### PHASE-04); PHASE-05 EX-1's follow wording, plan-d L1 (see ### PHASE-05)
+- c's runner is still unmarked (VH-1 was observed on j instead; RV-011 F-10 aligned). Until the user runs `just refresh-build c`, a profile verb on c refuses as unmarked. This is operator action, not slice work; c drives SL-251, so the user picks when.
+- Everything else is closed. Reconcile items are in RV-011's `## Reconciliation Outcome` and REV-002. The errexit memory candidate was rejected because it is already in the corpus.
 
 ## Design surface triage (2026-09-30, exploring)
 

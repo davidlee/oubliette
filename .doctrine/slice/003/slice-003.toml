@@ -1,7 +1,7 @@
 id = 3
 slug = "per-slot-image"
 title = "A slot boots its own image, so a second target runs beside doctrine"
-status = "reconcile"
+status = "done"
 created = "2026-09-30"
 updated = "2026-10-01"
 tags = []
