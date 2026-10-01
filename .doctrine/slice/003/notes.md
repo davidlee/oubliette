@@ -6,7 +6,7 @@ disposable phase sheet (`.doctrine/state/.../phase-NN.md`) that must survive
 
 ## Harvest
 <!-- single-copy: updated in place each harvest; ids only, never restated content -->
-fresh-as-of: 2026-10-01 · PHASE-01..04 complete; PHASE-05 next · d116b50
+fresh-as-of: 2026-10-01 · PHASE-01..05 complete; audit next · 77dfbe8
 
 ### Produced
 - `design.md` sec-1..sec-6 (locked 2026-10-01; human-attested)
@@ -21,6 +21,7 @@ fresh-as-of: 2026-10-01 · PHASE-01..04 complete; PHASE-05 next · d116b50
 - PHASE-02: marker + bootedOf/bootedTarget/imageServes + bootedControl seam (7df94bd); take recorded below
 - PHASE-03: targets/, profile.nix over a set, renderDocs (ff412b1); docs (0b6ca11); guestConfig string re-baseline (7034b86)
 - PHASE-04: fleet.nix + fleet-cases.nix, targetFlake, image-<target>, resetHomeCases per image (7229a9d); docs (d116b50)
+- PHASE-05: targets/goad-walk.nix, inputs.goad-walk, j bound (77dfbe8); VH-1/VH-2 passed (### PHASE-05)
 
 ### Learned
 - mem.fact.oubliette.booted-is-the-running-runner
@@ -33,8 +34,8 @@ fresh-as-of: 2026-10-01 · PHASE-01..04 complete; PHASE-05 next · d116b50
 - ~~memory candidate~~ errexit under `||`/`if`: already recorded as `mem.fact.oubliette.checked-call-disables-errexit-inside-it` (scoped `host/*.nix`). It bit twice anyway (PHASE-02 M3, PHASE-03 renderDocs), so what failed was retrieval, not the corpus. Run `/retrieve-memory` on the paths before editing a fragment.
 - reconcile findings: see ## Findings carried to reconcile
 - PHASE-02 EN-2: user replied "ok, begin" to "build PHASE-01 and PHASE-02 now, you switch when SL-251 can take a restart" (2026-10-01)
-- goad-walk preconditions (design sec-5): 1-3 hold. Both repos are public; goad-walk b4bc42f pins github:davidlee/goad 68f8ec4; the user confirmed 2026-10-01. Precondition 4 (~/flakes follows) is the user's, after PHASE-05 adds the input (EX-5)
-- reconcile: design sec-3 gains `reasons`; PHASE-04 VA-1's deepSeq wording (see ### PHASE-04)
+- goad-walk preconditions (design sec-5): 1-3 hold. Both repos are public; goad-walk b4bc42f pins github:davidlee/goad 68f8ec4; the user confirmed 2026-10-01. Precondition 4 (~/flakes follows) given to the user with PHASE-05 (EX-5); the user then switched and booted j
+- reconcile: design sec-3 gains `reasons`; PHASE-04 VA-1's deepSeq wording (see ### PHASE-04); PHASE-05 EX-1's follow wording, plan-d L1 (see ### PHASE-05)
 
 ## Design surface triage (2026-09-30, exploring)
 
@@ -204,3 +205,12 @@ That is VH-1, at the user's switch.
 - plan-d-fleet.md L1 still says "every slot declares `doctrine`" and cites
   DEC-016. It is a plan, so it is not present tense. Settle it with the DEC-016
   supersession at reconcile.
+- **VH-1 / VH-2 pass** (the user booted j, 2026-10-01). `just up j` created
+  and started j. `capsule j provision` went ahead under goad-walk, and the same
+  verb with `--profile doctrine` refused as a mismatch. In the guest, `goad`,
+  `goad-emit`, `ruby` and `jq` are on `PATH`, no goad source tree is in
+  `/nix/store`, and the motd names goad-walk. The checkout's HEAD equals
+  goad-walk's `main`, both `b4bc42f`, read in the guest and on the host.
+  `remote -v` is empty by design: the seed runs `git init` and provision pushes
+  in (`vm/capsule.nix:333`), so a remote is never evidence of whose checkout it is.
+  This is RSK-002's start rung for `caches = {}` / `guestConfig = {}`.
