@@ -6,7 +6,7 @@ are the numbered ledger in [ledger/index.md](./ledger/index.md); usage is
 [README.md](../README.md).
 
 A **capsule**: a firecracker microVM used as an agent jail. It holds a real
-git clone of one target repo (`target.nix`; here `~/dev/doctrine`), can run that
+git clone of one target repo (a file in `targets/`; here `~/dev/doctrine`), can run that
 project's build and tests, and has exactly enough network for a coding agent to
 work — no more.
 
@@ -16,7 +16,7 @@ work — no more.
 | ---------------------------- | -------------------------------------------------- |
 | `flake.nix`                  | VMs, devshell, tap + runner scripts, module exports |
 | `net.nix`                    | tap name, both addresses, MAC, ports — single source |
-| `target.nix`                 | which repo is confined, and everything target-shaped |
+| `targets/`                   | the repos this host confines, one file each, listed by hand in `default.nix` |
 | `capsules.nix`               | which capsules exist — namespace, socket, uplink, and the default name |
 | `justfile`                   | the gate (`just check`) + the multi-command questions |
 | `perimeter/default.nix`      | `proxy` + `capsule-host`. Jail-agnostic            |
@@ -45,7 +45,7 @@ tap-address check — so nothing hypervisor- or platform-shaped leaks into it.
 Runtime paths are environment (`CAPSULE_ROOT`, `CAPSULE_STATE`,
 `CAPSULE_ALLOWLIST`, `CAPSULE_REPO`), which is what keeps the allowlist an
 editable file rather than a store path. Which repo is confined reaches it the
-same way as the addresses do — as a value from the call site, from `target.nix`
+same way as the addresses do — as a value from the call site, from `targets/`
 ([item 16](./ledger/016-target-agnostic.md)).
 
 ## Running
@@ -261,12 +261,12 @@ declared reservation*, and cargo's `jobs` is one target's instance of it. A
 target that does not build with cargo needs a different value here, not
 different code.
 
-**Built, as `target.nix`'s `guestConfig`**: guest paths relative to the volume
+**Built, as a target's `guestConfig`**: guest paths relative to the volume
 mount, file contents, rendered into the closure by `vm/capsule.nix` and linked
 onto the volume by the seed. Links rather than copies, for the same reason the
 values are derived rather than copied — a copy on the volume outlives the sizes
 it was rendered from and nothing would say so. The generic side knows only
-"path, content"; the string `cargo` appears once in this repo, in `target.nix`,
+"path, content"; `cargo` appears as configuration only in `targets/doctrine.nix`,
 and `{}` is a working absent value for a target that wants none of it.
 
 What it changed for doctrine is not subtle: until it existed, the capsule built
@@ -323,7 +323,7 @@ time-to-interactive, and it is the one figure the freshness probe cannot take:
 its namespace has no upstream. A host-initiated baseline command is where that
 number comes from.
 
-**Built, as `capsule-baseline`.** `target.nix`'s `baseline` is the command —
+**Built, as `capsule-baseline`.** A target's `baseline` is the command —
 this target's is `just web-build test`, and nothing outside that file knows what
 `just` is. The program is `host/baseline.nix` and knows an ssh destination, a
 command line and four guest paths.

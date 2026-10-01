@@ -137,7 +137,7 @@ may never carry the mechanism. The cargo config is the worked example — the
 capability is *render static guest config from the instance's declared
 reservation*, not "support cargo", and emphatically not "copy the human's
 `~/.cargo/config.toml`", which describes a machine the capsule is not. The smell
-is a toolchain's name appearing anywhere but `target.nix`. CLAUDE.md has the
+is a toolchain's name appearing anywhere but `targets/`. CLAUDE.md has the
 full rule and its three limbs.
 
 ## Role 3 — driving a slice from doctrine (parked)

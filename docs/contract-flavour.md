@@ -37,7 +37,7 @@ guest capability with no package attached, and it is what made a second target's
 first baseline fail at exit 127 one second in
 ([item 23](./ledger/023-second-target.md)). A flavour that could only carry
 packages would have had nowhere to put it, and the answer would have been the
-one that item rejected: a `target.nix` field that looks parameterised for
+one that item rejected: a target field that looks parameterised for
 something every non-nix-native toolchain needs identically.
 
 So a flavour is two lists — **packages** and **guest capability fragments** —

@@ -4,7 +4,7 @@ If you have NOT seen `BOOT-SENTINEL: doctrine-governance-snapshot` anywhere in y
 # CLAUDE.md
 
 Firecracker microVM used to confine a coding agent working on one target repo
-(`target.nix`; here `~/dev/doctrine`). [README.md](./README.md) is usage;
+(a file in `targets/`; here `targets/doctrine.nix`, `~/dev/doctrine`). [README.md](./README.md) is usage;
 everything else is [docs/](./docs/index.md), which maps question to file.
 
 **Governance is doctrine's** — `.doctrine/project-orientation.md` is the way in,
@@ -172,7 +172,7 @@ what it tests and check *which* rounds go red — that is how all three of those
 were found, and how a round that resembles the real failure but never
 discriminates gets caught. `probe/harness.sh` is concatenated ahead of
 each probe by the `probe` builder in `flake.nix`, not sourced, so shellcheck
-sees one file; values from `net.nix`/`target.nix` reach a probe through that
+sees one file; values from `net.nix`/`targets/` reach a probe through that
 builder's `prelude` rather than being spelled in the script. **The harness comes
 first and the prelude second**, so the harness can declare an empty default for
 every injected value — which is what lets it carry the egress fabric without
@@ -238,8 +238,8 @@ anything.
 | | |
 | --- | --- |
 | **`POL-001` The perimeter is host-side** | egress filtering, the forward drop, no default route in the guest, root only by ssh key. Guest-side settings are convenience, not security. Part of the perimeter lives in `~/flakes` and the drop is verified at run time, not assumed |
-| **`POL-002` Nothing generic learns what the target is** | *would a different target need this code changed, or only a different value?* The smell is a toolchain's name outside `target.nix`. Everything beyond the contract is declared, optional, and has a working absent path |
-| **`POL-003` One declaration per axis, and no implicit default** | `net`, `capsules.nix`, `policies.nix`, `target.nix`, `probeFabric` — one home each, nothing named implicitly, and resolution is the front end's act and never a program's |
+| **`POL-002` Nothing generic learns what the target is** | *would a different target need this code changed, or only a different value?* The smell is a toolchain's name outside `targets/`. Everything beyond the contract is declared, optional, and has a working absent path |
+| **`POL-003` One declaration per axis, and no implicit default** | `net`, `capsules.nix`, `policies.nix`, `targets/`, `probeFabric` — one home each, nothing named implicitly, and resolution is the front end's act and never a program's |
 | **`POL-004` Reusable code knows nothing about the jail** | `perimeter/` and `host/git-channel.nix` take injected fragments. A program that needs testing takes as an argument the one thing that ties it to this host — which is what makes the case suites possible at all |
 
 **Adding one is `doctrine policy new`, not a row above.**
@@ -324,12 +324,12 @@ behind it is the ratchet starting again in a new file.
   declared slot a refusal.
 - **The guest's tool set has two owners, and which one a tool has decides where
   it goes.** `compose(floor, extras)`: the **floor** is the target's —
-  `target.nix`'s `toolsPackage`, for doctrine `packages.dev-tools` — so a tool
+  its `toolsPackage` in `targets/`, for doctrine `packages.dev-tools` — so a tool
   the project builds or tests with goes in *that repo's* flake and the VM cannot
   drift from its devshell. The **extras** are the host operator's, and they are
   `fragments.nix`'s vocabulary selected by `extras` in `flake.nix`: `rg`, an
   editor, an agent CLI — anything that is nobody's project. Putting a
-  convenience in `target.nix` says doctrine needs it, which is the ownership
+  convenience in `targets/doctrine.nix` says doctrine needs it, which is the ownership
   smell pointed the other way (NOTES item 31,
   docs/contract-flavour.md). A fragment's source is a flake input of *this*
   repo, pinned here, and convenience is **declared** — never scraped from a

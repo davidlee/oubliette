@@ -5,7 +5,7 @@
 oubliette builds a **capsule**: a Firecracker microVM that confines a coding
 agent to exactly one target repo, with a host-side egress perimeter the guest
 cannot reach. The product is the capsule; the confined repo is a *client*. Today
-one client exists — `~/dev/doctrine`, declared in `target.nix` — and it is the
+one client exists — `~/dev/doctrine`, declared in `targets/doctrine.nix` — and it is the
 guinea pig, never the design.
 
 The operator is a human on one NixOS host running N slots (`a`…`j`), each a
@@ -49,9 +49,9 @@ Major components:
 
 - `flake.nix` — `net` (single source of truth for addresses), `probeFabric`,
   every derivation and case suite.
-- `capsules.nix` / `policies.nix` / `target.nix` — the three declarations. Slots,
-  host controls, and the repo under confinement. No perimeter value lives in
-  `target.nix`.
+- `capsules.nix` / `policies.nix` / `targets/` — the three declarations. Slots,
+  host controls, and the repos under confinement (one file each, listed by hand
+  in `targets/default.nix`). No perimeter value lives in a target.
 - `host/` — the NixOS module, the programs, and one `*-cases.nix` suite per
   program.
 - `perimeter/` — the proxy and `capsule-host`, which know nothing about the jail.

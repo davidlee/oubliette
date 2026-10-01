@@ -87,7 +87,7 @@ flowchart TB
 
 The agent is unprivileged. Root exists for host administration, but guest-side privilege separation is not the security boundary; the meaningful controls are host-side.
 
-Source: [`vm/capsule.nix`](../vm/capsule.nix), [`target.nix`](../target.nix).
+Source: [`vm/capsule.nix`](../vm/capsule.nix), [`targets/doctrine.nix`](../targets/doctrine.nix).
 
 ---
 
@@ -243,7 +243,7 @@ Source: [`host/state-snapshot.nix`](../host/state-snapshot.nix), [`host/git-chan
 
 ```mermaid
 flowchart TB
-    T[target.nix templates]
+    T[targets/doctrine.nix templates]
     U[assignment unit token]
 
     T --> M[materialised paths]
@@ -259,7 +259,7 @@ The target declares an explicit allowlist of state paths. It is **not derived fr
 
 For Doctrine, those paths are templates containing `{unit}`. The front end supplies the assignment's unit token at collection time. If a target declares a scoped template and no unit is available, collection refuses rather than silently widening to the whole state tree.
 
-Source: [`target.nix`](../target.nix), [`host/state-snapshot.nix`](../host/state-snapshot.nix), [`host/git-channel.nix`](../host/git-channel.nix).
+Source: [`targets/doctrine.nix`](../targets/doctrine.nix), [`host/state-snapshot.nix`](../host/state-snapshot.nix), [`host/git-channel.nix`](../host/git-channel.nix).
 
 ---
 
@@ -346,7 +346,7 @@ Source: [`docs/threat-model.md`](./threat-model.md).
 | Concern | Primary implementation |
 | --- | --- |
 | Guest definition | [`vm/capsule.nix`](../vm/capsule.nix) |
-| Target-specific policy | [`target.nix`](../target.nix) |
+| Target-specific settings | [`targets/`](../targets/default.nix) |
 | Slot identities / addressing | [`capsules.nix`](../capsules.nix) |
 | Network namespaces | [`host/netns.nix`](../host/netns.nix) |
 | systemd perimeter services | [`host/services.nix`](../host/services.nix) |

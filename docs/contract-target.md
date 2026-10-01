@@ -27,8 +27,8 @@ of its fields is headed is the `owner` column below.
 ## The floor
 
 *Be a git repo on this host, and expose one flake package for this system that
-is your devshell's tool set.* Everything else is a `target.nix` field with a
-working absent path, and every one of those fields is **host-side** — nothing is
+is your devshell's tool set.* Everything else is a field of your file in
+`targets/` with a working absent path, and every one of those fields is **host-side** — nothing is
 ever read out of the target repo, because the agent can edit that.
 
 **Stated plainly, because hedging it would mislead: the supported set is
@@ -47,7 +47,7 @@ which is what makes a repo with no flake at all confinable.
 Two literals are unavoidable and nothing checks that they agree:
 
 - `inputs.target.url` in `flake.nix` — an input's url cannot be computed.
-- `path` in `target.nix` — where `capsule-provision` pushes from.
+- `path` in the target's file in `targets/` — where `capsule-provision` pushes from.
 
 Switching targets means editing both, or `--override-input target path:/…` for
 one build. A third literal is chosen rather than unavoidable: each slot's
@@ -58,10 +58,16 @@ directory. Renaming the *input* is not free downstream either: the host's own
 config (`~/flakes`) carries `inputs.target.follows`, and its next lock fails on
 an input that no longer exists.
 
-## Configuration — `target.nix`
+## Configuration — a file in `targets/`
 
-`rec`, so the guest paths derive from `name` and `volumePath` rather than being
-spelled on both sides.
+**A target is a file in `targets/`**, listed by hand in `targets/default.nix`
+under its name — by hand because a `readDir` would make a stray or untracked file
+a target. That listing is the axis's one home (`POL-003`): only `flake.nix`
+imports it, and everything generic is handed the set or one named member, never
+a default. The file spells only what is its own; `targets/default.nix` derives
+the rest — `name` is the key, `volumePath` is the capsule's constant, and
+`guestPath` and `cachePaths` follow from those — so nothing is spelled on both
+sides. `targets/doctrine.nix` is the reference for what each field means.
 
 The `owner` column is an **analysis of what is already here**, not a planned
 change: it says which authority each field answers to, and it is the reason a
@@ -76,9 +82,9 @@ changes until they are built.
 
 | field | owner | read by | required | absent path |
 | --- | --- | --- | --- | --- |
-| `name` | profile | guest (checkout dir, motd). **It is also the document's filename**, so it is the name every host-side program is given as `--profile`. **`-` is reserved** — the front end prints it for an absent field, so a profile of that name would read as none; `capsule-profile-check`, every program's lookup and `capsules.nix`'s declared `profile` all refuse it | yes | — |
+| `name` | profile | guest (checkout dir, motd). **The target's key in `targets/default.nix`**, never a field of its file. **It is also the document's filename**, so it is the name every host-side program is given as `--profile`. **`-` is reserved** — the front end prints it for an absent field, so a profile of that name would read as none; `capsule-profile-check`, every program's lookup and `capsules.nix`'s declared `profile` all refuse it | derived (the key) | — |
 | `path` | **source** | host: `capsule-provision` looks it up (its push source), `capsule-brief --from-host` (the checkout it snapshots), `capsule <slot> fetch` (the repo a quarantine lands in) | yes | `CAPSULE_REPO` overrides it for one invocation — and having a host-side override where no other field has any is the tell that it was never project state. Pinned with the rest of the document at provision (SL-001), so a moved checkout reads as drift until the slot is re-provisioned. The module's `repo` option is removed, and setting it fails at eval naming this field |
-| `volumePath` | capsule | guest: the mount point, and what `caches`/`guestConfig` resolve against. host: `capsule status` looks it up for the disk figure and for `<volumePath>/baseline`, which is where `capsule-baseline` writes its record. **Must match `^/[A-Za-z0-9._/@+-]+$`** — absolute, and nothing a shell reads as anything but a path. It is spliced unquoted into `capsule-reset-home`'s `rm` as root (`vm/guest-path.nix`), so a value carrying a space or a glob character would word-split into paths nobody named; a value that does not match throws at guest eval rather than building | yes | — |
+| `volumePath` | capsule | guest: the mount point, and what `caches`/`guestConfig` resolve against. host: `capsule status` looks it up for the disk figure and for `<volumePath>/baseline`, which is where `capsule-baseline` writes its record. **Must match `^/[A-Za-z0-9._/@+-]+$`** — absolute, and nothing a shell reads as anything but a path. It is spliced unquoted into `capsule-reset-home`'s `rm` as root (`vm/guest-path.nix`), so a value carrying a space or a glob character would word-split into paths nobody named; a value that does not match throws at guest eval rather than building. One constant for every target, in `targets/default.nix` | derived | — |
 | `guestPath` | capsule | guest: the checkout the seed creates. host: looked up by all five programs — it is the path half of the guest's git URL and the working directory of every script pushed into a capsule | derived | — |
 | `toolsPackage` | flavour | guest: `packages.<system>.<name>` from the target's own flake | in practice yes | `null` — the guest gets `extraTools` only, and loses the no-drift property that made threading the target's list worth it. **Available only to a target whose whole tool set is a list of nixpkgs attr names**: `extraTools` is a supplement, never a substitute, so anything built by a function — a `python3.withPackages (…)` has no attr name — has to export a package (NOTES item 23) |
 | `extraTools` | flavour | guest: nixpkgs attr names, resolved against the *guest's* pkgs | no | `[]` |
@@ -157,9 +163,9 @@ target's author should know. Every rule about a document is checked **when it is
 read**, by the same validator on every path, so a hand-written document gets the
 same refusals a rendered one does — `capsule-profile-check <file>` is that
 validator as a program, and is what to run before dropping a document in. And a
-document under a name this host renders from `target.nix` is **overwritten at
-every activation**: `target.nix` is the source and the file is a render, so an
-edit in place is reverted.
+document under a name this host renders from `targets/` is **overwritten at
+every activation**: the target's file is the source and the document is a
+render, so an edit in place is reverted.
 
 **What has *not* moved, and it is the honest limit.** The guest **image** still
 knows the project's name — the seed builds the checkout directory from the
@@ -381,15 +387,16 @@ capability** — `programs.nix-ld`, because a pypi wheel, an npm prebuild and a 
 module's vendored helper all need a `/lib64` loader and none of them supplies a
 different one. Nothing else generic moved. In order:
 
-1. `inputs.target.url` in `flake.nix`, and `path` in `target.nix` — the two
-   literals above. Check `~/flakes` if you renamed the input.
-2. `name`, `commands`, `baseline`, and `refresh` if the target derives anything
+1. A file in `targets/`, listed under its name in `targets/default.nix` —
+   `targets/doctrine.nix` is the template. `inputs.target.url` in `flake.nix` and
+   `path` in that file are the two literals above. Check `~/flakes` if you renamed the input.
+2. `commands`, `baseline`, and `refresh` if the target derives anything
    from its checkout that a commit does not carry. Not a branch: there is no such
    field, and the guest's is the constant `work` whatever the target calls its
    own.
 3. Usually its own **policy** in `policies.nix`, whose allowlist file is a new
    file rather than an edit to doctrine's — half of any such list is that
-   target's dependency hosts. It is not a `target.nix` field any more, and the
+   target's dependency hosts. It is not a target's field any more, and the
    slots that may take it name it in their declared set
    ([item 36](./ledger/036-a-policy-is-selected-not-named.md)).
 4. `toolsPackage`. `null` plus a filled-out `extraTools` is the absent path on

@@ -393,7 +393,7 @@ just fetch                 # second step: quarantine -> the repo you work in
 ```
 
 A result has a second half, and it is not a commit: the target's gitignored
-runtime state plus whatever the agent never committed. When `target.nix` declares
+runtime state plus whatever the agent never committed. When the target declares
 `statePaths`, the same collect brings that back too — one atomic fetch, so nobody
 sees a result commit without the state that goes with it — and there are two ways
 out of quarantine for it:
@@ -431,9 +431,8 @@ Every row above except `capsule-net`, `capsule-host`, `capsule-inject` and
 `capsule-adopt` also takes `--capsule NAME` and `--profile NAME`, and refuses
 without either; `capsule <slot> <verb>` supplies both.
 
-The last three exist only while `target.nix` declares a `refresh` or any
-`statePaths`; a target that omits them gets no program rather than one that
-cannot work.
+Every host builds the last three. A target that declares no `refresh` or no
+`statePaths` gets a refusal naming what is missing, not a program that half-works.
 
 Each of them takes `--capsule <name>`, or `CAPSULE_NAME`, to say which capsule it
 means — and refuse without one, since a slot's name gives nothing away. On the
@@ -477,7 +476,7 @@ guessing: `ip netns exec` needs root, and a status that needs root is a status
 nobody runs. Then `just verify`, `just fetch`, `just branches`,
 `just proxy-log [name]`, `just allowed`, `just ssh`, `just admin`.
 `just --list` for the rest. Addresses come from `net.nix` and target paths from
-`target.nix`, never a literal.
+the target's file in `targets/`, never a literal.
 
 ## Moving one capsule's work to another slot
 
@@ -563,8 +562,8 @@ The vocabulary is `policies.nix`; a project never names its own perimeter
 
 ## Changing the guest's tools
 
-The tool set comes from the target's own flake — `target.nix`'s `toolsPackage`,
-for doctrine `packages.dev-tools` — so both this VM and that devshell take from
+The tool set comes from the target's own flake — its `toolsPackage` in
+`targets/` (`targets/doctrine.nix` names `packages.dev-tools`) — so both this VM and that devshell take from
 one list. To change it:
 
 ```
@@ -583,14 +582,17 @@ one. On the devshell path it is `vm-stop <name> && vm <name>` instead, which
 rebuilds the image as part of starting it.
 
 Tools the target's list omits because it assumes a host that has them go in
-`target.nix`'s `extraTools`, not here.
+that target's `extraTools`, not here.
 
 ## Pointing it at a different repo
 
-`target.nix` holds everything target-shaped: name, path, tools package, cache
-directories, the out-of-band state paths, the guest's sizes and the build config
-rendered from them. Change it and the guest's checkout path, the motd and the
-host side all follow.
+A target is a file in `targets/`, listed by hand in `targets/default.nix`; its
+key there is its name. The file holds everything target-shaped: path, tools
+package, cache directories, the out-of-band state paths, the guest's sizes and
+the build config rendered from them. `targets/default.nix` derives the rest from
+the name — the guest's checkout path and the absolute cache paths — so the motd
+and the host side follow. Only `flake.nix` imports `targets/`; everything else is
+handed the set or one named member of it.
 
 What is *not* in there is the perimeter. The egress allowlist and the collect
 ceiling are host **policy**, declared in `policies.nix` and selected per slot,
@@ -604,7 +606,7 @@ takes that list unchanged.
 
 One duplication is unavoidable: an input's url must be a literal, so
 `inputs.target.url` in `flake.nix` has to name the same repo as `path` in
-`target.nix`, and nix will not check that for you. For a one-off, override it
+`targets/doctrine.nix`, and nix will not check that for you. For a one-off, override it
 instead: `--override-input target path:/home/you/dev/other`. Keep the url one
 that anybody can fetch — the lock is committed, so a local path there makes the
 flake unbuildable on every other machine (ISS-015) — and keep overrides on

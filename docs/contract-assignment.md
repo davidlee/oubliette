@@ -79,7 +79,7 @@ Six consequences worth stating rather than deriving:
   pins that binding with the rest of the document at provision, so a moved
   checkout is ordinary document drift until the slot is re-provisioned.
   `path` already half-admits this by having a host-side override
-  (`CAPSULE_REPO`) that nothing else in `target.nix` has. There were two until
+  (`CAPSULE_REPO`) that no other field of a target has. There were two until
   the module's `repo` option went (`ISS-008`), and that one pushed every
   target from one checkout.
 
