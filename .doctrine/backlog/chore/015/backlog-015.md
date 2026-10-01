@@ -28,3 +28,13 @@ a second thing to keep true.
 Found at `SL-002`'s closure audit, where the gate was run directly instead
 (`just check` ok, `just` exit 0). Raised as `RV-006` `F-12`, disposed follow-up.
 It affects every audit in this repo, not that slice.
+
+## Resolution (2026-10-01)
+
+Took the first option. The table is **`[verification]`**, not `[check]` as
+written above: doctrine reads every cadence override from it (`quick`,
+`commit`, `gate`, `prove`; `src/verify.rs` in doctrine). The documented
+example config (`lib:reference/doctrine.toml.example`) does not list these
+keys, which is why the name above was a guess. `.doctrine/doctrine.toml` now
+declares `gate = ["just"]`. `doctrine check gate` ran the default recipe and
+exited 0.

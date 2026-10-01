@@ -31,3 +31,10 @@
 # The trunk delivery ref dispatch advances to / the close gate checks against.
 # [dispatch]
 # deliver-to = "refs/heads/main"
+
+# --- Check cadences (CHR-015) ---------------------------------------------
+# This project's gate is the justfile's DEFAULT recipe (build, hostModuleUnits,
+# every *Cases suite, fmt); there is no `gate` recipe, and adding one would be
+# a second name for it. `commit` keeps its baked default, `just check`.
+[verification]
+gate = ["just"]

@@ -8,6 +8,14 @@ title = "closure audit of SL-002"
 facet     = "reconciliation"     # scope|design|plan|phase-plan|implementation|code-review|reconciliation
 raiser    = "raiser"
 responder = "responder"
+rounds_base = 39
+contests_base = 0
+concluded = true
+
+[[review.turn]]
+act = "conclude"
+role = "raiser"
+note = "SL-002 closure audit. All 13 findings are terminal: fix-now and verified ones applied, tolerated and aligned ones carry rationale, and the four follow-ups (F-6, F-9, F-11, F-12) left as RSK-008, CHR-014, ISS-010 and CHR-015. The Reconciliation Outcome is recorded. The concluding mark was missed at SL-002's close (2026-10-01 hygiene pass)."
 
 [target]                   # the outbound `reviews` edge (ADR-004): RV-NNN ──reviews──▶ <ref>
 ref   = "SL-002"
