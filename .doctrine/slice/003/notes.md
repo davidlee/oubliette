@@ -29,7 +29,7 @@ fresh-as-of: 2026-10-01 · PHASE-01, PHASE-02 complete; PHASE-03 in progress · 
 - DEC-016 supersession — at reconcile
 - POL-002 / POL-003 / CON-001 revisions — at reconcile (design sec-2, sec-6)
 - VH-1 (PHASE-02): user's host switch + c restart, then a profile verb on c
-- memory candidate: bash suspends errexit under `||`/`if` — fragments must fail explicitly (bit PHASE-02 M3, PHASE-03 renderDocs)
+- ~~memory candidate~~ errexit under `||`/`if`: already recorded as `mem.fact.oubliette.checked-call-disables-errexit-inside-it` (scoped `host/*.nix`). It bit twice anyway (PHASE-02 M3, PHASE-03 renderDocs), so what failed was retrieval, not the corpus. Run `/retrieve-memory` on the paths before editing a fragment.
 - reconcile findings: see ## Findings carried to reconcile
 - PHASE-02 EN-2: user replied "ok, begin" to "build PHASE-01 and PHASE-02 now, you switch when SL-251 can take a restart" (2026-10-01)
 - user preconditions for goad-walk (design sec-5)
