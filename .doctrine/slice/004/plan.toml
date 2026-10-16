@@ -1,0 +1,298 @@
+# Implementation plan for SL-004 — the authored, durable phase plan.
+#
+# Runtime status lives under .doctrine/state/ (phase tracking) — never record
+# progress here. Hand-edit freely: the tool reads this file but does not rewrite
+# it. Ids are immutable; edits append.
+schema  = "doctrine.plan.overview"
+version = 1
+slice   = "SL-004"
+
+[specs]
+primary       = []
+collaborators = []
+
+[requirements]
+targets      = []
+dependencies = []
+
+[[phase]]
+id        = "PHASE-01"
+name      = "The drvPath manifest at HEAD, and a control that it notices a change"
+objective = """
+Before any code moves, record the instrument every later phase is checked
+against (design sec-6 step 1). It is one Nix expression, taking a flake. Its
+output is the `drvPath` of every `packages.x86_64-linux.*`, of every
+`nixosConfigurations.<slot>.config.microvm.declaredRunner`, and of the
+`system.build.toplevel` of a probe NixOS system that imports
+`nixosModules.capsule-perimeter` with `owner = "nobody"`, as `hostModule`
+does. The expression is committed in the slice directory, so it can be re-run
+against oubliette and, later, against the consumer. Its output from oubliette
+HEAD goes in the slice's runtime notes and is not committed. Then show it can
+fail: a deliberate one-character change to a unit's text must change the
+module entry, and nothing else (RV-012 F-4, route control)."""
+entrance_criteria = [
+  { id = "EN-1", text = "SL-004 design locked (run rev 42) and the slice at `ready`" },
+  { id = "EN-2", text = "`just` green at the starting commit" },
+]
+exit_criteria = [
+  { id = "EX-1", text = "`.doctrine/slice/004/manifest.nix` takes a flake and returns an attrset of drvPaths covering packages, every slot's declaredRunner, and the module toplevel (owner = \"nobody\"), forced with `deepSeq`" },
+  { id = "EX-2", text = "the manifest of oubliette at the starting commit is recorded in the slice's runtime notes, with that commit's hash" },
+  { id = "EX-3", text = "negative control, RV-012 F-4: a one-character change to the text of one unit in host/services.nix changes the module toplevel's drvPath and leaves every runner and package equal; the change is reverted and the manifest is equal again" },
+]
+verification = [
+  { id = "VT-1", expects = "the manifest expression covers the three output families and forces them", test_file = ".doctrine/slice/004/manifest.nix", keywords = ["declaredRunner", "capsule-perimeter", "toplevel", "deepSeq"], waived = false },
+  { id = "VA-1", expects = "control, RV-012 F-4: the module mutation is observed to change exactly the module entry, and the revert to restore equality; both diffs in the runtime notes" },
+]
+specs        = []
+requirements = []
+
+[[phase]]
+id        = "PHASE-02"
+name      = "The outputs body becomes mkfleet.nix, called with this host's values"
+objective = """
+Move today's `outputs` body almost verbatim into `mkfleet.nix` (design sec-1).
+Oubliette's flake.nix calls it with the values it binds today, so nothing is a
+fixture yet. The two `self` references (flake.nix:651, the module check;
+:1473, `packages.default`) become references to the call's own bindings
+(RV-012 F-3, route demonstrate). The manifest must be equal."""
+entrance_criteria = [
+  { id = "EN-1", text = "PHASE-01 complete: the HEAD manifest is recorded and its control observed" },
+]
+exit_criteria = [
+  { id = "EX-1", text = "mkfleet.nix holds the body; flake.nix is inputs, the call, and nothing that builds" },
+  { id = "EX-2", text = "mkfleet.nix contains no `self.` reference; the module check imports the module the call itself built, and packages.default names the call's own capsule (RV-012 F-3)" },
+  { id = "EX-3", text = "the manifest is equal to PHASE-01's, entry for entry; `just` green" },
+]
+verification = [
+  { id = "VT-1", expects = "the outputs body lives in mkfleet.nix and is called from flake.nix", test_file = "flake.nix", keywords = ["mkfleet.nix"], waived = false },
+  { id = "VA-1", expects = "demonstrate, RV-012 F-3: grep finds no `self.` in mkfleet.nix, and the manifest's module and packages.default entries equal PHASE-01's, which shows the rebound references reach the same derivations" },
+  { id = "VA-2", expects = "the manifest diff against PHASE-01 is empty; recorded in the runtime notes" },
+]
+specs        = []
+requirements = []
+
+[[phase]]
+id        = "PHASE-03"
+name      = "capsules.nix and targets/ split, and each target carries its flake"
+objective = """
+Split capsules.nix into oubliette's function (instances, socketOf, recordOf,
+volumeLock, egress, asserts; interface and namespace names as constants) and a
+declaration holding the slots, `uplinkNet`, the two egress addresses and
+`volumeReserve` (DEC-026, design sec-2, RV-012 F-1). Split targets/default.nix
+into the derivation (`byName`, `volumePath`) and the hand list. Pair each
+target with its flake (`targets.<name> = {decl; flake}`). The builder derives
+the internal `targets` and `targetFlakes` from the pairs, so fleet.nix and
+vm/capsule.nix keep their shape. fleet.nix's `reasons.images` check becomes
+unreachable and is deleted with its cases in fleet-cases.nix. The
+slot-to-profile refusal (DEC-017) stays. Real values are still bound, and the
+manifest must be equal."""
+entrance_criteria = [
+  { id = "EN-1", text = "PHASE-02 complete; manifest equal" },
+]
+exit_criteria = [
+  { id = "EX-1", text = "capsules.nix is a function of the fleet declaration; this host's slots and addressing sit in one declaration value that mkfleet.nix applies it to" },
+  { id = "EX-2", text = "targets/default.nix is a function of the hand list; the hand list is a separate value" },
+  { id = "EX-3", text = "each target is passed as `{decl; flake}`; no separate targetFlakes map is passed to mkfleet.nix; fleet.nix's `reasons.images` and fleet-cases.nix's images-mismatch cases are deleted; the slot-to-profile cases still pass" },
+  { id = "EX-4", text = "suites that borrowed the real capsules.nix (guardCases, policyCases, volumeCases, volumeRootCases) take the capsules function applied to their own fixture declaration" },
+  { id = "EX-5", text = "manifest equal to PHASE-01's; `just` green" },
+]
+verification = [
+  { id = "VT-1", expects = "fleet-cases still pins the slot-to-profile refusal (DEC-017) and the images check is gone", test_file = "fleet-cases.nix", keywords = ["DEC-017"], waived = true, waived_reason = "a deletion leaves nothing for a keyword to find, and DEC-017's cases already exist; EX-3's suite run and VA-1's manifest are the evidence" },
+  { id = "VT-2", expects = "capsules.nix opens as a function of the fleet declaration, its names still constants", test_file = "capsules.nix", keywords = ["eg-up", "eg-rt", "uplinkNet", "volumeReserve"], patterns = ["^\\{[^}]*\\}:\\s*$"], waived = false },
+  { id = "VT-3", expects = "targets/default.nix opens as a function of the hand list", test_file = "targets/default.nix", keywords = ["volumePath", "byName"], patterns = ["^[a-zA-Z{][^=]*:\\s*$"], waived = false },
+  { id = "VA-1", expects = "manifest diff against PHASE-01 empty; recorded" },
+  { id = "VA-2", expects = "mutation: drop a slot's profile from the fixture declaration a suite uses; the slot-to-profile case goes red; restored" },
+]
+specs        = []
+requirements = []
+
+[[phase]]
+id        = "PHASE-04"
+name      = "lib.mkFleet takes eight owner-grouped arguments"
+objective = """
+Make mkfleet.nix the builder of design sec-10: curried over oubliette's own
+`nixpkgs` and `microvm`, then taking `targets`, `fleet`, `policies`, `net`,
+`flavour`, `access`, `probe` and `fleetPath`, all required. Thread `access`
+(adminKeys and stopKey replace vm/capsule.nix's literal and file read;
+`injections` is the setup function). host/programs.nix takes `injections`
+rather than importing ../setup.nix, and every construction passes it:
+mkfleet.nix's `hostPrograms` and `nsPrograms`, and host/services.nix's, whose
+signature gains `injections` (RV-012 F-10). vm/capsule.nix's scrub list reads
+the same value through specialArgs. `flavour.sources` replaces the whole
+`inputs` set that vm/capsule.nix hands fragments.nix. `probe = {target;
+fabric}` moves `probeTarget` and `probeFabric`, and `borrowed` still throws.
+`fleetPath` is threaded but the policyDir default keeps its current expression
+(RV-012 F-11). Export `lib.mkFleet`, `lib.capsules` and `lib.targets`.
+Oubliette still calls it with the real values, and the manifest must be
+equal."""
+entrance_criteria = [
+  { id = "EN-1", text = "PHASE-03 complete; manifest equal" },
+]
+exit_criteria = [
+  { id = "EX-1", text = "`lib.mkFleet` takes exactly the eight arguments, none defaulted; a missing one fails at eval naming it" },
+  { id = "EX-2", text = "no file under host/, vm/ or perimeter/ imports setup.nix, policies.nix, net.nix, capsules.nix or targets/, or reads vm/stop-key.pub (grep)" },
+  { id = "EX-3", text = "host/programs.nix takes `injections`; all three constructions pass the one `access.injections` value; resetHomeCases still pins the scrub list against the injected list" },
+  { id = "EX-4", text = "the policyDir default is unchanged in text; `fleetPath` reaches mkfleet.nix and the module but nothing reads it yet" },
+  { id = "EX-5", text = "manifest equal to PHASE-01's; `just` green" },
+]
+verification = [
+  { id = "VT-1", expects = "host programs take injections as an argument", test_file = "host/programs.nix", keywords = ["injections"], patterns = ["^\\s*injections,"], waived = false },
+  { id = "VT-2", expects = "the builder's surface names the eight arguments", test_file = "mkfleet.nix", keywords = ["targets", "fleet", "policies", "net", "flavour", "access", "probe", "fleetPath"], waived = false },
+  { id = "VA-1", expects = "manifest diff against PHASE-01 empty; recorded. At planning, fragments.nix:58 was the only read of `inputs` (llm-agents), so `flavour.sources` should be neutral; re-check that first if a runner differs" },
+  { id = "VA-2", expects = "mutation: make the probe fabric borrow one real slot name; eval throws naming it; restored" },
+]
+specs        = []
+requirements = []
+
+[[phase]]
+id        = "PHASE-05"
+name      = "One copy of every shared recipe, and the devshell mkFleet emits"
+objective = """
+Split the justfile (DEC-028, design sec-4): `just/fleet.just` holds `build`,
+`units`, `cases`, `build-vm`, `verify` and every operational recipe, with
+their text unchanged. Oubliette's justfile imports it and keeps `check`,
+`parse`, `fmt` and `fmt-check`. mkFleet emits the devshell. Its `shellHook`
+re-points a gitignored `.oubliette` symlink at the locked oubliette source on
+every entry. It warns, and does not override, when `CAPSULE_ROOT` (or
+`MICROVM_SPIKE_ROOT`) is set and is not `$PWD` (RV-012 F-7). Oubliette's own
+checkout works exactly as before."""
+entrance_criteria = [
+  { id = "EN-1", text = "PHASE-04 complete; manifest equal" },
+]
+exit_criteria = [
+  { id = "EX-1", text = "just/fleet.just holds every shared recipe; oubliette's justfile imports it; `just --list` in oubliette shows the same recipes as before" },
+  { id = "EX-2", text = "the devshell's shellHook creates or re-points `.oubliette` and warns on a foreign CAPSULE_ROOT; `.oubliette` is gitignored" },
+  { id = "EX-3", text = "manifest equal to PHASE-01's (the devshell is not in it); `just` green" },
+]
+verification = [
+  { id = "VT-1", expects = "the shared recipe file carries the operational recipes", test_file = "just/fleet.just", keywords = ["refresh-build", "provision", "justfile_directory()"], waived = false },
+  { id = "VA-1", expects = "`just --list` before and after, diffed: same recipe set; entering the devshell with CAPSULE_ROOT set elsewhere prints the warning and leaves the variable as it was" },
+]
+specs        = []
+requirements = []
+
+[[phase]]
+id        = "PHASE-06"
+name      = "The consumer at /srv/fleet builds what oubliette built"
+objective = """
+Populate the consumer from this host's current declarations: flake.nix
+calling `oubliette.lib.mkFleet`, `targets/` (doctrine, goad-walk),
+capsules.nix, policies.nix, net.nix, setup.nix, `perimeter/*.txt`, the keys,
+a justfile with `import? '.oubliette/fleet.just'`, and a tracked recipe that
+says to enter the devshell (RV-012 F-6). Also `.envrc` (`use flake`, `export
+CAPSULE_ROOT=$PWD`) and `.gitignore` (`.vm/`, `.oubliette`). Oubliette is
+reached by `--override-input oubliette git+file://…` until it is pushed. The
+consumer's manifest must equal oubliette's at PHASE-01. Oubliette is
+unchanged in this phase. Nothing is pushed until the user says so."""
+entrance_criteria = [
+  { id = "EN-1", text = "PHASE-05 complete" },
+  { id = "EN-2", text = "the user has created /srv/fleet, owned by them or wheel, and the private remote (design sec-7 step 3)" },
+]
+exit_criteria = [
+  { id = "EX-1", text = "the consumer's manifest, oubliette overridden to this checkout, equals PHASE-01's entry for entry" },
+  { id = "EX-2", text = "the consumer's `just` (its check, build and units through the shared recipes) is green inside its devshell" },
+  { id = "EX-3", text = "demonstrate, RV-012 F-6: a fresh clone of the consumer with no `.oubliette` link parses (`just --list` succeeds) and lists the note recipe; inside the devshell the shared recipes appear" },
+  { id = "EX-4", text = "nothing pushed without the user's word; the commit and whether it was pushed are recorded" },
+  { id = "EX-5", text = "the consumer's inputs reach the same revisions as oubliette's lock: `oubliette.inputs.nixpkgs.follows = \"nixpkgs\"` with its own nixpkgs locked at oubliette's rev; llm-agents taken by `follows` from oubliette; doctrine and goad-walk locked at oubliette's revs. This is so that the manifest compares like with like, and so that ~/flakes' `fleet.inputs.nixpkgs.follows` reaches the module (design sec-7 step 8)" },
+]
+verification = [
+  { id = "VA-1", expects = "manifest diff consumer vs PHASE-01 empty; recorded" },
+  { id = "VA-2", expects = "demonstrate, RV-012 F-6: the fresh-clone parse and the in-devshell recipe list, both observed and recorded" },
+  { id = "VH-1", expects = "the user confirms /srv/fleet and the private remote exist and own them as intended" },
+]
+specs        = []
+requirements = []
+
+[[phase]]
+id        = "PHASE-07"
+name      = "Oubliette builds on a fixture, with no target in its lock"
+objective = """
+Create `fixture/` (design sec-3): target `fixture` with every optional field
+absent, slots `alpha` and `beta`, its two policies, `access` with
+`adminKeys = []`, a stub tool-set flake, and a copy of the probe fabric.
+Oubliette's flake.nix calls mkFleet with it, drops `inputs.target` and
+`inputs.goad-walk`, and relocks. The real declarations leave oubliette's tree,
+since the consumer now holds them. `targets/goad-walk.nix`'s citation leaves
+with it, and the commit says so. The docs and governance wording that this
+boundary move changes land in the same commit (design sec-8): POL-002's
+search-rule exclusions, POL-003's homes, `contract-target.md`,
+`contract-flavour.md`, `contract-doctrine.md`, README, CLAUDE.md. The policy
+records themselves change through a REV at reconcile. The consumer's
+manifest, which still overrides oubliette with this checkout, must stay equal
+to PHASE-01's."""
+entrance_criteria = [
+  { id = "EN-1", text = "PHASE-06 complete: the consumer builds what oubliette built" },
+]
+exit_criteria = [
+  { id = "EX-1", text = "flake.lock has no `target` or `goad-walk` node; `grep -r doctrine` outside fixture/, templates/, the governance-CLI input and docs finds no target binding" },
+  { id = "EX-2", text = "oubliette's `just` green over the fixture: every *Cases suite, hostModuleUnits/Programs, every probe shellchecked" },
+  { id = "EX-3", text = "`borrowed` over the fixture is mutated once to borrow a fixture slot name and observed to throw naming it, then restored" },
+  { id = "EX-4", text = "the consumer's manifest still equals PHASE-01's" },
+  { id = "EX-5", text = "the docs named in design sec-8 say where a target is declared, in the same commit" },
+]
+verification = [
+  { id = "VT-1", expects = "the fixture target takes every optional field's absent path", test_file = "fixture/default.nix", keywords = ["toolsPackage = null", "alpha", "beta", "adminKeys = []"], waived = false },
+  { id = "VA-1", expects = "borrowed mutation red then restored; consumer manifest diff empty; both recorded" },
+  { id = "VA-2", expects = "contract-target.md and CLAUDE.md read back against the new layout: no sentence still places a target in oubliette" },
+]
+specs        = []
+requirements = []
+
+[[phase]]
+id        = "PHASE-08"
+name      = "The template, and templateCases over its actual wiring"
+objective = """
+Add `templates/fleet/` (DEC-030): a doctrine-only consumer whose files are
+the heavily commented reference copies of the moved declarations, exported as
+`templates.default`. Add `templateCases` (design sec-5). It calls
+`(import templates/fleet/flake.nix).outputs` with stub inputs: `oubliette`
+carrying this tree's `lib`, `doctrine` a stub flake with an empty tool set,
+and `nixpkgs` oubliette's own. It forces every slot runner's drvPath with
+`deepSeq`, and lives at `templates/template-cases.nix`, beside what it pins. It is wired into `just build`. Write it red first, then show it
+notices a mis-wired template (RV-012 F-8, route control)."""
+entrance_criteria = [
+  { id = "EN-1", text = "PHASE-07 complete" },
+]
+exit_criteria = [
+  { id = "EX-1", text = "templates/fleet/ is a consumer with doctrine as its only target; `templates.default` names it" },
+  { id = "EX-2", text = "templateCases evaluates the template's own flake.nix outputs, never fetching its inputs, and is in `just build`" },
+  { id = "EX-3", text = "control, RV-012 F-8: removing one argument from the template's mkFleet call (`access`) turns templateCases red, naming it; restored" },
+  { id = "EX-4", text = "oubliette's `just` green" },
+]
+verification = [
+  { id = "VT-1", expects = "templateCases calls the template's actual flake outputs with stub inputs and forces the runners", test_file = "templates/template-cases.nix", keywords = ["fleet/flake.nix", "outputs", "deepSeq", "drvPath"], waived = false },
+  { id = "VA-1", expects = "control, RV-012 F-8: the mis-wired template observed red with the argument named, then green on restore; recorded" },
+]
+specs        = []
+requirements = []
+
+[[phase]]
+id        = "PHASE-09"
+name      = "Cutover: policyDir follows the consumer, and the host's steps are named"
+objective = """
+Switch the module's policyDir default to `fleetPath + "/" + policies.dir`
+(RV-012 F-11). The consumer's manifest then differs from PHASE-01's in
+exactly that string, in the units and tmpfiles that read it. With the user's
+word, push oubliette and lock the consumer on the pushed rev
+(`github:davidlee/oubliette`), and push the consumer. Write the `~/flakes`
+change list exactly, as design sec-7 step 8 gives it, and hand over the
+user's steps: clearing CHR-013's pre-slot state, re-pointing every
+`/var/lib/microvms/*/flake` (both spellings), the fetchability check on every
+machine that evaluates ~/flakes (RV-012 F-9), the closure diff, the switch, one
+`refresh-build`, and `capsule all status`. Record which of them were done."""
+entrance_criteria = [
+  { id = "EN-1", text = "PHASE-08 complete; both `just` green" },
+]
+exit_criteria = [
+  { id = "EX-1", text = "the consumer's manifest differs from PHASE-01's only in the module toplevel, and the diff is the policyDir string alone; explained in the notes" },
+  { id = "EX-2", text = "oubliette pushed and the consumer locked on that rev, both only after the user's word" },
+  { id = "EX-3", text = "the ~/flakes change list and the user's cutover steps are written in the slice notes exactly as design sec-7 gives them" },
+  { id = "EX-4", text = "the slice records which user steps were done and with what result (design sec-6 step 6); `capsule all status` cited if run" },
+]
+verification = [
+  { id = "VA-1", expects = "manifest diff consumer vs PHASE-01: one entry, the module, whose derivation diff is policyDir alone; recorded" },
+  { id = "VH-1", expects = "the user's closure diff before `just system-switch` shows only the oubliette→fleet input and the policyDir path" },
+  { id = "VH-2", expects = "the user runs the switch, one `refresh-build` from /srv/fleet, and `capsule all status`, or says which they have not" },
+]
+specs        = []
+requirements = []
