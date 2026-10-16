@@ -1,0 +1,42 @@
+memory_uid = "mem_01a14407f15a7fe2b8e788c2fc273409"
+memory_key = "mem.fact.oubliette.codex-exec-reads-stdin"
+schema_version = 1
+memory_type = "fact"
+status = "active"
+title = "A backgrounded codex exec hangs on stdin; close it, and lock needs routed findings"
+summary = "codex exec waits on stdin unless given </dev/null; a design lock refuses severe RV findings without a route"
+created = "2026-10-16"
+updated = "2026-10-16"
+
+[scope]
+paths = []
+globs = []
+commands = ["codex exec", "doctrine design apply"]
+tags = ["gotcha"]
+workspace = "default"
+repo = "github.com/davidlee/oubliette"
+repo_id_kind = "remote"
+repo_id_confidence = "high"
+
+[git]
+anchor_kind = "checkout_state"
+commit = ""
+tree = "8cbb340a6efcbdf44d04dff6d4a1a7d5790c975b"
+ref_name = "refs/heads/main"
+checkout_state_id = "1cc1c03d91d7be7e7a2dfa0fca635cb61a59433a37f136e870142436fb09adad"
+base_commit = "889d550e589f60b3f8829463ec8620c88b31409e"
+verified_sha = ""
+normalizer = "forget.checkout.v1"
+
+[review]
+verification_state = "unverified"
+reviewed = ""
+review_by = ""
+
+[trust]
+trust_level = "medium"
+
+[ranking]
+severity = "none"
+weight = 0
+
