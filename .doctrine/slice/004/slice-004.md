@@ -101,7 +101,10 @@ whose location is `OQ-1`.
   addressing is this host's. The allowlists are plain files outside the store
   by design, so their location is a path value either way.
 - **OQ-5 Cutover of live slots.** `/var/lib/microvms/<slot>/flake` records
-  `/home/david/dev/oubliette`, and `microvm -u` re-reads it, so after the move
+  this checkout under two spellings — `/home/david/dev/microvm-spike` (a
+  symlink) for a, b, f and the pre-slot `capsule`/`capsule-b` (`CHR-013`), and
+  `/home/david/dev/oubliette` for c, d, e, j (research C5) — and `microvm -u`
+  re-reads it, so after the move
   each slot's recorded ref must be re-pointed (or the slot re-created) before
   the next refresh. *Answered by the user 2026-10-16:* no live workload
   constrains the timing (doctrine's SL-251 is long done), so the cutover is a
