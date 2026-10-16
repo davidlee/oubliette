@@ -1,0 +1,33 @@
+schema = "doctrine.knowledge"
+version = 1
+
+id = 26
+slug = "capsulesnix-and-targetsdefaultnix-split-machinery-stays-in-oubliette-as-functions-the-consumer"
+title = "capsules.nix and targets/default.nix split: machinery stays in oubliette as functions, the consumer holds only the lists"
+record_kind = "decision"
+status = "accepted"
+created = "2026-10-16"
+updated = "2026-10-16"
+tags = []
+
+[facet]                         # every field typed; seeded empty (captured later)
+context = "research X1: both files hold generic machinery beside the host list, and fixture suites lean on the machinery (host/guard-cases.nix:76-95)."
+choice = "oubliette keeps capsules.nix as a function of the declared slot set (instances, socketOf, recordOf, volumeLock, asserts) and targets/default.nix as a function of the target set (derive, volumePath); the consumer supplies the declared slots and its targets/*.nix files."
+alternatives = ["move both files wholesale to the consumer"]
+rationale = "moving wholesale leaves oubliette's own suites with no machinery; splitting is SL-003's DEC-018 seam extended to two more files, and fixture suites stop depending on the real slots."
+consequences = ["the consumer's capsules.nix is data only", "machinery reasoning comments stay in oubliette"]
+decided_by = "user, on agent proposal"
+decided_on = "2026-10-16"
+
+[evidence]                      # free-text citations (supports / contradicts / notes)
+supports    = []
+contradicts = []
+notes       = []
+
+[relationships]                 # verb-written edges (set by doctrine supersede)
+supersedes    = []   # record ids this one replaces (set by doctrine supersede)
+superseded_by = []   # set on superseded predecessor (verb-written)
+
+[[relation]]
+label = "shapes"
+target = "SL-004"

@@ -1,0 +1,33 @@
+schema = "doctrine.knowledge"
+version = 1
+
+id = 30
+slug = "the-public-example-consumer-is-a-flake-template-inside-oubliette-eval-checked-against-a-stub-target"
+title = "The public example consumer is a flake template inside oubliette, eval-checked against a stub target flake"
+record_kind = "decision"
+status = "accepted"
+created = "2026-10-16"
+updated = "2026-10-16"
+tags = []
+
+[facet]                         # every field typed; seeded empty (captured later)
+context = "the user chose a public doctrine-only example inside oubliette; oubliette's lock cannot carry doctrine, so an unchecked template would rot."
+choice = "templates.default = templates/fleet/, a doctrine-only consumer (flake, targets/doctrine.nix, one slot, policies, allowlists, net.nix, setup.nix, justfile, .gitignore); a templateCases suite evaluates its declaration files (not its flake.nix) through mkFleet with a stub flake for doctrine."
+alternatives = ["a separate public example repo", "no check on the template"]
+rationale = "public usability without target inputs in oubliette's lock; the check pins the template's declarations to the builder's argument surface."
+consequences = ["the template is example data and is named as an exclusion in POL-002's search rule", "the template carries the reference commentary (inq-10)"]
+decided_by = "user, on agent proposal"
+decided_on = "2026-10-16"
+
+[evidence]                      # free-text citations (supports / contradicts / notes)
+supports    = []
+contradicts = []
+notes       = []
+
+[relationships]                 # verb-written edges (set by doctrine supersede)
+supersedes    = []   # record ids this one replaces (set by doctrine supersede)
+superseded_by = []   # set on superseded predecessor (verb-written)
+
+[[relation]]
+label = "shapes"
+target = "SL-004"

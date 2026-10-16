@@ -1,0 +1,33 @@
+schema = "doctrine.knowledge"
+version = 1
+
+id = 27
+slug = "the-consumer-checkout-is-both-the-flake-and-the-devshell-state-root-its-path-is-declared-once-as"
+title = "The consumer checkout is both the flake and the devshell state root; its path is declared once as fleetPath"
+record_kind = "decision"
+status = "accepted"
+created = "2026-10-16"
+updated = "2026-10-16"
+tags = []
+
+[facet]                         # every field typed; seeded empty (captured later)
+context = "research X3: $root (CAPSULE_ROOT/$PWD) is both the flake built and where .vm/ state lives; a flake cannot know its own checkout path."
+choice = "the operator works in the consumer checkout (/srv/fleet on this host), whose .vm/ is gitignored; CAPSULE_ROOT/$PWD semantics are unchanged; fleetPath is declared once in the consumer and read only where a program cannot know it (the module's policyDir)."
+alternatives = ["separate the flake ref from the state root as two values"]
+rationale = "no program text changes, so the devshell path keeps working with no rebuild and no root (G8); one declared path rather than two."
+consequences = ["/srv/fleet must be writable by the operator without root", "microvm records /srv/fleet per slot"]
+decided_by = "user, on agent proposal"
+decided_on = "2026-10-16"
+
+[evidence]                      # free-text citations (supports / contradicts / notes)
+supports    = []
+contradicts = []
+notes       = []
+
+[relationships]                 # verb-written edges (set by doctrine supersede)
+supersedes    = []   # record ids this one replaces (set by doctrine supersede)
+superseded_by = []   # set on superseded predecessor (verb-written)
+
+[[relation]]
+label = "shapes"
+target = "SL-004"

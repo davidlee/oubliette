@@ -1,0 +1,33 @@
+schema = "doctrine.knowledge"
+version = 1
+
+id = 29
+slug = "probes-are-built-over-the-fixture-in-oubliette-and-run-only-from-the-consumer-whose-eval-is-where"
+title = "Probes are built over the fixture in oubliette and run only from the consumer, whose eval is where borrowed throws"
+record_kind = "decision"
+status = "accepted"
+created = "2026-10-16"
+updated = "2026-10-16"
+tags = []
+
+[facet]                         # every field typed; seeded empty (captured later)
+context = "probes are evidence about the real capsule (CLAUDE.md, probe/netns-boot.sh) and borrowed is only meaningful against the real capsules.nix (NOTES item 38); DEC-020 expected IMP-015 to give probes a fixture target."
+choice = "oubliette's just build shellchecks every probe over the fixture prelude; probes are run from the consumer devshell against its .#capsule; probeFabric is a consumer argument and borrowed throws in the consumer's eval."
+alternatives = ["give probes a fixture subject and run them from oubliette"]
+rationale = "keeps the real subject and keeps the borrowed check meaningful, while oubliette still proves the probe text is a program."
+consequences = ["DEC-020 revised: .#capsule names the probe target's image in whichever flake builds it"]
+decided_by = "user, on agent proposal"
+decided_on = "2026-10-16"
+
+[evidence]                      # free-text citations (supports / contradicts / notes)
+supports    = []
+contradicts = []
+notes       = []
+
+[relationships]                 # verb-written edges (set by doctrine supersede)
+supersedes    = []   # record ids this one replaces (set by doctrine supersede)
+superseded_by = []   # set on superseded predecessor (verb-written)
+
+[[relation]]
+label = "shapes"
+target = "SL-004"

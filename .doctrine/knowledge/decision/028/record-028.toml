@@ -1,0 +1,33 @@
+schema = "doctrine.knowledge"
+version = 1
+
+id = 28
+slug = "operational-and-build-recipes-ship-as-one-just-module-from-oubliette-imported-by-both-justfiles"
+title = "Operational and build recipes ship as one just module from oubliette, imported by both justfiles"
+record_kind = "decision"
+status = "accepted"
+created = "2026-10-16"
+updated = "2026-10-16"
+tags = []
+
+[facet]                         # every field typed; seeded empty (captured later)
+context = "the justfile mixes oubliette-development recipes with operational ones that a consumer needs; a copy in the template and another in the private consumer would drift."
+choice = "recipes move to just/fleet.just; oubliette's justfile imports it directly; a consumer's justfile imports it via a gitignored .oubliette symlink the consumer devshell keeps pointed at the locked oubliette source. justfile_directory() resolves to the root justfile, so just up still passes the consumer as -f."
+alternatives = ["copy the recipes into the template", "keep recipes in oubliette parameterised by a CAPSULE_FLEET path"]
+rationale = "one copy of the recipes at the same revision as the programs they call."
+consequences = ["the symlink is stale until the devshell is re-entered, the same class as mem.fact.oubliette.devshell-binaries-are-store-paths", "a consumer must keep net.nix, policies.nix and perimeter/ at its root, the names the recipes read"]
+decided_by = "user, on agent proposal"
+decided_on = "2026-10-16"
+
+[evidence]                      # free-text citations (supports / contradicts / notes)
+supports    = []
+contradicts = []
+notes       = []
+
+[relationships]                 # verb-written edges (set by doctrine supersede)
+supersedes    = []   # record ids this one replaces (set by doctrine supersede)
+superseded_by = []   # set on superseded predecessor (verb-written)
+
+[[relation]]
+label = "shapes"
+target = "SL-004"
