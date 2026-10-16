@@ -50,8 +50,13 @@ oubliette/flake.nix                     oubliette/flake.nix
 4. `docs/contract-target.md` (and the contracts it cites) say where a target is
    now declared, in the same commit as the move.
 
-Which file is a *host declaration* and which is *generic* is part of the design,
-not settled here. Starting position: `targets/`, `capsules.nix`,
+Which file is a *host declaration* and which is *generic* is settled in
+`design.md` (§What moves where, §The builder's argument surface), which goes
+further than the starting position below: `capsules.nix` and
+`targets/default.nix` are split rather than moved (`DEC-026`), the host's
+addressing and volume reserve, `identity` (admin and stop keys), `setup` and
+`fleetPath` are host values too, and the operational recipes ship from
+oubliette (`DEC-028`). Starting position, kept for the record: `targets/`, `capsules.nix`,
 `policies.nix`, `perimeter/*.txt`, `net.nix`, `probeTarget`/`probeFabric` and
 `extras` are the host's; `fragments.nix`'s vocabulary and its source input
 (`llm-agents`) stay generic (`docs/contract-flavour.md`); `inputs.doctrine` in
