@@ -95,7 +95,7 @@
         allow="''${CAPSULE_ALLOWLIST:-}"
         [ -n "$allow" ] || {
           echo "capsule-proxy: no allowlist. CAPSULE_ALLOWLIST names the file a" >&2
-          echo "  policy selected; nothing here picks one. See the fleet's policies argument." >&2
+          echo "  policy selected; nothing here picks one. See policies.nix." >&2
           exit 1
         }'';
     }

@@ -54,8 +54,8 @@
 # will do, they only have to differ. Not the guest's branch: the target declares
 # no branch any more, and `$WORK_BRANCH` is the other thing called one here.
 #
-# `probe/harness.sh` is concatenated ahead of this by `mkProbe` in mkfleet.nix along with the
-# values it takes from the caller's `net` and `targets`, and it carries the boot fixture
+# `probe/harness.sh` is concatenated ahead of this by flake.nix along with the
+# values it takes from net.nix and targets/, and it carries the boot fixture
 # these two capsules share.
 
 # Deliberately no errexit: several of these tests are supposed to fail.

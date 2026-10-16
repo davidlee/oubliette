@@ -37,3 +37,48 @@ PHASE-01's with `fleetCases` at its PHASE-03 value. plan.toml text is left as
 approved; this note is the amendment. Regenerate the baseline without touching
 the tree by pointing the instrument at
 `builtins.getFlake "git+file://$PWD?rev=4572d07…"` (full sha).
+
+## PHASE-07: wording deferred out of shipped text
+
+At 1284c5a the consumer manifest moved 22 entries against the baseline. Cause:
+Part B's wording edits landed inside text that becomes a derivation — shell
+comments and messages in `writeShellApplication` text, an option description
+(the module's manual), and probe scripts (concatenated whole into each probe).
+`profile.nix`'s locator fragment and `perimeter/`'s proxy are spliced into most
+programs, so two lines moved `module`, `hostModulePrograms`, every `capsule-*`
+program and every suite that takes one. Nix comments outside strings move
+nothing and were kept.
+
+Reverted to 61701fe's text; apply after cutover (PHASE-09), when the closure
+diff no longer needs to be quiet:
+
+| file | shipped text now (61701fe) | intended |
+| --- | --- | --- |
+| host/cli.nix (`policyFile` shell comment) | `(policies.nix)` | `(the fleet's \`policies\`)` |
+| host/inject.nix (usage echo) | `every declared one (./setup.nix).` | `every declared one (the consumer's setup).` |
+| host/profile.nix (`profileLoad` shell comment) | `same reason (policies.nix), one directory up.` | `same reason (the fleet's \`policies\`), one directory up.` |
+| host/services.nix (`policyDir` option description) | `bounded and legible (policies.nix).` | `bounded and legible (the fleet's \`policies\`).` |
+| mkfleet.nix (`capsule-host` usage echo) | `(policies.nix, NOTES item 36).` | `(the fleet's policies argument, NOTES item 36).` |
+| perimeter/default.nix (proxy refusal) | `See policies.nix.` | `See the fleet's policies argument.` |
+| probe/harness.sh | `flake.nix` (concatenation, `prelude`, `guestSsh`), `flake.nix`'s \`probeFabric\` / \`capsules.nix\`, `net.nix` | `` `mkProbe` in mkfleet.nix ``, the caller's \`probe.fabric\` (refused at eval by mkfleet.nix) / the caller's \`fleet\`, the caller's \`net\` |
+| probe/freshness.sh, netns-boot.sh, netns-egress.sh, netns-restart.sh, netns.sh, two-capsules.sh (headers) | `concatenated … by flake.nix`, `net.nix and targets/`, `has net.nix baked into it`, `flake.nix`'s \`probeFabric\` … \`capsules.nix\` | `` by `mkProbe` in mkfleet.nix ``, the caller's \`net\` and \`targets\`, `has the \`net\` declaration baked into it`, the caller's \`probe.fabric\` that mkfleet.nix refuses to share with the caller's \`fleet\` |
+
+The full intended probe text is `git show 1284c5a:probe/<file>.sh`.
+`capsules.nix`'s throw message was kept: a throw is not in any derivation.
+`host/git-channel.nix`'s `policyCase` comment, garbled by Part B's edit, was
+repaired as a Nix comment (moves nothing).
+
+Residual differences against the baseline, after the revert — inputs
+(`inputDrvs`, `inputSrcs`, env keys) identical; only the suite's own text:
+
+- `briefCases` — host/brief-cases.nix takes `slots` (mkfleet.nix
+  `declaredSlots`): the source loop runs over the declared slots rather than
+  `a b`, the spec-checker's undeclared name is built to miss every declared
+  slot, and the declared-name-as-path round asserts its reason.
+- `vmCases` — host/vm-cases.nix takes `slots`: the build rounds name a declared
+  slot (`a` in this fleet) rather than the literal `c`.
+- `resetHomeCases` — vm/reset-home-cases.nix takes the caller's `injections`
+  (mkfleet.nix `inherit (access) injections`): the hard-coded `.env` check
+  becomes one check per injected payload outside `$HOME` (here `/work/.env`).
+
+`module` and every non-suite program are equal.

@@ -88,7 +88,8 @@
   inherit (pkgs) lib;
 
   # The vocabulary as a shell case: a policy name in, its two ingestion limbs
-  # out. Generated rather than spelled, so adding a policy &  # the fleet's `policies` and nothing here.
+  # out. Generated rather than spelled, so adding a policy is one entry in
+  # the fleet's `policies` argument and nothing here.
   policyCase = lib.concatMapStringsSep "\n" (n: let
     p = policies.policies.${n};
   in ''

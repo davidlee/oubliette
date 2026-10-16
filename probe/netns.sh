@@ -43,7 +43,7 @@
 # Run: sudo probe-netns [--internet]
 #
 # `probe/harness.sh` — check/observe/report and the netns helpers — is
-# concatenated ahead of this by `mkProbe` in mkfleet.nix, so it is not defined here.
+# concatenated ahead of this by flake.nix, so it is not defined here.
 
 # Deliberately no errexit: half these tests are supposed to fail.
 

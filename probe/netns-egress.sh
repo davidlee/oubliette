@@ -22,9 +22,9 @@
 #
 # Like `probe/netns-boot.sh` and for the same reason, it breaks the rule about
 # borrowing live addressing in exactly one place: the thing under test is the
-# real guest image, which has the `net` declaration baked into it. Everything the probe *adds*
-# is the harness's fabric, on names and addressing the caller's `probe.fabric`
-# that `mkfleet.nix` refuses at eval to share with the caller's `fleet` — which this file is the reason
+# real guest image, which has net.nix baked into it. Everything the probe *adds*
+# is the harness's fabric, on names and addressing `flake.nix`'s `probeFabric`
+# refuses at eval to share with `capsules.nix` — which this file is the reason
 # for. It said this same sentence while adding `eg-rt` at 10.101.0.1 with a route
 # for 10.100.0.0/16, all three of them the live aggregator's, because the module
 # copied its map from here after the shape was verified (NOTES item 38).
@@ -78,8 +78,8 @@
 # identity the guest authorises — `sudo` strips SSH_AUTH_SOCK, so the harness
 # finds the agent itself and refuses before booting anything if there is none.
 #
-# `probe/harness.sh` is concatenated ahead of this by `mkProbe` in mkfleet.nix, along with the
-# values it takes from the caller's `net` and `targets`: TAP, HOST_ADDR, GUEST_ADDR,
+# `probe/harness.sh` is concatenated ahead of this by flake.nix, along with the
+# values it takes from net.nix and targets/: TAP, HOST_ADDR, GUEST_ADDR,
 # PREFIX, VM, PROXY_PORT, PROXY, ALLOWLIST and SEALED_ALLOWLIST are set there,
 # not here.
 
