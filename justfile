@@ -22,7 +22,7 @@
 # happens to be running.
 
 # Every nix file that is ours. Explicit, so nothing walks .direnv or .vm.
-nix_paths := "flake.nix fleet.nix fleet-cases.nix net.nix targets capsules.nix policies.nix fragments.nix setup.nix perimeter host vm"
+nix_paths := "flake.nix mkfleet.nix fleet.nix fleet-cases.nix net.nix targets capsules.nix policies.nix fragments.nix setup.nix perimeter host vm"
 
 # the gate: everything parses and is formatted
 default: check build units
