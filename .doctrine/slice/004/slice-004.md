@@ -78,10 +78,14 @@ whose location is `OQ-1`.
 
 ## Open questions
 
-- **OQ-1 Where does the consumer flake live?** A new repo (e.g. `~/dev/fleet`),
-  `~/flakes` itself, or a subdirectory flake here. A subdirectory keeps the
-  declarations in this repo's clone (half the problem); `~/flakes` mixes it into
-  the system flake the user builds by hand. Leaning: a new repo.
+- **OQ-1 Where does the consumer flake live?** *Answered by the user
+  2026-10-16:* not in this repo, and ideally with no username in its realpath —
+  an absolute path such as under `/srv/` if one is needed. It matters because
+  `microvm -c -f <path>` records that path in `/var/lib/microvms/<slot>/flake`
+  and every later `microvm -u` re-reads it, so the consumer's path is a durable
+  host value rather than a checkout location. Left to design: its name, who
+  owns the directory and how it comes to exist (declared in `~/flakes` or by
+  hand), and whether it is a git repo.
 - **OQ-2 Probes.** They are evidence about *this host's* capsule
   (`probeTarget`, `probe/netns-boot.sh` boots the real guest) and `probeFabric`
   is asserted disjoint from the real `capsules.nix` (`borrowed`). They need the
@@ -99,9 +103,9 @@ whose location is `OQ-1`.
 - **OQ-5 Cutover of live slots.** `/var/lib/microvms/<slot>/flake` records
   `/home/david/dev/oubliette`, and `microvm -u` re-reads it, so after the move
   each slot's recorded ref must be re-pointed (or the slot re-created) before
-  the next refresh. **Capsule C is driving doctrine's SL-251**; the cutover is
-  disruptive for it. That is flagged for the user to time, not designed
-  around.
+  the next refresh. *Answered by the user 2026-10-16:* no live workload
+  constrains the timing (doctrine's SL-251 is long done), so the cutover is a
+  plain step of this slice, with no in-flight re-pointing to design.
 
 ## Risks
 

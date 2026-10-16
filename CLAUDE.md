@@ -34,8 +34,6 @@ state in a plan; that is a backlog or knowledge record's job.
 
 ## Working here
 
-capsule C is driving a production workload (doctrine's SL-251).
-
 **Be judicious about running nix builds or evals.** The user runs those
 in ~/flakes for system builds themselves. Builds for this project are fine. 
 Be conservative beyond that.
