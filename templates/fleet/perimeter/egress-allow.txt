@@ -1,0 +1,30 @@
+# Hostname allowlist for the capsule's egress proxy (tinyproxy, extended
+# regex, one per line, default-deny). The `build` policy's file
+# (policies.nix). Edited live — restart the proxy to apply; no nix rebuild.
+# Name what the target's toolchains and the agent you run actually fetch from,
+# and nothing else.
+
+# Claude
+^api\.anthropic\.com$
+^console\.anthropic\.com$
+^statsig\.anthropic\.com$
+^claude\.ai$
+^claude\.com$
+^platform\.claude\.com$
+
+# Deepseek
+^platform\.deepseek\.com$
+
+# npm / bun
+^registry\.npmjs\.org$
+
+# crates.io
+^crates\.io$
+^index\.crates\.io$
+^static\.crates\.io$
+
+# github (bun/npm deps that resolve to tarballs, and gh remotes)
+^github\.com$
+^codeload\.github\.com$
+^objects\.githubusercontent\.com$
+^raw\.githubusercontent\.com$

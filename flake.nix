@@ -38,16 +38,47 @@
   # fleet is the same builder called by its consumer flake. The builder is bound
   # once, so the fleet below and `lib.mkFleet` are the same function.
   outputs = inputs: let
+    system = "x86_64-linux";
     mkFleet = import ./mkfleet.nix {inherit (inputs) nixpkgs microvm doctrine;};
+
+    # The builder and the two functions it applies, unapplied, for a flake that
+    # declares its own fleet. One value: exported below, and the `lib` the
+    # template is evaluated against, so the suite tests what a consumer gets.
+    oublietteLib = {
+      inherit mkFleet;
+      capsules = import ./capsules.nix;
+      targets = import ./targets;
+    };
+
+    fleet = mkFleet (import ./fixture {inherit (inputs) llm-agents;});
+
+    # The template's own flake.nix, evaluated against stub inputs and nothing
+    # fetched (templates/template-cases.nix). Oubliette's own check, so here
+    # rather than in mkFleet: every consumer builds mkFleet's outputs, and none
+    # of them has this template.
+    templateCases = import ./templates/template-cases.nix {
+      pkgs = inputs.nixpkgs.legacyPackages.${system};
+      inherit (inputs.nixpkgs) lib;
+      template = ./templates/fleet;
+      inputs = {
+        inherit (inputs) nixpkgs llm-agents;
+        oubliette.lib = oublietteLib;
+      };
+    };
   in
-    mkFleet (import ./fixture {inherit (inputs) llm-agents;})
+    fleet
     // {
-      # The builder and the two functions it applies, unapplied, for a flake
-      # that declares its own fleet.
-      lib = {
-        inherit mkFleet;
-        capsules = import ./capsules.nix;
-        targets = import ./targets;
+      lib = oublietteLib;
+
+      # Merged into mkFleet's set rather than beside it: a top-level `//` would
+      # replace the whole `packages` attribute.
+      packages.${system} = fleet.packages.${system} // {inherit templateCases;};
+
+      # `nix flake init -t github:davidlee/oubliette`: a consumer confining
+      # doctrine, every file commented as the reference for its field (DEC-030).
+      templates.default = {
+        path = ./templates/fleet;
+        description = "a capsule fleet confining doctrine: the declarations a consumer hands lib.mkFleet";
       };
     };
 }

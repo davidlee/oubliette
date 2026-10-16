@@ -1,0 +1,9 @@
+.direnv/
+.vm/
+.oubliette
+result
+result-*
+
+# A global gitignore often ignores `.envrc`; this one is part of the fleet
+# (CAPSULE_ROOT, the devshell), so it is tracked here regardless.
+!.envrc

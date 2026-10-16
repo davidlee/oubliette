@@ -1,0 +1,48 @@
+# This host's fleet. The shared recipes (build, units, cases, up, provision, ...)
+# are oubliette's, one copy, imported through `.oubliette`: a link the devshell
+# re-points on every entry (oubliette DEC-028). Outside the devshell they are
+# absent, and `just shared` says so.
+
+# Every nix file that is ours. Explicit, so nothing walks .direnv or .vm.
+nix_paths := "flake.nix capsules.nix policies.nix net.nix setup.nix targets"
+
+# the gate: this checkout parses and is formatted, then the shared build and units
+default: check
+  @[ -e .oubliette/fleet.just ] || { "{{just_executable()}}" --justfile "{{justfile()}}" shared; exit 1; }
+  @"{{just_executable()}}" --justfile "{{justfile()}}" build units
+
+import? '.oubliette/fleet.just'
+
+# parse + format + no placeholder key, no eval and no build: cheap enough for every edit
+check: parse fmt-check stop-key
+
+# every nix file parses — and `--parse` never evaluates, so it cannot build
+parse:
+  #!/usr/bin/env bash
+  set -euo pipefail
+  find {{nix_paths}} -name '*.nix' -print0 | xargs -0 -n1 nix-instantiate --parse >/dev/null
+  echo "parse: ok"
+
+# format
+fmt:
+  alejandra -q {{nix_paths}}
+
+# assert formatting without mutating it
+fmt-check:
+  alejandra -c {{nix_paths}}
+
+# the template's stop key is a placeholder nobody holds the private half of: a
+# guest built with it can only be power-cut. Replace it (README.md).
+stop-key:
+  #!/usr/bin/env bash
+  set -euo pipefail
+  if grep -q template-placeholder keys/stop-key.pub; then
+    echo "stop-key: keys/stop-key.pub is the template's placeholder; generate this host's stop key (README.md)" >&2
+    exit 1
+  fi
+  echo "stop-key: ok"
+
+# no build, up or provision listed? The shared recipes exist only inside the devshell
+shared:
+  @echo "fleet: the shared recipes (build, units, up, provision, ...) come from oubliette through .oubliette," >&2
+  @echo "fleet: which only the devshell creates. Enter it (nix develop, or direnv allow) and run just --list again." >&2

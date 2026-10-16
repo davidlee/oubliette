@@ -1,0 +1,229 @@
+# doctrine: the repo this fleet's capsules confine, and the settings that follow
+# from it. One target of this host's declared set — listed by hand in the
+# `targets` argument to `mkFleet` in flake.nix, which is the axis's one home
+# (POL-003). Oubliette's `targets/default.nix` derives what is a function of a
+# target's name: `name` itself (the key there), `guestPath`, `cachePaths`, and
+# the capsule's `volumePath`. This file is the reference for what each field
+# means; oubliette's `docs/contract-target.md` is the contract.
+#
+# What cannot live here is the flake reference itself — an input's url must be a
+# literal in flake.nix — so `inputs.doctrine` there and `path` here name the same
+# repo and nothing checks that they agree. See NOTES item 16.
+#
+# Everything here is host-side on purpose. Nothing below is read *from* the
+# target repo: the allowlist is a control, and a control the confined thing can
+# edit is not a control. Only the tool set comes from the target, because that is
+# a build input rather than a control.
+#
+# `rec`, because `guestConfig` renders from `caches` and `sizes`.
+rec {
+  # The host's checkout of the target, as an absolute path. A placeholder: set
+  # it to your own checkout, of the same repo as `inputs.doctrine` in flake.nix.
+  #
+  # Read by `capsule-provision` only, and always as the human — it is the source
+  # of the push that provisions a capsule. Nothing serves it and nothing else
+  # reads it.
+  path = "/srv/src/doctrine";
+
+  # Package in the target's own flake carrying its devshell tool set, so the
+  # guest and that devshell cannot drift. `null` for a target with no flake:
+  # the guest then gets `extraTools` and nothing else, and loses that property.
+  toolsPackage = "dev-tools";
+
+  # Tools the target's list assumes the host already has, so it does not carry
+  # them. nixpkgs attr names, resolved against the guest's pkgs.
+  extraTools = ["pkg-config" "openssl"];
+
+  # No `allowlist` field, and no `collectMaxPackBytes` either. Nothing replaces
+  # them: what a capsule may talk to, and what may come back out of it, are
+  # **controls**, and a control chosen by whoever names the project is a control
+  # the naming authority holds (NOTES item 25) — invisible while one target was a
+  # build-time literal, and an authority hole the moment assigning a project is a
+  # run-time verb. Both are policies, declared in `policies.nix` beside
+  # `mayCollect`, selected per slot and resolved by name at run time (NOTES item
+  # 36).
+
+  # Toolchain-shaped rather than repo-shaped, which is why they are here: caches
+  # that must live on the volume instead of in guest RAM. Env var -> directory
+  # under /work; the guest's seed service creates and chowns exactly these.
+  caches = {
+    CARGO_HOME = ".cargo";
+    BUN_INSTALL_CACHE_DIR = ".bun-cache";
+  };
+
+  # No branch field, deliberately, and nothing replaces it. The guest's branch is
+  # the constant `work` (`workBranch` in oubliette's mkfleet.nix): a name that
+  # identifies the work is not project state, which is what two slices of one
+  # project at once refutes any version of this field with.
+  # `capsule-provision <ref>` is still a ref in *this* repo and is untouched —
+  # the two things called "branch" are separate (docs/contract-target.md,
+  # plan-d L13).
+
+  # The out-of-band half of a result: what this target keeps in its worktree
+  # that no commit carries. `capsule-collect` snapshots exactly these paths into
+  # a sideband commit under `refs/capsule/state/*` and fetches it beside the code
+  # refs (NOTES item 32, host/state-snapshot.nix).
+  #
+  # An explicit allowlist, and emphatically not "the files git ignores": a
+  # `.gitignore` covers credentials, machine-local config, agent state and build
+  # caches, and `git add -f` over one is a loaded gun pointed wherever that list
+  # happens to face. Keep it short, name real directories, and remember that
+  # every path here is guest-authored data that a human will later extract.
+  #
+  # doctrine's storage rule is what makes it need one at all: its runtime tier —
+  # phase sheets, dispatch state, research artefacts — is gitignored *on purpose*,
+  # and is also what an audit of a finished capsule reads. Untracked-but-not-
+  # ignored files come along regardless and are not declared here: "the agent has
+  # not committed this yet" is generic, not a target's concept.
+  #
+  # What is NOT here is the rule worth keeping: **state a consumer regenerates
+  # per checkout does not travel** (NOTES item 32). doctrine's boot snapshot
+  # (`.doctrine/state/boot.md`) is derived from the checkout it sits in, so a
+  # copy landing in another tree is stale authority the next tool there reads as
+  # its own. It comes back by being regenerated where it is needed, which belongs
+  # to provisioning and not to a collect — that is `refresh` below (NOTES item
+  # 33), and the two fields are one decision read from its two ends: what is not
+  # here is there.
+  #
+  # A target with no such state omits the field, and `[]` is the same thing: the
+  # snapshot is not built at all, so a collect is the code-only program it used
+  # to be. The untracked-but-not-ignored files and `.capsule/dirty.diff` are
+  # *generic* (see above), so there is an argument that they should travel
+  # whether or not this field is set. What holds today is the simpler
+  # degradation: one field, one switch, and nothing collected out-of-band that a
+  # target did not ask for.
+  #
+  # This is also what gates `capsule-adopt`, the extractor at the far end
+  # (host/adopt.nix, NOTES item 34): no `statePaths`, no state ref, so no program
+  # to read one.
+  #
+  # **A template list, and `{unit}` is the one hole a path may hold** (NOTES item
+  # 32). An exhibit has a scope — *the out-of-band state of the work the capsule
+  # was assigned, and none that is not* — and a path list cannot state one,
+  # because the unit of work is run-time state and this file is a build-time
+  # literal. So the policy declares where the unit goes and the assignment says
+  # which unit; a template with a hole and no unit is a refusal, never a
+  # fall-through to the unscoped list
+  # (docs/probes.md#the-first-exhibit-adopted--and-what-it-costs-to-over-collect).
+  #
+  # The hole is filled with an opaque token the guest substitutes and never
+  # parses. Nothing outside this file knows that doctrine's unit of work is a
+  # slice, or that a slice is a number — the capability is *a policy path
+  # allowlist may be parameterised by one identifier the assignment carries*, and
+  # a second target is a different template and a different token rather than
+  # different code.
+  #
+  # A target whose out-of-band state is not per-unit writes no hole.
+  statePaths = [
+    ".doctrine/state/slice/{unit}" # per-slice runtime: phase sheets, progress
+    ".doctrine/slice/{unit}" # research/ (ignored) and uncommitted authored edits
+  ];
+
+  # Ceiling on one snapshot, in bytes. Not the same backstop as the policy's
+  # `collectMaxPackBytes`, and not in the same place or the same hands: this one
+  # is checked in the guest *before* the commit is made, because the fetch is
+  # atomic and a too-large state half must skip rather than take the code refs
+  # down with it. It stays here because it bounds what this target's own declared
+  # paths may grow to — a smell detector over `statePaths`, which is the field
+  # above — while the ingestion bound is about what the host will accept from any
+  # capsule at all. A path list that catches a scratch directory should fail
+  # loudly on the first collect rather than quietly move a gigabyte per run.
+  stateMaxBytes = 67108864;
+
+  # Shown in the motd: the target's own entrypoints, so the agent need not guess.
+  commands = "just test / just web-build";
+
+  # What takes a provisioned capsule to a working one: build and test to green,
+  # filling `caches` on the way. `capsule-baseline` runs this in the checkout and
+  # records green-plus-duration on the volume — on a fresh volume that is the
+  # **cold build**, the largest term in time-to-interactive (docs/probes.md).
+  #
+  # A command line, run by the guest's own login shell, and that is the whole
+  # generic capability: nothing outside this file knows what `just` is, or that
+  # anything here is built with cargo. `null` for a target with nothing to
+  # build, which drops the program rather than shipping one that cannot work.
+  baseline = "just web-build test";
+
+  # What a *fresh checkout* needs before anything reads it: the command that
+  # regenerates this target's derived state, run by `capsule-provision` once the
+  # push has landed and by `capsule-refresh` on demand (NOTES item 33).
+  #
+  # The other end of `statePaths` above. Derived state is precisely what must not
+  # travel between capsules — a copy is stale authority in the tree it lands in —
+  # so it does not come back in a collect; it is regenerated here, from the code
+  # the provision just delivered.
+  #
+  # A command line, like `baseline`, and the same generic capability with a
+  # different lifecycle: nothing outside this file knows what `doctrine boot` is
+  # or that a governance snapshot exists. `null` for a target that derives
+  # nothing from its checkout, which drops the program rather than shipping one
+  # with nothing to run.
+  #
+  # It may write tracked files, and `doctrine install` does. That is handled
+  # rather than forbidden: `capsule-refresh` commits the tracked half of what it
+  # wrote, because the alternative is a dirty worktree that the *next* provision
+  # refuses on and that every subsequent collect records as noise in its
+  # `dirty.diff`. The commit is safe because a provision can only land on a clean
+  # tree, so there is nothing of anyone else's for it to sweep up — see
+  # host/refresh.nix, where the precondition is enforced.
+  #
+  # The cost: a capsule whose refresh commits has a `work` branch ahead of what
+  # the host pushed, so re-provisioning it wants `--force` — the same override
+  # re-provisioning over an agent's commits already wants. It is also a HEAD that
+  # `capsule-brief`'s `code-oid` refuses, so on a target like this one the state
+  # half of a provision is its step (2), `--state-from-host`, rather than a
+  # command taken afterwards (NOTES item 47).
+  refresh = "doctrine install --agent claude --agent pi -y";
+
+  # The guest is sized for this target's build, not for the host.
+  #
+  # `mem` is a ceiling, not a charge: firecracker does not preallocate and the
+  # guest's root is tmpfs, so an idle capsule costs far less than this
+  # (docs/probes.md, the pair probe). What makes the ceiling matter anyway is
+  # that there is no balloon: a capsule is charged its high-water mark and never
+  # gives it back, so a long build converges on this number and stays there.
+  # `vcpu` is a real charge from the first busy thread. NOTES item 12.
+  sizes = {
+    vcpu = 4;
+    # A ceiling is free per capsule and a reservation per fleet, since nothing
+    # hands memory back until a stop (docs/plan-d-fleet.md §0); size it for a
+    # cold build of the target (docs/probes.md#the-first-cold-build-at-a-6144-ceiling).
+    mem = 6144; # / is tmpfs, so guest RAM also pays for /tmp and rootfs
+    volume = 32768; # sparse; holds the checkout, target/, caches
+  };
+
+  # Static build configuration for the guest: path relative to the volume's
+  # mount point (same convention as `caches`), file content. Rendered into the
+  # guest's closure and linked onto the volume by its seed — none of it is
+  # secret, so none of it needs a transport.
+  #
+  # The whole point is what it is *not*: a copy of a human's
+  # ~/.cargo/config.toml. That file describes the host machine, and its `jobs`
+  # inside a 4-vCPU guest is a worse default than no file at all. So the
+  # machine-shaped value is derived from `sizes` above — the same reservation the
+  # VM is built from, which is why the two cannot disagree — and the
+  # policy-shaped ones are stated here, where this target's policy already lives.
+  # A target that does not build with cargo writes a different value here;
+  # nothing generic knows what a toolchain is.
+  #
+  # This is cargo's lowest-precedence config, so a `.cargo/config.toml` in the
+  # checkout still wins: a default the target repo can override, not an
+  # imposition on it.
+  guestConfig = {
+    "${caches.CARGO_HOME}/config.toml" = ''
+      # Rendered from targets/doctrine.nix by the capsule. Edits here go on the next boot.
+      [build]
+      # The capsule's vCPUs, not the host's threads.
+      jobs = ${toString sizes.vcpu}
+
+      [profile.dev]
+      # Disk, and disk is the binding constraint (docs/probes.md): full
+      # debuginfo and an incremental cache are the two largest terms in
+      # `target/`, nothing reclaims volume blocks, and the incremental cache
+      # does not survive a fresh capsule anyway. `debug = "line-tables-only"` is
+      # the knob if backtraces stop naming lines.
+      debug = 0
+      incremental = false
+    '';
+  };
+}

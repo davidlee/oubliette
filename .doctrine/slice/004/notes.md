@@ -82,3 +82,79 @@ Residual differences against the baseline, after the revert — inputs
   becomes one check per injected payload outside `$HOME` (here `/work/.env`).
 
 `module` and every non-suite program are equal.
+
+## PHASE-08: the template, and templateCases over its actual wiring
+
+`templates/fleet/` is a doctrine-only consumer (one slot, `a`), exported as
+`templates.default`; `templates/template-cases.nix` evaluates its **actual**
+`flake.nix` outputs against stub inputs (design sec-5, RV-012 F-8): `nixpkgs`
+and `llm-agents` are oubliette's own, `oubliette` is `{lib = oublietteLib;}`
+(the same value `flake.nix` exports as `lib`), and `doctrine` is a stub whose
+one package is named by the template's own `toolsPackage`. A guard throws
+naming any template input without a stub, or any stub the template does not
+declare. Every runner's drvPath and the devshell's are forced with `deepSeq`;
+only slot names reach the derivation text, so the check builds one tiny
+derivation and no runner (one `.drv` built: `template-cases`). Eval ~12.5s
+wall (guest eval per image plus the devshell).
+
+Red first (T1; template's mkFleet call carrying only `targets`):
+
+    error: function 'anonymous lambda' called without required arguments 'fleet', 'policies', 'net', 'flavour', 'access', 'probe' and 'fleetPath'
+
+Control, EX-3 / VA-1 (T6): `access = {…};` removed from the template's mkFleet
+call →
+
+    error: function 'anonymous lambda' called without required argument 'access'
+
+Restored by re-writing the saved copy; `sha256sum -c` OK
+(`411fff4c…b42d35`), green again. The same mutation under `just` (default)
+passes `check` and `build` and fails at `template-cases` with that line, so a
+mis-wired template fails oubliette's gate. Two more mutations, each restored by
+copy and sha256-checked: the suite mapping over `{}` →
+`templateCases: the template declares no slot, so no runner was forced`; and
+`llm-agents` dropped from the stubs →
+`templateCases: the template declares inputs this suite has no stub for: llm-agents`.
+
+No move (T7): `/srv/fleet` at 822861b, cloned, oubliette overridden to a
+throwaway scratch commit of this working tree (`git+file://…?rev=`): the
+consumer manifest is **equal** to the 09f4df8 consumer manifest
+(`m07-cons2.json`). Oubliette's own manifest, 09f4df8 → working tree: exactly
+one new key, `packages.templateCases`.
+
+`nix flake init -t git+file://<oubliette>` copies the template byte-identical,
+`.envrc` included (the template's `.gitignore` re-includes it over a global
+ignore: `git check-ignore -v --no-index` names `templates/fleet/.gitignore:9:!.envrc`).
+
+Choices:
+
+- **Stop key (OQ1, D4).** `keys/stop-key.pub` is a real ed25519 public key
+  whose private half was deleted at generation, comment
+  `template-placeholder-replace-me`. The template's `justfile` `check` gains a
+  `stop-key` recipe refusing it, so a fresh consumer's gate is red until the
+  operator replaces it (observed in an init'd copy: red on the placeholder,
+  green on a fresh key). `adminKeys = []`. The README's key step follows
+  oubliette's README ("Host requirements": private half in
+  `/var/lib/capsule-stop/key`), not the phase sheet's `ssh-keygen -f
+  keys/stop-key`, which would put a private key in the checkout.
+- **Wiring (OQ2 fallback).** `just/fleet.just` is unchanged. Oubliette's own
+  `justfile` gains `template-cases` and `default: check build template-cases
+  units`. **Reconcile item:** EX-2's literal "in `just build`" is met as "in
+  oubliette's default gate", because the shared `build` recipe ships to every
+  consumer and `templateCases` is oubliette's own check.
+- **DEC-030 (OQ3).** Its `choice` says templateCases evaluates the template's
+  "declaration files (not its flake.nix)"; this phase follows design sec-5 and
+  RV-012 F-8 (the actual `flake.nix`). **Reconcile item:** amend DEC-030.
+- `fleetPath` in the template is `/srv/fleet` with a comment that it is this
+  checkout's path and is read by nothing yet (RV-012 F-11); `targets/doctrine.nix`'s
+  `path` is the placeholder `/srv/src/doctrine`.
+- `templates` added to oubliette's `nix_paths`, so `just check` parses and
+  formats the template. `just cases` does not list templateCases (its output is
+  slot names only).
+
+Not exercised: the template was never locked or built against the real
+doctrine flake, never booted, `nix flake check` was not run, and its
+`justfile`/`.envrc`/README steps run only as far as the init'd copy's `just
+check` above.
+
+Doc drift for reconcile: `docs/contract-target.md:73` still calls
+`templates/fleet/targets/doctrine.nix` "forthcoming in SL-004 PHASE-08".
