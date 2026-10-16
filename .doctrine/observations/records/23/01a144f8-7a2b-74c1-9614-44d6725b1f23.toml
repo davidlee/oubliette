@@ -1,0 +1,18 @@
+schema = "doctrine.observation"
+schema_version = 1
+uid = "01a144f8-7a2b-74c1-9614-44d6725b1f23"
+recorded_at = "2026-10-16T13:48:17.323437437Z"
+kind = "friction"
+summary = "SL-004 design sec-7 step 8 is stale against ~/flakes"
+detail = "PHASE-09 worker read ~/flakes: the override is no longer justfile:14 but bin/dev-checkouts (inputs list names oubliette, root ~/dev/<i>, cannot express /srv/fleet); update-local and bin/dev-checkouts-test also name oubliette; the shim to drop is target.follows (flake.nix:132); darwin systems line is :189 not :193. Design text was written before ~/flakes moved."
+
+[facets.execution]
+schema_version = 1
+interface = "cli"
+interface_origin = "automatic"
+product_surface = "doctrine"
+product_surface_origin = "automatic"
+command = "observation record"
+command_origin = "automatic"
+repository_context = "primary"
+repository_context_origin = "automatic"

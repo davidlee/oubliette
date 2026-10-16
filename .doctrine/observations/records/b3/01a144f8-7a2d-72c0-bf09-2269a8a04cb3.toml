@@ -1,0 +1,18 @@
+schema = "doctrine.observation"
+schema_version = 1
+uid = "01a144f8-7a2d-72c0-bf09-2269a8a04cb3"
+recorded_at = "2026-10-16T13:48:17.32600556Z"
+kind = "friction"
+summary = "manifest.nix cannot be pointed at a consumer with an overridden input"
+detail = "SL-004 PHASE-09: to diff the consumer manifest with oubliette at an unpushed rev, both worker and orchestrator had to clone /srv/fleet to scratch, nix flake lock --override-input there, commit, then getFlake the clone. Also the plan's EX-1 named module alone; the policyDir string also lives in the wrappers' CAPSULE_POLICY_DIR default, so hostModulePrograms moves too — a ruling, not a plan edit, absorbed it."
+
+[facets.execution]
+schema_version = 1
+interface = "cli"
+interface_origin = "automatic"
+product_surface = "doctrine"
+product_surface_origin = "automatic"
+command = "observation record"
+command_origin = "automatic"
+repository_context = "primary"
+repository_context_origin = "automatic"

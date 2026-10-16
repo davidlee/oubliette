@@ -270,11 +270,32 @@ Ordered. Current state as read: `/var/lib/microvms/{a,b,capsule,capsule-b,f}/fla
    - features/virt/capsule.nix:53-54: `inputs.fleet.inputs.oubliette.inputs.microvm.nixosModules.host` and `inputs.fleet.nixosModules.capsule-perimeter`.
    - **Correction:** the design's `justfile:14 --override-input fleet git+file:///srv/fleet` is stale. justfile:14-18 now builds `local_override` from `tree_override` plus `bin/dev-checkouts override`, which emits `--override-input <i> git+file://$HOME/dev/<i>` for `inputs=(oubliette goad panopticon satan-patcher satan-attrd)` (bin/dev-checkouts:16). `oubliette` there would name an input that no longer exists, and `fleet` is at /srv/fleet, not ~/dev/fleet. Needs a decision: add `fleet_override := "--override-input fleet git+file:///srv/fleet"` to `local_override` (justfile:18), and swap `oubliette` for `fleet` in bin/dev-checkouts:16 only if its root rule can express /srv/fleet (it cannot as written); also `update-local` (justfile:182-184, `nix flake update ... $(bin/dev-checkouts names)`) and bin/dev-checkouts-test (lines 63, 70, 73, 106, 108) name `oubliette`. `push-local` (justfile:187) pushes ~/dev/oubliette and can stay.
    - stale `microvm-spike` comments: features/virt/capsule.nix:1-2, 111; flake.nix:114; hosts/Sleipnir/features.nix:11 ("local oubliette checkout").
+   - **Done by the seat, 2026-10-17, uncommitted in ~/flakes (the user's tree holds unrelated uncommitted edits too):**
+     - The shim proposed above is **wrong**: with `doctrine` (and `goad-walk`) following nixpkgs, the fleet's
+       `capsule-perimeter` module fails eval with `attribute 'packages' missing` — it evaluates each target's guest
+       image (`nixos-system-capsule`, `firecracker-capsule.json`), which reads the target flake's `packages`. Shown on
+       a scratch clone of /srv/fleet relocked with both overridden to nixpkgs; the unshimmed module evaluates. So
+       `fleet = { url = "git+ssh://git@github.com/davidlee/oubliette-fleet"; inputs.nixpkgs.follows = "nixpkgs"; };`,
+       and the comment says why. capsule.nix's claim that this config never evaluates the guest closure was already
+       untrue of the module and is reworded.
+     - Override: `bin/dev-checkouts` stays the one list — `inputs=(fleet goad …)`, with `fleet` resolving to
+       `$FLAKES_FLEET` (default /srv/fleet) instead of `<root>/fleet`; whitespace refused for it too. Red-first in
+       `bin/dev-checkouts-test` (six cases; every case aims FLAKES_FLEET into the throwaway tree so this host's
+       /srv/fleet cannot leak in); mutation (fleet resolved under the root) turns two red; shellcheck clean.
+       `update-local`, `stub`, `ahead` and `names` now cover the fleet with no justfile change.
+     - `nix flake lock`: root inputs resolved by reference differ only in `oubliette` → `fleet` (3a19e0f, whose
+       oubliette is 63cc360); no other root input moved; no `file://` node. The added nodes are doctrine's and
+       goad-walk's own dependencies, now locked rather than shimmed.
 5. Closure diff (VH-1), `~/flakes`:
    ```
    just system-build        # sudo ./run.sh build <host> <override>; prints/links the new toplevel
-   nix store diff-closures /run/current-system <new toplevel path>
+   nix store diff-closures /nix/var/nix/profiles/system-1100-link <new toplevel path>
    ```
+   **Baseline correction (seat, 2026-10-17):** `/run/current-system` is system-1101 (switched 10:16 today), which
+   carries the *fixture's* host module (`microvm@alpha`/`@beta` drop-ins, two proxy units, no a–j) — the hazard
+   flagged after PHASE-07. Diff against system-1100 (2026-10-16 13:07), the last real-fleet system; against 1101 the
+   diff is the fixture → fleet swap and says nothing about policyDir. Also expect guest-image evaluation to be
+   new to ~/flakes' eval (see step 4), though the toplevel need not contain a runner.
    Expected: the oubliette -> fleet input swap and `policyDir` moving
    `/home/<owner>/dev/microvm-spike/perimeter` -> `/srv/fleet/perimeter` in 7 wrappers, tmpfiles, and 10 proxy units (and their dependents). Nothing else; anything else, stop.
 6. `cd ~/flakes && just system-switch`.
