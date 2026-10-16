@@ -36,7 +36,7 @@
   capsules,
   policies,
   # The guest's branch, threaded through to the git channel exactly as the
-  # devshell path does it (flake.nix): the installed programs and the guest image
+  # devshell path does it (mkfleet.nix): the installed programs and the guest image
   # have to agree on it, and neither of them may spell it.
   workBranch,
   # The host's setup function (`access.injections`), passed on to the programs
@@ -193,7 +193,7 @@
 
   # The one program that can see inside a capsule's namespace, in its own file
   # because its tools are an argument: the same text is built against stubs by
-  # `flake.nix`'s `guardCases` (host/guard.nix).
+  # `mkfleet.nix`'s `guardCases` (host/guard.nix).
   guard = import ./guard.nix {
     inherit pkgs lib net capsules netns;
     tools = [pkgs.iproute2 pkgs.procps pkgs.gnugrep pkgs.coreutils pkgs.systemd];
@@ -453,7 +453,7 @@ in {
   # second target pushed the first one's code (`ISS-008`). Source is the profile
   # document's `path` now (SL-001, `DEC-013`), and a host that still sets the
   # option is told so at eval rather than silently pushing from somewhere else.
-  # `flake.nix`'s `checked` holds this shim to both halves: the option is still
+  # `mkfleet.nix`'s `checked` holds this shim to both halves: the option is still
   # readable, and the assertion names the replacement.
   imports = [
     (lib.mkRemovedOptionModule ["services" "capsule-perimeter" "repo"] ''
@@ -483,7 +483,7 @@ in {
         files rather than store paths, so changing one needs a proxy restart and
         not a rebuild — the directory is bind-mounted read-only into each proxy's
         namespace, which is why the policies are in one place: it makes the set
-        of files a proxy could ever read bounded and legible (policies.nix).
+        of files a proxy could ever read bounded and legible (the fleet's `policies`).
       '';
     };
 
@@ -692,7 +692,7 @@ in {
       # sudo matches by the path the *caller* resolves and this host sets no
       # `secure_path`: a rule and an invocation that merely look alike are two
       # commands (NOTES item 44). One construction, three consumers — this, the
-      # front end that runs it, and `flake.nix`'s `unrestartable`.
+      # front end that runs it, and `mkfleet.nix`'s `unrestartable`.
       #
       # **`mkAfter`, and it is the whole difference between granted and
       # effective** (NOTES item 43). sudoers is last-match-wins, so a narrow
@@ -818,7 +818,7 @@ in {
         (wrap "capsule-collect" hostPrograms.collect)
         # Bare, and it is the honest line: `inject` is not a `profileVerb` and
         # reads none of the four — a payload's destination is on the *volume*
-        # (host/programs.nix, setup.nix).
+        # (host/programs.nix, the injections).
         hostPrograms.inject
         # Wrapped since `ISS-004`, where being bare is what made the defect
         # *visible*: these two are `profileVerbs`, so they read a document

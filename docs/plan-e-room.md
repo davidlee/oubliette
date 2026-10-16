@@ -130,7 +130,7 @@ which is precisely
 [item 38](./ledger/038-a-probe-that-became-a-borrower.md): a thing became a
 borrower by standing still while the declaration moved onto it, with no diff to
 notice. So the room declares its own name and an eval-time intersection against
-`capsules.nix`'s namespace set throws, copying `probeFabric`/`borrowed` rather
+`capsules.nix`'s namespace set throws, copying the `probe.fabric`/`borrowed` pair (`mkfleet.nix`) rather
 than inventing a second answer.
 
 ### 3. Amnesia is a choice, and it should be made explicitly
@@ -234,7 +234,7 @@ the reason is a chat room.
 
 **`vm-stop` reaps a non-slot VM rather than halting it.** A room with people in
 it wants the graceful path — reboot, not poweroff, via the stop key, for the
-reasons in CLAUDE.md's firecracker notes. `vm/stop-key.pub` is already a value a
+reasons in CLAUDE.md's firecracker notes. The stop key (a consumer's `keys/stop-key.pub`) is already a value a
 guest can carry, so the room can have a clean `ExecStop`; what needs deciding is
 whether `vm-stop`'s branch learns about it or whether a hard kill is accepted.
 

@@ -6,10 +6,10 @@ status = "active"
 title = "The target input is doctrine's pushed edge, so a tool-set change needs a push before a lock update"
 summary = "inputs.target is github:davidlee/doctrine/edge (ISS-015); unpushed doctrine work is invisible to nix flake update target, and an override must never be locked."
 created = "2026-09-29"
-updated = "2026-09-29"
+updated = "2026-10-16"
 
 [scope]
-paths = ["flake.nix", "flake.lock"]
+paths = ["flake.lock"]
 globs = []
 commands = []
 tags = ["gotcha"]

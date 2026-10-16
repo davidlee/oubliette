@@ -7,10 +7,10 @@ status = "active"
 title = "Inside the repo the devshell's programs shadow the module's, and they carry different transports"
 summary = "Same name, same source, different transport. The devshell copies refuse rather than time out."
 created = "2026-08-16"
-updated = "2026-08-16"
+updated = "2026-10-16"
 
 [scope]
-paths = ["flake.nix", "justfile"]
+paths = ["mkfleet.nix", "just/fleet.just", "justfile"]
 globs = []
 commands = []
 tags = ["gotcha"]

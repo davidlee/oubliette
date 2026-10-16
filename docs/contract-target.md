@@ -27,8 +27,8 @@ of its fields is headed is the `owner` column below.
 ## The floor
 
 *Be a git repo on this host, and expose one flake package for this system that
-is your devshell's tool set.* Everything else is a field of your file in
-`targets/` with a working absent path, and every one of those fields is **host-side** — nothing is
+is your devshell's tool set.* Everything else is a field of your file in your
+consumer flake's `targets/` with a working absent path, and every one of those fields is **host-side** — nothing is
 ever read out of the target repo, because the agent can edit that.
 
 **Stated plainly, because hedging it would mislead: the supported set is
@@ -44,30 +44,35 @@ your devshell shares becomes the convenient way to supply one rather than the
 only way. A floor may be a single reference to a shared base and nothing else,
 which is what makes a repo with no flake at all confinable.
 
-Two literals are unavoidable and nothing checks that they agree:
+Two literals are unavoidable and nothing checks that they agree. Both now live
+in the consumer flake, not in oubliette:
 
-- `inputs.target.url` in `flake.nix` — an input's url cannot be computed.
-- `path` in the target's file in `targets/` — where `capsule-provision` pushes from.
+- the target's flake input in the consumer's `flake.nix` — an input's url cannot be computed.
+- `path` in the target's file in the consumer's `targets/` — where `capsule-provision` pushes from.
 
-Switching targets means editing both, or `--override-input target path:/…` for
-one build. A third literal is chosen rather than unavoidable: each slot's
-declared `profile` in `capsules.nix` repeats `name` (`DEC-012`), so a renamed
+Switching targets means editing both, or `--override-input <input> path:/…` in
+the consumer for one build. A third literal is chosen rather than unavoidable: each slot's
+declared `profile` in the consumer's `capsules.nix` repeats `name` (`DEC-012`), so a renamed
 target leaves them naming a document that no longer exists — status shows the
 old name in brackets and every verb on those slots refuses, naming the profile
 directory. Renaming the *input* is not free downstream either: the host's own
-config (`~/flakes`) carries `inputs.target.follows`, and its next lock fails on
+config (`~/flakes`) may carry a `follows` for the input, and its next lock fails on
 an input that no longer exists.
 
-## Configuration — a file in `targets/`
+## Configuration — a file in a consumer's `targets/`
 
-**A target is a file in `targets/`**, listed by hand in `targets/default.nix`
-under its name — by hand because a `readDir` would make a stray or untracked file
-a target. That listing is the axis's one home (`POL-003`): only `flake.nix`
-imports it, and everything generic is handed the set or one named member, never
-a default. The file spells only what is its own; `targets/default.nix` derives
+**A target is a file in a consumer flake's `targets/`**, listed by hand under
+its name and paired with its tool-set flake in the `targets` argument to
+`lib.mkFleet` (`<name> = {decl; flake;}`) — by hand because a `readDir` would
+make a stray or untracked file a target. That argument is the axis's one home
+(`POL-003`): `mkfleet.nix` applies `targets/default.nix` to it, and everything
+generic is handed the set or one named member, never a default. The file spells only what is its own; oubliette's `targets/default.nix` derives
 the rest — `name` is the key, `volumePath` is the capsule's constant, and
 `guestPath` and `cachePaths` follow from those — so nothing is spelled on both
-sides. `targets/doctrine.nix` is the reference for what each field means.
+sides. The reference for what each field means is the consumer's
+`targets/doctrine.nix` (a reference template, `templates/fleet/targets/doctrine.nix`,
+is forthcoming in SL-004 PHASE-08); oubliette's own `fixture/` is the minimal
+case, every optional field absent.
 
 The `owner` column is an **analysis of what is already here**, not a planned
 change: it says which authority each field answers to, and it is the reason a
@@ -82,16 +87,16 @@ changes until they are built.
 
 | field | owner | read by | required | absent path |
 | --- | --- | --- | --- | --- |
-| `name` | profile | guest (checkout dir, motd). **The target's key in `targets/default.nix`**, never a field of its file. **It is also the document's filename**, so it is the name every host-side program is given as `--profile`. **`-` is reserved** — the front end prints it for an absent field, so a profile of that name would read as none; `capsule-profile-check`, every program's lookup and `capsules.nix`'s declared `profile` all refuse it | derived (the key) | — |
+| `name` | profile | guest (checkout dir, motd). **The target's key in the `targets` argument**, never a field of its file. **It is also the document's filename**, so it is the name every host-side program is given as `--profile`. **`-` is reserved** — the front end prints it for an absent field, so a profile of that name would read as none; `capsule-profile-check`, every program's lookup and the consumer's `capsules.nix` declared `profile` all refuse it | derived (the key) | — |
 | `path` | **source** | host: `capsule-provision` looks it up (its push source), `capsule-brief --from-host` (the checkout it snapshots), `capsule <slot> fetch` (the repo a quarantine lands in) | yes | `CAPSULE_REPO` overrides it for one invocation — and having a host-side override where no other field has any is the tell that it was never project state. Pinned with the rest of the document at provision (SL-001), so a moved checkout reads as drift until the slot is re-provisioned. The module's `repo` option is removed, and setting it fails at eval naming this field |
-| `volumePath` | capsule | guest: the mount point, and what `caches`/`guestConfig` resolve against. host: `capsule status` looks it up for the disk figure and for `<volumePath>/baseline`, which is where `capsule-baseline` writes its record. **Must match `^/[A-Za-z0-9._/@+-]+$`** — absolute, and nothing a shell reads as anything but a path. It is spliced unquoted into `capsule-reset-home`'s `rm` as root (`vm/guest-path.nix`), so a value carrying a space or a glob character would word-split into paths nobody named; a value that does not match throws at guest eval rather than building. One constant for every target, in `targets/default.nix` | derived | — |
+| `volumePath` | capsule | guest: the mount point, and what `caches`/`guestConfig` resolve against. host: `capsule status` looks it up for the disk figure and for `<volumePath>/baseline`, which is where `capsule-baseline` writes its record. **Must match `^/[A-Za-z0-9._/@+-]+$`** — absolute, and nothing a shell reads as anything but a path. It is spliced unquoted into `capsule-reset-home`'s `rm` as root (`vm/guest-path.nix`), so a value carrying a space or a glob character would word-split into paths nobody named; a value that does not match throws at guest eval rather than building. One constant for every target, in oubliette's `targets/default.nix` | derived | — |
 | `guestPath` | capsule | guest: the checkout the seed creates. host: looked up by all five programs — it is the path half of the guest's git URL and the working directory of every script pushed into a capsule | derived | — |
 | `toolsPackage` | flavour | guest: `packages.<system>.<name>` from the target's own flake | in practice yes | `null` — the guest gets `extraTools` only, and loses the no-drift property that made threading the target's list worth it. **Available only to a target whose whole tool set is a list of nixpkgs attr names**: `extraTools` is a supplement, never a substitute, so anything built by a function — a `python3.withPackages (…)` has no attr name — has to export a package (NOTES item 23) |
 | `extraTools` | flavour | guest: nixpkgs attr names, resolved against the *guest's* pkgs | no | `[]` |
 | ~~`allowlist`~~ | — | — | **no such field** | deleted, and nothing replaces it: what a capsule may talk to is a host policy selected per slot from a declared set, never named by the project in it ([item 36](./ledger/036-a-policy-is-selected-not-named.md)) — see below |
 | `caches` | profile | guest: env var → directory under the volume, and the dirs the seed creates and chowns | no | `{}` — everything then writes wherever its tool defaults, which for a RAM-backed root means guest RAM |
 | `cachePaths` | capsule | guest seed (build time); host: `capsule-baseline` looks them up for its before/after sizing | derived | — |
-| ~~`defaultBranch`~~ | — | — | **no such field** | deleted, and nothing replaces it: the guest's branch is the constant `work`, spelled once in `flake.nix` and threaded to its two consumers — see below |
+| ~~`defaultBranch`~~ | — | — | **no such field** | deleted, and nothing replaces it: the guest's branch is the constant `work`, spelled once in `mkfleet.nix` and threaded to its two consumers — see below |
 | ~~`collectMaxPackBytes`~~ | — | — | **no such field** | deleted with `allowlist` and for its reason: how much may come back out of a capsule is host policy about ingestion. It and `mayCollect` are a policy's, and `capsule-collect` resolves them from `--policy <name>` ([item 36](./ledger/036-a-policy-is-selected-not-named.md)) |
 | `statePaths` | **policy** | guest: what `capsule-collect` snapshots into a sideband commit beside the code refs (NOTES item 32). A **template** list — each entry may hold one `{unit}`, filled at collect from the assignment. Also what gates `capsule-adopt`, the validating extractor at the far end ([item 34](./ledger/034-adopting-a-guest-authored-tree.md)), and `capsule-brief`, which puts one capsule's snapshot into another's checkout ([item 35](./ledger/035-briefing-a-capsule-with-state.md)). **And host-side, at `path`**: `capsule-brief --from-host` reads the same templates in *your* checkout, for a unit no capsule has driven yet ([item 42](./ledger/042-a-state-half-no-capsule-has-held.md)) — so these paths are now read on both sides of the door, and what travels from the host is these paths and nothing else | no | `[]` — the collect is the code-only program it was before item 32, and there is no state ref for an extractor to read. Decided by the *document* since item 51 step 6, so a host confining two projects gets each answer: `--unit` is then refused rather than absent, and `capsule-adopt`/`capsule-brief` exist and say what they have nothing to do |
 | `stateMaxBytes` | **policy** | guest: the ceiling on one such snapshot, checked before the commit is made — looked up by `capsule-collect` and `capsule-brief --from-host`, which put it on that script's command line | with `statePaths` | — (required once `statePaths` is non-empty; the pair is the unit that may be omitted, not either half) |
@@ -125,7 +130,7 @@ programs.
 takes `--capsule` ([item 28](./ledger/028-a-slot-has-no-default.md)). The name is
 resolved by the *front end*, which is the only thing here allowed to read host
 state: an explicit `--profile` wins, then the slot's assignment record `profile`
-field, then the `profile` the slot declares in `capsules.nix`, then — for a slot
+field, then the `profile` the slot declares in the consumer's `capsules.nix`, then — for a slot
 nothing has assigned or declared — the only document in the profile directory,
 refusing when there are none or several. The declaration is the host operator's
 convenience rather than a control, so there is no set of allowed profiles beside
@@ -163,7 +168,7 @@ target's author should know. Every rule about a document is checked **when it is
 read**, by the same validator on every path, so a hand-written document gets the
 same refusals a rendered one does — `capsule-profile-check <file>` is that
 validator as a program, and is what to run before dropping a document in. And a
-document under a name this host renders from `targets/` is **overwritten at
+document under a name this host renders from the consumer's `targets/` is **overwritten at
 every activation**: the target's file is the source and the document is a
 render, so an edit in place is reverted.
 
@@ -182,7 +187,7 @@ a motd string. Harmless while a target was a build-time literal and one host had
 one allowlist; an authority hole the moment assigning a project is a run-time
 verb, because the project would then be naming its own perimeter
 ([item 25](./ledger/025-assignment-is-a-perimeter-verb.md)). They are
-`policies.nix`'s now, with `mayCollect` beside them, and a slot declares which
+the caller's `policies` argument's now (a consumer's `policies.nix`), with `mayCollect` beside them, and a slot declares which
 policies an assigner may select within
 ([item 36](./ledger/036-a-policy-is-selected-not-named.md)).
 
@@ -223,8 +228,8 @@ local-repository read primitive with a delivery mechanism attached.
 **And `defaultBranch` is deleted outright — decided, and now done.** Nothing
 replaces it. The guest's branch is the constant `work`, a capsule constant
 beside the volume's mount point, and no contract has a field for it. It lives as
-`workBranch` in `flake.nix`, which is the wiring layer rather than a fourth
-value file: it is not addressing (`net.nix`), not a slot's (`capsules.nix`) and
+`workBranch` in `mkfleet.nix`, which is the wiring layer rather than a fourth
+value file: it is not addressing (the caller's `net`), not a slot's (the caller's `fleet`) and
 emphatically not the target's, and its two consumers — the guest's seed and
 `capsule-provision` — are both already fed from there.
 
@@ -276,7 +281,7 @@ the consumers, not this table, before relying on one.
 - **Only the tool set comes from the target**, because it is a build input
   rather than a control. Keep that asymmetry explicit or the perimeter argument
   leaks.
-- **`setup.nix` is not target-shaped at all.** Which agent you sign in as is a
+- **The consumer's `setup.nix` (`access.injections`) is not target-shaped at all.** Which agent you sign in as is a
   property of you, not of the repo under confinement, so a second target takes
   that list unchanged. Empty is a working value: a capsule with no injections is
   one you log into by hand.
@@ -296,7 +301,7 @@ is the same for every target.
 | tools | `git`, plus `compose(floor, extras)`: the floor is this repo's — `toolsPackage` + `extraTools` — and the extras are the host operator's, from `fragments.nix`'s vocabulary (`agents`, `dev-facilities`). A target names no convenience and may rely on none ([contract-flavour.md](./contract-flavour.md), [item 31](./ledger/031-the-fragment-vocabulary.md)) |
 | git | `user.name`/`user.email` set, `init.defaultBranch` = the constant `work`, and `receive.denyCurrentBranch = updateInstead` so a provision checks out rather than moving a ref |
 | static config | every `guestConfig` entry symlinked onto the volume from the closure — a link, so a rebuild replaces it and a fresh capsule cannot start with a stale copy |
-| secrets | `<volumePath>/.env`, sourced at login, persisting on the volume — and pushed there at `capsule <name> start` if this host declares a source for it (`setup.nix`, which is not the target's) |
+| secrets | `<volumePath>/.env`, sourced at login, persisting on the volume — and pushed there at `capsule <name> start` if this host declares a source for it (the consumer's `setup.nix`, which is not the target's) |
 | foreign binaries | a loader for generic-linux dynamically linked executables (nix-ld), so a toolchain that *downloads* a prebuilt binary — a pypi wheel's, an npm package's, a Go module's vendored one — can run it. NixOS ships no `/lib64` loader, and without this the failure is `Could not start dynamically linked executable`, one second into an otherwise healthy run |
 | user | `agent`, uid 1000, no sudo and no su; root reachable by key from the host only |
 
@@ -349,7 +354,7 @@ fills both in from this host's declaration and the slot's record.
 | --- | --- | --- |
 | `capsule-provision` | `[--capsule <name>] --profile <name> <ref> [--force] [--state <capsule>[:<stage>] \| --state-from-host [--stage <name>] [--unit <token>]]` — any commit-ish in `path` | yes: reads it, as you. The only program that does. A provision is a three-step sequence: push, then the state half if either origin is named — `--state` from a capsule's quarantine ([item 35](./ledger/035-briefing-a-capsule-with-state.md)) or `--state-from-host` from this checkout ([items 42](./ledger/042-a-state-half-no-capsule-has-held.md), [47](./ledger/047-a-script-on-stdin-and-the-command-that-eats-it.md)) — then `refresh` in the guest when the target declares one ([item 33](./ledger/033-provision-is-a-sequence.md)). It is not finished when the push lands, and step (2) is *inside* it because a refresh that writes tracked files leaves no moment afterwards when a brief can land |
 | `capsule-collect` | `[--capsule <name>] --profile <name> --policy <name> [--stage <name>] [--unit <token>]` | no: fetches into a host-authored quarantine named for the capsule. It does write *in the guest* when the target declares `statePaths` — one ref under `refs/capsule/state/`, never the agent's index, worktree or branches ([item 32](./ledger/032-the-sideband-channel.md)). `--unit` fills the hole in those paths and is **required** when they have one; `capsule <slot> collect` supplies it from the record |
-| `capsule-inject` | `[--capsule <name>] [payload...] [--force]` | no: `setup.nix`'s payloads |
+| `capsule-inject` | `[--capsule <name>] [payload...] [--force]` | no: the consumer's `setup.nix` payloads |
 | `capsule-baseline` | `[--capsule <name>] --profile <name> [--detach]` | no: runs `baseline` in the guest's checkout |
 | `capsule-refresh` | `[--capsule <name>] --profile <name>` | no: runs `refresh` in the guest's checkout. The same step `capsule-provision` takes itself — separate for a hand checkout in the guest, and for retrying the half that failed. It does **commit in the guest** when the refresh writes tracked files, and only onto a tree that was clean before it ran ([item 33](./ledger/033-provision-is-a-sequence.md)) |
 | `capsule-adopt` | `[--capsule <name>] [--stage <name>] <dir>` or `--list` | no, and it does not touch the *capsule* either — the first program here with no transport. Reads the quarantine, validates a guest-authored tree (symlink targets, gitlinks, paths), lays it out with git's own writer into a directory that must be empty or absent ([item 34](./ledger/034-adopting-a-guest-authored-tree.md)) |
@@ -384,21 +389,22 @@ agent made to files the target treats as its own records.
 second target, on branch `second-target` — its cold `just check` is green
 through a brand-new allowlist ([item 23](./ledger/023-second-target.md),
 [probes](./probes.md#the-cold-build-on-a-second-target)). What that port changed
-outside this file: one allowlist file, `inputs.target.url`, and **one guest
+outside this file: one allowlist file, the target's flake input, and **one guest
 capability** — `programs.nix-ld`, because a pypi wheel, an npm prebuild and a Go
 module's vendored helper all need a `/lib64` loader and none of them supplies a
 different one. Nothing else generic moved. In order:
 
-1. A file in `targets/`, listed under its name in `targets/default.nix` —
-   `targets/doctrine.nix` is the template. Give it a flake input and an entry in
-   `flake.nix`'s `targetFlakes` — the build refuses a map that does not name
-   exactly the declared targets. That input's url and `path` in the file are the
+1. A file in your consumer's `targets/`, paired with its flake input in the
+   consumer's `targets.<name> = {decl; flake;}` — one entry, so the file and its
+   tool-set flake cannot disagree about which targets exist (there is no
+   separate `targetFlakes` map). The consumer's `targets/doctrine.nix` is the
+   template until PHASE-08 ships one. That input's url and `path` in the file are the
    two literals above. Check `~/flakes` if you renamed the input.
 2. `commands`, `baseline`, and `refresh` if the target derives anything
    from its checkout that a commit does not carry. Not a branch: there is no such
    field, and the guest's is the constant `work` whatever the target calls its
    own.
-3. Usually its own **policy** in `policies.nix`, whose allowlist file is a new
+3. Usually its own **policy** in the consumer's `policies.nix`, whose allowlist file is a new
    file rather than an edit to doctrine's — half of any such list is that
    target's dependency hosts. It is not a target's field any more, and the
    slots that may take it name it in their declared set
@@ -410,7 +416,7 @@ different one. Nothing else generic moved. In order:
 5. `sizes`, and `guestConfig` derived from them — not copied from a human's
    machine, which describes a machine the capsule is not.
 6. `caches` for its toolchain, `{}` if it has none.
-7. **Declare it and bind a slot**: set a slot's `profile` in `capsules.nix` to the
+7. **Declare it and bind a slot**: set a slot's `profile` in the consumer's `capsules.nix` to the
    target's name, then `just refresh-build <slot>` and restart it. A slot naming
    no declared target fails the build, naming the slot. Re-binding a used slot
    keeps the last target's volume, so reset it first

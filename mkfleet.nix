@@ -15,12 +15,12 @@
   # The repos this host confines, each `{decl; flake}`: a target's declaration
   # paired with the flake its tool set comes from. **Shadowed below** by the
   # derived set every factory here expects (targets/default.nix) — same axis,
-  # derived form — so the pairs are reachable only as `host.targets`.
+  # derived form — so the pairs are reachable only as `declared.targets`.
   targets,
   # Which slots exist and the fabric they sit on: the declaration
   # `capsules.nix` is applied to.
   fleet,
-  # The policy vocabulary (policies.nix's shape).
+  # The policy vocabulary (a consumer's policies.nix has this shape).
   policies,
   # Tap name, both addresses, MAC and ports, which the host-side module needs
   # too.
@@ -39,7 +39,7 @@
   # Where this host's declarations live. Threaded to the module and read by
   # nothing yet (RV-012 F-11).
   fleetPath,
-} @ host: let
+} @ declared: let
   system = "x86_64-linux";
   pkgs = nixpkgs.legacyPackages.${system};
   inherit (nixpkgs) lib;
@@ -56,8 +56,8 @@
   # different sets and there is nothing to refuse (fleet.nix). Nothing below
   # spells a target detail twice, and nothing generic imports a target — it is
   # handed down as an argument (SL-003 design sec-2).
-  targets = import ./targets (lib.mapAttrs (_: t: t.decl) host.targets);
-  targetFlakes = lib.mapAttrs (_: t: t.flake) host.targets;
+  targets = import ./targets (lib.mapAttrs (_: t: t.decl) declared.targets);
+  targetFlakes = lib.mapAttrs (_: t: t.flake) declared.targets;
 
   probeTarget = probe.target;
   probeFabric = probe.fabric;
@@ -351,7 +351,7 @@
             echo "capsule-host: usage: capsule-host --policy <name> [args…]" >&2
             echo "  declared policies: ${lib.concatStringsSep " " policies.everything}" >&2
             echo "  A perimeter serves under a named policy or it does not serve" >&2
-            echo "  (policies.nix, NOTES item 36)." >&2
+            echo "  (the fleet's policies argument, NOTES item 36)." >&2
             exit 1
             ;;
         esac
@@ -438,7 +438,7 @@
   inherit (hostPrograms) guestHost;
   # The probe subject's checkout as a URL, for **`probe-netns-boot` and nothing
   # else**. That probe is the deliberate exception to the addressing rule — it
-  # boots the real guest, whose image has `net.nix` and its target in it, so
+  # boots the real guest, whose image has the `net` declaration and its target in it, so
   # the real capsule *is* its subject. No program carries this.
   guestRepo = "ssh://${guestHost}${probeSubject.guestPath}";
   capsule-provision = hostPrograms.provision;
@@ -492,10 +492,19 @@
     capsules = casesCapsules;
   };
 
+  # The slots the caller's fleet declares, as the programs under test have them
+  # baked (host/programs.nix's `slots`). For every suite whose subject refuses,
+  # maps or wraps by declared name — `briefCases`, `vmCases`, `gitChannelCases`,
+  # `wrapCases` — so a case about a declared slot names one the caller declared,
+  # rather than a letter that was this host's once and passes or fails by
+  # accident in every other fleet (SL-004 PHASE-07).
+  declaredSlots = builtins.attrNames capsules.instances;
+
   briefCases = import ./host/brief-cases.nix {
-    inherit pkgs;
+    inherit pkgs lib;
     runner = hostPrograms.briefRunner;
     spec = hostPrograms.briefSpecChecker;
+    slots = declaredSlots;
   };
 
   snapshotCases = import ./host/state-snapshot-cases.nix {
@@ -536,7 +545,7 @@
   gitChannelCases = import ./host/git-channel-cases.nix {
     inherit pkgs lib;
     inherit (hostPrograms) provision collect;
-    slot = builtins.head (builtins.attrNames capsules.instances);
+    slot = builtins.head declaredSlots;
   };
 
   # The one suite whose subject is a *library* rather than a program, and the
@@ -559,7 +568,8 @@
   # and `vm-stop` are what a human types, and until `ISS-002` neither read its
   # argv as anything but a name (host/vm-name.nix).
   vmCases = import ./host/vm-cases.nix {
-    inherit pkgs vm vm-stop;
+    inherit pkgs lib vm vm-stop;
+    slots = declaredSlots;
   };
 
   # The eleventh, and a *fourth* kind of check: its subject is the
@@ -574,7 +584,7 @@
   wrapCases = import ./host/wrap-cases.nix {
     inherit pkgs lib;
     inherit (hostPrograms) provision;
-    slot = builtins.head (builtins.attrNames capsules.instances);
+    slot = builtins.head declaredSlots;
   };
 
   policyCases = import ./host/policy-cases.nix {
@@ -623,6 +633,7 @@
   resetHomeCases = import ./vm/reset-home-cases.nix {
     inherit pkgs lib;
     inherit targets;
+    inherit (access) injections;
     guest = bound.images.${probeTarget}.config;
     images = lib.mapAttrs (_: image: image.config) bound.images;
   };
@@ -974,7 +985,7 @@
   # are pinned rather than borrowed from whatever `sudo` happens to have on
   # PATH. They need root, so they are the human's to run.
   #
-  # `prelude` is how a probe gets net.nix/targets/ values without spelling
+  # `prelude` is how a probe gets the caller's net/targets values without spelling
   # an address itself. The harness is concatenated rather than sourced: one
   # `writeShellApplication` is one script, so shellcheck sees both halves and
   # the probe needs no path to a sibling at run time.

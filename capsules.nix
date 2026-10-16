@@ -1,8 +1,8 @@
 # The capsules a host runs, from its declaration. Oubliette's *function*: the
 # slots, the uplink network, the aggregator's two addresses and the volume
-# reserve are the host's (`host-capsules.nix` here, DEC-026); the interface and
+# reserve are the caller's (its `fleet` argument to `lib.mkFleet`, a consumer's `capsules.nix`; DEC-026); the interface and
 # namespace names, the /30s, the socket and lock paths and the refusals below
-# are oubliette's, and no host spells them. Like net.nix and targets/, nothing
+# are oubliette's, and no host spells them. Like the `net` declaration and `targets/`, nothing
 # here reads the system or does work: it says which capsules exist and what each
 # is called on the wire. What a capsule is made of is the units' business
 # (docs/plan-c-implementation.md).
@@ -11,9 +11,9 @@
 # capsule gets the same tap name, the same /30 and the same MAC, because each
 # lives in its own namespace — that is the whole point of the shape, and it is
 # what lets one target's image serve every slot bound to it (NOTES item 17). Those stay flat
-# in net.nix. The only addressing that cannot be identical is each namespace's
+# in the caller's `net`. The only addressing that cannot be identical is each namespace's
 # uplink to the aggregator, since the aggregator has a single routing table.
-# The names in this map are constants; the addresses are this host's
+# The names in this map are constants; the addresses are the caller's
 # declaration's (`uplinkNet`, `egressAddr`, `egressPeerAddr`), shown as declared:
 #
 #   root ns          eg-rt      10.101.0.1/30   forwards, masquerades, and is
@@ -23,7 +23,7 @@
 #                    cap-<name> 10.100.<i>.1/30 proxy leaves through here, and
 #                                               the drops between them live here
 #   cap-<name> ns    up-<name>  10.100.<i>.2/30 the capsule's way out
-#                    vm-capsule 10.99.0.1/30    net.nix, identical in every one
+#                    vm-capsule 10.99.0.1/30    the caller's `net`, identical in every one
 #
 # That map is `probe/netns-egress.sh`'s, which is where it was verified
 # (docs/probes.md) — the probe builds its own links because it must run without
@@ -205,7 +205,7 @@ in
   assert !reused || throw "capsules.nix: two slots declare the same index, so they would share an uplink /30";
   assert undeclared
   == []
-  || throw "capsules.nix: slot '${builtins.head undeclared}' names no policy, or names one policies.nix does not declare, or one outside its own `policies` set";
+  || throw "capsules.nix: slot '${builtins.head undeclared}' names no policy, or names one the fleet's `policies` argument does not declare, or one outside its own `policies` set";
   assert misprofiled
   == []
   || throw "capsules.nix: slot '${builtins.head misprofiled}' declares a profile that is not a name — empty, `.`, `..`, the reserved `-`, or holding `/`, a newline, a tab, `$` or a backtick (host/profile-name.nix)"; {

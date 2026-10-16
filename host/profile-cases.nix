@@ -3,7 +3,7 @@
 # The third kind of check (CLAUDE.md) over a *library* rather than a program:
 # `host/profile.nix` ships a shell fragment for `host/record.nix`'s reason, so
 # what a suite can run is that fragment spliced into something with a `main`. The
-# fragment is handed here from the same construction `flake.nix` gives every
+# fragment is handed here from the same construction `mkfleet.nix` gives every
 # caller, so there is one text and this suite is not a second render of it.
 #
 # **Two subjects, and both are the shipped ones.** The fragment, and the
@@ -45,7 +45,7 @@
   renderDocs,
   # The same file as a function of a target *set*, for the one round that asks
   # what a directory of several holds — a fixture set rather than this host's
-  # for `guardCases`' reason. One construction, handed down from `flake.nix`.
+  # for `guardCases`' reason. One construction, handed down from `mkfleet.nix`.
   render,
   # The shipped validator as a program (host/profile.nix). Item 52 moved every
   # document rule out of nix and into the reader, so what used to be eleven

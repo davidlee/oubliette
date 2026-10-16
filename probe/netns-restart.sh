@@ -49,7 +49,7 @@
 #
 # Run: sudo probe-netns-restart
 #
-# `probe/harness.sh` is concatenated ahead of this by flake.nix.
+# `probe/harness.sh` is concatenated ahead of this by `mkProbe` in mkfleet.nix.
 
 # Deliberately no errexit: several rounds here are supposed to fail.
 

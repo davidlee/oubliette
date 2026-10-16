@@ -32,13 +32,13 @@
   # here is a function of which project the host confines. What a fetch may write
   # is not the project's to say either way (NOTES item 36) — see `policies`.
   profileSelect,
-  # The host's policy vocabulary (policies.nix): each entry's `collectMaxPackBytes`
+  # The host's policy vocabulary (the fleet's `policies` argument): each entry's `collectMaxPackBytes`
   # and `mayCollect` are the two ingestion limbs, and a collect selects one by
   # name at run time. Baked as a case rather than taken as a byte count, for the
   # reason the whole item exists: a caller selects from a declared set and does
   # not author a bound, so `--policy sealed` is a choice and `--max-bytes 10G`
   # would be an authority. `capsule-host` resolves its allowlist the same way
-  # (flake.nix).
+  # (mkfleet.nix).
   policies,
   # Where to ssh, e.g. `agent@10.99.0.2` — for the *state* half of a collect
   # only, which is a script pushed at the guest rather than a question git can
@@ -62,7 +62,7 @@
   # which is why it is threaded from one place rather than spelled here.
   workBranch,
   # The guest's checkout as a git URL: a **fragment** defining `guestRepoUrl`,
-  # since step 4 — the host half is `net.nix`'s and the path half is the
+  # since step 4 — the host half is the `net` declaration's and the path half is the
   # profile's, so it is built at run time (host/programs.nix). Jail-shaped, so
   # injected.
   guestRepo,
@@ -88,8 +88,7 @@
   inherit (pkgs) lib;
 
   # The vocabulary as a shell case: a policy name in, its two ingestion limbs
-  # out. Generated rather than spelled, so adding a policy is one entry in
-  # `policies.nix` and nothing here.
+  # out. Generated rather than spelled, so adding a policy &  # the fleet's `policies` and nothing here.
   policyCase = lib.concatMapStringsSep "\n" (n: let
     p = policies.policies.${n};
   in ''

@@ -3,7 +3,8 @@
 **Composition is built; selection is not.** `CON-001` (`doctrine knowledge show
 CON-001`) owns the present tense, and [item 31](./ledger/031-the-fragment-vocabulary.md) is what
 was built and why. In short: `fragments.nix` is the host's vocabulary, `extras`
-in `flake.nix` is one selection for the whole fleet, and `vm/capsule.nix`
+is the caller's `flavour.extras`, one selection for the whole fleet, and fragment sources are the
+caller's `flavour.sources`, pinned in the caller's lock (oubliette pins `llm-agents` only for its fixture). `vm/capsule.nix`
 composes it onto the target's floor — so the two owners below are two files
 rather than a paragraph. **Unbuilt:** per-assignment extras, the store-path
 identity and the gcroot that retains it, the refusal to change a composition
@@ -222,7 +223,7 @@ host-declared vocabulary carries a second obligation beyond keeping the guest's
 closure predictable:
 
 - **every fragment source is registered by the host at a pinned revision** — in
-  practice a flake input of *this* repo, named in a file the host owns and
+  practice a flake input of the *caller* (a consumer flake), named in a file the host owns and
   locked in a lock the host controls, updated only by a deliberate
   `nix flake update`;
 - **an assigner composes from the vocabulary and can never extend it**, so

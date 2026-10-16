@@ -1,9 +1,9 @@
-# Shared by every probe. Concatenated with one by flake.nix rather than sourced:
+# Shared by every probe. Concatenated with one by `mkProbe` in mkfleet.nix rather than sourced:
 # `writeShellApplication` builds a single script, so shellcheck sees the probe
 # and its harness as one file, and a probe has no path to a sibling at run time
 # anyway.
 #
-# The order is harness, then flake.nix's `prelude`, then the probe. The harness
+# The order is harness, then `mkProbe`'s `prelude`, then the probe. The harness
 # comes first so that it can declare an empty default for every value a prelude
 # may inject and the prelude's own assignment still wins — which is what lets the
 # egress fabric below name nothing without every probe that never builds one
@@ -201,7 +201,7 @@ in_ns_as_human() {
   ip netns exec "$ns" runuser -u "$HUMAN" -- "${human_env[@]}" "$@"
 }
 
-# The same relaxation flake.nix's `guestSsh` makes, for the same reason: the
+# The same relaxation mkfleet.nix's `guestSsh` makes, for the same reason: the
 # guest's host keys live on its volume, so a *fresh* capsule has fresh keys at
 # the same address — and under freshness that fires on every capsule rather than
 # occasionally. Under netns the socket path is the identity and this stops being
@@ -427,8 +427,8 @@ kill_vm() {
 # `ip link del eg-rt` was a fleet-wide egress cut fired from a cleanup trap.
 # Three refusals happened to fire ahead of it, so what the fault actually cost
 # was a human following one of them (CLAUDE.md, NOTES item 38). Every name, link
-# and network here comes from `flake.nix`'s `probeFabric`, which refuses at eval
-# to spell anything `capsules.nix` declares — so a future copy in either
+# and network here comes from the caller's `probe.fabric`, which `mkfleet.nix` refuses at eval
+# to spell anything the caller's `fleet` declares — so a future copy in either
 # direction is a build failure rather than an incident.
 #
 #   root ns      $EG_PEER            $EG_PEER_ADDR/30    forwards + masquerades
@@ -453,7 +453,7 @@ EG_OUT_PREFIX=""
 EG_WAN_PREFIX=""
 
 # The same, for the three values a proxy round needs that are nobody's fabric:
-# two from net.nix and the program itself. Declared rather than threaded through
+# two from the caller's `net` and the program itself. Declared rather than threaded through
 # `proxy_up` and `guest_connect` as four more positional arguments — a capsule's
 # tap address and the perimeter's port are one host's, not one call's.
 HOST_ADDR=""
@@ -463,7 +463,7 @@ PROXY=""
 # Table names, which are the harness's own: the module's are `capsule-egress`
 # and `capsule-guard`, and these have never collided with them. Kept here rather
 # than injected because nothing in `capsules.nix` declares an nft table, so there
-# is no live value for `probeFabric` to assert against.
+# is no live value for `probe.fabric` to assert against.
 EG_NFT_NAT=capeg-nat
 EG_NFT_FWD=capeg-fwd
 EG_NFT_GUARD=capeg-guard

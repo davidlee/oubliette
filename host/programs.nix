@@ -32,7 +32,7 @@
   # every one, and `inject` the volume's mount point, which is the capsule's and
   # not any one target's. No program here is built from one target's values.
   targets,
-  # The host's policy vocabulary (policies.nix). Only the git channel reads it —
+  # The host's policy vocabulary (the fleet's `policies` argument). Only the git channel reads it —
   # `capsule-collect` selects an ingestion bound and a permission by name — but it
   # is threaded here for `targets`' reason: three call sites build this set, and a
   # value each of them looks up separately is a value one of them can look up
@@ -50,7 +50,7 @@
   # reads (vm/capsule.nix, RV-012 F-2), so the two cannot name different
   # payloads — and threaded here for `policies`' reason.
   injections,
-  # The guest's branch, a constant threaded from `flake.nix` rather than a
+  # The guest's branch, a constant threaded from `mkfleet.nix` rather than a
   # target's field: only the git channel reads it, but both this file's callers
   # have to hand it the same one the guest was built with.
   workBranch,
@@ -104,7 +104,7 @@
     baselineRecordDir() { printf '%s/baseline' "$profile_volume_path"; }
   '';
 
-  # The guest's checkout as a URL, at run time: the host half is `net.nix`'s and
+  # The guest's checkout as a URL, at run time: the host half is the `net` declaration's and
   # the path half is the profile's. Three programs push or fetch over it
   # (`capsule-provision`, `capsule-collect`, `capsule-brief`) and each splices
   # this, for `gitSsh`'s reason — a mechanical conversion in three copies is
@@ -272,7 +272,7 @@ in {
   brief = briefHook.program;
 
   # The guest half of a brief, at a checkout of the caller's choosing — the seam
-  # `briefCases` in `flake.nix` runs the real text through. Exported here rather
+  # `briefCases` in `mkfleet.nix` runs the real text through. Exported here rather
   # than reached for through `brief`, because a program is a store path and a
   # case suite needs the thing *before* it becomes one.
   briefRunner = briefHook.runner;
@@ -303,7 +303,7 @@ in {
   # fill a `--profile` in for. `inject` and `adopt` are not among them and that is
   # the honest line rather than an oversight: a payload's destination is on the
   # *volume* and a quarantine is on this host, so neither is a value the target
-  # supplies (setup.nix, host/adopt.nix). A list here rather than a predicate
+  # supplies (the injections, host/adopt.nix). A list here rather than a predicate
   # there, for `programVerbs`' reason — built once, beside the programs.
   profileVerbs = ["provision" "collect" "baseline" "refresh" "brief"];
 

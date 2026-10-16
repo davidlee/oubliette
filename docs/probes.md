@@ -84,7 +84,7 @@ needed** — the boot was never systemd's question, which is what
 [Plan C](./plan-c-multi-capsule.md) said otherwise until this ran.
 
 It is the deliberate exception to the never-borrow-live-addressing rule, and its
-header says why: the guest image has `net.nix` baked in, so the real capsule is
+header says why: the guest image has the `net` declaration baked in, so the real capsule is
 the subject. Hence its refusals — it will not start beside the devshell tap or a
 running VM.
 
@@ -189,7 +189,7 @@ two capsules differing *at the same time*. That needs two guests and is
 does not prove two selections coexist.
 
 Like `netns-boot.sh` it borrows the live tap, /30 and volume, for the same
-reason: the guest image has `net.nix` in it, so the real capsule is the subject.
+reason: the guest image has the `net` declaration in it, so the real capsule is the subject.
 
 **Everything else it adds was the live fabric too, and that was not visible from
 this run.** 10.100/16, 10.101/30, `eg-up`/`eg-rt` and the namespace `cap-egress`

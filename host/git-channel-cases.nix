@@ -22,7 +22,7 @@
 # **Two things are borrowed and both are the subject rather than a fixture.** The
 # slot name comes from the caller's own declaration, because the shipped program
 # has that list baked in and a suite that invented a name would be testing a
-# program this host does not have; and the guest address is `net.nix`'s, for the
+# program this host does not have; and the guest address is the `net` declaration's, for the
 # same reason — it is in the text under test. What is *not* borrowed is the
 # target: every profile here is a fixture, since a document that agreed with
 # doctrine's would go on passing while the declaration moved onto it

@@ -6,7 +6,7 @@
 # the project's (its target's `toolsPackage` and `extraTools`, threaded through
 # `vm/capsule.nix` as it always was) and the **extras** are the host operator's,
 # drawn from a vocabulary the host declares. This file is that vocabulary;
-# `extras` in `flake.nix` is the selection. Neither owner can quietly become the
+# the caller's `flavour.extras` is the selection. Neither owner can quietly become the
 # other, which is the whole reason the two lists are separate files.
 #
 # Three rules it exists to keep, all of them the contract's:

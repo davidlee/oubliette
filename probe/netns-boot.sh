@@ -14,7 +14,7 @@
 # So, unlike every other probe here, this one deliberately breaks the rule about
 # not borrowing live addressing: it uses the real tap name, the real /30 and the
 # real volume, because the thing under test is the real guest image, which has
-# net.nix baked into it. That is why it refuses to start while the devshell tap
+# the `net` declaration baked into it. That is why it refuses to start while the devshell tap
 # exists or a VM is running — the two shapes must not be up at once.
 #
 #   root ns          nothing: no tap, no route to the guest, no way in but the
@@ -45,8 +45,8 @@
 # SSH_AUTH_SOCK and the first run of this probe failed three checks for exactly
 # that reason.
 #
-# `probe/harness.sh` is concatenated ahead of this by flake.nix, along with the
-# values it takes from net.nix and targets/ — TAP, HOST_ADDR, GUEST_ADDR,
+# `probe/harness.sh` is concatenated ahead of this by `mkProbe` in mkfleet.nix, along with the
+# values it takes from the caller's `net` and `targets` — TAP, HOST_ADDR, GUEST_ADDR,
 # PREFIX, VM and GUEST_REPO are set there, not here. The boot sequence itself
 # also lives in the harness now, because probe/freshness.sh measures the same
 # shape and two copies of it would be two answers.

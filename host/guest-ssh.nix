@@ -20,7 +20,7 @@
 # is still worth having.
 #
 # Its own file because both paths need it and neither may spell it twice: the
-# devshell's programs get it from `flake.nix`, the units get it from
+# devshell's programs get it from `mkfleet.nix`, the units get it from
 # `host/services.nix`, and a relaxation of a security default that exists in two
 # copies is one copy nobody edits.
 #

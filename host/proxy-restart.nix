@@ -2,7 +2,7 @@
 #
 # Three things have to agree about this command and they used to say it three
 # times: `host/cli.nix`'s `proxyControl` runs it, `host/services.nix` grants it,
-# and `flake.nix`'s `unrestartable` check asserts the grant covers every proxy
+# and `mkfleet.nix`'s `unrestartable` check asserts the grant covers every proxy
 # unit. Two of the three agreed and the one that mattered did not (NOTES item
 # 44) — the rule named this path and the program ran `sudo systemctl`, which is
 # a *different command* to sudoers.

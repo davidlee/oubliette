@@ -6,7 +6,9 @@
 # `justfile_directory()` is the *root* justfile's directory and recipes run
 # there, so in a consumer `-f` names the consumer and `--file net.nix` /
 # `policies.nix` read the consumer's files — which is why a consumer keeps
-# them at its root.
+# them at its root. Oubliette itself has neither file at its root (its fixture
+# keeps them elsewhere), so `_net`/`_policy` and every recipe that calls them
+# run from a consumer, not from oubliette.
 
 # The **devshell** path's lifecycle (capsule-net, capsule-host, vm, vm-stop, and
 # the git channel's capsule-provision / capsule-collect) comes from the devshell
@@ -29,12 +31,12 @@
 # posture: making and destroying a slot is not a thing to do to whichever one
 # happens to be running.
 
-# addresses and ports come from net.nix or they drift
+# addresses and ports come from the consumer's net.nix or they drift
 # --json, not --raw: the ports are integers and --raw refuses to coerce one
 _net key:
   @nix eval --json --file net.nix {{key}} | tr -d '"'
 
-# and for the host's controls, which are not the target's — policies.nix
+# and for the host's controls, which are not the target's — the consumer's policies.nix
 _policy key:
   @nix eval --json --file policies.nix {{key}} | tr -d '"'
 
@@ -215,7 +217,7 @@ status:
 provision name="" ref="" *flags:
   @capsule {{name}} provision {{ref}} {{flags}}
 
-# the non-git half: credentials and anything else setup.nix declares
+# the non-git half: credentials and anything else the consumer's setup.nix declares
 inject name="" *args:
   @capsule {{name}} inject {{args}}
 

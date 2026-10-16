@@ -39,7 +39,7 @@
   # The guest's checkout as a git URL — this pushes the state commit in over the
   # same channel `capsule-provision` pushes code over. Jail-shaped, so injected,
   # and a **fragment** rather than a string since item 51 step 4: the host half
-  # of the URL is `net.nix`'s and the path half is the profile's, so it is built
+  # of the URL is the `net` declaration's and the path half is the profile's, so it is built
   # at run time by `guestRepoUrl` (host/programs.nix).
   guestRepo,
   # Which capsule, how to reach it, and git's own view of that: a fragment
@@ -217,7 +217,7 @@
   # `rec`, so the standalone program is the fragment plus an argument parse
   # rather than a second spelling of the same sequence.
 in rec {
-  # The very store path a capsule runs, for `briefCases` in `flake.nix` — lint
+  # The very store path a capsule runs, for `briefCases` in `mkfleet.nix` — lint
   # included, since a case suite running an unlinted render would be asserting
   # about a program this repo does not ship. Not a render *for* the suite: there
   # is nothing left to render (NOTES item 51).

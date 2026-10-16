@@ -79,7 +79,7 @@ its guest to shut down. Generated once:
 sudo install -d -m 0755 /var/lib/capsule-stop
 sudo ssh-keygen -t ed25519 -N "" -C "capsule stop key" -f /var/lib/capsule-stop/key
 sudo chown microvm:kvm /var/lib/capsule-stop/key && sudo chmod 0400 /var/lib/capsule-stop/key
-cp /var/lib/capsule-stop/key.pub vm/stop-key.pub    # committed: it is in the guest's closure
+cp /var/lib/capsule-stop/key.pub keys/stop-key.pub    # in the consumer flake: it is in the guest's closure
 ```
 
 Not the human's key: an `ExecStop` has no ssh agent and no way into her home,
@@ -200,18 +200,18 @@ rather than keeping a second copy.
 
 **`start` waits for the guest and injects.** A running VMM is not a capsule you
 can work in: `$HOME` is on the volume, so credentials and secrets have to be
-pushed in (`setup.nix`, below). Every payload is write-if-absent, so a restart
+pushed in (the consumer's `setup.nix`, below). Every payload is write-if-absent, so a restart
 keeps what the capsule has, and a payload with no source on this host is named
 and skipped. If the guest does not answer ssh within a minute, `start` says so
 and fails rather than reporting a start it did not finish.
 
 **A second capsule is a name and a create, not a second image.** Declare it in
-`capsules.nix` (its own index; at most 11 characters), rebuild the host so its
+the consumer's `capsules.nix` (its own index; at most 11 characters), rebuild the host so its
 namespace, proxy and relay units exist, then create and start it exactly as
 above under its own name. The declared names are **slots** — `a` and `b` today
 — and a slot's name carries no meaning on purpose: what a capsule is working on
 is a record this repo does not keep yet (docs/contract-assignment.md). Its
-declared `profile` must name a target in `targets/`, since that is the image it
+declared `profile` must name a target in the consumer's `targets/`, since that is the image it
 boots (`fleet.nix`). Every slot bound to one target is the *same*
 `nixosConfigurations` value, so they share one runner store path and one image —
 what differs is the namespace, the volume and the state directory. Every image's
@@ -241,7 +241,8 @@ failed`, naming neither the tap unit nor the absent directory. So read
 
 Wired in on Sleipnir: `~/flakes/modules/nixos/capsule.nix`, imported from
 `hosts/Sleipnir/config.nix`, with the input taking `inputs.target.follows =
-"nixpkgs"`. Nothing in the host config evaluates the guest, so that shim spares
+"nixpkgs"` (that follows moves at the cutover to the consumer flake; it is
+still there until then). Nothing in the host config evaluates the guest, so that shim spares
 it a fetch; it was a fetchability requirement only while the target input was a
 `git+file:` path on one machine (ISS-015).
 That shim is exactly why the VM is created imperatively above: the VMM moves
@@ -341,7 +342,7 @@ capsule-provision --profile doctrine main
 
 History is not everything a capsule needs. `$HOME` is on the volume, and
 freshness deletes volumes, so a fresh capsule has no agent credentials either.
-Push the declared payloads — `setup.nix` says what they are, and nothing not
+Push the declared payloads — the consumer's `setup.nix` says what they are, and nothing not
 named there leaves this host:
 
 ```
@@ -358,7 +359,7 @@ otherwise does not reach a capsule that already has one.
 guest's login shell already sources. Neither file is a requirement: that payload
 is declared `optional`, so a host with no source for it says which payload it
 skipped and carries on. For 1Password, swap the entry's `produce` for `op inject`
-(the line is written out in `setup.nix`): `op` reaches a *host* socket, and
+(the line is written out in the consumer's `setup.nix`): `op` reaches a *host* socket, and
 firecracker has no shares, so the environment is rendered here and pushed — it is
 never fetched from inside.
 
@@ -423,7 +424,7 @@ that state was the state of
 | `capsule-host --policy NAME` | tinyproxy + the perimeter watch, serving that policy's allowlist. Foreground, unprivileged. Refuses without a policy. |
 | `capsule-provision REF` | push `REF` from the profile's repo onto the guest's branch. |
 | `capsule-collect`   | fetch the guest's refs into a quarantine repo named for it.  |
-| `capsule-inject [PAYLOAD...] [--force]` | push the payloads declared in `setup.nix` — credentials into `/work/home`, secrets to `/work/.env`. `capsule <name> start` runs it. |
+| `capsule-inject [PAYLOAD...] [--force]` | push the payloads declared in the consumer's `setup.nix` (its `access.injections`) — credentials into `/work/home`, secrets to `/work/.env`. `capsule <name> start` runs it. |
 | `capsule-baseline [--detach]` | run the profile's `baseline` in the guest to green; record it on the volume. |
 | `capsule-refresh`   | run the profile's `refresh` in the guest's checkout — the step a provision takes itself, on its own. |
 | `capsule-adopt DIR` \| `--list` | validate the collected state half and lay it out in `DIR`, which must be empty or absent. |
@@ -477,8 +478,8 @@ this namespace can read directly. What is inside a capsule's namespace is
 guessing: `ip netns exec` needs root, and a status that needs root is a status
 nobody runs. Then `just verify`, `just fetch`, `just branches`,
 `just proxy-log [name]`, `just allowed`, `just ssh`, `just admin`.
-`just --list` for the rest. Addresses come from `net.nix` and target paths from
-the target's file in `targets/`, never a literal.
+`just --list` for the rest. Addresses come from the consumer's `net` and target paths from
+the target's file in its `targets/`, never a literal.
 
 ## Moving one capsule's work to another slot
 
@@ -510,7 +511,7 @@ hand-rolled. Source slot `S`, destination `D`, unit `U`:
 **`$HOME` does not travel.** `/work/home` is on each slot's own volume and
 firecracker cannot share a filesystem, so `~/.claude` (session history),
 `.claude.json`, `.pi` and any hand-done setup are `S`'s alone. Whatever
-`setup.nix` declares comes back via `capsule D inject`; anything typed by hand is
+the consumer's `setup.nix` declares comes back via `capsule D inject`; anything typed by hand is
 retyped. That is what decides when the cut is cheap, and nothing else.
 
 **A provision does not have to go through `~/dev/<target>`** — `src` is
@@ -554,10 +555,10 @@ restart the proxy. No rebuild: an allowlist is deliberately a plain file, and
 what a policy declares is *which* file.
 
 To move a slot to a different policy, `capsule <name> policy <name>` on the
-module path. It selects from the set that slot declares in `capsules.nix`,
+module path. It selects from the set that slot declares in the consumer's `capsules.nix`,
 writes the record, re-points that slot's allowlist link and restarts its proxy —
 so egress drops for the length of a restart, which is what a tightening costs.
-The vocabulary is `policies.nix`; a project never names its own perimeter
+The vocabulary is the consumer's `policies.nix`; a project never names its own perimeter
 ([NOTES item 36](./docs/ledger/036-a-policy-is-selected-not-named.md)).
 
 `ssh` runs the other way — host to guest — and widens nothing.
@@ -565,7 +566,7 @@ The vocabulary is `policies.nix`; a project never names its own perimeter
 ## Changing the guest's tools
 
 The tool set comes from the target's own flake — its `toolsPackage` in
-`targets/` (`targets/doctrine.nix` names `packages.dev-tools`) — so both this VM and that devshell take from
+the target's file in the consumer's `targets/` (for doctrine, `packages.dev-tools`) — so both this VM and that devshell take from
 one list. To change it:
 
 ```
@@ -588,34 +589,37 @@ that target's `extraTools`, not here.
 
 ## Pointing it at a different repo
 
-A target is a file in `targets/`, listed by hand in `targets/default.nix`; its
-key there is its name. The file holds everything target-shaped: path, tools
+A target is a file in a consumer flake's `targets/`, paired with its tool-set
+flake in the `targets` argument to `lib.mkFleet` (`<name> = {decl; flake;}`);
+its key there is its name. Oubliette itself declares only `fixture/`, which is
+nobody's. The file holds everything target-shaped: path, tools
 package, cache directories, the out-of-band state paths, the guest's sizes and
 the build config rendered from them. `targets/default.nix` derives the rest from
 the name — the guest's checkout path and the absolute cache paths — so the motd
-and the host side follow. Only `flake.nix` imports `targets/`; everything else is
+and the host side follow. Only the consumer's `flake.nix` imports `targets/`; everything else is
 handed the set or one named member of it.
 
 What is *not* in there is the perimeter. The egress allowlist and the collect
-ceiling are host **policy**, declared in `policies.nix` and selected per slot,
+ceiling are host **policy**, declared in the consumer's `policies.nix` and selected per slot,
 because a control chosen by whoever names the project is a control the naming
 authority holds ([NOTES item 36](./docs/ledger/036-a-policy-is-selected-not-named.md),
 [item 25](./docs/ledger/025-assignment-is-a-perimeter-verb.md)).
 
-What does *not* move with the target is `setup.nix` — which agent you sign in
+What does *not* move with the target is the consumer's `setup.nix` — which agent you sign in
 as is a property of you, not of the repo under confinement, so a second target
 takes that list unchanged.
 
-One duplication is unavoidable: an input's url must be a literal, so
-`inputs.target.url` in `flake.nix` has to name the same repo as `path` in
-`targets/doctrine.nix`, and nix will not check that for you. For a one-off, override it
-instead: `--override-input target path:/home/you/dev/other`. Keep the url one
+One duplication is unavoidable: an input's url must be a literal, so the
+target's input in the consumer's `flake.nix` (for doctrine, its `doctrine`
+input, paired in `targets.<name>.flake`) has to name the same repo as `path`
+in the target's file, and nix will not check that for you. For a one-off, override it
+instead: `--override-input doctrine path:/home/you/dev/other`, in the consumer. Keep the url one
 that anybody can fetch — the lock is committed, so a local path there makes the
 flake unbuildable on every other machine (ISS-015) — and keep overrides on
 builds: `nix flake lock --override-input` writes the override into the lock.
 
 A second target usually wants a policy of its own — half of any allowlist is
-that project's dependency hosts — so add one to `policies.nix` and put its name
+that project's dependency hosts — so add one to the consumer's `policies.nix` and put its name
 in the declared set of the slots that may take it. It is still host-side: an
 allowlist read out of the repo being worked on is an allowlist the agent can
 widen. NOTES item 16 has the reasoning, and why *concurrent* capsules is a much

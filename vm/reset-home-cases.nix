@@ -27,8 +27,8 @@
 # recomputation of it: `guest` is the evaluated capsule's `config`, the program
 # is found in its `systemPackages` by name, and its `passthru.scrubPaths` is the
 # list the image carries. That is checked for every target's image (`images`).
-# Every expected value comes from `targets` or the image's `config`, so no
-# target value is spelled here (POL-002).
+# Every expected value comes from `targets`, the caller's `injections` or the
+# image's `config`, so no target or host value is spelled here (POL-002).
 #
 # Both rules for writing a case apply: each refusal asserts its reason as well as
 # its status, and each case starts from `fresh`.
@@ -36,8 +36,8 @@
   pkgs,
   lib,
   # The evaluated `config` of the image whose shipped program the run cases
-  # execute: the probe target's (flake.nix `fleet.images`). The program is the
-  # same store path in every image, since its scrub list comes from setup.nix
+  # execute: the probe target's (`fleet.images` in mkfleet.nix). The program is the
+  # same store path in every image, since its scrub list comes from the injections
   # and the one `volumePath`, but the image block below checks that per image
   # rather than assuming it.
   guest,
@@ -46,6 +46,9 @@
   images,
   # For `volumePath`, the capsule's and every target's.
   targets,
+  # The caller's `access.injections`, `{volumePath}: [injection]`: what the
+  # scrub list must carry, read from the declaration rather than spelled here.
+  injections,
 }: let
   # The guard over the paths the shipped program is built with (vm/guest-path.nix,
   # called from vm/capsule.nix). It is a `throw` rather than a program, so the
@@ -121,18 +124,30 @@
   shipped = shippedOf guest;
 
   # Verdicts about one image's scrub list, from the values it was built with.
-  # The expected values are read from `targets` and that image's `config`, and
-  # nothing target-shaped is spelled here.
-  imageCases = name: g: ''
+  # The expected values are read from `targets`, `injections` and that image's
+  # `config`, and nothing target-shaped is spelled here.
+  imageCases = name: g: let
+    # vm/capsule.nix's rule, stated as the expectation: every injected payload
+    # outside `$HOME` is scrubbed, since the reset already removes the rest.
+    injected =
+      builtins.filter (d: !lib.hasPrefix "${g.users.users.agent.home}/" d)
+      (map (i: i.dest) (injections {inherit (targets) volumePath;}));
+  in ''
     shippedPaths=(${lib.escapeShellArgs (shippedOf g).scrubPaths})
     agentHome=${lib.escapeShellArg g.users.users.agent.home}
+    injected=(${lib.escapeShellArgs injected})
 
     ckt "image ${name}: every path it carries passes the same guard" \
       test ${lib.boolToString (plainOf g)} = true
     ckt "  its shipped scrub list is not empty" test "''${#shippedPaths[@]}" -gt 0
     ck "  and has nothing under \$HOME, which the reset already removes" "" \
       "$(printf '%s\n' "''${shippedPaths[@]}" | grep -F -- "$agentHome/" || true)"
-    ckt "  and has the volume's .env" listed ${lib.escapeShellArg "${targets.volumePath}/.env"}
+    if [ "''${#injected[@]}" -eq 0 ]; then
+      echo "skip   no payload is injected outside \$HOME, so none is checked" >>"$log"
+    fi
+    for dest in "''${injected[@]}"; do
+      ckt "  and has the injected $dest" listed "$dest"
+    done
     for key in ${lib.escapeShellArgs (map (k: k.path) g.services.openssh.hostKeys)}; do
       ckt "  and has the declared host key $key" listed "$key"
       ckt "  and its public half" listed "$key.pub"

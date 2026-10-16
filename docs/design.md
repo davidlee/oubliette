@@ -14,13 +14,13 @@ work — no more.
 
 | path                         | what                                               |
 | ---------------------------- | -------------------------------------------------- |
-| `flake.nix`                  | VMs, devshell, tap + runner scripts, module exports |
-| `net.nix`                    | tap name, both addresses, MAC, ports — single source |
-| `targets/`                   | the repos this host confines, one file each, listed by hand in `default.nix` |
-| `capsules.nix`               | which capsules exist — namespace, socket, uplink, and the default name |
+| `flake.nix`, `mkfleet.nix`   | `lib.mkFleet` (VMs, devshell, tap + runner scripts, module exports) over the fixture; a consumer calls it with its own |
+| the caller's `net`           | tap name, both addresses, MAC, ports — single source |
+| a consumer's `targets/`      | the repos a host confines, one file each, listed by hand in the `targets` argument; oubliette's own `targets/default.nix` derives the rest |
+| `capsules.nix`               | the generic half: which capsules exist is the caller's `fleet` argument |
 | `justfile`                   | the gate (`just check`) + the multi-command questions |
 | `perimeter/default.nix`      | `proxy` + `capsule-host`. Jail-agnostic            |
-| `perimeter/egress-allow.txt` | proxy hostname allowlist — plain file, no rebuild. Per target |
+| `perimeter/egress-allow.txt` | proxy hostname allowlist — plain file, no rebuild. Per policy |
 | `host/programs.nix`          | the four programs the human runs at a capsule, built once per path |
 | `host/guest-ssh.nix`         | how the host reaches a guest, and which capsule it means (`--capsule`) |
 | `host/git-channel.nix`       | `capsule-provision` / `capsule-collect`. Host-initiated git |
@@ -266,7 +266,7 @@ mount, file contents, rendered into the closure by `vm/capsule.nix` and linked
 onto the volume by the seed. Links rather than copies, for the same reason the
 values are derived rather than copied — a copy on the volume outlives the sizes
 it was rendered from and nothing would say so. The generic side knows only
-"path, content"; `cargo` appears as configuration only in `targets/doctrine.nix`,
+"path, content"; `cargo` appears as configuration only in a consumer's target file,
 and `{}` is a working absent value for a target that wants none of it.
 
 What it changed for doctrine is not subtle: until it existed, the capsule built
@@ -281,7 +281,7 @@ question died with the inversion: the host initiates over ssh now, so a
 credential injection is one host-side program pushing an explicit list of paths
 into `/work/home`, with no service, no port and nothing for the guest to reach.
 
-**Built, as `capsule-inject`.** `setup.nix` declares the payloads and
+**Built, as `capsule-inject`.** the consumer's `setup.nix` declares the payloads and
 `host/inject.nix` is the mechanism — and the mechanism never learns what a
 credential is, because each entry carries its own host-side `produce` fragment.
 No filename, format or key name appears in the program. Same rule as

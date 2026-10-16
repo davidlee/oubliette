@@ -5,7 +5,7 @@
 # through `.oubliette`. What stays here is oubliette's own development gate.
 
 # Every nix file that is ours. Explicit, so nothing walks .direnv or .vm.
-nix_paths := "flake.nix mkfleet.nix fleet.nix fleet-cases.nix net.nix targets capsules.nix host-capsules.nix policies.nix fragments.nix setup.nix perimeter host vm"
+nix_paths := "flake.nix mkfleet.nix fleet.nix fleet-cases.nix fixture targets capsules.nix fragments.nix perimeter host vm"
 
 # the gate: everything parses and is formatted
 default: check build units
@@ -28,7 +28,3 @@ fmt:
 # assert formatting without mutating it
 fmt-check:
   alejandra -c {{nix_paths}}
-
-# update & switch the system nix derivation
-update-system:
-  cd ~/flakes && just update-local && just system-switch

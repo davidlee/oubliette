@@ -18,7 +18,7 @@
 # fix, not the messages.
 #
 # The name test is `*[!A-Za-z0-9_-]*` rather than a list of declared slots on
-# purpose. Which names exist is `capsules.nix`' and `flake.nix`' to answer and
+# purpose. Which names exist is the fleet declaration's and `mkfleet.nix`' to answer and
 # `nix run` already answers it (`POL-003`); what this owes is only that the
 # string is a bare token, so `.vm/$name` cannot be handed a path and no argument
 # can leave the state directory.

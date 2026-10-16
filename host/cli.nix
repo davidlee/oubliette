@@ -32,7 +32,7 @@
   lib,
   net,
   capsules,
-  # The host's policy vocabulary (policies.nix). Read for two things a program
+  # The host's policy vocabulary (the fleet's `policies` argument). Read for two things a program
   # may not do: validate a selection against the set the *slot* declares, and
   # name the file that slot's allowlist symlink must point at. Both copies of this
   # front end get the same declaration, so this adds no reason for them to be two
@@ -82,7 +82,7 @@
   # deliberately, since a record for a devshell capsule would describe a slot that
   # does not exist). It is an argument for the reason `host/guard.nix`'s `tools`
   # is: the one thing tying this program to this host is what a case suite has to
-  # substitute, and `policyCases` in flake.nix is what does.
+  # substitute, and `policyCases` in mkfleet.nix is what does.
   moduleState ? "/var/lib/capsule",
   # microvm.nix's state directory. A created VM tracks it rather than the flake
   # (CLAUDE.md), and its `tap-up` is what both `microvm@<name>` and the tap unit
@@ -495,7 +495,7 @@ in
           esac
         }
 
-        # A policy's allowlist *filename* (policies.nix). A filename and never a
+        # A policy's allowlist *filename* (the fleet's `policies`). A filename and never a
         # path, so what the symlink below can be made to point at stays inside the
         # one directory the proxy has bound.
         policyFile() {

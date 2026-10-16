@@ -6,7 +6,7 @@
 # same text can be built against stubs.** `writeShellApplication` prepends
 # `runtimeInputs` to `PATH`, so a test that stubs `ip` or `systemctl` cannot win
 # by prepending its own — the tools have to come from the outside or the program
-# is untestable without a live host. `flake.nix`'s `guardCases` builds this with
+# is untestable without a live host. `mkfleet.nix`'s `guardCases` builds this with
 # stubs and asserts the verdicts; `host/services.nix` builds it with the real
 # ones and gives it a unit. One construction, two tool sets, no second copy of an
 # invariant.

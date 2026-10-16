@@ -82,12 +82,12 @@ Decided in conversation, so the rest of the file can lean on it. Not built.
 
 | axis | where it lives | cost to change it |
 | --- | --- | --- |
-| name, index, namespace, socket, uplink /30 | `capsules.nix` | host rebuild (class 3) |
+| name, index, namespace, socket, uplink /30 | the consumer's `capsules.nix` | host rebuild (class 3) |
 | base commit | argument to `capsule-provision` | seconds, no rebuild |
 | everything on the volume — checkout, `$HOME`, caches, `target/`, ssh host keys, `.env`, baseline record | per instance, created by microvm.nix | no verb at all (L4) |
 | secret payload *content* | `~/.config/capsule/<name>.env`, per capsule by filename | `capsule <n> inject env --force` |
-| secret payload *declaration* | `setup.nix` | host rebuild |
-| **target repo** | `inputs.target.url` + `target.nix`, **global** | one image at a time, and switching is a branch (L1) |
+| secret payload *declaration* | the consumer's `setup.nix` | host rebuild |
+| **target repo** | the target's flake input + its file in the consumer's `targets/`, **global** | one image at a time, and switching is a branch (L1) |
 | tool set | the target's own flake | guest rebuild + `microvm -u` per capsule |
 | `defaultBranch` | interpolated into `capsule-provision` and into the guest's seed | host rebuild, and **no run-time override exists** (L13) |
 | sizes (vcpu, mem, volume) | `target.nix`, **global** | class 2 — but they are in the runner, not the image; §5 (L2) |

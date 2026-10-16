@@ -38,7 +38,7 @@
 # the fields `targets/default.nix` derives). Identity, on purpose: a renamed key
 # is a second vocabulary and a place the two can disagree. `path` is therefore
 # the *host* checkout and reads oddly beside `guestPath` — it is the field
-# `targets/doctrine.nix` documents and `CAPSULE_REPO` already overrides, and one
+# a target's file documents and `CAPSULE_REPO` already overrides, and one
 # awkward name is cheaper than two spellings of it.
 #
 # **What is not here.** `toolsPackage`, `extraTools`, `caches`, `guestConfig` and
@@ -57,7 +57,7 @@
 # named differently and there is still one reader and one lookup.
 #
 # **Over this host's set of targets** (SL-003 design sec-2): `targets` is
-# `targets/default.nix` as `flake.nix` imports it, and every export that was one
+# `targets/default.nix` as `mkfleet.nix` applies it, and every export that was one
 # target's is a function of a target now. `dir` holds one document per target.
 {
   pkgs,
@@ -359,7 +359,7 @@
 
       # The name reaches a path, so it is checked before the filesystem is
       # touched — a policy's allowlist is a filename and never a path for the
-      # same reason (policies.nix), one directory up.
+      # same reason (the fleet's `policies`), one directory up.
       case "$n" in
         "")
           profileFail "no profile name. A profile is named, never defaulted (item 28)."
@@ -507,7 +507,7 @@ in {
   names = builtins.attrNames targets.byName;
 
   # The same predicate as `profileNeedsUnit` below, at eval, and it has **one
-  # caller**: `probe/two-capsules.sh`'s command line in `flake.nix`. A probe is
+  # caller**: `probe/two-capsules.sh`'s command line in `mkfleet.nix`. A probe is
   # evidence about the real capsule on this host, so it is allowed to know this
   # host's real target — `probe/netns-boot.sh` is the standing exception for the
   # same reason. No *program* reads this, which is the whole of step 6; it lives

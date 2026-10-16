@@ -4,7 +4,8 @@ If you have NOT seen `BOOT-SENTINEL: doctrine-governance-snapshot` anywhere in y
 # CLAUDE.md
 
 Firecracker microVM used to confine a coding agent working on one target repo
-(a file in `targets/`; here `targets/doctrine.nix`, `~/dev/doctrine`). [README.md](./README.md) is usage;
+(a file in a consumer flake's `targets/`; on this host `~/dev/doctrine`, declared in the private consumer at `/srv/fleet`). Oubliette itself
+builds over `fixture/`, a target that is nobody's. [README.md](./README.md) is usage;
 everything else is [docs/](./docs/index.md), which maps question to file.
 
 **Governance is doctrine's** — `.doctrine/project-orientation.md` is the way in,
@@ -89,7 +90,7 @@ build — **check that when you add one**: `observeCases` and `baselineCases` we
 written, wired into `just cases`, and left out of `just build` for a session
 (NOTES item 51 step 3). **One suite per file, beside the program it pins** —
 `host/<name>-cases.nix`, or `vm/<name>-cases.nix` for a guest program, a function of `pkgs`, `lib` and **the store path the
-program ships**, with a short `import` in `flake.nix` (NOTES item 51 step 0).
+program ships**, with a short `import` in `mkfleet.nix` (NOTES item 51 step 0).
 Eight of them are handed a fixture instead and say so in their headers: the
 guard's stubbed kernel, the front end's pool that is not this host's (twice,
 once for policy and once for the volume verb), the
@@ -150,10 +151,10 @@ the user's to run (`sudo probe-netns`); `just build` shellchecks them. Write new
 ones the same way: assert both directions, since a denial-only network test
 passes for the wrong reason, and never borrow live addressing — a probe on the
 real `/30` tests the real capsule — **nor a live *name***. Both halves of that
-are now *enforced* rather than asked for: `flake.nix`'s `probeFabric` holds every
+are now *enforced* rather than asked for: the `probe.fabric` argument of `mkFleet` holds every
 name, link, address and network a probe's egress fabric is built from, and
-`borrowed`, its intersection with what `capsules.nix` declares, **throws at
-eval**. Don't reach around it. The reason it exists rather than a comment is
+`borrowed` (in `mkfleet.nix`), its intersection with what the caller's `fleet` declares, **throws at
+eval** in every caller's eval, the consumer's included. Don't reach around it. The reason it exists rather than a comment is
 [NOTES item 38](./docs/ledger/038-a-probe-that-became-a-borrower.md), and the
 shape generalises: `probe/netns-egress.sh` shared `cap-egress`, `eg-up`/`eg-rt`,
 both addresses and the whole `10.100.0.0/16` with production **without ever
@@ -175,8 +176,8 @@ round. Never ask the program under test to clean up after its own failure.
 what it tests and check *which* rounds go red — that is how all three of those
 were found, and how a round that resembles the real failure but never
 discriminates gets caught. `probe/harness.sh` is concatenated ahead of
-each probe by the `probe` builder in `flake.nix`, not sourced, so shellcheck
-sees one file; values from `net.nix`/`targets/` reach a probe through that
+each probe by `mkProbe` in `mkfleet.nix`, not sourced, so shellcheck
+sees one file; values from the caller's `net` and `targets` reach a probe through that
 builder's `prelude` rather than being spelled in the script. **The harness comes
 first and the prelude second**, so the harness can declare an empty default for
 every injected value — which is what lets it carry the egress fabric without
@@ -206,7 +207,7 @@ themselves with `ip netns pids`; the unscoped question survives as
 for. The thing that isolates a capsule is the same thing that names it — no
 pidfile, no registry. `probe/netns-boot.sh` is the deliberate exception to the
 addressing rule and says why in its header: it boots the real guest, whose image
-has `net.nix` in it, so the real capsule *is* the subject.
+has the `net` declaration in it, so the real capsule *is* the subject.
 
 Formatting is alejandra, 2-space indent, matching doctrine's flake.
 
@@ -244,7 +245,7 @@ anything.
 | --- | --- |
 | **`POL-001` The perimeter is host-side** | egress filtering, the forward drop, no default route in the guest, root only by ssh key. Guest-side settings are convenience, not security. Part of the perimeter lives in `~/flakes` and the drop is verified at run time, not assumed |
 | **`POL-002` Nothing generic learns what the target is** | *would a different target need this code changed, or only a different value?* The smell is a toolchain's name outside `targets/`. Everything beyond the contract is declared, optional, and has a working absent path |
-| **`POL-003` One declaration per axis, and no implicit default** | `net`, `capsules.nix`, `policies.nix`, `targets/`, `probeFabric` — one home each, nothing named implicitly, and resolution is the front end's act and never a program's |
+| **`POL-003` One declaration per axis, and no implicit default** | `net`, `fleet`, `policies`, `targets`, `probe.fabric` — the caller's `mkFleet` arguments (a consumer's `net.nix`, `capsules.nix`, `policies.nix`, `targets/`), one home each, nothing named implicitly, and resolution is the front end's act and never a program's |
 | **`POL-004` Reusable code knows nothing about the jail** | `perimeter/` and `host/git-channel.nix` take injected fragments. A program that needs testing takes as an argument the one thing that ties it to this host — which is what makes the case suites possible at all |
 
 **Adding one is `doctrine policy new`, not a row above.**
@@ -309,7 +310,7 @@ behind it is the ratchet starting again in a new file.
 
 - Guest modules live in `vm/`; `common.nix` holds only what every VM needs, and
   sizes are `lib.mkDefault` so each VM can override. Host-side NixOS modules
-  live in `host/` and are exported from `flake.nix`, opt-in — the devshell path
+  live in `host/` and are exported from `mkfleet.nix` via `flake.nix`, opt-in — the devshell path
   must keep working with no rebuild and no root.
 - Host-side helpers are `writeShellApplication` (shellcheck runs at build, so an
   unused variable is a build failure — hence `paths` in `perimeter/` being a
@@ -329,15 +330,15 @@ behind it is the ratchet starting again in a new file.
   declared slot a refusal.
 - **The guest's tool set has two owners, and which one a tool has decides where
   it goes.** `compose(floor, extras)`: the **floor** is the target's —
-  its `toolsPackage` in `targets/`, for doctrine `packages.dev-tools` — so a tool
+  its `toolsPackage` in the target's file in the consumer's `targets/`, for doctrine `packages.dev-tools` — so a tool
   the project builds or tests with goes in *that repo's* flake and the VM cannot
   drift from its devshell. The **extras** are the host operator's, and they are
-  `fragments.nix`'s vocabulary selected by `extras` in `flake.nix`: `rg`, an
+  `fragments.nix`'s vocabulary selected by the caller's `flavour.extras`: `rg`, an
   editor, an agent CLI — anything that is nobody's project. Putting a
-  convenience in `targets/doctrine.nix` says doctrine needs it, which is the ownership
+  convenience in the target's file says its project needs it, which is the ownership
   smell pointed the other way (NOTES item 31,
-  docs/contract-flavour.md). A fragment's source is a flake input of *this*
-  repo, pinned here, and convenience is **declared** — never scraped from a
+  docs/contract-flavour.md). A fragment's source is a flake input of the *caller*
+  (`flavour.sources`), pinned in the caller's lock, and convenience is **declared** — never scraped from a
   human's `$HOME`, which would describe a machine the capsule is not. One list
   for the fleet today, so one image per target; per-slot selection is Plan D D7. The jailed
   `claude`/`codex` bwrap wrappers are still excluded — they bind host paths that

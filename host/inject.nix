@@ -33,7 +33,7 @@
   # netns form carries a ProxyCommand with spaces inside it. Jail-shaped, so
   # injected — and required, since without it this program has no capsule.
   transport,
-  # [{name, dest, produce, tools, optional ? false}] — ./setup.nix, with `tools`
+  # [{name, dest, produce, tools, optional ? false}] — the consumer's setup, with `tools`
   # already resolved to packages by the call site.
   injections,
 }: let
@@ -81,7 +81,7 @@ in
           --force) force=1 ;;
           -*)
             echo "usage: capsule-inject [--capsule <name>] [payload...] [--force]" >&2
-            echo "  no payload named: every declared one (./setup.nix)." >&2
+            echo "  no payload named: every declared one (the consumer's setup)." >&2
             exit 1
             ;;
           *) selected+=("$arg") ;;

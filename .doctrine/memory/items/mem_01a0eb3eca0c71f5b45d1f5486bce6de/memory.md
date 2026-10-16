@@ -13,3 +13,5 @@ to be able to fetch what it pins.
   **locked** rev: push, update the lock, then `just refresh-build <slot>`.
 
 Supersedes [[mem.fact.oubliette.git-file-inputs-read-committed-head]].
+
+**Since SL-004 PHASE-07:** oubliette has no `target` input; its `flake.nix` carries `doctrine` only as the governance CLI. A target's flake is the consumer's own input (`doctrine` in the consumer, paired in `targets.<name>.flake`), and the same rules hold there: the target change needs a commit and a push, and an `--override-input` is never written to the lock. This memory is re-scoped to `flake.lock` only.
