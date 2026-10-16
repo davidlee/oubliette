@@ -25,7 +25,7 @@ The consumer checkout is both the flake and the devshell's state root (`DEC-027`
 
 `lib.mkFleet` is curried like `fleet.nix`: oubliette closes over its own `nixpkgs` and `microvm` (so a consumer gets one microvm.nix pin by `follows`, G12), and the caller passes declarations only (POL-004 — never taps, nft or transports).
 
-**Grouped at the boundary by owner, never passed inward as a bag.** Each argument is one axis with one owner (POL-003). Inside `mkfleet.nix` every factory still receives only the fields it uses — `host/services.nix`'s `{net targets capsules policies workBranch}`, `perimeter/`'s `paths` — because those narrow signatures are what the case suites stub, and a factory taking the whole set would hide what it depends on.
+**Grouped at the boundary by owner, never passed inward as a bag.** Each argument is one axis with one owner (POL-003). Inside `mkfleet.nix` every factory still receives only the fields it uses — `host/services.nix`'s `{net targets capsules policies workBranch}` (plus `injections`, below), `perimeter/`'s `paths` — because those narrow signatures are what the case suites stub, and a factory taking the whole set would hide what it depends on.
 
 | argument | fields | owner | was |
 |---|---|---|---|
@@ -36,7 +36,7 @@ The consumer checkout is both the flake and the devshell's state root (`DEC-027`
 | `flavour` | `extras` (fragment names from `fragments.nix`) and `sources` (where those fragments come from, e.g. `{llm-agents = …}`) | the host operator (contract-flavour) | `flake.nix:120`, `specialArgs.inputs` |
 | `access` | `adminKeys`, `stopKey`, `injections` (the `setup` function, `{volumePath}: [injection]`) | who and what may enter a guest | `vm/capsule.nix:85,99`, `setup.nix` |
 | `probe` | `{target; fabric}` — the probe subject and `probeFabric`; `borrowed` throws here against the real slots (DEC-029, G3) | probe evidence | `flake.nix:83,1026` |
-| `fleetPath` | the consumer checkout's absolute path; the module's `policyDir` is `fleetPath + "/" + policies.dir` | this host | `host/services.nix:471` default |
+| `fleetPath` | the consumer checkout's absolute path; the module's `policyDir` default becomes `fleetPath + "/" + policies.dir`, at cutover only (§Verification 3) | this host | `host/services.nix:471` default, `/home/${owner}/dev/microvm-spike/…` |
 
 Eight arguments, all required: no implicit default (POL-003).
 
@@ -44,7 +44,7 @@ Eight arguments, all required: no implicit default (POL-003).
 
 `oubliette.lib.capsules` and `oubliette.lib.targets` are the generic halves of today's files (DEC-026): `mkFleet` applies them to `fleet` and `targets` rather than asking the consumer to. Interface and namespace *names* (`cap-`, `eg-up`, `eg-rt`, `vm-capsule`) stay oubliette's constants: they are the platform's vocabulary, and `borrowed` still asserts the probe fabric disjoint from them.
 
-**One `access.injections` value** reaches both of its consumers — the guest's reset-home scrub list (`vm/capsule.nix:59`, via `specialArgs`) and the host's injections (`host/programs.nix:348`) — so the list scrubbed is the list injected by construction, and `resetHomeCases` keeps pinning it (RV-012 F-2). `workBranch` stays a constant inside `mkfleet.nix`; POL-003 already excludes it as an axis.
+**One `access.injections` value** reaches both of its consumers — the guest's reset-home scrub list (`vm/capsule.nix:59`, via `specialArgs`) and the host's injections (`host/programs.nix:348`) — so the list scrubbed is the list injected by construction, and `resetHomeCases` keeps pinning it (RV-012 F-2). Both sites import `../setup.nix` today, and neither import survives the move. `host/programs.nix` therefore takes `injections` as an argument, the setup function, still applied there to `targets.volumePath`. Every construction of the host programs passes it: `mkfleet.nix`'s own, and the module's in `host/services.nix:124`, which gains `injections` in its signature for that reason alone. The same function applied to the same `volumePath` renders the same text, so the change is derivation-neutral (RV-012 F-10). `workBranch` stays a constant inside `mkfleet.nix`; POL-003 already excludes it as an axis.
 
 Equal values produce equal derivations, so every rewiring here is checkable by the manifest (§Verification).
 
@@ -119,8 +119,8 @@ The consumer's `just` is a real gate and nothing runs it automatically. That is 
 The move is meant to be derivation-neutral, and that is checkable before anything goes live (STD-001: this is the *compare* rung, not *start* or *exercise*).
 
 1. **Before**, at oubliette HEAD: a manifest of `drvPath` for every `packages.x86_64-linux.*`, every `nixosConfigurations.<slot>.config.microvm.declaredRunner`, and **the module**: the `system.build.toplevel` of a probe NixOS system importing the flake's `nixosModules.capsule-perimeter` (with `owner = "nobody"`, as `hostModule` does), which covers unit definitions, tmpfiles, sudo rules and activation text rather than only unit names (RV-012 F-4). The same expression runs against oubliette and against the consumer. Written to the slice's runtime notes, not committed.
-2. **Staged equality.** The phases are ordered so each refactor is checked against the manifest while oubliette still binds the real values: extract `mkfleet.nix` with real values → equal; split `capsules.nix`/`targets`, pair each target with its flake, and thread `access`/`flavour`/`fleetPath` → equal; only then swap oubliette's call to the fixture and create the consumer → the consumer's manifest equals the original.
-3. **Every difference is explained** in the phase notes, or the phase does not close. While the real values are still bound, `fleetPath` is this checkout's current path, so the module's `policyDir` is unchanged and must be equal. It changes once, at cutover, to `/srv/fleet/perimeter`: an expected, explained difference.
+2. **Staged equality.** The phases are ordered so each refactor is checked against the manifest while oubliette still binds the real values: extract `mkfleet.nix` with real values → equal; split `capsules.nix`/`targets`, pair each target with its flake, and thread `access`/`flavour`/`fleetPath` → equal; only then swap oubliette's call to the fixture and create the consumer → the consumer's manifest equals the original except for `policyDir` (step 3).
+3. **Every difference is explained** in the phase notes, or the phase does not close. `policyDir`'s default today is `/home/${owner}/dev/microvm-spike/${policies.dir}`. It depends on the owner, and no value of `fleetPath` reproduces it (the manifest's module uses `owner = "nobody"`). So `fleetPath` is threaded through the equality phases, but the default keeps its current expression. The default switches to `fleetPath + "/" + policies.dir` in the cutover phase. Its manifest difference is then exactly the `policyDir` string, in the units and tmpfiles that read it, and no longer depends on the owner. That is the one expected, explained difference. `~/flakes` sets no `policyDir`, so on the host the path moves from `/home/david/dev/microvm-spike/perimeter` to `/srv/fleet/perimeter` (RV-012 F-11).
 4. oubliette's `just` green over the fixture; the consumer's `just` green over the real declarations.
 5. **The real host, at the switch (the user's rung):** before `just system-switch`, the user diffs the old and new system closures (`nix store diff-closures` over the two toplevels, or `nvd diff`); the only expected changes are the `oubliette` → `fleet` input and `policyDir`'s new path. Afterwards `capsule all status` is the *start* evidence.
 6. **Not exercised by this slice, and the record says so:** the `~/flakes` switch, the re-pointed slots, a `microvm -u` from `/srv/fleet`, and a probe run from the consumer. Those are the user's steps (§Cutover); the slice records which were done.
@@ -135,7 +135,7 @@ Ordered; **(u)** marks the user's steps.
 1. drvPath manifest at oubliette HEAD (§Verification 1).
 2. Implement in oubliette, phase by phase, each equal to the manifest while real values are still bound.
 3. **(u)** Create `/srv/fleet` owned by the user or `wheel`, and the private remote. The agent populates it from this host's current declarations and pushes only after the user says to.
-4. Consumer manifest equals the original; both `just` green.
+4. Consumer manifest equals the original except for `policyDir` (§Verification 3); both `just` green.
 5. Push oubliette; the consumer locks `github:davidlee/oubliette` at that rev.
 6. **(u)** Clear the pre-slot `capsule` and `capsule-b` state directories (CHR-013), then re-point every `/var/lib/microvms/*/flake` — both spellings, `microvm-spike` and `oubliette` — to `/srv/fleet`.
 7. **(u)** Confirm the private remote is fetchable wherever `~/flakes` is evaluated, including `aarch64-darwin` (`~/flakes/flake.nix:193`): `nix flake metadata <fleet ref>` on each machine. If one cannot authenticate, stop here — the input swap would break that machine's lock (RV-012 F-9).

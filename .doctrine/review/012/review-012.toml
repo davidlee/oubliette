@@ -17,6 +17,11 @@ act = "conclude"
 role = "raiser"
 note = "Adversarial design review of SL-004 design.md by GPT gpt-6-sol (read-only, code-cited), then a verification pass over the revision; nine findings, all answered and verified"
 
+[[review.turn]]
+act = "conclude"
+role = "raiser"
+note = "Re-pass scoped to sec-10 (the builder's argument surface) after commit d880e26, run by gpt-6-sol read-only, checked against its consistency with sec-1, sec-2, sec-3 and sec-6 and against the code. Two majors (F-10, F-11), both fixed in the design at revision 37 and verified. The reviewer found the paired target map safe: the slot-to-profile refusal (fleet.nix:40) still applies."
+
 [target]                   # the outbound `reviews` edge: RV-NNN ──reviews──▶ <ref>
 ref   = "SL-004"
 
@@ -235,6 +240,58 @@ response = "Design revised (§Cutover step 7): the user confirms the private rem
 act = "verify"
 role = "raiser"
 note = "GPT (raiser) re-read the revised design.md: RESOLVED."
+
+[[finding]]
+id = "F-10"
+status = "verified"
+severity = "major"
+title = "access.injections has no route to the host programs"
+detail = "Re-pass over sec-10 (gpt-6-sol, read-only). sec-10 says one access.injections value feeds the guest scrub list and the host injections, yet keeps host/services.nix's five-field signature. host/services.nix:124 builds hostPrograms without injections, and host/programs.nix:348 imports ../setup.nix itself. Once setup.nix moves to the consumer, the module's copy cannot receive the consumer's declaration; keeping the import would give the guest and the host separate sources. Repair: host/programs.nix takes injections, and host/services.nix threads it to every construction."
+disposition = "fix-now"
+route = "review"
+response = "Confirmed against the code (host/services.nix:124, host/programs.nix:348). A sweep for the class (generic code importing a moving file) found only vm/capsule.nix:59, which sec-10 already routes via specialArgs. sec-10 revised: host/programs.nix takes injections, the setup function applied there to targets.volumePath. The module's construction in host/services.nix passes it, and that signature gains injections for this reason only. Same function, same volumePath, same text, so the change is derivation-neutral and the manifest checks it."
+
+[[finding.turn]]
+act = "raise"
+role = "raiser"
+
+[[finding.turn]]
+act = "dispose"
+role = "responder"
+disposition = "fix-now"
+route = "review"
+response = "Confirmed against the code (host/services.nix:124, host/programs.nix:348). A sweep for the class (generic code importing a moving file) found only vm/capsule.nix:59, which sec-10 already routes via specialArgs. sec-10 revised: host/programs.nix takes injections, the setup function applied there to targets.volumePath. The module's construction in host/services.nix passes it, and that signature gains injections for this reason only. Same function, same volumePath, same text, so the change is derivation-neutral and the manifest checks it."
+
+[[finding.turn]]
+act = "verify"
+role = "raiser"
+note = "Repair checked against sec-10 at design revision 37: injections is an explicit argument at both construction sites."
+
+[[finding]]
+id = "F-11"
+status = "verified"
+severity = "major"
+title = "fleetPath breaks the staged module equality"
+detail = """Re-pass over sec-10 (gpt-6-sol, read-only). sec-10 sets policyDir = fleetPath + "/" + policies.dir, and sec-6 step 3 claims the pre-cutover module is unchanged with fleetPath at this checkout's path. The current default is /home/${owner}/dev/microvm-spike/${policies.dir} (host/services.nix:471). It depends on the owner, and the manifest's module uses owner = nobody, so no fleetPath reproduces it and the pre-cutover toplevel comparison fails on an intended change. Repair: keep the owner-dependent default through the equality phases, switch it at cutover, and record that one difference."""
+disposition = "fix-now"
+route = "review"
+response = 'Confirmed (host/services.nix:469-472; ~/flakes sets no policyDir). sec-6 step 3 revised: fleetPath is threaded through the equality phases, but the default keeps its owner-dependent expression until the cutover phase. There it becomes fleetPath + "/" + policies.dir, and the manifest difference is exactly the policyDir string, explained. Siblings fixed: sec-6 step 2, sec-7 step 4 and the sec-10 table row now say the consumer manifest equals the original except for policyDir.'
+
+[[finding.turn]]
+act = "raise"
+role = "raiser"
+
+[[finding.turn]]
+act = "dispose"
+role = "responder"
+disposition = "fix-now"
+route = "review"
+response = 'Confirmed (host/services.nix:469-472; ~/flakes sets no policyDir). sec-6 step 3 revised: fleetPath is threaded through the equality phases, but the default keeps its owner-dependent expression until the cutover phase. There it becomes fleetPath + "/" + policies.dir, and the manifest difference is exactly the policyDir string, explained. Siblings fixed: sec-6 step 2, sec-7 step 4 and the sec-10 table row now say the consumer manifest equals the original except for policyDir.'
+
+[[finding.turn]]
+act = "verify"
+role = "raiser"
+note = "Repair checked against sec-6, sec-7 and sec-10 at revision 37: the policyDir change is confined to the cutover phase and named as the one expected difference."
 
 # Findings are append-only `[[finding]]` tables, added by `review raise`.
 # Empty here at creation — a fresh review is Active, awaiting the raiser.
