@@ -27,7 +27,9 @@ Plans are scoping, not commitments: `plan-b-other-jails.md` is the
 non-firecracker shapes, `plan-c-multi-capsule.md` is what N capsules on one host
 would cost, `plan-e-room.md` is a guest that is **not** a capsule — several
 people ssh'd into one shared box — and is the first test of whether the
-machinery underneath is separable from the product. Do not put present-tense
+machinery underneath is separable from the product, and `plan-f-assistant.md` is
+its second caller — one persistent agent over many repos, a room rather than a
+slot. Do not put present-tense
 state in a plan; that is a backlog or knowledge record's job.
 
 ## Working here
