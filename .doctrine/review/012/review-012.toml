@@ -22,6 +22,11 @@ act = "conclude"
 role = "raiser"
 note = "Re-pass scoped to sec-10 (the builder's argument surface) after commit d880e26, run by gpt-6-sol read-only, checked against its consistency with sec-1, sec-2, sec-3 and sec-6 and against the code. Two majors (F-10, F-11), both fixed in the design at revision 37 and verified. The reviewer found the paired target map safe: the slot-to-profile refusal (fleet.nix:40) still applies."
 
+[[review.turn]]
+act = "conclude"
+role = "raiser"
+note = "Re-concluded after routing F-1, F-2, F-3, F-4, F-6, F-8 and F-9 (the lock gate requires a route on every severe finding). No substance changed; the sec-10 re-pass basis stands."
+
 [target]                   # the outbound `reviews` edge: RV-NNN ──reviews──▶ <ref>
 ref   = "SL-004"
 
@@ -33,6 +38,7 @@ title = "capsules.nix machinery still holds this host's addressing"
 detail = "GPT adversarial review #1, verified: capsules.nix:158 uplinkNet 10.100.0.0/16, :182 volumeReserve, :288-295 the egress aggregator's names and 10.101.0.x addresses (the resolver-stub address ~/flakes must answer on). Splitting capsules.nix as a function of declared alone (design §What moves where) leaves host addressing in reusable code (POL-002/POL-003)."
 disposition = "fix-now"
 response = "Design revised (§argument surface, §What moves where): the consumer's capsules declaration carries uplinkNet, both egress addresses and volumeReserve; names stay oubliette constants. DEC-026's 'only the lists' widens to lists plus addressing; reconcile annotates it."
+route = "review"
 
 [[finding.turn]]
 act = "raise"
@@ -49,6 +55,23 @@ act = "verify"
 role = "raiser"
 note = "GPT (raiser) re-read the revised design.md: RESOLVED."
 
+[[finding.turn]]
+act = "reopen"
+role = "raiser"
+note = "Reopened only to give a severe finding its route (review), which the lock gate now requires; the substance is unchanged."
+
+[[finding.turn]]
+act = "dispose"
+role = "responder"
+disposition = "fix-now"
+route = "review"
+response = "Design revised (§argument surface, §What moves where): the consumer's capsules declaration carries uplinkNet, both egress addresses and volumeReserve; names stay oubliette constants. DEC-026's 'only the lists' widens to lists plus addressing; reconcile annotates it."
+
+[[finding.turn]]
+act = "verify"
+role = "raiser"
+note = "Route review recorded; repair unchanged in design revision 39."
+
 [[finding]]
 id = "F-2"
 status = "verified"
@@ -56,7 +79,8 @@ severity = "major"
 title = "setup reaches the guest by its own import"
 detail = "GPT #2, verified: vm/capsule.nix:59 imports ../setup.nix for the reset-home scrub list, host/programs.nix:348 for injection. The design must thread one setup value to both, or the guest scrubs a different list from the one injected."
 disposition = "fix-now"
-response = "Design revised (§argument surface): one setup value reaches both vm/capsule.nix:59 (specialArgs) and host/programs.nix:348; resetHomeCases keeps pinning the scrub list."
+response = "Design revised (§argument surface): one setup value reaches both vm/capsule.nix:59 (specialArgs) and host/programs.nix:348; resetHomeCases keeps pinning the scrub list. Completed by F-10: host/programs.nix takes injections as an argument rather than importing setup.nix."
+route = "review"
 
 [[finding.turn]]
 act = "raise"
@@ -72,6 +96,23 @@ response = "Design revised (§argument surface): one setup value reaches both vm
 act = "verify"
 role = "raiser"
 note = "GPT (raiser) re-read the revised design.md: RESOLVED."
+
+[[finding.turn]]
+act = "reopen"
+role = "raiser"
+note = "Reopened only to give a severe finding its route (review), which the lock gate now requires; the substance is unchanged."
+
+[[finding.turn]]
+act = "dispose"
+role = "responder"
+disposition = "fix-now"
+route = "review"
+response = "Design revised (§argument surface): one setup value reaches both vm/capsule.nix:59 (specialArgs) and host/programs.nix:348; resetHomeCases keeps pinning the scrub list. Completed by F-10: host/programs.nix takes injections as an argument rather than importing setup.nix."
+
+[[finding.turn]]
+act = "verify"
+role = "raiser"
+note = "Route review recorded; repair unchanged in design revision 39."
 
 [[finding]]
 id = "F-3"
@@ -81,6 +122,7 @@ title = "self references cannot move into mkFleet"
 detail = "GPT #3, verified: flake.nix:651 (hostModule evaluates self.nixosModules.capsule-perimeter) and :1473 (default = self.packages.${system}.capsule). Inside a builder called by a consumer, oubliette's self names the fixture's outputs."
 disposition = "fix-now"
 response = "Design revised (§Shape): flake.nix:651 and :1473 become references to the call's own bindings."
+route = "demonstrate"
 
 [[finding.turn]]
 act = "raise"
@@ -97,6 +139,23 @@ act = "verify"
 role = "raiser"
 note = "GPT (raiser) re-read the revised design.md: RESOLVED."
 
+[[finding.turn]]
+act = "reopen"
+role = "raiser"
+note = "Reopened only to give a severe finding its route (demonstrate), which the lock gate now requires; the substance is unchanged."
+
+[[finding.turn]]
+act = "dispose"
+role = "responder"
+disposition = "fix-now"
+route = "demonstrate"
+response = "Design revised (§Shape): flake.nix:651 and :1473 become references to the call's own bindings."
+
+[[finding.turn]]
+act = "verify"
+role = "raiser"
+note = "Route demonstrate recorded; repair unchanged in design revision 39."
+
 [[finding]]
 id = "F-4"
 status = "verified"
@@ -104,7 +163,8 @@ severity = "major"
 title = "the drvPath manifest does not cover the host module"
 detail = "GPT #4: package drvPaths miss unit definitions, tmpfiles, sudo rules and activation; the policyDir change alters module output (host/services.nix:469). The real ~/flakes toplevel is a separate rung."
 disposition = "fix-now"
-response = "Design revised (§Verification): the manifest adds the toplevel of a probe NixOS system importing nixosModules.capsule-perimeter; policyDir equal while real values are bound, explained change at cutover; real ~/flakes toplevel named as the user's separate rung."
+response = "Design revised (§Verification): the manifest adds the toplevel of a probe NixOS system importing nixosModules.capsule-perimeter; policyDir equal while real values are bound, explained change at cutover; real ~/flakes toplevel named as the user's separate rung. Corrected by F-11: policyDir's default keeps its expression until the cutover phase, so it is equal through the equality phases rather than by fleetPath."
+route = "control"
 
 [[finding.turn]]
 act = "raise"
@@ -120,6 +180,23 @@ response = "Design revised (§Verification): the manifest adds the toplevel of a
 act = "verify"
 role = "raiser"
 note = "GPT: PARTIAL (no real-host comparison at switch). Amended at design rev 30: §Verification step 5 adds the user's closure diff before system-switch. Verified by the orchestrator against the amended text."
+
+[[finding.turn]]
+act = "reopen"
+role = "raiser"
+note = "Reopened only to give a severe finding its route (control), which the lock gate now requires; the substance is unchanged."
+
+[[finding.turn]]
+act = "dispose"
+role = "responder"
+disposition = "fix-now"
+route = "control"
+response = "Design revised (§Verification): the manifest adds the toplevel of a probe NixOS system importing nixosModules.capsule-perimeter; policyDir equal while real values are bound, explained change at cutover; real ~/flakes toplevel named as the user's separate rung. Corrected by F-11: policyDir's default keeps its expression until the cutover phase, so it is equal through the equality phases rather than by fleetPath."
+
+[[finding.turn]]
+act = "verify"
+role = "raiser"
+note = "Route control recorded; repair unchanged in design revision 39."
 
 [[finding]]
 id = "F-5"
@@ -153,6 +230,7 @@ title = "the consumer justfile cannot parse before its symlink exists"
 detail = "GPT #6: .oubliette is created only by the devshell shellHook, so just --list/check fail on a fresh checkout, and a stale link parses another revision's recipes."
 disposition = "fix-now"
 response = "Design revised (§Recipes): import? so a fresh checkout parses, a tracked note recipe, shellHook re-points on every entry, nix-direnv reloads on flake.lock."
+route = "demonstrate"
 
 [[finding.turn]]
 act = "raise"
@@ -168,6 +246,23 @@ response = "Design revised (§Recipes): import? so a fresh checkout parses, a tr
 act = "verify"
 role = "raiser"
 note = "GPT: PARTIAL (recipes absent before devshell, stale link possible outside it). Amended at rev 30: stated as the devshell path's shape, residual staleness tolerated alongside the devshell binaries'. Verified by the orchestrator."
+
+[[finding.turn]]
+act = "reopen"
+role = "raiser"
+note = "Reopened only to give a severe finding its route (demonstrate), which the lock gate now requires; the substance is unchanged."
+
+[[finding.turn]]
+act = "dispose"
+role = "responder"
+disposition = "fix-now"
+route = "demonstrate"
+response = "Design revised (§Recipes): import? so a fresh checkout parses, a tracked note recipe, shellHook re-points on every entry, nix-direnv reloads on flake.lock."
+
+[[finding.turn]]
+act = "verify"
+role = "raiser"
+note = "Route demonstrate recorded; repair unchanged in design revision 39."
 
 [[finding]]
 id = "F-7"
@@ -201,6 +296,7 @@ title = "templateCases skips the template's actual flake wiring"
 detail = "GPT #8: design §Probes evaluates the template's declaration files, not templates/fleet/flake.nix, so a miswired input there passes."
 disposition = "fix-now"
 response = "Design revised (§Probes): templateCases calls the template's actual flake.nix outputs with stub inputs, so its wiring is tested; its inputs are never fetched."
+route = "control"
 
 [[finding.turn]]
 act = "raise"
@@ -217,6 +313,23 @@ act = "verify"
 role = "raiser"
 note = "GPT (raiser) re-read the revised design.md: RESOLVED."
 
+[[finding.turn]]
+act = "reopen"
+role = "raiser"
+note = "Reopened only to give a severe finding its route (control), which the lock gate now requires; the substance is unchanged."
+
+[[finding.turn]]
+act = "dispose"
+role = "responder"
+disposition = "fix-now"
+route = "control"
+response = "Design revised (§Probes): templateCases calls the template's actual flake.nix outputs with stub inputs, so its wiring is tested; its inputs are never fetched."
+
+[[finding.turn]]
+act = "verify"
+role = "raiser"
+note = "Route control recorded; repair unchanged in design revision 39."
+
 [[finding]]
 id = "F-9"
 status = "verified"
@@ -225,6 +338,7 @@ title = "a private fleet input must be fetchable wherever ~/flakes evaluates"
 detail = "GPT #9, verified: ~/flakes/flake.nix:193 includes aarch64-darwin. Darwin needs authenticated access to the private remote for lock updates and evaluation; the cutover does not check it."
 disposition = "fix-now"
 response = "Design revised (§Cutover step 7): the user confirms the private remote is fetchable on every machine that evaluates ~/flakes, darwin included, before the input swap."
+route = "review"
 
 [[finding.turn]]
 act = "raise"
@@ -240,6 +354,23 @@ response = "Design revised (§Cutover step 7): the user confirms the private rem
 act = "verify"
 role = "raiser"
 note = "GPT (raiser) re-read the revised design.md: RESOLVED."
+
+[[finding.turn]]
+act = "reopen"
+role = "raiser"
+note = "Reopened only to give a severe finding its route (review), which the lock gate now requires; the substance is unchanged."
+
+[[finding.turn]]
+act = "dispose"
+role = "responder"
+disposition = "fix-now"
+route = "review"
+response = "Design revised (§Cutover step 7): the user confirms the private remote is fetchable on every machine that evaluates ~/flakes, darwin included, before the input swap."
+
+[[finding.turn]]
+act = "verify"
+role = "raiser"
+note = "Route review recorded; repair unchanged in design revision 39."
 
 [[finding]]
 id = "F-10"
