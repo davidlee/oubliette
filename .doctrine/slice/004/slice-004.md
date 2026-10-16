@@ -57,6 +57,35 @@ not settled here. Starting position: `targets/`, `capsules.nix`,
 (`llm-agents`) stay generic (`docs/contract-flavour.md`); `inputs.doctrine` in
 the devshell is this repo's governance CLI, not a target, and stays.
 
+### Settled with the user (2026-10-16)
+
+```
+oubliette (public)                     github:davidlee/<private fleet>
+  lib.<builder>, fixture target          checked out at /srv/fleet
+  templates.default ──── nix flake init ─▶ (owner: the user or wheel)
+    doctrine-only example consumer       doctrine + goad-walk, real slots,
+                                         policies, allowlists, keys
+                                              ▲
+                          ~/flakes input (shims on its target inputs;
+                          microvm.nix reached through it — one pin)
+```
+
+- **How `~/flakes` reaches the consumer** (research X4): option (a). The
+  consumer is a git repo pushed to a **private** remote, which `~/flakes` takes
+  as an input. `/srv/fleet` is its local checkout, and that path is what
+  `microvm -c/-u` and `system-switch`'s override read. The `follows` shims
+  **move** onto that input; they do not disappear (this withdraws the non-goal
+  below that said they would).
+- **This host runs on the private consumer from the start.** One cutover; no
+  host detail (slot list, keys, allowlists) in anything public.
+- **The public example is a flake template inside oubliette**
+  (`templates.default`): a consumer with doctrine as its only target, for
+  `nix flake init -t`. It is not an input of oubliette, so oubliette's lock
+  stays target-free. It is example data, so POL-002's search rule must name it
+  as an exclusion, the same way it names fixtures.
+- `/srv/fleet` is owned by the user or `wheel`, and is writable without root
+  (G8).
+
 ## Non-Goals
 
 - Plan F's room, per-repo tool sets, or any new target.
@@ -64,9 +93,9 @@ the devshell is this repo's governance CLI, not a target, and stays.
   text changes needs a reason recorded in the design.
 - Per-slot flavour (`IMP-003`) or anything else that changes the declarations'
   *shape* rather than their *home*.
-- Editing `~/flakes` from here. Its wiring changes (drop the `follows` shims;
-  take the host module from the consumer) are the user's to make; this slice
-  names them exactly.
+- Editing `~/flakes` from here. Its wiring changes (re-home the `follows`
+  shims onto the consumer input; take the host module and microvm.nix through
+  it) are the user's to make; this slice names them exactly.
 
 ## Affected surface
 
