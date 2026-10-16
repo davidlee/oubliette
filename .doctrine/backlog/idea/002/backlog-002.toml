@@ -20,3 +20,7 @@ tags = []
 needs    = ["IMP-015"]                   # item→item hard prerequisite
 after    = []                   # item→item soft sequence: { to, rank? }
 triggers = []                   # watched source globs: { globs, note? }
+
+[[relation]]
+label = "related"
+target = "SL-004"

@@ -1,0 +1,92 @@
+id = 4
+slug = "oubliette-carries-no-target"
+title = "Oubliette carries no target: a consumer flake declares the fleet"
+status = "design"
+created = "2026-10-16"
+updated = "2026-10-16"
+tags = []
+
+[relationships]
+needs = []                      # slice→work hard prerequisite
+after = []                      # slice→work soft sequence: { to, rank }
+
+[[selector]]
+selector = "flake.nix"
+intent = "scope-relevant"
+
+[[selector]]
+selector = "flake.lock"
+intent = "scope-relevant"
+
+[[selector]]
+selector = "targets/**"
+intent = "scope-relevant"
+
+[[selector]]
+selector = "capsules.nix"
+intent = "scope-relevant"
+
+[[selector]]
+selector = "policies.nix"
+intent = "scope-relevant"
+
+[[selector]]
+selector = "net.nix"
+intent = "scope-relevant"
+
+[[selector]]
+selector = "perimeter/**"
+intent = "scope-relevant"
+
+[[selector]]
+selector = "fleet.nix"
+intent = "scope-relevant"
+
+[[selector]]
+selector = "fleet-cases.nix"
+intent = "scope-relevant"
+
+[[selector]]
+selector = "setup.nix"
+intent = "scope-relevant"
+
+[[selector]]
+selector = "justfile"
+intent = "scope-relevant"
+
+[[selector]]
+selector = "probe/**"
+intent = "scope-relevant"
+
+[[selector]]
+selector = "host/services.nix"
+intent = "scope-relevant"
+
+[[selector]]
+selector = "docs/contract-*.md"
+intent = "scope-relevant"
+
+[[selector]]
+selector = "README.md"
+intent = "scope-relevant"
+
+[[selector]]
+selector = "CLAUDE.md"
+intent = "scope-relevant"
+
+[[relation]]
+label = "fulfils"
+target = "IMP-015"
+
+[[relation]]
+label = "governed_by"
+target = "POL-002"
+
+# STRUCTURAL relations are uniform `[[relation]]` rows, never a typed
+# `[relationships]` axis. Slices carry no typed STRUCTURAL
+# relation axes — the `[relationships]` table above holds only the dep/seq payload
+# (`needs`/`after`). Author a structural edge with the `doctrine link` verb
+# — it validates the (source, label) pair and resolves the target:
+#   doctrine link SL-NNN specs SPEC-NNN
+#   doctrine link SL-NNN governed_by ADR-NNN
+# `doctrine inspect SL-NNN` renders the inbound + outbound edges.
