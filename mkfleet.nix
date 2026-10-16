@@ -1449,6 +1449,7 @@ in {
       default = vms.capsule.config.microvm.declaredRunner;
     };
 
+  # A consumer gets this same devshell from `mkFleet` (SL-004 design sec-4).
   devShells.${system}.default = pkgs.mkShellNoCC {
     packages = [
       vm
@@ -1492,6 +1493,24 @@ in {
       echo "                       then:       capsule-provision / capsule-inject"
       echo "                                   capsule-baseline (to green)"
       echo "                       and back:   capsule-collect"
+
+      # A root that is not this checkout is the caller's to set, so it is
+      # reported and never overridden (RV-012 F-7; `ISS-004` is why a hook
+      # must not assign it). `-ef`, because a symlinked checkout is the same one.
+      (
+        ${rootFragment}
+        if [ ! "$root" -ef "$PWD" ]; then
+          echo "capsule: $root is not this checkout ($PWD); left as set" >&2
+        fi
+      )
+
+      # Re-pointed on every entry, so the link names this devshell's oubliette
+      # (DEC-028); like any devshell binary it is stale until re-entry.
+      if [ -e .oubliette ] && [ ! -L .oubliette ]; then
+        echo "capsule: .oubliette exists and is not a link; left alone" >&2
+      elif [ -f flake.nix ]; then
+        ln -sfn ${./just} .oubliette
+      fi
     '';
   };
 }

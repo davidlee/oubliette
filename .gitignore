@@ -1,5 +1,6 @@
 .direnv/
 .vm/
+.oubliette
 result
 result-*
 HANDOVER.md
