@@ -1,7 +1,7 @@
 <!-- doctrine:section sec-1 -->
 ## Shape
 
-Oubliette stops declaring a fleet and starts exporting the function that builds one (`DEC-025`). Today's `outputs` body — about 1,450 lines of `let … in` that bind this host's values and build everything from them — moves almost verbatim into `mkfleet.nix`. Its relative paths (`./vm`, `./host`, `./probe`) still resolve inside oubliette, so text and therefore derivations can stay equal.
+Oubliette stops declaring a fleet and starts exporting the function that builds one (`DEC-025`). Today's `outputs` body — about 1,450 lines of `let … in` that bind this host's values and build everything from them — moves almost verbatim into `mkfleet.nix`. Its relative paths (`./vm`, `./host`, `./probe`) still resolve inside oubliette, so text and therefore derivations can stay equal. The two `self` references in that body (`flake.nix:651`, the module check, and `:1473`, `packages.default`) become references to the call's own bindings, since inside a consumer's call oubliette's `self` would name the fixture's outputs (RV-012 F-3).
 
 ```
 oubliette (public)                              /srv/fleet (private remote)
@@ -29,7 +29,7 @@ The consumer checkout is both the flake and the devshell's state root (`DEC-027`
 |---|---|---|---|
 | `targets` | the target set, already derived by `oubliette.lib.targets` from the consumer's files | `import ./targets` | yes |
 | `targetFlakes` | name → flake, exactly the declared targets (DEC-019 throw stays in `fleet.nix`) | `flake.nix:130` | yes |
-| `capsules` | the slot set, already passed through `oubliette.lib.capsules` (DEC-026) | `import ./capsules.nix` | yes |
+| `capsules` | `oubliette.lib.capsules {policies} {slots; uplinkNet; egressAddr; egressPeerAddr; volumeReserve}` (DEC-026): the slot set **and** the host's addressing and disk reserve, which `~/flakes` and this host's network must agree with (RV-012 F-1) | `capsules.nix:93,158,182,288` | yes |
 | `policies` | the policy vocabulary | `import ./policies.nix` | yes |
 | `net` | the link constants | `import ./net.nix` | yes |
 | `extras` | fragment names from `fragments.nix`'s vocabulary | `flake.nix:120` | yes |
@@ -41,6 +41,8 @@ The consumer checkout is both the flake and the devshell's state root (`DEC-027`
 
 Every argument is required: no implicit default (POL-003). Helpers a consumer calls to *prepare* arguments — `lib.targets`, `lib.capsules` — are the split halves of today's files, not defaults. `workBranch` stays a constant inside `mkfleet.nix`; POL-003 already excludes it as an axis.
 
+Interface and namespace *names* (`cap-`, `eg-up`, `eg-rt`, `vm-capsule`) stay oubliette's constants: they are the platform's vocabulary, and `borrowed` still asserts the probe fabric disjoint from them. **One `setup` value** reaches both its consumers — the guest's reset-home scrub list (`vm/capsule.nix:59`, via `specialArgs`) and the host's injections (`host/programs.nix:348`) — so the list scrubbed is the list injected by construction, and `resetHomeCases` keeps pinning it (RV-012 F-2).
+
 `identity`, `setup` and `fleetPath` reach code that today imports or spells them (`vm/capsule.nix`, `host/programs.nix:348`, `host/services.nix:471`) as `specialArgs` or as arguments of the existing factories. Equal values produce equal derivations, so this is checkable by the manifest (§Verification).
 
 <!-- doctrine:section sec-2 -->
@@ -49,7 +51,7 @@ Every argument is required: no implicit default (POL-003). Helpers a consumer ca
 | file today | becomes | in oubliette | in the consumer |
 |---|---|---|---|
 | `flake.nix` | `mkfleet.nix` (body) + a short `flake.nix` | builder, fixture call, `lib`, `templates` | a call of `lib.mkFleet` |
-| `capsules.nix` | split (DEC-026) | `declared → {instances, socketOf, recordOf, volumeLock, uplinkNet, egress, asserts…}` | `capsules.nix`: the `declared` attrset only |
+| `capsules.nix` | split (DEC-026) | a function → `{instances, socketOf, recordOf, volumeLock, egress, asserts…}`, with names as constants | `capsules.nix`: the slots plus `uplinkNet`, the two egress addresses and `volumeReserve` |
 | `targets/default.nix` | split | `byName → {byName (derived), volumePath}` | `targets/default.nix`: the hand list |
 | `targets/doctrine.nix` | moves | `templates/fleet/targets/doctrine.nix` (the commented reference) | a thin copy |
 | `targets/goad-walk.nix` | moves | — | `targets/goad-walk.nix` |
@@ -84,8 +86,8 @@ Suites that take fixtures today (`guardCases`, `policyCases`, `volumeCases`, `vo
 **One copy of every shared recipe** (DEC-028). `just/fleet.just` holds `build`, `units`, `cases`, `build-vm`, `verify` and every operational recipe (`up`, `down`, `refresh-build`, `status`, `provision`, `inject`, `refresh`, `baseline`, `collect`, `adopt`, `brief`, `setup`, `branches`, `fetch`, `load`, `allowed`, `_net`, `_policy`, `_proxy-log`). Their text is unchanged: `justfile_directory()` is the *root* justfile's directory, so in a consumer `just up a` still passes `-f /srv/fleet`, and `--file net.nix`/`policies.nix` read the consumer's files, which is why a consumer keeps those names at its root.
 
 - oubliette's `justfile`: `import 'just/fleet.just'` plus `check`, `parse`, `fmt`, `fmt-check` over `nix_paths` (which drops the moved files and gains `mkfleet.nix`, `fixture`, `templates`).
-- a consumer's `justfile`: `import '.oubliette/fleet.just'` plus its own `check`.
-- `.oubliette` is a gitignored symlink to the locked oubliette source, written by the consumer devshell's `shellHook` (emitted by `mkFleet`). Same staleness class as the devshell's binaries (`mem.fact.oubliette.devshell-binaries-are-store-paths`): re-enter the devshell after `nix flake update oubliette`. The recipes and the programs they call therefore come from one revision.
+- a consumer's `justfile`: `import? '.oubliette/fleet.just'` (optional, so a fresh checkout still parses) plus its own `check` and a tracked note recipe that says to enter the devshell when the shared recipes are absent (RV-012 F-6).
+- `.oubliette` is a gitignored symlink to the locked oubliette source, re-pointed on *every* entry by the consumer devshell's `shellHook` (emitted by `mkFleet`), so inside a devshell the link always names that devshell's own oubliette. The template's `.envrc` is `use flake` (nix-direnv watches `flake.lock`, so an `oubliette` update reloads it) and `export CAPSULE_ROOT=$PWD`, the same as oubliette's own, so an inherited root from another checkout is replaced on entry (RV-012 F-7). Same staleness class as the devshell's binaries (`mem.fact.oubliette.devshell-binaries-are-store-paths`): re-enter the devshell after `nix flake update oubliette`. The recipes and the programs they call therefore come from one revision.
 
 **The devshell** is emitted by `mkFleet`, so `nix develop` in `/srv/fleet` gives the real fleet's programs — the same store paths the module installs (RSK-004, G7). Oubliette's own devshell is the fixture's: right for working on oubliette, unable to drive a real slot, and it says so only by its slot names. No root, no rebuild (G8).
 
@@ -100,7 +102,7 @@ Suites that take fixtures today (`guardCases`, `policyCases`, `volumeCases`, `vo
 
 `borrowed` throws at eval wherever `mkFleet` is called, so the real intersection runs in the consumer's eval and the fixture's in oubliette's (G3). DEC-020's "`.#capsule` is doctrine's image" becomes "the probe target's image, in whichever flake builds it".
 
-**`templateCases`** (DEC-030) imports the template's declaration files — not its `flake.nix`, whose inputs oubliette cannot lock — and evaluates `mkFleet` over them with a stub flake for `doctrine`, forcing every slot runner's `drvPath` with `deepSeq` so a throw inside an attrset is seen (CLAUDE.md). A template that drifts from the builder's argument surface fails oubliette's build.
+**`templateCases`** (DEC-030) evaluates the template's **actual** `flake.nix`: `(import templates/fleet/flake.nix).outputs` called with stub inputs — `oubliette` carrying this tree's `lib`, `doctrine` a stub flake with an empty tool set, `nixpkgs` oubliette's own — so the template's own wiring of its declarations into `mkFleet` is what is tested (RV-012 F-8). Its inputs are never fetched, which is what keeps oubliette's lock target-free. It forces every slot runner's `drvPath` with `deepSeq` so a throw inside an attrset is seen (CLAUDE.md). A template that drifts from the builder's argument surface fails oubliette's build.
 
 The consumer's `just` is a real gate and nothing runs it automatically. That is stated, not solved: G6 holds because the check exists in a `just build`, and running it is part of every consumer change.
 
@@ -109,11 +111,11 @@ The consumer's `just` is a real gate and nothing runs it automatically. That is 
 
 The move is meant to be derivation-neutral, and that is checkable before anything goes live (STD-001: this is the *compare* rung, not *start* or *exercise*).
 
-1. **Before**, at oubliette HEAD: a manifest of `drvPath` for every `packages.x86_64-linux.*` and every `nixosConfigurations.<slot>.config.microvm.declaredRunner`, plus the `hostModule` toplevel the suites evaluate. Written to the slice's runtime notes, not committed.
+1. **Before**, at oubliette HEAD: a manifest of `drvPath` for every `packages.x86_64-linux.*`, every `nixosConfigurations.<slot>.config.microvm.declaredRunner`, and **the module**: the `system.build.toplevel` of a probe NixOS system importing the flake's `nixosModules.capsule-perimeter` (with `owner = "nobody"`, as `hostModule` does), which covers unit definitions, tmpfiles, sudo rules and activation text rather than only unit names (RV-012 F-4). The same expression runs against oubliette and against the consumer. Written to the slice's runtime notes, not committed.
 2. **Staged equality.** The phases are ordered so each refactor is checked against the manifest while oubliette still binds the real values: extract `mkfleet.nix` with real values → equal; split `capsules.nix`/`targets` and thread `identity`/`setup`/`fleetPath` → equal; only then swap oubliette's call to the fixture and create the consumer → the consumer's manifest equals the original.
-3. **Every difference is explained** in the phase notes, or the phase does not close. Expected: anything that copies a whole source directory into the store (none known), and the module's `policyDir` default becoming a derived value.
+3. **Every difference is explained** in the phase notes, or the phase does not close. While the real values are still bound, `fleetPath` is this checkout's current path, so the module's `policyDir` is unchanged and must be equal. It changes once, at cutover, to `/srv/fleet/perimeter`: an expected, explained difference.
 4. oubliette's `just` green over the fixture; the consumer's `just` green over the real declarations.
-5. **Not exercised by this slice, and the record says so:** the `~/flakes` switch, the re-pointed slots, a `microvm -u` from `/srv/fleet`, and a probe run from the consumer. Those are the user's steps (§Cutover); the slice records which were done.
+5. **Not exercised by this slice, and the record says so:** the real `~/flakes` toplevel (a separate rung: the user's switch, after which `capsule all status` is the *start* evidence), the `~/flakes` switch, the re-pointed slots, a `microvm -u` from `/srv/fleet`, and a probe run from the consumer. Those are the user's steps (§Cutover); the slice records which were done.
 
 Case suites are written red-first where behaviour is new: `templateCases` and the `borrowed` throw over the fixture are each mutated once to watch them go red (CLAUDE.md).
 
@@ -128,13 +130,14 @@ Ordered; **(u)** marks the user's steps.
 4. Consumer manifest equals the original; both `just` green.
 5. Push oubliette; the consumer locks `github:davidlee/oubliette` at that rev.
 6. **(u)** Clear the pre-slot `capsule` and `capsule-b` state directories (CHR-013), then re-point every `/var/lib/microvms/*/flake` — both spellings, `microvm-spike` and `oubliette` — to `/srv/fleet`.
-7. **(u)** `~/flakes`, exactly:
+7. **(u)** Confirm the private remote is fetchable wherever `~/flakes` is evaluated, including `aarch64-darwin` (`~/flakes/flake.nix:193`): `nix flake metadata <fleet ref>` on each machine. If one cannot authenticate, stop here — the input swap would break that machine's lock (RV-012 F-9).
+8. **(u)** `~/flakes`, exactly:
    - replace input `oubliette` with `fleet` (the private remote), `inputs.nixpkgs.follows = "nixpkgs"`, and the fetchability shims moved onto it: `doctrine.follows`, `goad-walk.follows` → `nixpkgs`;
    - `features/virt/capsule.nix`: `inputs.fleet.inputs.oubliette.inputs.microvm.nixosModules.host` and `inputs.fleet.nixosModules.capsule-perimeter` (one microvm.nix pin, G12);
    - `justfile:14`: `--override-input fleet git+file:///srv/fleet`;
    - the stale `microvm-spike` comments.
-8. **(u)** `just system-switch`; then `just refresh-build <slot>` on one slot from `/srv/fleet`, and `capsule all status`.
-9. Afterwards, not in this slice: delete the `~/dev/microvm-spike` symlink and the `MICROVM_SPIKE_ROOT` fallback in `perimeter/root.nix` (a program-text change, so its own item).
+9. **(u)** `just system-switch`; then `just refresh-build <slot>` on one slot from `/srv/fleet`, and `capsule all status`.
+10. Afterwards, not in this slice: delete the `~/dev/microvm-spike` symlink and the `MICROVM_SPIKE_ROOT` fallback in `perimeter/root.nix` (a program-text change, so its own item).
 
 <!-- doctrine:section sec-8 -->
 ## Governance and docs footprint
@@ -155,5 +158,6 @@ Written in the same commits as the boundary moves (POL-002 scope), and reconcile
 - **The `.oubliette` symlink can be stale** (DEC-028 consequence). Mitigation is the existing habit — re-enter the devshell — and `just` could later compare it to the lock.
 - **The consumer's gate runs only when someone runs it.** Stated in §Probes; not solved here.
 - **Two ways `~/flakes` builds this repo** become two ways it builds the consumer: the lock and the `system-switch` override. Step 7 names both.
+- **`~/flakes` still repeats `vm-capsule` and `3128`** (`features/virt/capsule.nix:83,104-105`) from `net`. Pre-existing; a follow-up has the consumer export `net` so `~/flakes` reads it (RV-012 F-5).
 - **Out of scope:** Plan F's room, per-repo tool sets, new targets, per-slot flavour (IMP-003), any program behaviour change, and editing `~/flakes` from here.
 
