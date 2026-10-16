@@ -10,13 +10,19 @@ raiser    = "raiser"
 responder = "responder"
 rounds_base = 0
 contests_base = 0
+concluded = true
+
+[[review.turn]]
+act = "conclude"
+role = "raiser"
+note = "Adversarial design review of SL-004 design.md by GPT gpt-6-sol (read-only, code-cited), then a verification pass over the revision; nine findings, all answered and verified"
 
 [target]                   # the outbound `reviews` edge: RV-NNN ──reviews──▶ <ref>
 ref   = "SL-004"
 
 [[finding]]
 id = "F-1"
-status = "answered"
+status = "verified"
 severity = "blocker"
 title = "capsules.nix machinery still holds this host's addressing"
 detail = "GPT adversarial review #1, verified: capsules.nix:158 uplinkNet 10.100.0.0/16, :182 volumeReserve, :288-295 the egress aggregator's names and 10.101.0.x addresses (the resolver-stub address ~/flakes must answer on). Splitting capsules.nix as a function of declared alone (design §What moves where) leaves host addressing in reusable code (POL-002/POL-003)."
@@ -33,9 +39,14 @@ role = "responder"
 disposition = "fix-now"
 response = "Design revised (§argument surface, §What moves where): the consumer's capsules declaration carries uplinkNet, both egress addresses and volumeReserve; names stay oubliette constants. DEC-026's 'only the lists' widens to lists plus addressing; reconcile annotates it."
 
+[[finding.turn]]
+act = "verify"
+role = "raiser"
+note = "GPT (raiser) re-read the revised design.md: RESOLVED."
+
 [[finding]]
 id = "F-2"
-status = "answered"
+status = "verified"
 severity = "major"
 title = "setup reaches the guest by its own import"
 detail = "GPT #2, verified: vm/capsule.nix:59 imports ../setup.nix for the reset-home scrub list, host/programs.nix:348 for injection. The design must thread one setup value to both, or the guest scrubs a different list from the one injected."
@@ -52,9 +63,14 @@ role = "responder"
 disposition = "fix-now"
 response = "Design revised (§argument surface): one setup value reaches both vm/capsule.nix:59 (specialArgs) and host/programs.nix:348; resetHomeCases keeps pinning the scrub list."
 
+[[finding.turn]]
+act = "verify"
+role = "raiser"
+note = "GPT (raiser) re-read the revised design.md: RESOLVED."
+
 [[finding]]
 id = "F-3"
-status = "answered"
+status = "verified"
 severity = "blocker"
 title = "self references cannot move into mkFleet"
 detail = "GPT #3, verified: flake.nix:651 (hostModule evaluates self.nixosModules.capsule-perimeter) and :1473 (default = self.packages.${system}.capsule). Inside a builder called by a consumer, oubliette's self names the fixture's outputs."
@@ -71,9 +87,14 @@ role = "responder"
 disposition = "fix-now"
 response = "Design revised (§Shape): flake.nix:651 and :1473 become references to the call's own bindings."
 
+[[finding.turn]]
+act = "verify"
+role = "raiser"
+note = "GPT (raiser) re-read the revised design.md: RESOLVED."
+
 [[finding]]
 id = "F-4"
-status = "answered"
+status = "verified"
 severity = "major"
 title = "the drvPath manifest does not cover the host module"
 detail = "GPT #4: package drvPaths miss unit definitions, tmpfiles, sudo rules and activation; the policyDir change alters module output (host/services.nix:469). The real ~/flakes toplevel is a separate rung."
@@ -90,9 +111,14 @@ role = "responder"
 disposition = "fix-now"
 response = "Design revised (§Verification): the manifest adds the toplevel of a probe NixOS system importing nixosModules.capsule-perimeter; policyDir equal while real values are bound, explained change at cutover; real ~/flakes toplevel named as the user's separate rung."
 
+[[finding.turn]]
+act = "verify"
+role = "raiser"
+note = "GPT: PARTIAL (no real-host comparison at switch). Amended at design rev 30: §Verification step 5 adds the user's closure diff before system-switch. Verified by the orchestrator against the amended text."
+
 [[finding]]
 id = "F-5"
-status = "answered"
+status = "verified"
 severity = "minor"
 title = "~/flakes repeats vm-capsule and 3128 from net.nix"
 detail = "GPT #5, verified: ~/flakes/features/virt/capsule.nix:83,104-105. Pre-existing duplication, not introduced by SL-004, but the move is the moment net gains a new home."
@@ -109,9 +135,14 @@ role = "responder"
 disposition = "follow-up"
 response = "Pre-existing duplication; filed as IMP-016 and noted in §Risks."
 
+[[finding.turn]]
+act = "verify"
+role = "raiser"
+note = "GPT: PARTIAL, acceptable as a scoped follow-up (IMP-016)."
+
 [[finding]]
 id = "F-6"
-status = "answered"
+status = "verified"
 severity = "major"
 title = "the consumer justfile cannot parse before its symlink exists"
 detail = "GPT #6: .oubliette is created only by the devshell shellHook, so just --list/check fail on a fresh checkout, and a stale link parses another revision's recipes."
@@ -128,9 +159,14 @@ role = "responder"
 disposition = "fix-now"
 response = "Design revised (§Recipes): import? so a fresh checkout parses, a tracked note recipe, shellHook re-points on every entry, nix-direnv reloads on flake.lock."
 
+[[finding.turn]]
+act = "verify"
+role = "raiser"
+note = "GPT: PARTIAL (recipes absent before devshell, stale link possible outside it). Amended at rev 30: stated as the devshell path's shape, residual staleness tolerated alongside the devshell binaries'. Verified by the orchestrator."
+
 [[finding]]
 id = "F-7"
-status = "answered"
+status = "verified"
 severity = "minor"
 title = "an inherited CAPSULE_ROOT can aim the consumer devshell at the old checkout"
 detail = "GPT #7, verified: perimeter/root.nix:6 prefers CAPSULE_ROOT then MICROVM_SPIKE_ROOT over $PWD; oubliette's .envrc exports CAPSULE_ROOT=$PWD. direnv unloads it on leaving, so the risk is a non-direnv shell or a consumer without its own .envrc."
@@ -147,9 +183,14 @@ role = "responder"
 disposition = "fix-now"
 response = "Design revised (§Recipes): the template's .envrc exports CAPSULE_ROOT=$PWD like oubliette's, so an inherited root is replaced on entry."
 
+[[finding.turn]]
+act = "verify"
+role = "raiser"
+note = "GPT: PARTIAL (plain nix develop has no root check). Amended at rev 30: shellHook warns on a CAPSULE_ROOT/MICROVM_SPIKE_ROOT that is not $PWD, without overriding it. Verified by the orchestrator."
+
 [[finding]]
 id = "F-8"
-status = "answered"
+status = "verified"
 severity = "major"
 title = "templateCases skips the template's actual flake wiring"
 detail = "GPT #8: design §Probes evaluates the template's declaration files, not templates/fleet/flake.nix, so a miswired input there passes."
@@ -166,9 +207,14 @@ role = "responder"
 disposition = "fix-now"
 response = "Design revised (§Probes): templateCases calls the template's actual flake.nix outputs with stub inputs, so its wiring is tested; its inputs are never fetched."
 
+[[finding.turn]]
+act = "verify"
+role = "raiser"
+note = "GPT (raiser) re-read the revised design.md: RESOLVED."
+
 [[finding]]
 id = "F-9"
-status = "answered"
+status = "verified"
 severity = "major"
 title = "a private fleet input must be fetchable wherever ~/flakes evaluates"
 detail = "GPT #9, verified: ~/flakes/flake.nix:193 includes aarch64-darwin. Darwin needs authenticated access to the private remote for lock updates and evaluation; the cutover does not check it."
@@ -184,6 +230,11 @@ act = "dispose"
 role = "responder"
 disposition = "fix-now"
 response = "Design revised (§Cutover step 7): the user confirms the private remote is fetchable on every machine that evaluates ~/flakes, darwin included, before the input swap."
+
+[[finding.turn]]
+act = "verify"
+role = "raiser"
+note = "GPT (raiser) re-read the revised design.md: RESOLVED."
 
 # Findings are append-only `[[finding]]` tables, added by `review raise`.
 # Empty here at creation — a fresh review is Active, awaiting the raiser.
