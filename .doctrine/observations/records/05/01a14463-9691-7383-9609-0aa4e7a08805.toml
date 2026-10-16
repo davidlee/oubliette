@@ -1,0 +1,18 @@
+schema = "doctrine.observation"
+schema_version = 1
+uid = "01a14463-9691-7383-9609-0aa4e7a08805"
+recorded_at = "2026-10-16T11:05:39.729618949Z"
+kind = "friction"
+summary = "doctrine memory retrieve takes no positional query"
+detail = "SL-004 PHASE-06 planner: memory retrieve needs --query or scope flags; a positional query is rejected."
+
+[facets.execution]
+schema_version = 1
+interface = "cli"
+interface_origin = "automatic"
+product_surface = "doctrine"
+product_surface_origin = "automatic"
+command = "observation record"
+command_origin = "automatic"
+repository_context = "primary"
+repository_context_origin = "automatic"

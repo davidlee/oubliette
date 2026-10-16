@@ -1,0 +1,18 @@
+schema = "doctrine.observation"
+schema_version = 1
+uid = "01a14486-bddb-7092-a333-f3d2742c43d5"
+recorded_at = "2026-10-16T11:44:03.547203921Z"
+kind = "friction"
+summary = "PHASE-07 planner hit 40-turn cap with nothing written"
+detail = "First planner for SL-004 PHASE-07 spent all turns reading and wrote no sheet; retry with incremental-write instruction and a tool-call budget succeeded in 31 calls."
+
+[facets.execution]
+schema_version = 1
+interface = "cli"
+interface_origin = "automatic"
+product_surface = "doctrine"
+product_surface_origin = "automatic"
+command = "observation record"
+command_origin = "automatic"
+repository_context = "primary"
+repository_context_origin = "automatic"

@@ -1,0 +1,18 @@
+schema = "doctrine.observation"
+schema_version = 1
+uid = "01a1442a-0b76-7df0-8011-13c99d4329a6"
+recorded_at = "2026-10-16T10:02:48.56609454Z"
+kind = "friction"
+summary = "verify-vt reports UNATTRIBUTABLE for an in_progress phase even after its commit"
+detail = "SL-004 PHASE-03: VT-2/VT-3 read UNATTRIBUTABLE ('not modified by this slice') with the edits committed at 4572d07 while the phase was in_progress; they became PASS only once the phase was flipped completed and code_end_oid was stamped. The phase sheet's guidance (flip in_progress, then verify-vt) is wrong; a worker cannot get a VT verdict before the orchestrator commits and completes the phase."
+
+[facets.execution]
+schema_version = 1
+interface = "cli"
+interface_origin = "automatic"
+product_surface = "doctrine"
+product_surface_origin = "automatic"
+command = "observation record"
+command_origin = "automatic"
+repository_context = "primary"
+repository_context_origin = "automatic"

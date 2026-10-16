@@ -1,0 +1,18 @@
+schema = "doctrine.observation"
+schema_version = 1
+uid = "01a14443-43ca-7193-84c3-05a9b821e50a"
+recorded_at = "2026-10-16T10:30:21.386605088Z"
+kind = "friction"
+summary = "verify-vt reports UNATTRIBUTABLE for a test_file the slice created"
+detail = "SL-004 PHASE-05 VT-1 mandates just/fleet.just; the file was added in 61701fe (feat(SL-004)...), keywords present, yet verify-vt says 'not modified by this slice'. PHASE-04's VTs on modified files attribute fine, so an added file appears not to count as modified."
+
+[facets.execution]
+schema_version = 1
+interface = "cli"
+interface_origin = "automatic"
+product_surface = "doctrine"
+product_surface_origin = "automatic"
+command = "observation record"
+command_origin = "automatic"
+repository_context = "primary"
+repository_context_origin = "automatic"

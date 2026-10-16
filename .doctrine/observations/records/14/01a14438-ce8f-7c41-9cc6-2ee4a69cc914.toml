@@ -1,0 +1,18 @@
+schema = "doctrine.observation"
+schema_version = 1
+uid = "01a14438-ce8f-7c41-9cc6-2ee4a69cc914"
+recorded_at = "2026-10-16T10:18:56.015528498Z"
+kind = "friction"
+summary = "phase sheet asks the worker to fill Recorded output, worker contract forbids writing .doctrine/ runtime state"
+detail = "SL-004 PHASE-04: capsule-phase-planner's sheet had a 'Recorded output' section for the worker; capsule-worker declined per its contract and returned the content in its hand-back. Settle ownership in the phase-plan template (orchestrator transcribes, or drop the section)."
+
+[facets.execution]
+schema_version = 1
+interface = "cli"
+interface_origin = "automatic"
+product_surface = "doctrine"
+product_surface_origin = "automatic"
+command = "observation record"
+command_origin = "automatic"
+repository_context = "primary"
+repository_context_origin = "automatic"

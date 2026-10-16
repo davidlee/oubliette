@@ -1,0 +1,18 @@
+schema = "doctrine.observation"
+schema_version = 1
+uid = "01a14463-968f-72a3-b0b2-5afd67111543"
+recorded_at = "2026-10-16T11:05:39.727036904Z"
+kind = "friction"
+summary = "a user's global gitignore hides .envrc from a new consumer repo"
+detail = "SL-004 PHASE-06: ~/.gitignore_global ignores .envrc, so a plain git add in /srv/fleet silently omits it; worker used git add -f. Anyone scaffolding a consumer (and the PHASE-08 template's users) will hit this."
+
+[facets.execution]
+schema_version = 1
+interface = "cli"
+interface_origin = "automatic"
+product_surface = "doctrine"
+product_surface_origin = "automatic"
+command = "observation record"
+command_origin = "automatic"
+repository_context = "primary"
+repository_context_origin = "automatic"

@@ -1,0 +1,18 @@
+schema = "doctrine.observation"
+schema_version = 1
+uid = "01a14495-e997-7392-8af5-0335cfe01066"
+recorded_at = "2026-10-16T12:00:37.783524801Z"
+kind = "friction"
+summary = "auto-mode classifier refused cat of /srv/fleet as a production read"
+detail = "SL-004 PHASE-08 worker: Bash cat over /srv/fleet was refused; Read tool worked per file, costing turns."
+
+[facets.execution]
+schema_version = 1
+interface = "cli"
+interface_origin = "automatic"
+product_surface = "doctrine"
+product_surface_origin = "automatic"
+command = "observation record"
+command_origin = "automatic"
+repository_context = "primary"
+repository_context_origin = "automatic"

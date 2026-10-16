@@ -1,0 +1,18 @@
+schema = "doctrine.observation"
+schema_version = 1
+uid = "01a1442a-0b79-7de3-86f0-fcaa0ad8c42a"
+recorded_at = "2026-10-16T10:02:48.569733017Z"
+kind = "friction"
+summary = "doctrine memory retrieve rejects a positional query"
+detail = "SL-004 phase planners (PHASE-01, PHASE-02) tried 'doctrine memory retrieve <query>' and got a usage error; the verb takes --query/--path-scope. Cost a retry each; skills or prompts that show the positional form are stale."
+
+[facets.execution]
+schema_version = 1
+interface = "cli"
+interface_origin = "automatic"
+product_surface = "doctrine"
+product_surface_origin = "automatic"
+command = "observation record"
+command_origin = "automatic"
+repository_context = "primary"
+repository_context_origin = "automatic"

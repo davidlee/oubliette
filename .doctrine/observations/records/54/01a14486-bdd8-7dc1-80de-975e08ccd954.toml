@@ -1,0 +1,18 @@
+schema = "doctrine.observation"
+schema_version = 1
+uid = "01a14486-bdd8-7dc1-80de-975e08ccd954"
+recorded_at = "2026-10-16T11:44:03.544990901Z"
+kind = "friction"
+summary = "a docs wording sweep moved 22 derivations under an equality invariant"
+detail = "SL-004 PHASE-07 Part B edited shell comments inside writeShellApplication text, usage/runtime strings, an option description (options manual is in toplevel) and probe headers (concatenated). The consumer manifest moved module and every program. Fix commit 09f4df8 reverted in-string wording and deferred it to notes.md. A worker sheet for a wording pass must distinguish nix comments from in-string text up front."
+
+[facets.execution]
+schema_version = 1
+interface = "cli"
+interface_origin = "automatic"
+product_surface = "doctrine"
+product_surface_origin = "automatic"
+command = "observation record"
+command_origin = "automatic"
+repository_context = "primary"
+repository_context_origin = "automatic"

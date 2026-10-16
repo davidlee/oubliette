@@ -5,10 +5,10 @@ id = 1
 slug = "drive-a-doctrine-slice-from-a-skill"
 title = "Drive a doctrine slice from a skill"
 kind = "idea"
-status = "open"
-resolution = ""                 # seeded empty so `backlog edit` sets it in place
+status = "resolved"
+resolution = "done"
 created = "2026-08-16"
-updated = "2026-08-16"
+updated = "2026-10-01"
 tags = []
 
 # outbound-only (ADR-004). Cross-kind structural edges (e.g. references with a role

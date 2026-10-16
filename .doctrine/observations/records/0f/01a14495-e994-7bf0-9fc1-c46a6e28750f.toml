@@ -1,0 +1,18 @@
+schema = "doctrine.observation"
+schema_version = 1
+uid = "01a14495-e994-7bf0-9fc1-c46a6e28750f"
+recorded_at = "2026-10-16T12:00:37.780846513Z"
+kind = "friction"
+summary = "a just-level mutation control went red for the wrong reason (formatting)"
+detail = "SL-004 PHASE-08: removing a block from templates/fleet/flake.nix left a blank line, so fmt-check failed before template-cases ran. Source mutations for just-level controls must stay alejandra-clean, or be run against the specific build target."
+
+[facets.execution]
+schema_version = 1
+interface = "cli"
+interface_origin = "automatic"
+product_surface = "doctrine"
+product_surface_origin = "automatic"
+command = "observation record"
+command_origin = "automatic"
+repository_context = "primary"
+repository_context_origin = "automatic"
