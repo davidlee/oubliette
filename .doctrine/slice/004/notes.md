@@ -158,3 +158,127 @@ check` above.
 
 Doc drift for reconcile: `docs/contract-target.md:73` still calls
 `templates/fleet/targets/doctrine.nix` "forthcoming in SL-004 PHASE-08".
+
+## PHASE-09: cutover, repo side
+
+Repo-side steps only (T1-T5); nothing pushed, nothing committed by the worker,
+no sudo, `~/flakes` and `/var/lib/*` read only. The host steps are T5 below.
+
+**T2 (oubliette, host/services.nix).** `policyDir` default is now
+`fleetPath + "/" + policies.dir` (`defaultText` `${fleetPath}/${policies.dir}`);
+the argument's comment reads in the present tense. The option `description`
+and every other shipped string are untouched. `grep microvm-spike` over
+host/, mkfleet.nix, fixture/, templates/, vm/, perimeter/, flake.nix, justfile:
+no hit; no case asserted the old default (`wrap-cases.nix` passes its own
+fixture `policyDir`). README.md lines 153/181/222 name the flake input and
+the checkout path, not the default. `just check` and `just` green.
+
+**T1 (consumer relock, /srv/fleet, uncommitted).** `nix flake update oubliette`:
+`oubliette` 61701fe -> 9654a71c28e675b66babbf8eb3795d77700bcd0e (as expected).
+Root inputs resolved through follows are unchanged by rev: doctrine d804787d,
+goad-walk b4bc42fd, nixpkgs e94cb152, llm-agents 03aa73a4 (node renamed
+`llm-agents_5` -> `llm-agents_4`). No `file://` anywhere; the only
+`git`-typed node is `spectrum` (https://spectrum-os.org/git/spectrum, rev
+77d23898, unchanged, microvm.nix's). Removed, all oubliette's former
+transitive target inputs (1284c5a: no target in its lock): `target`
+(doctrine d804787d) and its subtree (agents_3, pub_2, bun2nix_5/6, crane_4/5,
+devshell_3, emacs-overlay_2, flake-parts_7-9, flake-utils_4/5, goad_2,
+goad-walk_2, jail-nix_4/5, llm-agents_4(old)/6, nixpkgs-lib_3,
+nixpkgs-stable_2, rust-overlay_4/5, systems_8-11, treefmt-nix_5/6), plus
+nixpkgs_18..27 duplicates those pulled; `nixpkgs_17` renumbered to rev
+d54020a6 (was 6774f7bc, one of the removed target's). Consumer gate
+(`env -u MICROVM_SPIKE_ROOT CAPSULE_ROOT=/srv/fleet nix develop -c just`) green.
+
+**T3 (manifest).** Instrument: manifest.nix from a scratch clone of the
+consumer (`/tmp/claude-1000/-home-david-dev-oubliette/cc48e7b8-0f76-4f0a-89a6-b60b70522dc3/scratchpad/p09-fleet`, relocked with `--override-input oubliette
+git+file://$SP/p09-oub?rev=4f600f58fe5574490df178c4a7f7fe75667719ae`) where
+`p09-oub` is a scratch clone of oubliette with the T2 diff committed (never
+committed in the real tree). Output `$SP/m09-cons.json`
+sha256 `ac277bc05ad6a75c0c220cece125291ea9f1f8037b379c05cebdeea935d81ce4`.
+Baseline `m03.json` sha256 7467d0e4...06bc verified. `$SP` = the session scratchpad.
+
+- vs m03.json: `briefCases`, `vmCases`, `resetHomeCases` (explained under
+  PHASE-07), `module`, and **`packages.hostModulePrograms`**.
+- vs m07-cons2.json (09f4df8 consumer): `module` and
+  **`packages.hostModulePrograms`**. The stated expectation was `module`
+  alone; `hostModulePrograms` is the second, see below.
+
+`module` leaf walk (`nix derivation show`, recursing the inputDrvs that
+differ). Chain: `nixos-system` -> `activate` -> `etc` -> `dbus-1` /
+`system-units` / ... and `system-path` -> leaves. 18 leaves, every one equal
+to its old self once `/srv/fleet/perimeter` is replaced by
+`/home/nobody/dev/microvm-spike/perimeter` (checked mechanically; builder,
+args, inputSrcs equal, inputDrv name sets equal):
+- 7 wrapper programs `capsule`, `capsule-adopt`, `-baseline`, `-brief`,
+  `-collect`, `-provision`, `-refresh`: `CAPSULE_POLICY_DIR:-<policyDir>` (host/wrap.nix);
+- `nixos-tmpfiles.d`: the `d`/`a` line for the allowlist directory;
+- 10 `unit-capsule-proxy-{a..j}.service`: `ReadOnlyPaths=<policyDir>`;
+- intermediates changed only because their inputs did: system-path, etc,
+  system-units, activate, dbus-1 (serviceDirectories names system-path),
+  `unit-dbus-broker` and `unit-systemd-tmpfiles-resetup` (restart-trigger
+  drvs hash the changed `etc`/units), nixos-system.
+`hostModulePrograms` (the module's program set as text) differs in exactly the
+7 wrapper leaves above and nothing else (7 leaves, residual check clean). It is
+a program set built from the same evaluated module, so the same string reaches
+it; but it is a manifest entry beyond what the plan's EX-1/VA-1 words allow
+("module" alone / "policyDir string in units and tmpfiles"). **Ruling (orchestrator, PHASE-09): accepted as the same one-string change.** The plan's EX-1/VA-1 wording ("module" alone; "units and tmpfiles") missed a third home of the string, the wrappers' `CAPSULE_POLICY_DIR` default (host/wrap.nix), which `hostModulePrograms` renders from the same evaluated module. Read EX-1/VA-1 as "`module` and `hostModulePrograms`, both differing in the policyDir string alone"; plan.toml text is left as approved, this note is the amendment (as the "Manifest baseline" ruling was). The wrapper's
+`CAPSULE_POLICY_DIR` default is a third place the string lives besides units
+and tmpfiles. The `hostModuleUnits` entry is unchanged (unit names only).
+
+Gates: oubliette `just` green; consumer `just` green on the T1 lock and again
+with `--override-input oubliette git+file://...?rev=4f600f58` (lock unchanged:
+`cmp` against the T1 lock). `git -C /srv/fleet status` shows only
+`M flake.lock`.
+
+**Re-run on the committed sha (orchestrator).** Oubliette b9ad175 (the T2 commit), consumer c328b7a (the T1 relock). A fresh scratch clone of /srv/fleet, locked with `--override-input oubliette git+file:///home/david/dev/oubliette?rev=b9ad17507f571fafe203ecb0edf6e53a0382d75f`, gives a manifest byte-identical to the worker's scratch-commit one (sha256 `ac277bc0…81ce4`). Key diffs: vs m03 `module`, `briefCases`, `hostModulePrograms`, `resetHomeCases`, `vmCases`; vs m07-cons2 `module`, `hostModulePrograms`. Independent check of the leaf claim: `nix derivation show -r` of both closures (old m07-cons2, new), every store hash replaced by a constant and both policyDir spellings by one token, keys re-sorted: `module` 3671 = 3671 derivations, `hostModulePrograms` 2535 = 2535, equal as sets. So the two entries differ in the policyDir string and nothing else. VA-1 holds under the ruling above.
+
+**T4.** The PHASE-07 deferred-wording table is NOT applied here: it would move
+derivations the closure diff (VH-1) must show quiet. Applying it is a
+follow-up after the host has switched.
+
+### T5: the user's host checklist (prepared, not run)
+
+Ordered. Current state as read: `/var/lib/microvms/{a,b,capsule,capsule-b,f}/flake`
+= `/home/david/dev/microvm-spike`; `{c,d,e,j}/flake` = `/home/david/dev/oubliette`;
+`/var/lib/capsule` holds `collect doctrine.git slot` (slots a..j).
+
+0. Push request. The oubliette T2 commit is b9ad17507f571fafe203ecb0edf6e53a0382d75f; it must be on origin/main (with the notes commit after it) before the relock. After
+   `git push` of oubliette main:
+   ```
+   cd /srv/fleet && nix flake update oubliette
+   jq -r .nodes.oubliette.locked.rev flake.lock     # must be origin/main's sha after the push (b9ad175 or a descendant)
+   git commit -am "lock oubliette at the cutover rev" && git push -u origin main   # origin: git@github.com:davidlee/oubliette-fleet.git
+   ```
+1. CHR-013 (check first, then remove; root, the operator's call):
+   ```
+   systemctl list-units 'microvm@capsule*'; pgrep -af microvm
+   sudo rm -rf /var/lib/microvms/capsule /var/lib/microvms/capsule-b
+   ```
+2. Re-point every remaining flake file (listed: a b c d e f j):
+   ```
+   for s in a b c d e f j; do echo /srv/fleet | sudo tee /var/lib/microvms/$s/flake >/dev/null; done
+   for f in /var/lib/microvms/*/flake; do echo "$f: $(cat $f)"; done   # all /srv/fleet
+   ```
+3. RV-012 F-9, on every machine that evaluates ~/flakes (incl. the aarch64-darwin one, ~/flakes/flake.nix:189 `systems = linuxSystems ++ ["aarch64-darwin"]`; design said :193, now :189). **Stop if any fails**:
+   ```
+   nix flake metadata git+ssh://git@github.com/davidlee/oubliette-fleet
+   ```
+4. ~/flakes edits (file:line as read now; the design's wording needs three corrections, flagged):
+   - flake.nix:128-134: replace the `oubliette` input with
+     `fleet = { url = "git+ssh://git@github.com/davidlee/oubliette-fleet"; inputs = { nixpkgs.follows = "nixpkgs"; doctrine.follows = "nixpkgs"; goad-walk.follows = "nixpkgs"; }; };`
+     **Correction:** the current shim `target.follows` (line 132) goes — the fleet has no `target` input, it has root `doctrine` and `goad-walk` (and `llm-agents` follows oubliette's). Comment block flake.nix:111-127 (incl. "Was github:davidlee/microvm-spike") to be reworded: it names `oubliette`/`target`.
+   - features/virt/capsule.nix:53-54: `inputs.fleet.inputs.oubliette.inputs.microvm.nixosModules.host` and `inputs.fleet.nixosModules.capsule-perimeter`.
+   - **Correction:** the design's `justfile:14 --override-input fleet git+file:///srv/fleet` is stale. justfile:14-18 now builds `local_override` from `tree_override` plus `bin/dev-checkouts override`, which emits `--override-input <i> git+file://$HOME/dev/<i>` for `inputs=(oubliette goad panopticon satan-patcher satan-attrd)` (bin/dev-checkouts:16). `oubliette` there would name an input that no longer exists, and `fleet` is at /srv/fleet, not ~/dev/fleet. Needs a decision: add `fleet_override := "--override-input fleet git+file:///srv/fleet"` to `local_override` (justfile:18), and swap `oubliette` for `fleet` in bin/dev-checkouts:16 only if its root rule can express /srv/fleet (it cannot as written); also `update-local` (justfile:182-184, `nix flake update ... $(bin/dev-checkouts names)`) and bin/dev-checkouts-test (lines 63, 70, 73, 106, 108) name `oubliette`. `push-local` (justfile:187) pushes ~/dev/oubliette and can stay.
+   - stale `microvm-spike` comments: features/virt/capsule.nix:1-2, 111; flake.nix:114; hosts/Sleipnir/features.nix:11 ("local oubliette checkout").
+5. Closure diff (VH-1), `~/flakes`:
+   ```
+   just system-build        # sudo ./run.sh build <host> <override>; prints/links the new toplevel
+   nix store diff-closures /run/current-system <new toplevel path>
+   ```
+   Expected: the oubliette -> fleet input swap and `policyDir` moving
+   `/home/<owner>/dev/microvm-spike/perimeter` -> `/srv/fleet/perimeter` in 7 wrappers, tmpfiles, and 10 proxy units (and their dependents). Nothing else; anything else, stop.
+6. `cd ~/flakes && just system-switch`.
+7. `cd /srv/fleet && direnv allow`, then `just refresh-build <slot>` for one slot (e.g. `a`).
+8. `/run/current-system/sw/bin/capsule all status`.
+9. Oubliette follow-up: `perimeter/egress-allow.txt` and `perimeter/egress-none.txt` both exist in /srv/fleet/perimeter and are byte-identical (`cmp`). Nothing in oubliette's code, fixture, template, justfile or devshell reads `perimeter/*.txt` (fixture uses `fixture/perimeter/`, the template `templates/fleet/perimeter/`; `mkfleet.nix` reads `policies.dir`). So `git rm perimeter/egress-allow.txt perimeter/egress-none.txt` is a plain delete for code; docs still cite it (docs/architecture-walkthrough.md:156, design.md:23,83, contract-assignment.md:146, plan-b:135, plan-d:110,302) and want a pass in the same commit. Do this only after step 8 is green.
+10. Sec-7 step 10 (delete the `~/dev/microvm-spike` symlink and the `MICROVM_SPIKE_ROOT` fallback in `perimeter/root.nix`) is out of this slice.
