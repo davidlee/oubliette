@@ -1,57 +1,73 @@
-inputs @ {
+# oubliette's own inputs — never the caller's. What a fleet is built *with*:
+# the guest's nixpkgs, microvm.nix, and the governance CLI the devshell carries.
+{
   nixpkgs,
   microvm,
-  ...
-}: let
+  # The governance CLI the devshell carries (design sec-1's `doctrine*`): an
+  # input of oubliette's, not a target. Design sec-10's curry names only the two
+  # above; this one is closed over for the same reason as `microvm`.
+  doctrine,
+}:
+# The caller's declarations, one argument per owner (design sec-10), all
+# required: an omitted one fails at eval naming it, and an unexpected one is
+# refused rather than ignored.
+{
+  # The repos this host confines, each `{decl; flake}`: a target's declaration
+  # paired with the flake its tool set comes from. **Shadowed below** by the
+  # derived set every factory here expects (targets/default.nix) — same axis,
+  # derived form — so the pairs are reachable only as `host.targets`.
+  targets,
+  # Which slots exist and the fabric they sit on: the declaration
+  # `capsules.nix` is applied to.
+  fleet,
+  # The policy vocabulary (policies.nix's shape).
+  policies,
+  # Tap name, both addresses, MAC and ports, which the host-side module needs
+  # too.
+  net,
+  # The host operator's half of every guest's tool set: `extras`, the fragments
+  # composed into each image, and `sources`, the flake inputs they come from
+  # (fragments.nix, docs/contract-flavour.md).
+  flavour,
+  # Who may reach a guest and what is put on its volume: `adminKeys`,
+  # `stopKey`, and `injections`, the setup function `{volumePath}: [injection]`
+  # — one value read by the host programs and by the guest's scrub list.
+  access,
+  # `{target; fabric}`: the one real target the probes are about, and the
+  # names and addressing a probe's egress fabric is built from.
+  probe,
+  # Where this host's declarations live. Threaded to the module and read by
+  # nothing yet (RV-012 F-11).
+  fleetPath,
+} @ host: let
   system = "x86_64-linux";
   pkgs = nixpkgs.legacyPackages.${system};
   inherit (nixpkgs) lib;
 
   # The host module, bound once: `hostModule` imports it and `nixosModules` exports it.
-  capsulePerimeter = import ./host/services.nix {inherit net targets capsules policies workBranch;};
-
-  # Tap name, both addresses, MAC and ports. Its own file because the
-  # host-side NixOS module needs the same values.
-  net = import ./net.nix;
-
-  # The repos this host confines, each paired with its own flake: the hand
-  # list. A flake input's url must be a literal, so a target's file cannot
-  # carry its flake; pairing them here, beside the inputs, means the targets
-  # and their flakes cannot name different sets, so there is nothing to refuse
-  # (fleet.nix). `inputs.target` keeps its name: ~/flakes follows it.
-  targetPairs = {
-    doctrine = {
-      decl = import ./targets/doctrine.nix;
-      flake = inputs.target;
-    };
-    goad-walk = {
-      decl = import ./targets/goad-walk.nix;
-      flake = inputs.goad-walk;
-    };
+  capsulePerimeter = import ./host/services.nix {
+    inherit net targets capsules policies workBranch fleetPath;
+    inherit (access) injections;
   };
 
-  # The target-shaped settings that follow from each (targets/default.nix), and
-  # each target's flake, for its tool set — both derived from the one list.
-  # Same rule as net.nix: nothing below spells a target detail twice, and
-  # nothing generic imports this — it is handed down as an argument, so this
-  # file is the one place binding it (SL-003 design sec-2).
-  targets = import ./targets (lib.mapAttrs (_: t: t.decl) targetPairs);
-  targetFlakes = lib.mapAttrs (_: t: t.flake) targetPairs;
+  # The target-shaped settings that follow from each declared target
+  # (targets/default.nix), and each target's flake, for its tool set — both
+  # derived from the one list, so the targets and their flakes cannot name
+  # different sets and there is nothing to refuse (fleet.nix). Nothing below
+  # spells a target detail twice, and nothing generic imports a target — it is
+  # handed down as an argument (SL-003 design sec-2).
+  targets = import ./targets (lib.mapAttrs (_: t: t.decl) host.targets);
+  targetFlakes = lib.mapAttrs (_: t: t.flake) host.targets;
 
-  # The one real target the probes are about, named once. A probe is evidence
-  # about the real capsule on this host, so it may know this host's target —
-  # `probe/netns-boot.sh` is the standing exception. `.#capsule` is this
-  # target's image, and until each slot is bound by its profile (SL-003
-  # PHASE-04, `fleet.nix`) every slot boots it too.
-  probeTarget = "doctrine";
+  probeTarget = probe.target;
+  probeFabric = probe.fabric;
   probeSubject = targets.byName.${probeTarget};
 
   # Which capsules exist, and each one's namespace, socket and uplink: the
-  # function (capsules.nix) applied to this host's declaration
-  # (host-capsules.nix). Same rule again. Under netns the guest-facing link is
-  # *not* in here — it is identical in every capsule, so it stays in net.nix
-  # above.
-  capsules = import ./capsules.nix {inherit policies;} (import ./host-capsules.nix);
+  # function (capsules.nix) applied to the caller's `fleet`. Under netns the
+  # guest-facing link is *not* in here — it is identical in every capsule, so
+  # it stays in `net`.
+  capsules = import ./capsules.nix {inherit policies;} fleet;
 
   # The fabric the case suites run on (guardCases, policyCases, volumeCases,
   # volumeRootCases): the same function, applied to a declaration that is no
@@ -71,7 +87,6 @@ inputs @ {
     };
     volumeReserve = 20 * 1024 * 1024 * 1024;
   };
-  policies = import ./policies.nix;
 
   # Where a collected exhibit lives and what its refs are called. Bound here
   # rather than imported at each use because there are three now — the token
@@ -92,17 +107,6 @@ inputs @ {
   # wiring already is, and threaded to both.
   workBranch = "work";
 
-  # The host operator's half of every guest's tool set: which fragments of
-  # `fragments.nix`'s vocabulary this fleet composes into its image. A value
-  # threaded like `workBranch`, and one list for the fleet — so every slot
-  # arrives at the same composition and stays one image (NOTES item 21), and
-  # a per-slot list is a field this value moves into rather than a mechanism
-  # anything here has to grow (Plan D D7, docs/contract-flavour.md).
-  #
-  # The floor is *not* here: that is the target's, and `vm/capsule.nix` still
-  # reads it out of the target's file (targets/). Two owners, two files, one composition.
-  extras = ["agents" "dev-facilities"];
-
   # Where a capsule's way in lives, for the probes' throwaway capsules — which
   # are not instances, and must not spell that path a second time.
   inherit (capsules) socketOf;
@@ -114,7 +118,7 @@ inputs @ {
   mkVm = hostName: module: args:
     lib.nixosSystem {
       inherit system;
-      specialArgs = {inherit inputs net workBranch extras;} // args;
+      specialArgs = {inherit net workBranch access flavour;} // args;
       modules = [
         microvm.nixosModules.microvm
         ./vm/common.nix
@@ -123,12 +127,13 @@ inputs @ {
       ];
     };
 
-  # One image per target, and each slot bound to the image its declared
-  # `profile` names (fleet.nix, SL-003 sec-3). Applied once, here, to this
-  # host's values. Two slots with one profile get the same value rather than a
-  # rebuild of it, so identical modules make an identical derivation and "one
-  # image per target, N capsules" is structural rather than a claim.
-  fleet = import ./fleet.nix {inherit lib mkVm;} {
+  # The caller's declarations bound to images: one image per target, and each
+  # slot bound to the image its declared `profile` names (fleet.nix, SL-003
+  # sec-3). Applied once, here, to the caller's values. Two slots with one
+  # profile get the same value rather than a rebuild of it, so identical modules
+  # make an identical derivation and "one image per target, N capsules" is
+  # structural rather than a claim.
+  bound = import ./fleet.nix {inherit lib mkVm;} {
     inherit targets targetFlakes capsules probeTarget;
   };
 
@@ -146,7 +151,7 @@ inputs @ {
     # takes no fragment). An image is never a `nixosConfigurations` attribute
     # of its own (DEC-020): it builds as `packages.image-<target>`, so
     # `microvm -c` cannot create one outside a slot.
-    // fleet.vms;
+    // bound.vms;
 
   # Is the host-side half of the perimeter loaded? Injected into the
   # jail-agnostic perimeter as `preflight` + `watch` and shared verbatim with
@@ -383,8 +388,13 @@ inputs @ {
   # straight over the tap, and built again in `host/services.nix` with the
   # relay socket instead — one construction, two transports, which is the only
   # thing that differs (host/programs.nix).
+  #
+  # `access` means two things here: the host's argument (`adminKeys`, `stopKey`,
+  # `injections`) and, as a key below, the transport programs.nix takes. Only
+  # `injections` crosses — never `inherit access` into this call.
   hostPrograms = import ./host/programs.nix {
     inherit pkgs lib net targets capsules policies workBranch;
+    inherit (access) injections;
     # The same socket expression the units inject, for the opposite purpose:
     # there it is the way in, here its existence is what says this copy is the
     # wrong one (host/guest-ssh.nix).
@@ -603,8 +613,8 @@ inputs @ {
   # (vm/reset-home-cases.nix).
   # The binding from this host's declarations to its VMs (SL-003 sec-3), run
   # against a stub mkVm and fixtures that are no host's, so no NixOS system is
-  # built. Its subject is the unapplied function, as flake.nix's own `fleet`
-  # applies it (fleet-cases.nix).
+  # built. Its subject is the unapplied function, as `bound` above applies it
+  # (fleet-cases.nix).
   fleetCases = import ./fleet-cases.nix {
     inherit pkgs lib;
     fleet = import ./fleet.nix;
@@ -613,8 +623,8 @@ inputs @ {
   resetHomeCases = import ./vm/reset-home-cases.nix {
     inherit pkgs lib;
     inherit targets;
-    guest = fleet.images.${probeTarget}.config;
-    images = lib.mapAttrs (_: image: image.config) fleet.images;
+    guest = bound.images.${probeTarget}.config;
+    images = lib.mapAttrs (_: image: image.config) bound.images;
   };
 
   # The host module has no build of its own — it is a NixOS module, and this
@@ -973,7 +983,7 @@ inputs @ {
   # for every value a prelude may inject — which is what lets it carry the
   # egress fabric below without every probe that never builds one tripping
   # SC2154 — so the prelude has to come *after* it or those defaults would win.
-  probe = {
+  mkProbe = {
     name,
     script,
     runtimeInputs,
@@ -989,10 +999,10 @@ inputs @ {
         + builtins.readFile script;
     };
 
-  # The names, links and addressing a probe's egress fabric is built from —
-  # **and the eval-time refusal to share any of them with `capsules.nix`**,
-  # which is the whole reason this is a value here rather than four literals in
-  # `probe/harness.sh`.
+  # `probeFabric` (the caller's `probe.fabric`) is the names, links and
+  # addressing a probe's egress fabric is built from — **and here is the
+  # eval-time refusal to share any of them with `capsules.nix`**, which is the
+  # whole reason it is a value rather than four literals in `probe/harness.sh`.
   #
   # `capsules.nix` copied its map *from* `probe/netns-egress.sh` once that probe
   # had verified the shape, so the probe became a borrower of live addressing
@@ -1001,23 +1011,6 @@ inputs @ {
   # probe's own teardown deletes that name (NOTES item 38). The rule about not
   # borrowing live addressing needs an enforcer, because it is broken by the
   # *other* file moving.
-  #
-  # A separate /16 and /30 is what keeps every per-index address off the live
-  # fabric without asserting each one — the harness derives `<base>.<i>.{1,2}`
-  # the same way `capsules.nix` does.
-  probeFabric = rec {
-    ns = "probe-egress";
-    peerNs = "probe-peer";
-    dev = "pr-up";
-    peer = "pr-rt";
-    addr = "10.111.0.2";
-    peerAddr = "10.111.0.1";
-    netBase = "10.110";
-    net = "${netBase}.0.0/16";
-    uplinkNet = "10.111.0.0/30";
-    outPrefix = "pr-out";
-    wanPrefix = "pr-wan";
-  };
 
   # Every string this host's declaration puts on a wire or in `ip netns list`.
   # A probe may reuse none of them.
@@ -1033,7 +1026,7 @@ inputs @ {
 
   fabricPrelude = assert borrowed
   == []
-  || throw "flake.nix: probeFabric borrows '${builtins.head borrowed}' from capsules.nix — a probe's fabric may share no name, link, address or network with the live one (NOTES item 38)"; ''
+  || throw "mkFleet: probeFabric borrows '${builtins.head borrowed}' from capsules.nix — a probe's fabric may share no name, link, address or network with the live one (NOTES item 38)"; ''
     EG_NS="${probeFabric.ns}"
     EG_DEV="${probeFabric.dev}"
     EG_PEER="${probeFabric.peer}"
@@ -1075,7 +1068,7 @@ inputs @ {
   # Does a network namespace per capsule hold up (docs/plan-c-multi-capsule.md, "Netns per
   # capsule")? Models two capsules with identical addressing and no VM, on
   # addressing deliberately unlike the live capsule's.
-  probe-netns = probe {
+  probe-netns = mkProbe {
     name = "probe-netns";
     script = ./probe/netns.sh;
     # Its links and namespaces were always its own (`spk-*`, `capspk-*`); its
@@ -1105,7 +1098,7 @@ inputs @ {
   # every per-capsule value comes from its unit's `Environment=`, so a probe
   # supplies a whole capsule's worth of addressing that is nobody's capsule.
   # No VM, no tap, no guest, and nothing in the root namespace.
-  probe-netns-restart = probe {
+  probe-netns-restart = mkProbe {
     name = "probe-netns-restart";
     script = ./probe/netns-restart.sh;
     # The program, not its text. Same store path `host/services.nix` puts in
@@ -1122,7 +1115,7 @@ inputs @ {
     ];
   };
 
-  probe-netns-boot = probe {
+  probe-netns-boot = mkProbe {
     name = "probe-netns-boot";
     script = ./probe/netns-boot.sh;
     # Quoted, and it matters: `TAP=vm-capsule` unquoted reads as arithmetic to
@@ -1158,7 +1151,7 @@ inputs @ {
   # to get out — to a host the allowlist permits and to one it does not. Takes
   # the proxy as a store path rather than rebuilding one, because a probe
   # against a lookalike proves nothing about the program that ships.
-  probe-netns-egress = probe {
+  probe-netns-egress = mkProbe {
     name = "probe-netns-egress";
     script = ./probe/netns-egress.sh;
     prelude =
@@ -1213,12 +1206,13 @@ inputs @ {
   # `runtimeInputs`, where a unit has no PATH to trust.
   nsPrograms = import ./host/programs.nix {
     inherit pkgs lib net targets capsules policies workBranch;
+    inherit (access) injections;
     access = guestSsh.viaSocket {
       socat = "socat";
       socket = socketOf ''"$capsule"'';
     };
   };
-  probe-freshness = probe {
+  probe-freshness = mkProbe {
     name = "probe-freshness";
     script = ./probe/freshness.sh;
     prelude = ''
@@ -1261,7 +1255,7 @@ inputs @ {
   # that the transport is an argument: this probe is what found that it was not.
   pairA = "pair-a";
   pairB = "pair-b";
-  probe-two-capsules = probe {
+  probe-two-capsules = mkProbe {
     name = "probe-two-capsules";
     script = ./probe/two-capsules.sh;
     prelude =
@@ -1425,7 +1419,7 @@ in {
     # Every target's image, by the target's name, for `just build-vm`.
     // lib.mapAttrs' (name: cfg:
       lib.nameValuePair "image-${name}" cfg.config.microvm.declaredRunner)
-    fleet.images
+    bound.images
     // {
       # Four programs and four suites that were conditional on `target.nix`
       # until step 6 (NOTES item 51). They are outputs like any other now,
@@ -1486,7 +1480,7 @@ in {
       capsule-refresh
       capsule-adopt
       capsule-brief
-      inputs.doctrine.packages.${system}.default
+      doctrine.packages.${system}.default
       # Takes a file and nothing else — no state, no transport, no name to
       # resolve — so the devshell copy and the module's are the same store path
       # and neither needs the wrapper.

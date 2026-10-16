@@ -40,7 +40,9 @@
 #     dirty volume — is Plan D D7. This file is what that would select *from*.
 {
   pkgs,
-  inputs,
+  # The flake inputs a fragment is built from (mkFleet's `flavour.sources`):
+  # the host's tool sources, never the whole of anyone's `inputs`.
+  sources,
 }: let
   inherit (pkgs.stdenv.hostPlatform) system;
   inherit (pkgs) lib;
@@ -55,7 +57,7 @@
   #
   # The jailed wrappers stay out, as they always have: they bind *host* paths
   # this guest does not have, and the capsule's confinement is the VM.
-  llm = inputs.llm-agents.packages.${system};
+  llm = sources.llm-agents.packages.${system};
 
   # Name -> fragment. Small on purpose: a fragment used by one slot is its own
   # 3.0 GiB image, so broad-and-few is arithmetic rather than taste

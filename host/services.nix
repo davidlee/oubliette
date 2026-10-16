@@ -39,6 +39,14 @@
   # devshell path does it (flake.nix): the installed programs and the guest image
   # have to agree on it, and neither of them may spell it.
   workBranch,
+  # The host's setup function (`access.injections`), passed on to the programs
+  # below: the one value the devshell's programs and the guest's scrub list also
+  # read (RV-012 F-2).
+  injections,
+  # Where this host's declarations live. Threaded for the cutover and read by
+  # nothing yet (RV-012 F-11): then the policy directory's default becomes
+  # `fleetPath + "/" + policies.dir`.
+  fleetPath,
 }: {
   config,
   lib,
@@ -122,7 +130,7 @@
   guestSsh = import ./guest-ssh.nix {inherit lib;};
 
   hostPrograms = import ./programs.nix {
-    inherit pkgs lib net targets capsules policies workBranch;
+    inherit pkgs lib net targets capsules policies workBranch injections;
     access = guestSsh.viaSocket {
       socat = "${pkgs.socat}/bin/socat";
       socket = capsules.socketOf ''"$capsule"'';

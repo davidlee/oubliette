@@ -2,11 +2,9 @@
   config,
   pkgs,
   lib,
-  inputs,
   net,
   target,
-  # That target's own flake, for its tool set (fleet.nix, DEC-019). `inputs` is
-  # still the fleet's, for `fragments.nix`; it no longer says which target.
+  # That target's own flake, for its tool set (fleet.nix, DEC-019).
   targetFlake,
   # The branch the checkout sits on. A constant, and not the target's to name:
   # what the work is called does not identify the project, and two slices of one
@@ -15,18 +13,28 @@
   # same one and verifies it, because a mismatch here lands history without
   # touching the worktree and says nothing.
   workBranch,
-  # Which fragments of the host's vocabulary this guest composes on top of the
-  # target's floor (`../fragments.nix`, `extras` in flake.nix). A selection, not
-  # a tool set: nothing here may name a package, because a convenience that is
-  # nobody's project is the host operator's to declare and the target's floor is
-  # the target's (docs/contract-flavour.md).
-  extras,
+  # The host operator's half of the tool set (mkFleet's `flavour`, design
+  # sec-10): `extras`, which fragments of the vocabulary this guest composes on
+  # top of the target's floor, and `sources`, the flake inputs those fragments
+  # come from (`../fragments.nix`). A selection, not a tool set: nothing here may
+  # name a package, because a convenience that is nobody's project is the host
+  # operator's to declare and the target's floor is the target's
+  # (docs/contract-flavour.md).
+  flavour,
+  # Who may reach this guest and what is put on its volume (mkFleet's `access`,
+  # design sec-10): `adminKeys`, `stopKey`, and `injections` — the host's setup
+  # function, read here for the scrub list and by the host for `capsule-inject`,
+  # so the two cannot name different payloads (RV-012 F-2).
+  access,
   ...
 }: let
   # The vocabulary, resolved against *this* guest's pkgs — so a fragment is the
   # same derivation the rest of the closure is built from, and the composition
   # is one expression rather than a list assembled twice.
-  flavour = import ../fragments.nix {inherit pkgs inputs;};
+  fragments = import ../fragments.nix {
+    inherit pkgs;
+    inherit (flavour) sources;
+  };
 
   # The two paths the host also knows, so both come from the target (targets/) rather than
   # being derived twice — the host pushes to `repo` and fetches from it, and it
@@ -41,7 +49,7 @@
   # reset-home` over the admin door (vm/reset-home.nix, SL-002 `DEC-001`). What a
   # scrub removes besides `$HOME` is read from the two declarations that put an
   # identity on the volume, never listed here (`DEC-003`): every payload
-  # `setup.nix` injects and every host key sshd is told to keep. A destination
+  # `access.injections` injects and every host key sshd is told to keep. A destination
   # under `$HOME` is dropped because the reset already removes it; only the `dest`
   # strings reach the program, so editing a payload's `produce` does not change
   # the image.
@@ -56,7 +64,7 @@
     scrubPaths =
       map (guestPath "a scrub path")
       (builtins.filter (p: !lib.hasPrefix "${home}/" p)
-        (map (i: i.dest) (import ../setup.nix {volumePath = work;}))
+        (map (i: i.dest) (access.injections {volumePath = work;}))
         ++ lib.concatMap (k: [k.path "${k.path}.pub"]) config.services.openssh.hostKeys);
   };
 
@@ -82,24 +90,6 @@
   # which is the same question asked by a loader instead of by a linker.
   runtimeLibs = [pkgs.stdenv.cc.cc.lib pkgs.zlib];
 
-  adminKeys = [
-    "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIAgvwY62NVQgQkVkp5YbOKv26avHLypGNPdrOqKFtwjl david@Sleipnir"
-  ];
-
-  # The public half of the host's stop key: what a `microvm@<name>` unit's
-  # `ExecStop` presents to ask this guest to reboot, which is the only clean
-  # stop firecracker leaves available (host/halt.nix, NOTES item 11). Root's
-  # alone — an unprivileged session cannot reboot anything, so giving it to the
-  # agent would only widen what a key on the host reaches.
-  #
-  # Not the human's key, because the unit has no agent and no way into her home;
-  # not in the store, because the private half is a secret; and required rather
-  # than optional, because a guest that quietly omits it is one whose volume
-  # gets power-cut — and it would say so for the first time at host shutdown.
-  stopKey =
-    if builtins.pathExists ./stop-key.pub
-    then lib.removeSuffix "\n" (builtins.readFile ./stop-key.pub)
-    else throw "vm/stop-key.pub is missing: generate this host's capsule stop key and commit its public half (README, 'Host requirements').";
   proxy = "http://${net.host}:${toString net.proxyPort}";
 
   # Which target this image is for, as the runner a slot booted says it —
@@ -186,8 +176,8 @@ in {
     # two halves have different owners (docs/contract-flavour.md). The agent
     # CLIs are in the `agents` fragment now rather than beside this list, which
     # is what stops a convenience being spelled in two places.
-    ++ flavour.compose {
-      inherit extras;
+    ++ fragments.compose {
+      inherit (flavour) extras;
       floor =
         # The target's devshell tool set, built from the target's own nixpkgs
         # pin so the guest and that devshell cannot drift.
@@ -266,7 +256,7 @@ in {
     group = "users";
     home = home;
     createHome = false; # on the volume, made by capsule-seed
-    openssh.authorizedKeys.keys = adminKeys;
+    openssh.authorizedKeys.keys = access.adminKeys;
   };
 
   # A host->guest door, so the console isn't the only session. It widens
@@ -291,7 +281,19 @@ in {
 
   # Root is reachable by key from the host only — no password, no sudo, no su
   # for the agent. Admin is a thing you do from outside the jail.
-  users.users.root.openssh.authorizedKeys.keys = adminKeys ++ [stopKey];
+  #
+  # `access.stopKey` is the public half of the host's stop key: what a
+  # `microvm@<name>` unit's `ExecStop` presents to ask this guest to reboot,
+  # which is the only clean stop firecracker leaves available (host/halt.nix,
+  # NOTES item 11). Root's alone — an unprivileged session cannot reboot
+  # anything, so giving it to the agent would only widen what a key on the host
+  # reaches.
+  #
+  # Not the human's key, because the unit has no agent and no way into her home;
+  # not in the store, because the private half is a secret; and required rather
+  # than optional, because a guest that quietly omits it is one whose volume
+  # gets power-cut — and it would say so for the first time at host shutdown.
+  users.users.root.openssh.authorizedKeys.keys = access.adminKeys ++ [access.stopKey];
 
   # First boot: prepare the volume and make an empty repository for the host to
   # push into. No clone, so no network and no host service has to be up — the

@@ -17,8 +17,10 @@
 # (`ISS-009`): a provision resets tracked files only. The literal repeats a
 # target's `name` (its key in `targets/`) on purpose (`DEC-012`): renaming the
 # target fails the build, naming these slots.
-let
-  policies = import ./policies.nix;
+#
+# A function of the policy vocabulary, applied in flake.nix with the one
+# `policies` this host hands mkFleet.
+{policies}: let
   slot = index: profile: {
     inherit index profile;
     policy = "build";

@@ -22,8 +22,8 @@
 #
 # Everything else here is derivation, not decision: who the host talks to
 # (`agent@`, the unprivileged guest user), where the checkout is, and which
-# payloads leave this host. All of it comes from `net.nix`, `targets/` and
-# `setup.nix` — nothing target-shaped is spelled here.
+# payloads leave this host. All of it comes from the host's `net`, `targets` and
+# `access.injections` — nothing target-shaped is spelled here.
 {
   pkgs,
   lib,
@@ -45,6 +45,11 @@
   # sites build this set, and a value each of them resolves separately is a value
   # one of them can resolve differently.
   capsules,
+  # The host's setup function (`access.injections`, `{volumePath}: [injection]`):
+  # the payloads `capsule-inject` sends. The same value the guest's scrub list
+  # reads (vm/capsule.nix, RV-012 F-2), so the two cannot name different
+  # payloads — and threaded here for `policies`' reason.
+  injections,
   # The guest's branch, a constant threaded from `flake.nix` rather than a
   # target's field: only the git channel reads it, but both this file's callers
   # have to hand it the same one the guest was built with.
@@ -337,15 +342,16 @@ in {
   refreshInvoke = refreshHook.invoke;
 
   # The non-git half of provisioning: credentials, secrets and anything else a
-  # fresh capsule needs that no repository carries. The list is ./setup.nix,
-  # which is handed the volume's mount point — a payload's destination is in the
-  # guest, and `/work` is the capsule's to say (targets/default.nix). Its `tools` are nixpkgs attr
-  # names, resolved here so that a declaration file stays data.
+  # fresh capsule needs that no repository carries. The list is the host's
+  # `access.injections`, which is handed the volume's mount point — a payload's
+  # destination is in the guest, and `/work` is the capsule's to say
+  # (targets/default.nix). Its `tools` are nixpkgs attr names, resolved here so
+  # that a declaration file stays data.
   inject = import ./inject.nix {
     inherit pkgs guestHost transport;
     injections =
       map (i: i // {tools = map (name: pkgs.${name}) i.tools;})
-      (import ../setup.nix {inherit (targets) volumePath;});
+      (injections {inherit (targets) volumePath;});
   };
 
   # The last step of making a fresh capsule usable, and the only one that
