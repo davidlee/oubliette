@@ -142,6 +142,11 @@ target = "IMP-015"
 label = "governed_by"
 target = "POL-002"
 
+[[relation]]
+label = "references"
+role = "concerns"
+target = "ASM-003"
+
 # STRUCTURAL relations are uniform `[[relation]]` rows, never a typed
 # `[relationships]` axis. Slices carry no typed STRUCTURAL
 # relation axes — the `[relationships]` table above holds only the dep/seq payload

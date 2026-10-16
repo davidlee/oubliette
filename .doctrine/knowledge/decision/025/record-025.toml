@@ -12,7 +12,7 @@ tags = []
 
 [facet]                         # every field typed; seeded empty (captured later)
 context = "IMP-015/SL-004: the fleet declarations leave oubliette; RSK-004 needs the devshell and module CLIs from one evaluation."
-choice = "oubliette exports lib.mkFleet: today's flake outputs body moved into one function of {targets, targetFlakes, capsules, policies, net, extras, probe, identity, setup, fleetPath, sources}. Oubliette's own outputs are mkFleet over a fixture; a consumer flake's outputs are mkFleet over its host's values."
+choice = "oubliette exports lib.mkFleet: today's flake outputs body moved into one function of eight owner-grouped arguments — targets (each {decl; flake}), fleet (slots, addressing, volumeReserve), policies, net, flavour (extras, sources), access (adminKeys, stopKey, injections), probe, fleetPath. Oubliette's own outputs are mkFleet over a fixture; a consumer's are mkFleet over its host's values. Inside, each factory still receives only the fields it uses. (Amended 2026-10-16 on the user's agreement: grouped from eleven flat arguments; targets paired with their flakes.)"
 alternatives = ["separate builders per seam (images, module, programs, checks)", "host module takes declarations as data from ~/flakes"]
 rationale = "one call keeps the two CLI copies one store path (RSK-004) and moves the body with minimal text change, so derivations can stay equal; sources replaces passing oubliette's whole inputs into every guest (research X6, NOTES item 26)."
 consequences = ["oubliette's lock carries no target", "the builder argument list is the new coupling surface and is reviewed as such", "DEC-018/DEC-019 wording moves to the consumer at reconcile"]

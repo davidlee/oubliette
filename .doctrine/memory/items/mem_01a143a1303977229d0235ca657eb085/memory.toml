@@ -1,0 +1,42 @@
+memory_uid = "mem_01a143a1303977229d0235ca657eb085"
+memory_key = "mem.fact.oubliette.design-apply-ordering"
+schema_version = 1
+memory_type = "fact"
+status = "active"
+title = "A design-run apply orders sections and resolves needs by id, not by payload order"
+summary = "sec-N sort as text (sec-10 before sec-2), and a needs edge to a node declared in the same payload is refused"
+created = "2026-10-16"
+updated = "2026-10-16"
+
+[scope]
+paths = []
+globs = []
+commands = ["doctrine design apply", "doctrine design materialise"]
+tags = ["gotcha"]
+workspace = "default"
+repo = "github.com/davidlee/oubliette"
+repo_id_kind = "remote"
+repo_id_confidence = "high"
+
+[git]
+anchor_kind = "checkout_state"
+commit = ""
+tree = "4a8f2c06a8dbe8034f7f4bc0095fb347bbb2c593"
+ref_name = "refs/heads/main"
+checkout_state_id = "a6dbeb225bd8b56d5a0c9a7d612c9ce8896ebe3e0c1911d764e0c691a6fdb5bc"
+base_commit = "666175be491b8d860cd102dc96036c23b35e29c7"
+verified_sha = ""
+normalizer = "forget.checkout.v1"
+
+[review]
+verification_state = "unverified"
+reviewed = ""
+review_by = ""
+
+[trust]
+trust_level = "medium"
+
+[ranking]
+severity = "none"
+weight = 0
+

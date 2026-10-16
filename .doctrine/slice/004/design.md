@@ -8,9 +8,9 @@ oubliette (public)                              /srv/fleet (private remote)
   flake.nix                                       flake.nix
     inputs: nixpkgs microvm llm-agents doctrine*    inputs: oubliette doctrine goad-walk
     outputs = mkFleet fixture                       outputs = oubliette.lib.mkFleet {
-      // { lib.mkFleet; templates.default; }          targets targetFlakes capsules policies
-  mkfleet.nix   ← today's outputs body               net extras probe identity setup
-  capsules.nix  ← machinery, a function (DEC-026)    fleetPath sources }
+      // { lib.mkFleet; templates.default; }          targets fleet policies net
+  mkfleet.nix   ← today's outputs body               flavour access probe fleetPath }
+  capsules.nix  ← machinery, a function (DEC-026)
   targets/default.nix ← derive, a function         targets/ capsules.nix policies.nix
   fixture/      ← nobody's target and slots        net.nix setup.nix perimeter/ keys
   just/fleet.just ← every shared recipe (DEC-028)  justfile → import .oubliette/fleet.just
@@ -25,25 +25,30 @@ The consumer checkout is both the flake and the devshell's state root (`DEC-027`
 
 `lib.mkFleet` is curried like `fleet.nix`: oubliette closes over its own `nixpkgs` and `microvm` (so a consumer gets one microvm.nix pin by `follows`, G12), and the caller passes declarations only (POL-004 — never taps, nft or transports).
 
-| argument | what | was | required |
+**Grouped at the boundary by owner, never passed inward as a bag.** Each argument is one axis with one owner (POL-003). Inside `mkfleet.nix` every factory still receives only the fields it uses — `host/services.nix`'s `{net targets capsules policies workBranch}`, `perimeter/`'s `paths` — because those narrow signatures are what the case suites stub, and a factory taking the whole set would hide what it depends on.
+
+| argument | fields | owner | was |
 |---|---|---|---|
-| `targets` | the target set, already derived by `oubliette.lib.targets` from the consumer's files | `import ./targets` | yes |
-| `targetFlakes` | name → flake, exactly the declared targets (DEC-019 throw stays in `fleet.nix`) | `flake.nix:130` | yes |
-| `capsules` | `oubliette.lib.capsules {policies} {slots; uplinkNet; egressAddr; egressPeerAddr; volumeReserve}` (DEC-026): the slot set **and** the host's addressing and disk reserve, which `~/flakes` and this host's network must agree with (RV-012 F-1) | `capsules.nix:93,158,182,288` | yes |
-| `policies` | the policy vocabulary | `import ./policies.nix` | yes |
-| `net` | the link constants | `import ./net.nix` | yes |
-| `extras` | fragment names from `fragments.nix`'s vocabulary | `flake.nix:120` | yes |
-| `sources` | fragment sources, e.g. `{llm-agents = …}`; replaces handing every guest oubliette's whole `inputs` (research X6, G10) | `specialArgs.inputs` | yes |
-| `probe` | `{target; fabric}` — the probe subject and `probeFabric`; `borrowed` throws here against the real `capsules` (DEC-029, G3) | `flake.nix:83,1026` | yes |
-| `identity` | `{adminKeys; stopKey}` — root's keys in every image | `vm/capsule.nix:85,99` | yes |
-| `setup` | `{volumePath}: [injection]` — the credential sources | `import ./setup.nix` | yes |
-| `fleetPath` | the consumer checkout's absolute path; the module's `policyDir` is `fleetPath + "/" + policies.dir` | `host/services.nix:471` default | yes |
+| `targets` | `<name> = {decl; flake}` — each target's file and its tool-set flake, paired | the projects confined | `import ./targets` + `targetFlakes` (`flake.nix:76,130`) |
+| `fleet` | `slots`, `addressing = {uplinkNet; egressAddr; egressPeerAddr}`, `volumeReserve` | the host's slots and fabric | `capsules.nix:93,158,182,288` |
+| `policies` | the policy vocabulary | host controls | `policies.nix` |
+| `net` | the link constants | the guest link | `net.nix` |
+| `flavour` | `extras` (fragment names from `fragments.nix`) and `sources` (where those fragments come from, e.g. `{llm-agents = …}`) | the host operator (contract-flavour) | `flake.nix:120`, `specialArgs.inputs` |
+| `access` | `adminKeys`, `stopKey`, `injections` (the `setup` function, `{volumePath}: [injection]`) | who and what may enter a guest | `vm/capsule.nix:85,99`, `setup.nix` |
+| `probe` | `{target; fabric}` — the probe subject and `probeFabric`; `borrowed` throws here against the real slots (DEC-029, G3) | probe evidence | `flake.nix:83,1026` |
+| `fleetPath` | the consumer checkout's absolute path; the module's `policyDir` is `fleetPath + "/" + policies.dir` | this host | `host/services.nix:471` default |
 
-Every argument is required: no implicit default (POL-003). Helpers a consumer calls to *prepare* arguments — `lib.targets`, `lib.capsules` — are the split halves of today's files, not defaults. `workBranch` stays a constant inside `mkfleet.nix`; POL-003 already excludes it as an axis.
+Eight arguments, all required: no implicit default (POL-003).
 
-Interface and namespace *names* (`cap-`, `eg-up`, `eg-rt`, `vm-capsule`) stay oubliette's constants: they are the platform's vocabulary, and `borrowed` still asserts the probe fabric disjoint from them. **One `setup` value** reaches both its consumers — the guest's reset-home scrub list (`vm/capsule.nix:59`, via `specialArgs`) and the host's injections (`host/programs.nix:348`) — so the list scrubbed is the list injected by construction, and `resetHomeCases` keeps pinning it (RV-012 F-2).
+**Pairing each target with its flake removes a failure class.** Today `targetFlakes` is a second map that must name exactly the declared targets, and `fleet.nix` throws when it does not (DEC-019). With `{decl; flake}` per target there is no second map to disagree. `mkFleet` derives the internal `targets` and `targetFlakes` from the pairs, so `fleet.nix` and `vm/capsule.nix` keep their current shape and the derivations stay equal. `fleet.nix`'s `reasons.images` check becomes unreachable and is deleted together with its case in `fleet-cases.nix`. The slot-to-profile check (DEC-017) stays.
 
-`identity`, `setup` and `fleetPath` reach code that today imports or spells them (`vm/capsule.nix`, `host/programs.nix:348`, `host/services.nix:471`) as `specialArgs` or as arguments of the existing factories. Equal values produce equal derivations, so this is checkable by the manifest (§Verification).
+`oubliette.lib.capsules` and `oubliette.lib.targets` are the generic halves of today's files (DEC-026): `mkFleet` applies them to `fleet` and `targets` rather than asking the consumer to. Interface and namespace *names* (`cap-`, `eg-up`, `eg-rt`, `vm-capsule`) stay oubliette's constants: they are the platform's vocabulary, and `borrowed` still asserts the probe fabric disjoint from them.
+
+**One `access.injections` value** reaches both of its consumers — the guest's reset-home scrub list (`vm/capsule.nix:59`, via `specialArgs`) and the host's injections (`host/programs.nix:348`) — so the list scrubbed is the list injected by construction, and `resetHomeCases` keeps pinning it (RV-012 F-2). `workBranch` stays a constant inside `mkfleet.nix`; POL-003 already excludes it as an axis.
+
+Equal values produce equal derivations, so every rewiring here is checkable by the manifest (§Verification).
+
+**Considered, not taken: `lib.evalModules`** as a typed options schema for the consumer's declarations. It would replace the hand-written checks with types, but module merging invites defaults (POL-003) and adds a merge layer to the equality phases. It is a candidate for later, not for this slice.
 
 <!-- doctrine:section sec-2 -->
 ## What moves where
@@ -56,7 +61,7 @@ Interface and namespace *names* (`cap-`, `eg-up`, `eg-rt`, `vm-capsule`) stay ou
 | `targets/doctrine.nix` | moves | `templates/fleet/targets/doctrine.nix` (the commented reference) | a thin copy |
 | `targets/goad-walk.nix` | moves | — | `targets/goad-walk.nix` |
 | `policies.nix`, `net.nix`, `setup.nix`, `perimeter/*.txt` | move | commented reference copies in the template; fixture values in `fixture/` | this host's values |
-| `vm/stop-key.pub`, `adminKeys` literal | move | fixture: no stop key file, `adminKeys = []` | `identity` |
+| `vm/stop-key.pub`, `adminKeys` literal | move | fixture: no stop key file, `adminKeys = []` | `access` |
 | `justfile` | split (DEC-028) | `just/fleet.just` (shared recipes) + `justfile` (parse, fmt, oubliette-only) | `justfile`: `import '.oubliette/fleet.just'` plus its own parse/fmt |
 | `fleet-cases.nix` and every `*-cases.nix` | unchanged location | over the fixture | — |
 
@@ -71,10 +76,10 @@ The heavily-commented reference versions of the moving files live in `templates/
 
 - target `fixture`: `toolsPackage = null`, `caches = {}`, `guestConfig = {}`, `baseline = null`, `path = "/nonexistent/fixture"` — every optional field on its absent path.
 - slots `alpha` and `beta` (the existing precedent, `fleet-cases.nix`), both `profile = "fixture"`, on the fixture's two policies.
-- `identity = {adminKeys = []; stopKey = <a fixture literal>}`; a fixture image has no usable root and is build-only.
+- `access = {adminKeys = []; stopKey = <a fixture literal>; injections = <a fixture setup>}`; a fixture image has no usable root and is build-only.
 - `probe.fabric`: a copy of today's `probeFabric` values, asserted disjoint from the fixture slots by the same `borrowed`.
-- `targetFlakes.fixture`: a stub exposing an empty tool set, so `vm/capsule.nix` builds without a real project.
-- `sources.llm-agents = inputs.llm-agents` — oubliette keeps that input for its fixture build; a consumer pins its own or `follows`.
+- `targets.fixture.flake`: a stub exposing an empty tool set, so `vm/capsule.nix` builds without a real project.
+- `flavour.sources.llm-agents = inputs.llm-agents` — oubliette keeps that input for its fixture build; a consumer pins its own or `follows`.
 
 `hello` stays an output. `nixosConfigurations` keeps DEC-020's rule that only slots (plus the probe subject `capsule`) are instantiable; the fixture adds `alpha`, `beta` and `capsule`, none of which a host would `microvm -c` since no host runs oubliette's own outputs.
 
@@ -114,7 +119,7 @@ The consumer's `just` is a real gate and nothing runs it automatically. That is 
 The move is meant to be derivation-neutral, and that is checkable before anything goes live (STD-001: this is the *compare* rung, not *start* or *exercise*).
 
 1. **Before**, at oubliette HEAD: a manifest of `drvPath` for every `packages.x86_64-linux.*`, every `nixosConfigurations.<slot>.config.microvm.declaredRunner`, and **the module**: the `system.build.toplevel` of a probe NixOS system importing the flake's `nixosModules.capsule-perimeter` (with `owner = "nobody"`, as `hostModule` does), which covers unit definitions, tmpfiles, sudo rules and activation text rather than only unit names (RV-012 F-4). The same expression runs against oubliette and against the consumer. Written to the slice's runtime notes, not committed.
-2. **Staged equality.** The phases are ordered so each refactor is checked against the manifest while oubliette still binds the real values: extract `mkfleet.nix` with real values → equal; split `capsules.nix`/`targets` and thread `identity`/`setup`/`fleetPath` → equal; only then swap oubliette's call to the fixture and create the consumer → the consumer's manifest equals the original.
+2. **Staged equality.** The phases are ordered so each refactor is checked against the manifest while oubliette still binds the real values: extract `mkfleet.nix` with real values → equal; split `capsules.nix`/`targets`, pair each target with its flake, and thread `access`/`flavour`/`fleetPath` → equal; only then swap oubliette's call to the fixture and create the consumer → the consumer's manifest equals the original.
 3. **Every difference is explained** in the phase notes, or the phase does not close. While the real values are still bound, `fleetPath` is this checkout's current path, so the module's `policyDir` is unchanged and must be equal. It changes once, at cutover, to `/srv/fleet/perimeter`: an expected, explained difference.
 4. oubliette's `just` green over the fixture; the consumer's `just` green over the real declarations.
 5. **The real host, at the switch (the user's rung):** before `just system-switch`, the user diffs the old and new system closures (`nix store diff-closures` over the two toplevels, or `nvd diff`); the only expected changes are the `oubliette` → `fleet` input and `policyDir`'s new path. Afterwards `capsule all status` is the *start* evidence.
@@ -150,14 +155,14 @@ Written in the same commits as the boundary moves (POL-002 scope), and reconcile
 - **POL-002**: the list of places a target's name may appear becomes "only in a consumer flake, plus `fixture/` and `templates/`", with `inputs.doctrine` (the governance CLI) named as an exclusion.
 - **POL-003**: rows naming `flake.nix` as the home of `net`, `targetFlakes`, `probeFabric`, `extras` say "the consumer's `mkFleet` call"; Verification says `borrowed` throws in the consumer's eval.
 - **POL-001** scope: the consumer holds `policies.nix` and the allowlists as well as `~/flakes` holding part of the perimeter. **POL-004**: "call sites in `flake.nix`" → `mkfleet.nix`.
-- **DEC-017, DEC-018, DEC-019, DEC-020, CON-001**: wording that names `flake.nix` as a home; DEC-019's `inputs.target` leaves. An ISS-015 note: the placeholder target it did not take is now taken.
+- **DEC-017, DEC-018, DEC-019, DEC-020, CON-001**: wording that names `flake.nix` as a home. DEC-019 is superseded rather than reworded: each target carries its own flake, so the separate map and its throw are gone. An ISS-015 note: the placeholder target it did not take is now taken.
 - **Docs**: `contract-target.md` (two literals, the reference file, porting step 1), `contract-flavour.md` (`extras`, fragment sources in the host's lock), `contract-doctrine.md`, `plan-d-fleet.md` §0/§1, `README.md`, `CLAUDE.md`.
 - **Memories**: `microvm-create-takes-no-fragment`, `target-input-reads-pushed-edge`, `flakes-builds-this-repo-two-ways` (already stale), `devshell-*`.
 
 <!-- doctrine:section sec-9 -->
 ## Risks and what is out of scope
 
-- **The argument list is the new coupling.** Eleven required arguments is the honest size of "what a host declares"; the review question for every future change is whether it adds an argument or a value inside one.
+- **The argument list is the new coupling.** Eight arguments grouped by owner is the honest size of "what a host declares". For any future change, the review question is whether it adds an axis (a new argument) or a value inside an existing one.
 - **The `.oubliette` symlink can be stale** (DEC-028 consequence). Mitigation is the existing habit — re-enter the devshell — and `just` could later compare it to the lock.
 - **The consumer's gate runs only when someone runs it.** Stated in §Probes; not solved here.
 - **Two ways `~/flakes` builds this repo** become two ways it builds the consumer: the lock and the `system-switch` override. Step 7 names both.

@@ -16,3 +16,5 @@ for `/var/lib/microvms` and the gcroots.
 picks up an uncommitted `flake.lock`. After a guest change use
 `just refresh-build <name>`, which reads `ActiveState` rather than `is-active` —
 `auto-restart` is the worst moment to update under.
+
+**Correction (2026-10-16, SL-004 research C5):** the recorded refs are not uniform. a, b, f and the pre-slot capsule/capsule-b record `/home/david/dev/microvm-spike` (a symlink to this checkout); c, d, e, j record `/home/david/dev/oubliette`. Read `/var/lib/microvms/*/flake` before assuming either. SL-004's cutover re-points all of them to the consumer flake.

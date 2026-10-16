@@ -10,3 +10,5 @@ was dirty**.
 
 Related: **a generation bump is not evidence a code change landed.** Four
 consecutive rebuilds here had nothing between them.
+
+**Correction (2026-10-16):** ~/flakes justfile:14 now overrides with `git+file:///home/david/dev/oubliette/`, not the microvm-spike symlink. SL-004 replaces this input with the consumer flake (`fleet`), so both ways move to it.

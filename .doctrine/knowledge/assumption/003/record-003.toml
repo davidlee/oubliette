@@ -1,0 +1,30 @@
+schema = "doctrine.knowledge"
+version = 1
+
+id = 3
+slug = "the-flake-outputs-body-moves-into-mkfleetnix-derivation-neutrally"
+title = "The flake outputs body moves into mkfleet.nix derivation-neutrally"
+record_kind = "assumption"
+status = "held"
+created = "2026-10-16"
+updated = "2026-10-16"
+tags = []
+
+[facet]                         # every field typed; seeded empty (captured later)
+claim           = "Moving flake.nix's outputs body into mkfleet.nix, with self references rebound and setup/identity/fleetPath threaded as equal values, leaves every package, slot runner and module-system drvPath unchanged while the real values are bound."
+confidence      = "medium"            # low | medium | high
+basis           = "design-inference"            # observation | prior-art | design-inference | external-source | operator-judgement
+validation_plan = "SL-004 design §Verification: drvPath manifest at HEAD, re-taken after each refactor phase; any unexplained difference fails the phase."
+validated_by    = ""
+validated_on    = ""
+invalidated_by  = ""
+invalidated_on  = ""
+
+[evidence]                      # free-text citations (supports / contradicts / notes)
+supports    = ["RV-012 GPT review: no whole-source-tree copy found in derivation code", "relative paths stay inside oubliette (design §Shape)"]
+contradicts = []
+notes       = []
+
+[relationships]                 # verb-written edges (set by doctrine supersede)
+supersedes    = []   # record ids this one replaces (set by doctrine supersede)
+superseded_by = []   # set on superseded predecessor (verb-written)
