@@ -43,9 +43,8 @@
   # below: the one value the devshell's programs and the guest's scrub list also
   # read (RV-012 F-2).
   injections,
-  # Where this host's declarations live. Threaded for the cutover and read by
-  # nothing yet (RV-012 F-11): then the policy directory's default becomes
-  # `fleetPath + "/" + policies.dir`.
+  # Where this host's declarations live. The policy directory's default is
+  # `fleetPath + "/" + policies.dir` (RV-012 F-11).
   fleetPath,
 }: {
   config,
@@ -476,8 +475,8 @@ in {
 
     policyDir = lib.mkOption {
       type = lib.types.str;
-      default = "/home/${cfg.owner}/dev/microvm-spike/${policies.dir}";
-      defaultText = "/home/\${owner}/dev/microvm-spike/\${policies.dir}";
+      default = fleetPath + "/" + policies.dir;
+      defaultText = "\${fleetPath}/\${policies.dir}";
       description = ''
         Directory holding every declared policy's allowlist. Deliberately plain
         files rather than store paths, so changing one needs a proxy restart and
