@@ -26,3 +26,14 @@ fresh-as-of: 2026-10-16 · ready (plan approved, no phase started) · 0790448
 - ASM-003 — the outputs body moves into mkfleet.nix derivation-neutrally; PHASE-02 is its first test
 - DEC-019 — superseded at reconcile (targets carry their own flakes)
 - user act before PHASE-06: create /srv/fleet and the private remote
+
+## Manifest baseline (ruling, capsule-driver seat, after PHASE-03)
+PHASE-03 EX-3 deletes the DEC-019 images check and its cases, which moves
+`packages.fleetCases` — so EX-5's "equal to PHASE-01's" cannot hold for that one
+entry. Accepted as PHASE-03's one explained difference. **From PHASE-04 on,
+every "PHASE-01's manifest" in plan.toml (PHASE-04 EX-5/VA-1, PHASE-05, PHASE-06
+EX-1/EX-4/VA-1, PHASE-07, PHASE-09 EX-1/VA-1) reads as the manifest at 4572d07**:
+PHASE-01's with `fleetCases` at its PHASE-03 value. plan.toml text is left as
+approved; this note is the amendment. Regenerate the baseline without touching
+the tree by pointing the instrument at
+`builtins.getFlake "git+file://$PWD?rev=4572d07…"` (full sha).
