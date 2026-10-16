@@ -1,6 +1,6 @@
 # fleet.nix — from this host's declarations to its VMs. SL-003 design sec-3.
 #
-# Pure: no host values. flake.nix applies it once, to this host's targets, flakes,
+# Pure: no host values. mkfleet.nix applies it once, to this host's targets, flakes,
 # slots and probe subject, and is the one binding site; fleet-cases.nix applies
 # it to a stub `mkVm` and fixtures. This is also what IMP-015's exported builder
 # grows from, so it is named for the fleet rather than for this host.
@@ -20,19 +20,16 @@
   mkVm,
 }: {
   targets,
-  # A flake input's url must be a literal, so the target values cannot carry their
-  # own flake; flake.nix holds this map beside the inputs (DEC-019). Complete, not
-  # optional: a target with `toolsPackage = null` still has an entry, so no
-  # consumer has to decide what a missing key means.
+  # Each target's flake, derived with `targets` from one set of `{decl; flake}`
+  # pairs by mkfleet.nix, so the two name the same set by construction and there
+  # is nothing here to refuse. Complete, not optional: a target with
+  # `toolsPackage = null` still has an entry, so no consumer has to decide what
+  # a missing key means.
   targetFlakes,
   capsules,
   probeTarget,
 }: let
   inherit (builtins) attrNames concatStringsSep mapAttrs;
-  names = attrNames targets.byName;
-  flakeNames = attrNames targetFlakes;
-  missing = lib.subtractLists flakeNames names;
-  extra = lib.subtractLists names flakeNames;
 
   # A declared slot must name a declared target. Checked here, at the binding,
   # and not in capsules.nix, which does not import targets/ (DEC-012 alt B).
@@ -43,30 +40,18 @@
     capsules.instances;
 
   reasons = {
-    images =
-      if missing == [] && extra == []
-      then null
-      else
-        "fleet.nix: targetFlakes must name exactly the targets in targets/"
-        + lib.optionalString (missing != []) "; no flake for ${concatStringsSep ", " missing}"
-        + lib.optionalString (extra != []) "; a flake for no target: ${concatStringsSep ", " extra}"
-        + " (DEC-019)";
     slotImages =
       if unbound == {}
       then null
       else "capsules.nix: a slot boots the image its profile names (DEC-017), and these slots name no target in targets/, or no profile at all: ${concatStringsSep ", " (attrNames unbound)}";
   };
 
-  images =
-    if reasons.images != null
-    then throw reasons.images
-    else
-      mapAttrs (name: target:
-        mkVm "capsule" ./vm/capsule.nix {
-          inherit target;
-          targetFlake = targetFlakes.${name};
-        })
-      targets.byName;
+  images = mapAttrs (name: target:
+    mkVm "capsule" ./vm/capsule.nix {
+      inherit target;
+      targetFlake = targetFlakes.${name};
+    })
+  targets.byName;
 
   slotImages =
     if reasons.slotImages != null

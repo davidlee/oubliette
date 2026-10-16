@@ -1,10 +1,14 @@
-# The targets this host declares — the axis's one home (POL-003). Listed **by
-# hand**: a `readDir` would make a stray or untracked file a target.
+# The targets a host declares, from its hand list — the axis's one home
+# (POL-003). The list is the host's (mkfleet.nix's `targetPairs` here), and it
+# stays a list **by hand**: a `readDir` would make a stray or untracked file a
+# target.
 #
-# Also the one place that derives what is a function of a target's name, so
-# every target spells only what is its own (SL-003 design sec-2, DEC-018). Only
-# `flake.nix` imports this; everything generic takes it as an argument, which is
-# the seam IMP-015 needs.
+# This file is the one place that derives what is a function of a target's
+# name, so every target spells only what is its own (SL-003 design sec-2,
+# DEC-018). Only mkfleet.nix applies it; everything generic takes the result as
+# an argument, which is the seam IMP-015 needs.
+byName:
+# The hand list: `<name> = <the target's file>`. What follows is derived from it.
 let
   # Where every capsule's volume is mounted in the guest. The capsule's, not a
   # target's: identical for every target, and read host-side as well as
@@ -26,8 +30,5 @@ let
     };
 in {
   inherit volumePath;
-  byName = builtins.mapAttrs derive {
-    doctrine = import ./doctrine.nix;
-    goad-walk = import ./goad-walk.nix;
-  };
+  byName = builtins.mapAttrs derive byName;
 }

@@ -1,14 +1,17 @@
 # What the fleet's binding decides — SL-003 design sec-3 and sec-6.
 #
 # The subject is a *library*, not a program: `fleet.nix` is the function its one
-# caller (flake.nix) applies, and this suite applies the same function to a stub
+# caller (mkfleet.nix) applies, and this suite applies the same function to a stub
 # `mkVm` and to fixtures that are no host's — two targets nobody declares and
 # slots nobody runs. So it never builds a NixOS system, and every verdict is a
 # value of the function rather than of this host (CLAUDE.md, the library rule).
 #
 # **Handed a fixture, and it says so**: `targets`, `targetFlakes` and
 # `capsules` below are invented. The stub `mkVm` returns its arguments, so a case
-# can read which target and which flake an image was given.
+# can read which target and which flake an image was given. `targetFlakes` is
+# its own fixture because fleet.nix still takes the map mkfleet.nix derives
+# from its `{decl; flake}` pairs; that it names the targets' set is now
+# structural there, so nothing here pins a mismatch.
 #
 # What it pins is mostly `throw`s, so the verdicts are read at eval with
 # `builtins.tryEval` and asserted in the shell — `hostModuleUnits`' arrangement
@@ -20,7 +23,7 @@
 {
   pkgs,
   lib,
-  # `import ./fleet.nix`, unapplied: the function flake.nix calls.
+  # `import ./fleet.nix`, unapplied: the function mkfleet.nix calls.
   fleet,
 }: let
   # An image is just what mkVm was handed.
@@ -70,14 +73,6 @@
       bare = slot null;
     };
   };
-  missingFlake = with' {
-    capsules.instances = {s1 = slot "alpha";};
-    targetFlakes = {alpha = "flake-alpha";};
-  };
-  extraFlake = with' {
-    capsules.instances = {s1 = slot "alpha";};
-    targetFlakes = targetFlakes // {delta = "flake-delta";};
-  };
 
   # Does forcing this attribute throw? `deepSeq` is load-bearing (see header).
   throws = x: !(builtins.tryEval (builtins.deepSeq x x)).success;
@@ -112,25 +107,17 @@ in
     ck "a slot with no profile throws" true ${verdict noProfile.slotImages}
     has "  naming the slot" bare ${lib.escapeShellArg (reason noProfile.reasons.slotImages)}
 
-    # 3. targetFlakes must name exactly the declared targets.
-    ck "targetFlakes missing a target throws" true ${verdict missingFlake.images}
-    has "  naming the target" beta ${lib.escapeShellArg (reason missingFlake.reasons.images)}
-    ck "targetFlakes with an extra entry throws" true ${verdict extraFlake.images}
-    has "  naming the entry" delta ${lib.escapeShellArg (reason extraFlake.reasons.images)}
-    ck "  and the slots, which are images, throw with it" true ${verdict extraFlake.slotImages}
-
     # A well-formed fleet throws nowhere and has nothing to say.
     ck "a well-formed fleet's vms evaluate" false ${verdict good.vms}
-    ck "  with no reason to refuse its images" "" ${lib.escapeShellArg (reason good.reasons.images)}
-    ck "  or its slots" "" ${lib.escapeShellArg (reason good.reasons.slotImages)}
+    ck "  with no reason to refuse its slots" "" ${lib.escapeShellArg (reason good.reasons.slotImages)}
 
-    # 4. Two slots with one profile get the same image value (structural sharing).
+    # 3. Two slots with one profile get the same image value (structural sharing).
     ck "two slots with one profile get the same image" true \
       ${lib.boolToString (good.slotImages.s1 == good.slotImages.s2)}
     ck "  and a slot with another profile gets another" false \
       ${lib.boolToString (good.slotImages.s1 == good.slotImages.s3)}
 
-    # 5. Each image is given its own target and its own flake.
+    # 4. Each image is given its own target and its own flake.
     ${lib.concatMapStrings (n: ''
       ck "image ${n} is given target ${n}" ${n} ${good.images.${n}.specialArgs.target.name}
       ck "  and its flake" flake-${n} ${good.images.${n}.specialArgs.targetFlake}
@@ -139,7 +126,7 @@ in
     ck "there is one image per target and no more" "alpha beta" \
       ${lib.escapeShellArg (toString (builtins.attrNames good.images))}
 
-    # 6. vms.capsule is the probe target's image; vms holds it and the slots.
+    # 5. vms.capsule is the probe target's image; vms holds it and the slots.
     ck "vms.capsule is the probe target's image" true \
       ${lib.boolToString (good.vms.capsule == good.images.beta)}
     ck "  and vms is capsule plus the slots" "capsule s1 s2 s3" \

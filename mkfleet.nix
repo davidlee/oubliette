@@ -14,12 +14,29 @@ inputs @ {
   # host-side NixOS module needs the same values.
   net = import ./net.nix;
 
-  # The repos this host confines, and the target-shaped settings that follow
-  # from each (targets/default.nix). Same rule as net.nix: nothing below
-  # spells a target detail twice, and nothing generic imports this — it is
-  # handed down as an argument, so this file is the one place binding it
-  # (SL-003 design sec-2).
-  targets = import ./targets;
+  # The repos this host confines, each paired with its own flake: the hand
+  # list. A flake input's url must be a literal, so a target's file cannot
+  # carry its flake; pairing them here, beside the inputs, means the targets
+  # and their flakes cannot name different sets, so there is nothing to refuse
+  # (fleet.nix). `inputs.target` keeps its name: ~/flakes follows it.
+  targetPairs = {
+    doctrine = {
+      decl = import ./targets/doctrine.nix;
+      flake = inputs.target;
+    };
+    goad-walk = {
+      decl = import ./targets/goad-walk.nix;
+      flake = inputs.goad-walk;
+    };
+  };
+
+  # The target-shaped settings that follow from each (targets/default.nix), and
+  # each target's flake, for its tool set — both derived from the one list.
+  # Same rule as net.nix: nothing below spells a target detail twice, and
+  # nothing generic imports this — it is handed down as an argument, so this
+  # file is the one place binding it (SL-003 design sec-2).
+  targets = import ./targets (lib.mapAttrs (_: t: t.decl) targetPairs);
+  targetFlakes = lib.mapAttrs (_: t: t.flake) targetPairs;
 
   # The one real target the probes are about, named once. A probe is evidence
   # about the real capsule on this host, so it may know this host's target —
@@ -29,10 +46,31 @@ inputs @ {
   probeTarget = "doctrine";
   probeSubject = targets.byName.${probeTarget};
 
-  # Which capsules exist, and each one's namespace, socket and uplink. Same
-  # rule again. Under netns the guest-facing link is *not* in here — it is
-  # identical in every capsule, so it stays in net.nix above.
-  capsules = import ./capsules.nix;
+  # Which capsules exist, and each one's namespace, socket and uplink: the
+  # function (capsules.nix) applied to this host's declaration
+  # (host-capsules.nix). Same rule again. Under netns the guest-facing link is
+  # *not* in here — it is identical in every capsule, so it stays in net.nix
+  # above.
+  capsules = import ./capsules.nix {inherit policies;} (import ./host-capsules.nix);
+
+  # The fabric the case suites run on (guardCases, policyCases, volumeCases,
+  # volumeRootCases): the same function, applied to a declaration that is no
+  # host's. No slots of its own — each suite declares its instances through
+  # `instancesOf`, as shapes the declaration's refusals would reject — so the
+  # refusals are vacuous and the fabric is independent of whoever calls this.
+  # The numbers equal what this host declared at SL-004, so the move was
+  # derivation-neutral; nothing ties them, and changing them moves four suites
+  # in every caller's build. Not a NOTES item 38 borrower: a suite runs in a
+  # build sandbox and creates no link.
+  casesCapsules = import ./capsules.nix {inherit policies;} {
+    slots = {};
+    addressing = {
+      uplinkNet = "10.100.0.0/16";
+      egressAddr = "10.101.0.2";
+      egressPeerAddr = "10.101.0.1";
+    };
+    volumeReserve = 20 * 1024 * 1024 * 1024;
+  };
   policies = import ./policies.nix;
 
   # Where a collected exhibit lives and what its refs are called. Bound here
@@ -68,15 +106,6 @@ inputs @ {
   # Where a capsule's way in lives, for the probes' throwaway capsules — which
   # are not instances, and must not spell that path a second time.
   inherit (capsules) socketOf;
-
-  # Each target's own flake, for its tool set. A flake input's url must be a
-  # literal, so a target's file cannot carry it; the map lives here beside the
-  # inputs, and fleet.nix refuses one that does not name exactly the declared
-  # targets (DEC-019). `inputs.target` keeps its name: ~/flakes follows it.
-  targetFlakes = {
-    doctrine = inputs.target;
-    goad-walk = inputs.goad-walk;
-  };
 
   # `hostName`, not the instance's name: the hostname is in the closure, so a
   # per-instance one is a per-instance image (docs/plan-c-implementation.md).
@@ -446,8 +475,12 @@ inputs @ {
   # that item made possible: every program below arrives from `hostPrograms`
   # rather than being rendered a second time. The two exceptions are handed a
   # fixture on purpose — the guard its stubbed kernel, the front end a pool
-  # that is not this host's — and each says so in its own header.
-  guardCases = import ./host/guard-cases.nix {inherit pkgs lib net capsules;};
+  # that is not this host's — and each says so in its own header. Four of them
+  # run on `casesCapsules`, the fabric above, rather than this host's capsules.
+  guardCases = import ./host/guard-cases.nix {
+    inherit pkgs lib net;
+    capsules = casesCapsules;
+  };
 
   briefCases = import ./host/brief-cases.nix {
     inherit pkgs;
@@ -535,7 +568,8 @@ inputs @ {
   };
 
   policyCases = import ./host/policy-cases.nix {
-    inherit pkgs lib net capsules policies guestSsh;
+    inherit pkgs lib net policies guestSsh;
+    capsules = casesCapsules;
     inherit (hostPrograms) observe observeFragment programVerbs profileVerbs stateRefPrefix volumeRootHelper;
   };
 
@@ -545,7 +579,8 @@ inputs @ {
   # which is exactly what stops the shipped store path running in a sandbox
   # (host/volume-root-cases.nix).
   volumeRootCases = import ./host/volume-root-cases.nix {
-    inherit pkgs lib capsules;
+    inherit pkgs lib;
+    capsules = casesCapsules;
     shipped = hostPrograms.volumeRootHelper;
   };
 
@@ -555,7 +590,8 @@ inputs @ {
   # shipped front end for the one line the fixture replaces
   # (host/volume-cases.nix).
   volumeCases = import ./host/volume-cases.nix {
-    inherit pkgs lib net capsules policies guestSsh;
+    inherit pkgs lib net policies guestSsh;
+    capsules = casesCapsules;
     inherit (hostPrograms) observe observeFragment programVerbs profileVerbs stateRefPrefix volumeRootHelper;
     shipped = capsule-cli;
   };

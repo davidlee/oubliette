@@ -1,15 +1,20 @@
-# The capsules this host runs. Its own file for the same reason as net.nix and
-# targets/ — several places need these values and none of them may spell them
-# twice — and, like both, a *value*: it says which capsules exist and what each
+# The capsules a host runs, from its declaration. Oubliette's *function*: the
+# slots, the uplink network, the aggregator's two addresses and the volume
+# reserve are the host's (`host-capsules.nix` here, DEC-026); the interface and
+# namespace names, the /30s, the socket and lock paths and the refusals below
+# are oubliette's, and no host spells them. Like net.nix and targets/, nothing
+# here reads the system or does work: it says which capsules exist and what each
 # is called on the wire. What a capsule is made of is the units' business
-# (docs/plan-c-implementation.md); nothing here reads the system or does work.
+# (docs/plan-c-implementation.md).
 #
 # What is deliberately NOT here is the host<->guest link. Under netns every
 # capsule gets the same tap name, the same /30 and the same MAC, because each
 # lives in its own namespace — that is the whole point of the shape, and it is
 # what lets one target's image serve every slot bound to it (NOTES item 17). Those stay flat
 # in net.nix. The only addressing that cannot be identical is each namespace's
-# uplink to the aggregator, since the aggregator has a single routing table:
+# uplink to the aggregator, since the aggregator has a single routing table.
+# The names in this map are constants; the addresses are this host's
+# declaration's (`uplinkNet`, `egressAddr`, `egressPeerAddr`), shown as declared:
 #
 #   root ns          eg-rt      10.101.0.1/30   forwards, masquerades, and is
 #                                               where the resolver stub must
@@ -23,8 +28,18 @@
 # That map is `probe/netns-egress.sh`'s, which is where it was verified
 # (docs/probes.md) — the probe builds its own links because it must run without
 # the units, so the names differ there and the shape does not.
+#
+# `policies` is its own axis, applied first: the `undeclared` refusal reads the
+# vocabulary, and this file reads no declaration file of its own.
+{policies}:
+# The declaration: a host's slots, its addressing and its volume reserve.
+{
+  slots,
+  addressing,
+  volumeReserve,
+}:
+# The `let` sits on its own line: the header above is the file's signature.
 let
-  policies = import ./policies.nix;
   profileNameOk = import ./host/profile-name.nix;
 
   # The slots. Names, not a count — and the index is *declared*, not taken from
@@ -37,13 +52,7 @@ let
   # doctrine's and `b` is not the spare, so nothing may infer what a slot holds
   # from what it is called. What a slot is assigned to is a record, and it does
   # not exist yet (docs/contract-assignment.md) — until it does, the honest
-  # statement is that these two names say nothing at all.
-  #
-  # Ten, which is Plan D D2's pool (docs/plan-d-fleet.md). It waited for the
-  # guard to stop making one broken slot the whole host's problem: the audit set
-  # is declared ∩ present now, so a slot that never came up is capacity that does
-  # not exist rather than a refusal, and only a *present and wrong* namespace is
-  # fleet-wide (NOTES item 30, run on this host).
+  # statement is that these names say nothing at all.
   #
   # A declaration is not a reservation. Nothing the module generates is
   # `wantedBy` anything, so no namespace, tap, volume or VMM exists until some
@@ -63,9 +72,6 @@ let
   # in**: a slot whose record names none must still run something, and the
   # operator's declaration is the only candidate that is not the assigner's.
   #
-  # `everything` is this host being a dev host out loud, rather than by nobody
-  # having thought about it.
-  #
   # `profile` is which target the slot serves when nobody has said otherwise.
   # For *resolution* it is the operator's **convenience**, not a control. There is
   # no `profiles` set beside it, because an assigner is unconstrained in `profile`
@@ -82,80 +88,16 @@ let
   # name another target. But a verb under an assignment whose target is not the
   # image this slot booted is refused at use (host/cli.nix, `bootedTarget`),
   # because this slot cannot serve it. Moving a slot to another target is a
-  # change here, then `just refresh-build <slot>` and a restart.
-  #
-  # Every slot but `j` declares `doctrine`; `j` serves `goad-walk` (SL-003 design
-  # sec-5), chosen as the highest index and for nothing else. A slot moved to
-  # another target takes its volume reset before its first start under it
-  # (`ISS-009`): a provision resets tracked files only. The literal repeats a
-  # target's `name` (its key in `targets/`) on purpose (`DEC-012`): renaming the
-  # target fails the build, naming these slots.
-  declared = {
-    a = {
-      index = 0;
-      policy = "build";
-      policies = policies.everything;
-      profile = "doctrine";
-    };
-    b = {
-      index = 1;
-      policy = "build";
-      policies = policies.everything;
-      profile = "doctrine";
-    };
-    c = {
-      index = 2;
-      policy = "build";
-      policies = policies.everything;
-      profile = "doctrine";
-    };
-    d = {
-      index = 3;
-      policy = "build";
-      policies = policies.everything;
-      profile = "doctrine";
-    };
-    e = {
-      index = 4;
-      policy = "build";
-      policies = policies.everything;
-      profile = "doctrine";
-    };
-    f = {
-      index = 5;
-      policy = "build";
-      policies = policies.everything;
-      profile = "doctrine";
-    };
-    g = {
-      index = 6;
-      policy = "build";
-      policies = policies.everything;
-      profile = "doctrine";
-    };
-    h = {
-      index = 7;
-      policy = "build";
-      policies = policies.everything;
-      profile = "doctrine";
-    };
-    i = {
-      index = 8;
-      policy = "build";
-      policies = policies.everything;
-      profile = "doctrine";
-    };
-    j = {
-      index = 9;
-      policy = "build";
-      policies = policies.everything;
-      profile = "goad-walk";
-    };
-  };
+  # change in the declaration, then `just refresh-build <slot>` and a restart.
+  declared = slots;
 
   # Carved into a /30 per capsule by index, so the aggregator's route and NAT
-  # cover every capsule without enumerating them.
-  uplinkNet = "10.100.0.0/16";
+  # cover every capsule without enumerating them. A slot's index is the third
+  # octet, so the declared network must be a /16 written `a.b.0.0/16`; the
+  # first two octets are every uplink's (`uplinkPrefix`), refused below if not.
+  inherit (addressing) uplinkNet;
+  uplinkMatch = builtins.match "([0-9]+\\.[0-9]+)\\.0\\.0/16" uplinkNet;
+  uplinkPrefix = builtins.head uplinkMatch;
 
   # A capsule's link *in the aggregator*, and the wildcard the interface-pair
   # drop matches. One prefix, so the rule cannot drift from the names it drops.
@@ -178,8 +120,8 @@ let
   # Bytes a clone must leave free for non-root writers. The running VMMs are
   # `microvm`, and they grow their sparse images into `df`'s `avail`, so a clone
   # that spent it to zero would stop every running guest's writes. It bounds the
-  # clone only; growth of images already here is `RSK-007`.
-  volumeReserve = 20 * 1024 * 1024 * 1024;
+  # clone only; growth of images already here is `RSK-007`. The figure is the
+  # declaration's (`volumeReserve`, an argument above).
 
   # `policy` and `policies` are optional *here* and required of a real slot by the
   # assertion below, so the one caller that constructs instances which are not
@@ -198,9 +140,9 @@ let
     socket = socketOf name;
     uplink = {
       dev = "up-${name}"; # inside the capsule's namespace
-      addr = "10.100.${toString index}.2";
+      addr = "${uplinkPrefix}.${toString index}.2";
       peer = "${capLink}${name}"; # inside the aggregator
-      gw = "10.100.${toString index}.1";
+      gw = "${uplinkPrefix}.${toString index}.1";
       prefix = 30;
     };
   };
@@ -254,6 +196,9 @@ let
         })
         names)));
 in
+  assert uplinkMatch
+  != null
+  || throw "capsules.nix: uplinkNet must be a /16 written a.b.0.0/16, since a slot's index is the third octet of its /30, not '${uplinkNet}'";
   assert rejected
   == []
   || throw "capsules.nix: '${builtins.head rejected}' cannot name a slot — over 11 characters (IFNAMSIZ), or the aggregator's own name";
@@ -288,12 +233,12 @@ in
     egress = {
       ns = "${capLink}egress";
       dev = "eg-up";
-      addr = "10.101.0.2";
+      addr = addressing.egressAddr;
       peer = "eg-rt";
       # The host end: default route, NAT for `uplinkNet`, and the address the
       # host's resolver stub has to answer on for a capsule to keep the host's
       # DoT chain (docs/plan-c-implementation.md; a `~/flakes` edit).
-      peerAddr = "10.101.0.1";
+      peerAddr = addressing.egressPeerAddr;
       prefix = 30;
       # The wildcard half of every instance's `uplink.peer`.
       linkPattern = "${capLink}*";

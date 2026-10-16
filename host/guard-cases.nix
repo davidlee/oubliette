@@ -72,10 +72,11 @@
   # that holds at any fleet size — one absent slot is a smaller fleet, one
   # present-and-wrong slot is a breach — so following `capsules.nix` would
   # make widening the pool an edit to eleven expected strings and would test
-  # today's declaration rather than the guard. Everything else about the
-  # declaration is the real one: only `instances` is substituted, so the
-  # aggregator, the uplink net and the drop pattern the cases grep for are
-  # the shipped values.
+  # today's declaration rather than the guard. Everything else is the cases
+  # fabric (`casesCapsules`, mkfleet.nix): the capsules function applied to a
+  # declaration that is no host's, so the aggregator, the uplink net and the
+  # drop pattern the cases grep for are oubliette's constructions over
+  # fixture addressing. Only `instances` is substituted here.
   fixture =
     capsules
     // {
