@@ -27,9 +27,14 @@ session.
 
 ## Remedy taken
 
-`capsule j policy build` re-pointed `j` (generation 2) and its proxy came up.
-`a`..`i` still dangle at the time of writing; re-running the verb on each is
-the fix, and on `a` it restarts a live proxy.
+`capsule j policy build` re-pointed `j` (generation 2) and its proxy came up;
+the same verb re-pointed `b`..`i`, whose proxies were down, and then `a`,
+restarting its live proxy under a working agent. Every re-point bumped a record generation for a selection that
+did not change — the verb is the only tool, not the right one.
+
+Run it with the module's binary (`/run/current-system/sw/bin/capsule`): from
+inside this checkout the devshell's fixture copy shadows it and refuses every
+real slot as unknown (`fact.oubliette.devshell-programs-shadow-the-modules`).
 
 ## Design options
 
