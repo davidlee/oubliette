@@ -303,3 +303,27 @@ Ordered. Current state as read: `/var/lib/microvms/{a,b,capsule,capsule-b,f}/fla
 8. `/run/current-system/sw/bin/capsule all status`.
 9. Oubliette follow-up: `perimeter/egress-allow.txt` and `perimeter/egress-none.txt` both exist in /srv/fleet/perimeter and are byte-identical (`cmp`). Nothing in oubliette's code, fixture, template, justfile or devshell reads `perimeter/*.txt` (fixture uses `fixture/perimeter/`, the template `templates/fleet/perimeter/`; `mkfleet.nix` reads `policies.dir`). So `git rm perimeter/egress-allow.txt perimeter/egress-none.txt` is a plain delete for code; docs still cite it (docs/architecture-walkthrough.md:156, design.md:23,83, contract-assignment.md:146, plan-b:135, plan-d:110,302) and want a pass in the same commit. Do this only after step 8 is green.
 10. Sec-7 step 10 (delete the `~/dev/microvm-spike` symlink and the `MICROVM_SPIKE_ROOT` fallback in `perimeter/root.nix`) is out of this slice.
+
+## PHASE-09: the user's steps, and their results (EX-4)
+
+Recorded by the seat on the user's word, 2026-10-17.
+
+| step | done | result |
+| --- | --- | --- |
+| push oubliette; consumer relocked and pushed (EX-2) | yes, by the user | oubliette origin/main ⊇ 63cc360; /srv/fleet 3a19e0f "lock oubliette at the cutover rev" on origin |
+| 1 CHR-013: clear `capsule`, `capsule-b` | yes | `/var/lib/microvms/capsule*` absent |
+| 2 re-point `/var/lib/microvms/*/flake` | yes | a b c d e f j all read `/srv/fleet` |
+| 3 RV-012 F-9: fetch the private fleet on every machine | yes | Sleipnir locks it; the user reports the Mac's `nix flake metadata` and `just darwin-build` work |
+| 4 ~/flakes edits | yes, by the seat on the user's word | see the step-4 entry above; uncommitted in ~/flakes at the time, for the user and ~/flakes SL-010 |
+| 5 closure diff vs system-1100 (VH-1) | yes | `diff-closures` showed only terminfo packages (~/flakes SL-010 fe348e8f, not this slice). It hides one-string edits, so the seat compared system-1100 with the new toplevel directly, store hashes and both policyDir spellings normalised: capsule units, `microvm@` drop-ins, unit set, capsule tmpfiles and every `capsule*` wrapper equal; 7 wrappers carry `/srv/fleet/perimeter`; no `microvm-spike` left. **User accepts VH-1: "VH-1 yes".** |
+| 6 `just system-switch` | yes | current-system 3ki8rhf6…-nixos-system-Sleipnir |
+| 7 `direnv allow`; `just refresh-build a` from /srv/fleet (VH-2) | yes | **user: "just ran it, no issues"** |
+| 8 `capsule all status` (module copy) | yes | all ten slots a–j listed. With `a` started: vm/proxy/relay running, door and answers yes, baseline ok; `capsule-perimeter-guard: 1 of 10 declared capsule namespace(s) verified` |
+
+Found on the way:
+- system-1101 (10:16, before the cutover) had already carried the fixture's host module. ~/flakes' local override read oubliette after PHASE-07. No capsule was running; the switch replaced it.
+- `a` refused ssh after the cutover (fresh host keys). The user fixed known_hosts by hand. `reset-known-hosts` picks its branch from a socket, so it is folded into ISS-017 (919b294).
+
+Still to do after cutover, in oubliette:
+- the wording deferred out of shipped text (PHASE-07 section above);
+- delete `perimeter/egress-{allow,none}.txt` once `cmp` agrees with /srv/fleet's copies, with the doc pass.
