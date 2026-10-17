@@ -482,7 +482,7 @@ in {
         files rather than store paths, so changing one needs a proxy restart and
         not a rebuild — the directory is bind-mounted read-only into each proxy's
         namespace, which is why the policies are in one place: it makes the set
-        of files a proxy could ever read bounded and legible (policies.nix).
+        of files a proxy could ever read bounded and legible (the fleet's `policies`).
       '';
     };
 

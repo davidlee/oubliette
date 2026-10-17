@@ -351,7 +351,7 @@
             echo "capsule-host: usage: capsule-host --policy <name> [args…]" >&2
             echo "  declared policies: ${lib.concatStringsSep " " policies.everything}" >&2
             echo "  A perimeter serves under a named policy or it does not serve" >&2
-            echo "  (policies.nix, NOTES item 36)." >&2
+            echo "  (the fleet's policies argument, NOTES item 36)." >&2
             exit 1
             ;;
         esac

@@ -495,7 +495,7 @@ in
           esac
         }
 
-        # A policy's allowlist *filename* (policies.nix). A filename and never a
+        # A policy's allowlist *filename* (the fleet's `policies`). A filename and never a
         # path, so what the symlink below can be made to point at stays inside the
         # one directory the proxy has bound.
         policyFile() {

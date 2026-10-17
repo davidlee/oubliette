@@ -81,7 +81,7 @@ in
           --force) force=1 ;;
           -*)
             echo "usage: capsule-inject [--capsule <name>] [payload...] [--force]" >&2
-            echo "  no payload named: every declared one (./setup.nix)." >&2
+            echo "  no payload named: every declared one (the consumer's setup)." >&2
             exit 1
             ;;
           *) selected+=("$arg") ;;

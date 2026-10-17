@@ -359,7 +359,7 @@
 
       # The name reaches a path, so it is checked before the filesystem is
       # touched — a policy's allowlist is a filename and never a path for the
-      # same reason (policies.nix), one directory up.
+      # same reason (the fleet's `policies`), one directory up.
       case "$n" in
         "")
           profileFail "no profile name. A profile is named, never defaulted (item 28)."
