@@ -7,16 +7,20 @@ on this host — and fails as `fatal: '/etc/nixos' does not appear to be a git
 repository`, **naming neither the missing flag nor the fact that it substituted a
 path you never typed.**
 
-Use `just up <name>`, which passes `{{justfile_directory()}}`. It also needs root,
-for `/var/lib/microvms` and the gcroots.
+Use `just up <name>` from the consumer checkout (`/srv/fleet`), which passes
+`{{justfile_directory()}}`. It also needs root, for `/var/lib/microvms` and the
+gcroots. Run from oubliette itself, `-f` and `just up` name the **fixture**
+(`alpha`/`beta`, target `fixture`), never a real slot.
 
 `microvm -u` takes no `-f`, **correctly** — it re-reads the flake ref recorded in
-`/var/lib/microvms/<name>/flake`, which for every slot here is the bare path
-`/home/david/dev/oubliette`. A bare path reads the **working tree**, so a refresh
-picks up an uncommitted `flake.lock`. After a guest change use
-`just refresh-build <name>`, which reads `ActiveState` rather than `is-active` —
-`auto-restart` is the worst moment to update under.
+`/var/lib/microvms/<name>/flake`, which for every slot here (a b c d e f j) is
+the bare path **`/srv/fleet`** since the SL-004 cutover (2026-10-17). A bare path
+reads the **working tree**, so a refresh picks up an uncommitted `flake.lock`.
+After a guest change use `just refresh-build <name>`, which reads `ActiveState`
+rather than `is-active` — `auto-restart` is the worst moment to update under.
 
-**Correction (2026-10-16, SL-004 research C5):** the recorded refs are not uniform. a, b, f and the pre-slot capsule/capsule-b record `/home/david/dev/microvm-spike` (a symlink to this checkout); c, d, e, j record `/home/david/dev/oubliette`. Read `/var/lib/microvms/*/flake` before assuming either. SL-004's cutover re-points all of them to the consumer flake.
-
-**Since SL-004 PHASE-07:** `-f` and `just up` name the **consumer flake**, whose slots and `.#`/`nixosConfigurations` attributes are the real ones; run from oubliette itself they name the fixture (`alpha`/`beta`, target `fixture`).
+The recorded path is a durable host value, not a checkout location: moving the
+consumer means re-pointing every `/var/lib/microvms/*/flake`. Before the cutover
+the refs were split across two spellings of this checkout
+(`/home/david/dev/microvm-spike`, `/home/david/dev/oubliette`), so read the
+files before assuming either.

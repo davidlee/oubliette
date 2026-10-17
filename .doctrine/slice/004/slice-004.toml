@@ -1,9 +1,9 @@
 id = 4
 slug = "oubliette-carries-no-target"
 title = "Oubliette carries no target: a consumer flake declares the fleet"
-status = "ready"
+status = "reconcile"
 created = "2026-10-16"
-updated = "2026-10-16"
+updated = "2026-10-17"
 tags = []
 
 [relationships]

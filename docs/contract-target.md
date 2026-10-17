@@ -69,10 +69,10 @@ make a stray or untracked file a target. That argument is the axis's one home
 generic is handed the set or one named member, never a default. The file spells only what is its own; oubliette's `targets/default.nix` derives
 the rest — `name` is the key, `volumePath` is the capsule's constant, and
 `guestPath` and `cachePaths` follow from those — so nothing is spelled on both
-sides. The reference for what each field means is the consumer's
-`targets/doctrine.nix` (a reference template, `templates/fleet/targets/doctrine.nix`,
-is forthcoming in SL-004 PHASE-08); oubliette's own `fixture/` is the minimal
-case, every optional field absent.
+sides. The reference for what each field means is
+`templates/fleet/targets/doctrine.nix`, the template's target, which a consumer
+starts from (`nix flake init -t`) and `templateCases` evaluates; oubliette's own
+`fixture/` is the minimal case, every optional field absent.
 
 The `owner` column is an **analysis of what is already here**, not a planned
 change: it says which authority each field answers to, and it is the reason a

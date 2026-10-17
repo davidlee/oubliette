@@ -7,7 +7,7 @@ status = "active"
 title = "microvm -c takes no flake fragment, and omitting -f is worse than forgetting it"
 summary = "The CLI appends the attribute itself; with no -f it silently substitutes /etc/nixos and fails naming neither problem."
 created = "2026-08-16"
-updated = "2026-10-16"
+updated = "2026-10-17"
 
 [scope]
 paths = []

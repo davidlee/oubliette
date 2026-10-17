@@ -6,26 +6,35 @@ disposable phase sheet (`.doctrine/state/.../phase-NN.md`) that must survive
 
 ## Harvest
 <!-- single-copy: updated in place each harvest; ids only, never restated content -->
-fresh-as-of: 2026-10-16 · ready (plan approved, no phase started) · 0790448
+fresh-as-of: 2026-10-17 · audit (RV-013 concluded) · bb179e7
 
 ### Produced
-- design locked (run rev 42, commit 889d550); nothing implemented
-- DEC-025..DEC-030 — the builder, the split, consumer as flake+state root, shared just module, probes built here/run there, template eval-checked
-- DEC-025 amended after review: eight owner-grouped arguments, each target paired with its flake
-- RV-012 — two GPT passes, eleven findings verified (F-10, F-11 from the sec-10 re-pass); F-3/F-6 demonstrate and F-4/F-8 control are placed in plan phases
-- plan.toml/plan.md — nine phases against one drvPath manifest (0790448); phase sheets materialised
-- minted: IMP-016 — ~/flakes reads the fleet's net instead of repeating tap and port; IDE-002 — Plan F, which this slice unblocks
+- PHASE-01..09 complete; this host runs on /srv/fleet (3a19e0f); oubliette's lock holds no target (1284c5a)
+- mkfleet.nix / lib.mkFleet, fixture/, just/fleet.just, templates/fleet + templateCases, manifest.nix
+- DEC-025..DEC-030; RV-012 (design), RV-013 (closure audit, fourteen findings, brief for /reconcile)
+- minted: IMP-016, IDE-002 (design); ISS-017 (cutover); CHR-017, ISS-018 (audit)
 
 ### Learned
-- mem.fact.oubliette.design-apply-ordering — sections sort as text; needs edges need a second apply; slice edits drift the research baseline
-- mem.fact.oubliette.codex-exec-reads-stdin — codex exec needs </dev/null; a design lock wants a route on every severe finding
-- mem.fact.oubliette.microvm-create-takes-no-fragment — corrected: two recorded flake spellings across slots
-- mem.fact.oubliette.flakes-builds-this-repo-two-ways — corrected: the override path is the oubliette checkout now
+- mem.fact.oubliette.flakes-builds-this-repo-two-ways — rewritten at audit: fleet input, dev-checkouts override, no target shims
+- mem.fact.oubliette.microvm-create-takes-no-fragment — rewritten at audit: every slot records /srv/fleet
+- mem.fact.oubliette.target-input-reads-pushed-edge — re-scoped at PHASE-07
+- mem.fact.oubliette.design-apply-ordering, mem.fact.oubliette.codex-exec-reads-stdin — design stage
 
 ### Open
-- ASM-003 — the outputs body moves into mkfleet.nix derivation-neutrally; PHASE-02 is its first test
-- DEC-019 — superseded at reconcile (targets carry their own flakes)
-- user act before PHASE-06: create /srv/fleet and the private remote
+- RV-013 reconciliation brief: F-1..F-8, F-12 (REVs, DEC-019 supersede, ASM-003 settle, design/slice edits, selector registry)
+- IMP-015 closes at /close
+- CHR-017, ISS-018, ISS-017, IMP-016 — follow-ups
+
+## Audit lift: standing gotchas from the phase sheets (RV-013)
+
+Lifted before the runtime sheets go. Not elsewhere in this file.
+
+- The consumer's gate is manual: nothing runs `/srv/fleet`'s `just` when oubliette changes (phase-06 sheet).
+- Inside `/srv/fleet`, `.oubliette` and the devshell programs are the **locked** oubliette rev. An oubliette edit reaches them only after `nix flake update oubliette` (pushed) or an `--override-input` (phase-06).
+- Every edit under `just/` changes the devshell derivation (the link target is a store path). nix-direnv watches only `flake.nix`/`flake.lock`, so the link lags `just/` edits until re-entry (phase-05).
+- The shellHook creates `.oubliette` in any directory with a `flake.nix` that enters this devshell; in oubliette's own checkout the link is unused and is not a consumer (phase-05).
+- The consumer's copies cite oubliette's tree (NOTES items, `docs/`) and read correctly only with their header paragraph; thinning them is unscheduled (phase-06 D4).
+- manifest.nix covers packages, slot runners and the module toplevel only. `devShells`, `checks` and `lib` are out by design, so a devshell/shellHook change never shows in a manifest diff (phase-01, phase-08 R2).
 
 ## Manifest baseline (ruling, capsule-driver seat, after PHASE-03)
 PHASE-03 EX-3 deletes the DEC-019 images check and its cases, which moves
