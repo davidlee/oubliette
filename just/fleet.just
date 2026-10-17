@@ -148,16 +148,24 @@ up name:
     echo "  perimeters over one guest is worse than one, not safer." >&2
     exit 1
   fi
-  if capsule {{name}} created; then
-    echo "{{name}}: created already"
-  else
-    # The flake ref carries no fragment: the CLI appends
-    # #nixosConfigurations.<name>.config.microvm.declaredRunner itself, so a
-    # fragment asks for that attribute *of* a package and reads as a missing
-    # output. Root, for /var/lib/microvms and the gcroots.
-    echo "{{name}}: never created on this host — creating"
-    sudo microvm -c {{name}} -f "{{justfile_directory()}}"
-  fi
+  # `created` is 0 or 1, and 2 is the front end not knowing the name — which
+  # it has already said. Only a declared, uncreated slot reaches the create:
+  # reading every failure as "never created" sent a typo to `sudo microvm -c`
+  # (ISS-017).
+  rc=0
+  capsule {{name}} created || rc=$?
+  case "$rc" in
+    0) echo "{{name}}: created already" ;;
+    1)
+      # The flake ref carries no fragment: the CLI appends
+      # #nixosConfigurations.<name>.config.microvm.declaredRunner itself, so a
+      # fragment asks for that attribute *of* a package and reads as a missing
+      # output. Root, for /var/lib/microvms and the gcroots.
+      echo "{{name}}: never created on this host — creating"
+      sudo microvm -c {{name}} -f "{{justfile_directory()}}"
+      ;;
+    *) exit "$rc" ;;
+  esac
   capsule {{name}} start
 
 # stop it cleanly, and show what the stop actually did (root)
@@ -457,11 +465,6 @@ admin name="" *cmd:
 # a fresh capsule has fresh host keys at the same address, because they live on
 # its volume — so the interactive paths above refuse. The programs don't: they
 # check no keys at all and keep no record (host/guest-ssh.nix), deliberately.
+# Which entry is the front end's answer, since it is the door that files it.
 reset-known-hosts name:
-  #!/usr/bin/env bash
-  set -euo pipefail
-  if [ -S "/run/capsule/{{name}}/ssh.sock" ]; then
-    ssh-keygen -R "capsule-{{name}}"
-  else
-    ssh-keygen -R "$(just _net guest)"
-  fi
+  @capsule {{name}} forget-host-key

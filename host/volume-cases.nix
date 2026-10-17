@@ -1,5 +1,7 @@
 # The front end's `volume` verb, and the lock `start` shares with it — SL-002
-# design sec-2, sec-7.
+# design sec-2, sec-7. Also the two verbs a fresh volume sends a human to:
+# `created`, whose 1 must stay apart from the front end's refusal (2), and
+# `forget-host-key` (ISS-017).
 #
 # The third kind of check (CLAUDE.md), over `capsule`. Each branch here guards
 # an act a live host reaches only by deleting or overwriting a real slot's
@@ -220,7 +222,7 @@ in
     run dst volume reset
     ck "reset of a stopped, created slot runs" 0 "$rc"
     ckt "  as the root step's reset of that slot alone" test "$(rootLog)" = "reset dst"
-    ckt "  and names the host key a fresh volume breaks" saw "just reset-known-hosts dst"
+    ckt "  and names the host key a fresh volume breaks" saw "capsule dst forget-host-key"
     ckt "  beside the start that follows it" saw "capsule dst start"
 
     fresh
@@ -253,7 +255,7 @@ in
     CASE_ROOT_FAIL="capsule-volume-root: another volume operation is running" run dst volume reset
     ck "a refusal from the root step is the verb's exit status" 1 "$rc"
     ckt "  and its message passes through unchanged" saw "another volume operation is running"
-    ckt "  and nothing is said about what to do next" unsaw "reset-known-hosts"
+    ckt "  and nothing is said about what to do next" unsaw "forget-host-key"
 
     # ------------------------------------------------------------ clone-from
     fresh
@@ -308,7 +310,7 @@ in
     ckt "a clone says its first inject scrubs the source's identity" saw "scrubs src's credentials"
     ckt "  that nobody checked the source was clean" saw "not checked: whether src was a clean source"
     ckt "  how to check that by hand" saw "capsule src record"
-    ckt "  that the human's door needs its host key forgotten" saw "just reset-known-hosts dst"
+    ckt "  that the human's door needs its host key forgotten" saw "capsule dst forget-host-key"
     ckt "  and the commands that come next" saw "capsule dst start"
     ckt "  including the setup a clone's commits may force" saw "--force"
 
@@ -320,7 +322,7 @@ in
     fresh
     CASE_ROOT_FAIL="capsule-volume-root: another volume operation is running" run dst volume clone-from src
     ck "a clone the root step refused fails" 1 "$rc"
-    ckt "  and tells nobody what to do next" unsaw "reset-known-hosts"
+    ckt "  and tells nobody what to do next" unsaw "forget-host-key"
 
     # ------------------------------------------------------------ reset-home
     # The guest decides and the front end names the way out. The door here is the
@@ -541,6 +543,59 @@ in
     ckt "  counted" saw "2 outside the pool"
     ckt "  and listed, so nobody has to read the directory" saw "leftover, older"
     ckt "  while the declared slots are not" unsaw "dst, "
+
+    # ------------------------------------------------------------ created
+    # A predicate, so its "no" must not also be the front end's refusal: `just
+    # up` creates on a 1, and a name this host does not have used to be one, so
+    # a typo reached `sudo microvm -c` (ISS-017). 0 yes, 1 no, 2 could not ask.
+    fresh
+    run dst created
+    ck "created is 0 for a created slot" 0 "$rc"
+    run bare created
+    ck "  1 for a declared slot never created" 1 "$rc"
+    run j created
+    ck "  and 2 for a name this host does not have" 2 "$rc"
+    ckt "  saying why" saw "'j' is neither a verb nor a capsule"
+    CAPSULE_NAME=j run created
+    ck "a CAPSULE_NAME this host does not have is 2 as well" 2 "$rc"
+    ckt "  saying why" saw "CAPSULE_NAME='j' is not a capsule"
+    run dst
+    ck "and so is a name with no verb" 2 "$rc"
+
+    # ------------------------------------------------------------ forget-host-key
+    # A fresh volume is a fresh host key at the same address, and the human's
+    # door files it under `capsule-<name>` on either path. The slot is stopped,
+    # because that is when the key is forgotten: before the start that would
+    # refuse. The sandbox has no devshell tap, so the guest address is not ours.
+    knownHosts=$CASE_ROOT/home/.ssh/known_hosts
+    hosts() {
+      mkdir -p "$(dirname "$knownHosts")"
+      for h in capsule-dst capsule-src ${net.guest}; do
+        echo "$h ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIOMqqnkVzrm0SdG6UOoqKLsabgH5C9okWi0dh2l9GKJl"
+      done > "$knownHosts"
+    }
+    known() { grep -q "^$1 " "$knownHosts"; }
+    unknown() { ! known "$1"; }
+
+    fresh
+    hosts
+    HOME=$CASE_ROOT/home run dst forget-host-key
+    ck "forget-host-key on a stopped slot succeeds" 0 "$rc"
+    ckt "  forgetting the name its door files the key under" unknown capsule-dst
+    ckt "  and no other slot's" known capsule-src
+    ckt "  nor the guest address, with no devshell tap here" known ${net.guest}
+
+    fresh
+    HOME=$CASE_ROOT/home run dst forget-host-key
+    ck "forget-host-key with no known_hosts has nothing to forget" 0 "$rc"
+    ckt "  and makes none" absent "$knownHosts"
+
+    fresh
+    hosts
+    HOME=$CASE_ROOT/home run j forget-host-key
+    ck "forget-host-key refuses a name this host does not have" 2 "$rc"
+    ckt "  saying why" saw "'j' is neither a verb nor a capsule"
+    ckt "  and forgets nothing" known capsule-dst
 
     # ------------------------------------------------------------ shipped
     # The one line the fixture's `volumeControl` replaces, read off the store

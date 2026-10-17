@@ -43,3 +43,20 @@ stopped declared slot, red first. Also stale since the cutover:
 `capsule-capsule` and `capsule-capsule-b` entries in the owner's known_hosts,
 for the slots CHR-013 cleared. Related: oubliette's own `just --list` still offers
 operational recipes that cannot work from its root (SL-004 reconcile item).
+
+## Resolution (2026-10-17)
+
+The front end exits 2 when it cannot tell what was asked (no verb, an unknown
+word, a bad `CAPSULE_NAME`), so `created` answers only 0 or 1 and `up` creates
+only on a 1. The host-key entry is now the front end's verb,
+`capsule NAME forget-host-key`: it removes `capsule-NAME` (the alias `door`
+files every key under, one definition) and the guest address only where the
+devshell tap is in this namespace. `reset-known-hosts` delegates to it, and the
+volume verbs' "next:" hints name it. Pinned in `host/volume-cases.nix`.
+
+Not done here: the owner's stale `capsule-capsule` / `capsule-capsule-b`
+known_hosts entries (the verb refuses undeclared names, so `ssh-keygen -R` by
+hand), and oubliette's own `just --list` offering recipes that need a
+consumer's root. The `up` recipe's branching is not run by a suite (it needs
+`nix eval` of `net.nix`); it was exercised by hand against `/srv/fleet` with a
+stub `sudo`.

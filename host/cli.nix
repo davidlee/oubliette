@@ -283,7 +283,7 @@
   # one of them. Decision 3's rule: the front end's shape is not a function of
   # any target, and what a slot's document has no place for is a refusal that
   # names it.
-  ownVerbs = ["start" "stop" "created" "volume" "status" "ssh" "admin" "setup" "branches" "fetch" "record" "purpose" "policy" "unit" "handoff" "land"];
+  ownVerbs = ["start" "stop" "created" "volume" "status" "ssh" "admin" "forget-host-key" "setup" "branches" "fetch" "record" "purpose" "policy" "unit" "handoff" "land"];
 
   # Verbs `all` may be applied to. A question aggregates: N answers on one screen,
   # and a failure on one capsule is a row rather than a decision. An *action* does
@@ -340,7 +340,7 @@ in
           echo "  volume:    <slot> volume reset | reset-home | clone-from <src> [--identity]   (name required)"
           echo "  ask:       status | branches | fetch     (these take 'all')"
           echo "  assigned:  record | purpose [text…] | policy [<name>] | unit [<token>]"
-          echo "  in:        ssh [cmd…] | admin [cmd…]"
+          echo "  in:        ssh [cmd…] | admin [cmd…] | forget-host-key"
           echo "  work:      ${lib.concatStringsSep " | " programVerbs}"
           # The three coarse verbs on their own two lines, in the order they run:
           # they are one arc (NOTES item 53) and reading them beside `provision`
@@ -394,14 +394,20 @@ in
           if [ -z "$name" ]; then
             echo "capsule: CAPSULE_NAME='$CAPSULE_NAME' is not a capsule on this host." >&2
             echo "  declared: ''${declared[*]}" >&2
-            exit 1
+            exit 2
           fi
         fi
 
+        # **Exit 2 means the front end could not tell what was asked** — no verb,
+        # or a word that is neither a verb nor a capsule here. `created` is a
+        # predicate that answers only 0 or 1, so its "no" is 1, and a
+        # caller branching on it (`just up`) has to tell that apart from a name
+        # this host does not have, which used to be 1 too and took the create
+        # branch (ISS-017).
         if [ "$#" -eq 0 ]; then
           echo "capsule: no verb — what should ''${name:-a capsule} do?" >&2
           usage >&2
-          exit 1
+          exit 2
         fi
         verb="$1"
         shift
@@ -413,11 +419,19 @@ in
         if [ "$known" = no ]; then
           echo "capsule: '$verb' is neither a verb nor a capsule on this host." >&2
           usage >&2
-          exit 1
+          exit 2
         fi
 
         sockOf() { printf '%s' ${sockOfArg}; }
         unitOf() { printf 'microvm@%s' "$1"; }
+        # The name the human's door files a capsule's host key under, on either
+        # path: every guest is at the same address, so the address cannot be it.
+        hostKeyAliasOf() { printf 'capsule-%s' "$1"; }
+        # Whether the devshell shape has put its tap in *this* namespace, which
+        # is the only place `net.guest` is routable from. `/sys/class/net` and
+        # not `ip link`: sysfs's net directory is per-namespace, so it is the
+        # same answer with no runtime input and no fork.
+        devshellTap() { [ -e /sys/class/net/${net.tap} ]; }
         created() { [ -x ${microvms}/"$1"/current/bin/tap-up ]; }
         isDeclared() {
           local d
@@ -705,8 +719,6 @@ in
         # `ConnectTimeout` (10 s, host/guest-ssh.nix) against an address whose packets
         # leave by the default route and are never answered. The refusal below has
         # always said "the module path owns this host" and had never once fired.
-        # `/sys/class/net` and not `ip link`: sysfs's net directory is per-namespace,
-        # so it is the same answer with no runtime input and no fork.
         #
         # `human` keeps strict host-key checking and files each capsule's key under
         # its own name, since every guest is at the same address and would otherwise
@@ -717,7 +729,7 @@ in
           local n="$1" mode="$2" sock
           sock=$(sockOf "$n")
           case "$mode" in
-            human) ssh_argv=(ssh -o HostKeyAlias="capsule-$n") ;;
+            human) ssh_argv=(ssh -o HostKeyAlias="$(hostKeyAliasOf "$n")") ;;
             probe) ssh_argv=(${lib.escapeShellArgs guestSsh.args} -o BatchMode=yes) ;;
           esac
           if [ -S "$sock" ]; then
@@ -725,7 +737,7 @@ in
             return 0
           fi
           doorsOpen
-          [ -e /sys/class/net/${net.tap} ]
+          devshellTap
         }
 
         # Does the guest answer? The one per-capsule fact that is not a unit's
@@ -1895,7 +1907,7 @@ in
                 # door, which checks them, refuses
                 # (mem.fact.oubliette.fresh-capsule-fresh-host-keys). Nothing is
                 # said when the root step refused: `set -e` has already left.
-                echo "  next: just reset-known-hosts $name; capsule $name start"
+                echo "  next: capsule $name forget-host-key; capsule $name start"
                 ;;
               clone-from)
                 src="''${1-}"
@@ -1944,7 +1956,7 @@ in
                 fi
                 echo "  not checked: whether $src was a clean source (baselined, not dirty). By hand:"
                 echo "    capsule $src start; capsule $src status; capsule $src record  (head against base.oid)"
-                echo "  next: just reset-known-hosts $name; capsule $name start;"
+                echo "  next: capsule $name forget-host-key; capsule $name start;"
                 echo "    capsule $name setup <ref> …  (the clone's commits may need --force)"
                 ;;
               reset-home)
@@ -2056,6 +2068,31 @@ in
               exit 1
             }
             exec "''${ssh_argv[@]}" "$user@${net.guest}" ''${1+"$@"}
+            ;;
+
+          # A fresh volume is a fresh host key at the same address
+          # (mem.fact.oubliette.fresh-capsule-fresh-host-keys), so the door above
+          # refuses until the old one is forgotten — and that is wanted *before*
+          # the start, while the slot is stopped. So which entry goes is read off
+          # the declaration and this namespace, never off whether the slot is up:
+          # the alias `door` files every capsule's key under, and the bare guest
+          # address only where the devshell tap makes it routable, which is where
+          # someone could have ssh'd to it by hand (ISS-017). `$HOME`'s file, as
+          # the human who runs this; ssh itself reads the passwd entry's.
+          forget-host-key)
+            if [ "$#" -gt 0 ]; then
+              echo "capsule $name: forget-host-key takes no arguments." >&2
+              exit 1
+            fi
+            knownHosts=$HOME/.ssh/known_hosts
+            if [ ! -e "$knownHosts" ]; then
+              echo "capsule $name: no $knownHosts, so no host key to forget."
+              exit 0
+            fi
+            ssh-keygen -R "$(hostKeyAliasOf "$name")" -f "$knownHosts"
+            if devshellTap; then
+              ssh-keygen -R ${lib.escapeShellArg net.guest} -f "$knownHosts"
+            fi
             ;;
 
           # The three setup problems in the only order they work in (docs/design.md),

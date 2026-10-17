@@ -192,8 +192,9 @@ state directory. The commands above are what they run.
 **Only the create needs this checkout.** `microvm -c <name>` resolves the
 instance's name as a flake attribute, so it is the one part of a capsule's life
 that cannot happen without the flake — which is why `just up` still exists.
-Everything after it is `capsule <name> start | stop | ssh | admin | provision |
-inject | baseline | collect | refresh | adopt | brief | setup`, installed on the
+Everything after it is `capsule <name> start | stop | ssh | admin |
+forget-host-key | provision | inject | baseline | collect | refresh | adopt |
+brief | setup`, installed on the
 host by the module, so a
 human logged in with no repo has the whole lifecycle. The recipes delegate to it
 rather than keeping a second copy.
@@ -447,7 +448,7 @@ end's job.
 
 | command             | what                                                       |
 | ------------------- | ---------------------------------------------------------- |
-| `capsule [name] <verb>` | resolve a capsule — named, or `CAPSULE_NAME`, or whichever one is up — and run a verb at it: `start`, `stop`, `created`, `status`, `branches`, `fetch`, `ssh`, `admin`, `setup`, or any of the four above. |
+| `capsule [name] <verb>` | resolve a capsule — named, or `CAPSULE_NAME`, or whichever one is up — and run a verb at it: `start`, `stop`, `created`, `status`, `branches`, `fetch`, `ssh`, `admin`, `forget-host-key`, `setup`, or any of the four above. It exits 2 when it cannot tell what was asked, so `created` answers only 0 or 1. |
 | `capsule all <verb>`| the same, over every declared capsule. Questions only — `status`, `branches`, `fetch`. |
 | `vm <name>`         | run a VM: `capsule` is the guest image, `hello` the smoke test, and a slot name is the same image under that slot's state directory. Devshell shape. |
 | `vm-stop <name>`    | ask that guest to reboot, then account for the VMM. Devshell shape. |
