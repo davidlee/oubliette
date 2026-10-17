@@ -3,12 +3,12 @@ version = 1
 
 id = 17
 slug = "just-up-treats-an-undeclared-name-as-never-created-and-runs-sudo-microvm-c"
-title = "just up treats an undeclared name as never created and runs sudo microvm -c"
+title = "shared recipes guess which capsule a name means from a probe, and a wrong guess takes a branch silently"
 kind = "issue"
 status = "open"
 resolution = ""                 # seeded empty so `backlog edit` sets it in place
 created = "2026-10-16"
-updated = "2026-10-16"
+updated = "2026-10-17"
 tags = []
 
 # outbound-only. Cross-kind structural edges (e.g. references with a role
