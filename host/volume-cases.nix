@@ -310,8 +310,11 @@ in
     ckt "a clone says its first inject scrubs the source's identity" saw "scrubs src's credentials"
     ckt "  that nobody checked the source was clean" saw "not checked: whether src was a clean source"
     ckt "  how to check that by hand" saw "capsule src record"
-    ckt "  that the human's door needs its host key forgotten" saw "capsule dst forget-host-key"
-    ckt "  and the commands that come next" saw "capsule dst start"
+    # After the start, not before: the key changes twice across a clone, once
+    # with the copy and once when the first start's scrub replaces it
+    # (mem.fact.oubliette.fresh-capsule-fresh-host-keys).
+    ckt "  that the human's door needs its host key forgotten after the start" \
+      saw "capsule dst start; capsule dst forget-host-key"
     ckt "  including the setup a clone's commits may force" saw "--force"
 
     fresh

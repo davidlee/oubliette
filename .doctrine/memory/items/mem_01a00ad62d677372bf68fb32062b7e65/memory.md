@@ -17,9 +17,11 @@ identity, and why the scrub deletes the key and re-runs `sshd-keygen`.
 
 **The key changes twice across a clone**: once when the copy brings the source's
 key in, once when the first `start`'s scrub replaces it. So
-`just reset-known-hosts <slot>` run *before* the start does not cover the
-scrub's key — the human door fails on the next `capsule <slot> admin` with
-`REMOTE HOST IDENTIFICATION HAS CHANGED`.
+forgetting the key *before* the start does not cover the scrub's key — the
+human door fails on the next `capsule <slot> admin` with
+`REMOTE HOST IDENTIFICATION HAS CHANGED`. Forget it after:
+`capsule <slot> start; capsule <slot> forget-host-key` (`just reset-known-hosts`
+delegates to the verb), which is the order a clone's "next:" hint prints.
 
 Both doors were observed in the same run: `ssh`/`admin` are the **human** door
 and check strictly; the internal transport does not, which is how

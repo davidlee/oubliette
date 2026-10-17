@@ -1956,7 +1956,12 @@ in
                 fi
                 echo "  not checked: whether $src was a clean source (baselined, not dirty). By hand:"
                 echo "    capsule $src start; capsule $src status; capsule $src record  (head against base.oid)"
-                echo "  next: capsule $name forget-host-key; capsule $name start;"
+                # The key is forgotten *after* the start: it changes with the
+                # copy and again when the first start's scrub replaces it, so a
+                # forget before the start covers only the first
+                # (mem.fact.oubliette.fresh-capsule-fresh-host-keys). With
+                # --identity it changes once, and after is still right.
+                echo "  next: capsule $name start; capsule $name forget-host-key;"
                 echo "    capsule $name setup <ref> …  (the clone's commits may need --force)"
                 ;;
               reset-home)
