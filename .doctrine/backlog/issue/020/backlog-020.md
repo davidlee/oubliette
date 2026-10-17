@@ -28,5 +28,4 @@ for good (ISS-019's mechanism).
 
 - Export the fixture fleet's outputs under a name that cannot be mistaken for
   a host's (or not at all — `just` builds them from inside the repo).
-- Clear the two residual links (owner's act; they are harmless — no unit reads
-  them).
+- ~~Clear the two residual links~~ — cleared by the owner, 2026-10-17.
