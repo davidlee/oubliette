@@ -115,13 +115,13 @@ exactly one owner:
 Two real cross-project extras, which are what the vocabulary is expected to look
 like in practice:
 
-- **`agents`** — `claude`, `pi`, `rg`, `tree`, fileutils, standard shell. What
+- **`agents`** — `claude`, `codex`, `pi`, `rg`, `tree`, fileutils, standard shell. What
   makes the capsule a place an agent can work at all.
 - **`dev-facilities`** — an editor, `nushell`, `btop`. What makes it a place a
   human can look around in.
 
 Both are built, under those names, with those contents give or take: `agents`
-carries `claude`, `pi`, `rg`, `fd`, `tree`, `jq` and `bubblewrap`, and
+carries `claude`, `codex`, `pi`, `rg`, `fd`, `tree`, `jq` and `bubblewrap`, and
 `dev-facilities` carries `helix`, `tmux`, `btop` and `nushell` — `helix` rather
 than neovim because the convenience rule below forbids bringing this host's
 dotfiles, and an editor that is useful unconfigured is the one that survives

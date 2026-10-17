@@ -51,7 +51,8 @@
   # `~/flakes/pub`'s `unjailed` exports — that attrset is `inherit
   # (llm-agents.packages.${system}) claude-code pi` and nothing else — so this
   # is one input where going through pub would have been five, for the same
-  # store paths. It supersedes `pkgs.claude-code` and the `allowUnfreePredicate`
+  # store paths. `codex` is not in pub's set; it is here because a goad kit walk
+  # loads its plugin into both agents (goad slice 012 PHASE-11, EN-4). It supersedes `pkgs.claude-code` and the `allowUnfreePredicate`
   # that named it: the derivation is created in llm-agents' own eval, so this
   # repo's nixpkgs config no longer gates it (NOTES item 3).
   #
@@ -69,7 +70,7 @@
     # wrappers above.
     agents = {
       packages =
-        [llm.claude-code llm.pi]
+        [llm.claude-code llm.codex llm.pi]
         ++ (with pkgs; [ripgrep fd tree jq bubblewrap]);
     };
 
