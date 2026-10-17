@@ -5,10 +5,10 @@ id = 15
 slug = "oubliette-carries-no-target"
 title = "Oubliette carries no target: the fleet's declarations move to a consumer flake"
 kind = "improvement"
-status = "open"
-resolution = ""                 # seeded empty so `backlog edit` sets it in place
+status = "resolved"
+resolution = "fixed"
 created = "2026-09-30"
-updated = "2026-09-30"
+updated = "2026-10-17"
 tags = ["area:target"]
 
 # outbound-only (ADR-004). Cross-kind structural edges (e.g. references with a role
