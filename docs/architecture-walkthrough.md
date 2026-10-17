@@ -153,7 +153,7 @@ The guest does not get arbitrary routed network access. Its intended outbound ca
 
 The proxy resolves names on the host and checks a hostname allowlist. This is a **destination control**, not a claim that allowed destinations cannot receive exfiltrated data: an allowed HTTPS endpoint is still a bidirectional channel.
 
-Source: [`perimeter/default.nix`](../perimeter/default.nix), [`perimeter/egress-allow.txt`](../perimeter/egress-allow.txt), [`host/netns.nix`](../host/netns.nix).
+Source: [`perimeter/default.nix`](../perimeter/default.nix), [`templates/fleet/perimeter/egress-allow.txt`](../templates/fleet/perimeter/egress-allow.txt) (the consumer's copy is named by `policies.dir`), [`host/netns.nix`](../host/netns.nix).
 
 ---
 

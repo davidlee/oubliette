@@ -143,8 +143,8 @@ Six consequences worth stating rather than deriving:
   about *who may author one* and not about a file format. This repo authors
   them in nix because that is what it has; the interface the programs read is a
   validated document in a directory, so a controller that never runs
-  `nixos-rebuild` remains possible. `perimeter/egress-allow.txt` is the
-  precedent already in the tree: a plain file rather than a store path, exactly
+  `nixos-rebuild` remains possible. The fleet's allowlist, a plain file in the consumer's `policies.dir`, is the
+  precedent already in use: a plain file rather than a store path, exactly
   so that changing it is not a build.
 
 ## The assignment

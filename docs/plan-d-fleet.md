@@ -107,7 +107,7 @@ Five, and knowing which one a change lands in is most of the administrative
 cost:
 
 0. **Run time, no build.** `provision`, `inject`, `collect`, `fetch`, `start`,
-   `stop`, `ssh`, `admin`, `baseline`; editing `perimeter/egress-allow.txt` plus
+   `stop`, `ssh`, `admin`, `baseline`; editing the consumer's egress allowlist plus
    a proxy restart. Seconds.
 1. **Local `just build`.** The devshell's copies of the host programs.
 2. **Guest image.** `nix build .#capsule`, then `sudo microvm -u <name>` for
@@ -595,8 +595,8 @@ Three consequences to accept before any of it is built:
    do, because nix is what it has and the profile is checked at build time for
    free. But a program reads the rendered document at run time, so a controller
    that never runs `nixos-rebuild` stays possible — which is the whole point of
-   making a target run-time state. `perimeter/egress-allow.txt` is the precedent
-   already in the tree: a plain file rather than a store path, for exactly this
+   making a target run-time state. The consumer's egress allowlist is the precedent
+   already in use: a plain file rather than a store path, for exactly this
    reason.
 2. **The seed becomes assignment-driven.** An unassigned slot boots empty with
    no checkout, which is more honest than one hardcoded to doctrine. `capsule

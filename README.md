@@ -550,7 +550,8 @@ outbound goes through the host's proxy, which resolves names itself — so an
 unlisted host cannot be reached or even resolved.
 
 To let something new out, edit the file the policy names — for `build` that is
-`perimeter/egress-allow.txt` (extended regex, one hostname per line) — and
+the consumer's allowlist in its `policies.dir` (`perimeter/egress-allow.txt` in the
+template; extended regex, one hostname per line) — and
 restart the proxy. No rebuild: an allowlist is deliberately a plain file, and
 what a policy declares is *which* file.
 

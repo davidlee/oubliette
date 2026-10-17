@@ -315,8 +315,9 @@ behind it is the ratchet starting again in a new file.
 - Host-side helpers are `writeShellApplication` (shellcheck runs at build, so an
   unused variable is a build failure — hence `paths` in `perimeter/` being a
   function each program calls with only what it uses).
-  `perimeter/egress-allow.txt` is deliberately a plain file, not a store path,
-  so the allowlist can change without a rebuild.
+  The fleet's allowlist (the consumer's `policies.dir`; `perimeter/egress-allow.txt`
+  in the template) is deliberately a plain file, not a store path,
+  so it can change without a rebuild.
 - **Two paths run the same code.** `capsule-host` composes the proxy plus the
   watch in the foreground as you; `host/services.nix` runs the same proxy as a
   unit under `capsule-proxy`, and installs the same two git-channel programs
