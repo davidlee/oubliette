@@ -24,3 +24,9 @@ Recorded as `mem.fact.oubliette.target-input-reads-pushed-edge`, superseding
 Considered and not taken: an in-repo placeholder target so the flake names no
 real project. Purer under POL-002, but a second target to maintain, and doctrine
 is public and already the worked example.
+
+**Since SL-004 (2026-10-17):** the in-repo placeholder target considered above
+is now taken — oubliette builds over `fixture/` (target `fixture`, every
+optional field absent) and its lock holds no target; the real targets are the
+consumer flake's inputs. The trade flipped because the fetchability problem
+moved with them (SL-004 design sec-3, RV-013 F-1).

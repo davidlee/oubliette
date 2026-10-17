@@ -43,7 +43,10 @@ fact missing from the host config.*
 
 - **The devshell path.** The firewall port, the forward-chain drop on the tap,
   and the sudoers rule that makes the drop readable live in the host's NixOS
-  config (`~/flakes`), not here — README *Host requirements*. It is one port now,
+  config (`~/flakes`), not here — README *Host requirements*. The policies
+  and their allowlists are not here either: they are the consumer flake's
+  (its `policies.nix` and `perimeter/*.txt`), plain files outside the store so
+  they change without a rebuild. It is one port now,
   not two: dropping 9418 there is an outstanding host-config edit
   (`NOTES item 18`).
 - **The module path.** The tap is inside a namespace `host/netns.nix` creates, so

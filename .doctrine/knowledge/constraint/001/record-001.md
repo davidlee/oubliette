@@ -2,7 +2,7 @@
 
 The guest's tool set is `compose(floor, extras)`. The **floor** is the target's
 (its file in `targets/`, `toolsPackage`); the **extras** are the host operator's,
-`fragments.nix`'s vocabulary selected by `extras` in `flake.nix`.
+`fragments.nix`'s vocabulary selected by the caller's `flavour.extras` (a consumer flake's `mkFleet` call since SL-004).
 
 **One list for the fleet today, so one composition.** Since SL-003 that is one
 image *per target* rather than one image (`DEC-017`): the floor varies by

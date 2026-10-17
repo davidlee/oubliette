@@ -12,7 +12,7 @@ tags = []
 
 [facet]                         # every field typed; seeded empty (captured later)
 context = "SL-003 needs more than one target; target.nix holds one. The user wants oubliette to head toward carrying no target at all (IMP-015)."
-choice = "One file per target under targets/, and targets/default.nix lists them explicitly (no readDir) and derives name, guestPath and cachePaths once. volumePath is the capsule's and leaves the target values. Generic code (mkVm, vm/capsule.nix, host/profile.nix, host/services.nix) takes the target set and a name-to-flake map as arguments; flake.nix is the only place that binds this host's values."
+choice = "One file per target under targets/, and targets/default.nix lists them explicitly (no readDir) and derives name, guestPath and cachePaths once. volumePath is the capsule's and leaves the target values. Generic code (mkVm, vm/capsule.nix, host/profile.nix, host/services.nix) takes the target set and a name-to-flake map as arguments; the caller of mkFleet is the only place that binds a host's values (a consumer flake since SL-004; flake.nix before it)."
 alternatives = ["One targets.nix attrset holding every target", "targets/ enumerated with builtins.readDir", "Extract the declarations to a consumer flake now (IMP-015)"]
 rationale = "Keeps each target's commentary separate; an explicit list means a stray file is not a target; the argument seam makes IMP-015 a move of one binding block rather than a rewrite, while keeping SL-003 bounded."
 consequences = ["target.nix is deleted; every reader of the single `target` names which target it means", "IMP-015 follows SL-003"]

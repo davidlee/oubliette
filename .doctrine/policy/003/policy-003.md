@@ -7,11 +7,11 @@ names a value implicitly.**
 
 | axis | the one home | what it holds |
 | --- | --- | --- |
-| addressing | **`net` in `flake.nix`** | tap name, both addresses, MAC, proxy port. Threaded to the guest via `specialArgs`. **Do not hardcode an address anywhere else.** |
-| slots | **`capsules.nix`** | which slots exist (`a`…`j`), the policy set an assigner may select within, and the profile each slot declares — for resolution a convenience, with no set beside it; for a declared slot also the build binding, since the slot boots that target's image (`DEC-017`) |
-| host controls | **`policies.nix`** | an allowlist file, an ingestion bound and `mayCollect` per named policy |
-| the confined repos | **`targets/`**, listed by hand in `default.nix` | per target: path, tools package, caches, sizes; its name is its key. Its tool-set flake is in `flake.nix`'s `targetFlakes`, because an input url must be a literal, and eval throws unless the two name the same targets (`DEC-018`, `DEC-019`) |
-| a probe's fabric | **`probeFabric` in `flake.nix`** | every name, link, address and network a probe's egress fabric is built from |
+| addressing | **the caller's `net` argument** to `mkFleet` | tap name, both addresses, MAC, proxy port. Threaded to the guest via `specialArgs`. **Do not hardcode an address anywhere else.** |
+| slots | **the caller's `fleet` argument** (a consumer's `capsules.nix`) | which slots exist (`a`…`j`), the policy set an assigner may select within, and the profile each slot declares — for resolution a convenience, with no set beside it; for a declared slot also the build binding, since the slot boots that target's image (`DEC-017`) |
+| host controls | **the caller's `policies` argument** (a consumer's `policies.nix`) | an allowlist file, an ingestion bound and `mayCollect` per named policy |
+| the confined repos | **the caller's `targets` argument**, `<name> = {decl; flake}`, listed by hand (a consumer's `targets/`) | per target: path, tools package, caches, sizes; its name is its key. Its file and its tool-set flake are paired, so there is no second map to disagree (`DEC-018`, `DEC-025`; `DEC-019` superseded) |
+| a probe's fabric | **the caller's `probe.fabric` argument** | every name, link, address and network a probe's egress fabric is built from |
 
 **And nothing has a default.** The four host programs take `--capsule <name>` or
 `CAPSULE_NAME` and **refuse** without one. `capsule-host --policy <name>` and
@@ -42,9 +42,10 @@ which is the same failure with a shorter fuse — `capsule` as a flake attribute
 the guest **image**, not a slot, and `microvm -c` will happily instantiate it
 (`RSK-005`).
 
-The `probeFabric` case is the sharpest, and it is **enforced rather than asked
-for**: `borrowed`, its intersection with what `capsules.nix` declares, **throws
-at eval**. The reason it exists rather than a comment is `NOTES item 38` — a
+The probe fabric case is the sharpest, and it is **enforced rather than asked
+for**: `borrowed` (in `mkfleet.nix`), its intersection with what the caller's
+`fleet` declares, **throws at eval** in every caller's eval — the consumer's
+over the real slots, oubliette's over the fixture's. The reason it exists rather than a comment is `NOTES item 38` — a
 probe verified a shape *before* the shape was declared, and **became a borrower
 by standing still while the declaration moved onto it**, with no diff to notice.
 Its cleanup trap deletes `eg-rt`, the fleet's uplink, by name; only three
@@ -69,7 +70,7 @@ Two related shapes that follow from the same rule:
 
 **Applies to** every address, name, bound and path in this repo.
 
-**Excluded**: `workBranch` in `flake.nix`, deliberately — the guest's branch is a
+**Excluded**: `workBranch`, a constant in `mkfleet.nix`, deliberately — the guest's branch is a
 **constant**, because a name that identifies the work is not project state
 (`docs/contract-target.md`). `capsule-provision <ref>` is a ref in the target repo
 and is the other thing called a branch here.
@@ -80,7 +81,7 @@ host's git channel.
 
 ## Verification
 
-- **Eval**: `probeFabric`'s `borrowed` throws. `hostModuleUnits` evaluates the
+- **Eval**: `borrowed` throws, in every caller's eval. `hostModuleUnits` evaluates the
   module including its programs.
 - **Build**: `policyCases`, `profileCases`, `gitChannelCases` and the rest run
   each program's own text against a substitute for the one thing tying it to this

@@ -78,9 +78,9 @@ oubliette (public)                     github:davidlee/<private fleet>
 - **How `~/flakes` reaches the consumer** (research X4): option (a). The
   consumer is a git repo pushed to a **private** remote, which `~/flakes` takes
   as an input. `/srv/fleet` is its local checkout, and that path is what
-  `microvm -c/-u` and `system-switch`'s override read. The `follows` shims
-  **move** onto that input; they do not disappear (this withdraws the non-goal
-  below that said they would).
+  `microvm -c/-u` and `system-switch`'s override read. The `follows` shims were
+  to move onto that input; at cutover they could not, since the host module
+  evaluates each target's flake, so they went (design sec-7 step 8, RV-013 F-5).
 - **This host runs on the private consumer from the start.** One cutover; no
   host detail (slot list, keys, allowlists) in anything public.
 - **The public example is a flake template inside oubliette**
@@ -100,7 +100,9 @@ oubliette (public)                     github:davidlee/<private fleet>
   *shape* rather than their *home*.
 - Editing `~/flakes` from here. Its wiring changes (re-home the `follows`
   shims onto the consumer input; take the host module and microvm.nix through
-  it) are the user's to make; this slice names them exactly.
+  it) are the user's to make; this slice names them exactly. *Waived by the
+  user 2026-10-17 for the cutover: the seat made them (design sec-9, RV-013
+  F-12).*
 
 ## Affected surface
 

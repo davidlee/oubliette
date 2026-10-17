@@ -12,10 +12,10 @@ tags = []
 
 [facet]                         # every field typed; seeded empty (captured later)
 context = "SL-003: per-target images need names; hostName is in the closure and is the process name microvm@<hostName> that probes match (probe/harness.sh:294, NOTES item 28)."
-choice = "Every image keeps hostName = capsule. nixosConfigurations stays hello, capsule (doctrine's image, bound by name in flake.nix as the probes' subject) and one attr per slot resolving to its profile's image. Each target's runner is a packages-only attr (image-<target>) for building, never a nixosConfigurations attr."
+choice = "Every image keeps hostName = capsule. nixosConfigurations stays hello, capsule (the probe target's image, bound by name as the probes' subject in whichever flake calls mkFleet — the consumer's for a real fleet, the fixture's in oubliette, since SL-004) and one attr per slot resolving to its profile's image. Each target's runner is a packages-only attr (image-<target>) for building, never a nixosConfigurations attr."
 alternatives = ["hostName per target (splits the process name; any_vm_running and vm-stop miss VMMs)", "A nixosConfigurations attr per target (widens RSK-005)"]
 rationale = "Keeps a VMM identified by its namespace and every VMM matchable as microvm@capsule; adds no attr microvm -c can instantiate outside a slot, so RSK-005 does not widen."
-consequences = ["the guest prompt and ps still do not say which target", "`.#capsule` names doctrine's image until IMP-015 gives probes a fixture target"]
+consequences = ["the guest prompt and ps still do not say which target", "`.#capsule` names the probe target's image (met by SL-004: oubliette's is the fixture's)"]
 decided_by = "user"
 decided_on = "2026-09-30"
 

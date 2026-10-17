@@ -5,9 +5,9 @@ id = 19
 slug = "each-targets-tool-set-flake-is-a-literal-input-mapped-by-name-in-flakenix-and-passed-to-the-image"
 title = "Each target's tool-set flake is a literal input, mapped by name in flake.nix and passed to the image as a value"
 record_kind = "decision"
-status = "accepted"
+status = "superseded"
 created = "2026-09-30"
-updated = "2026-10-16"
+updated = "2026-10-17"
 tags = []
 
 [facet]                         # every field typed; seeded empty (captured later)
@@ -26,7 +26,7 @@ notes       = []
 
 [relationships]                 # verb-written edges (set by doctrine supersede)
 supersedes    = []   # record ids this one replaces (set by doctrine supersede)
-superseded_by = []   # set on superseded predecessor (verb-written, ADR-004 §5)
+superseded_by = ["DEC-025"]   # set on superseded predecessor (verb-written, ADR-004 §5)
 
 [[relation]]
 label = "shapes"

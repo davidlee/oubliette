@@ -97,3 +97,32 @@ Fixed in this audit: the doc drift (F-9), two memories (F-11), and the lifecycle
 ### Not for reconcile
 - F-9, F-11, F-13 fixed in this audit; F-10 → CHR-017; F-14 → ISS-018.
 - IMP-015 (fulfilled by this slice) is closed at `/close`.
+
+## Reconciliation Outcome
+
+The user agreed to the full proposal ("agreed", 2026-10-17).
+
+### Direct edits applied
+- design.md sec-7 step 7: `flake.nix:189` (F-5).
+- design.md sec-7 step 8: `fleet` gets no target shims, with the reason; the override comes via `bin/dev-checkouts` / `$FLAKES_FLEET` (F-5).
+- design.md sec-6 step 3: three homes of `policyDir`, two manifest entries (F-7).
+- design.md sec-10: the curry closes over `doctrine`, devshell only (F-6).
+- design.md sec-9 and slice-004.md Non-Goals: the user's waiver for the `~/flakes` edits (F-12).
+- slice-004.md "Settled with the user": the shims went rather than moved (F-5).
+- Selector registry (F-8): removed the four untouched files and the narrow selectors now subsumed; added `host/**`, `vm/**`, `probe/**`, `perimeter/**`, `docs/*.md`, `fragments.nix`, `fleet-cases.nix`, `flake.lock`, `templates/template-cases.nix` and `host-capsules.nix` as design-target. `slice conformance 4`: undelivered 0; the only undeclared paths left are `.doctrine/**`. `selector doctor` reports the four deleted files (`policies.nix`, `net.nix`, `setup.nix`, `host-capsules.nix`) as unmatched, which is expected, since their deletion is the delivery.
+
+### REVs completed
+- REV-003 (`reconcile-sl-004`): done. Modified POL-002 (primary), POL-003, POL-001 and POL-004, landed by hand (F-1). POL-004 also states the `templateCases` gate exception (the PHASE-08 ruling). Rationale in revision-003.md.
+
+### Knowledge and backlog records
+- DEC-019 superseded by DEC-025, status `superseded` (F-2).
+- DEC-030 choice reworded (F-3).
+- DEC-017, DEC-018 and DEC-020 choices reworded; DEC-020's consequence marked met (F-1).
+- CON-001: `applies_to` and body updated (F-1).
+- ASM-003 validated (F-4).
+- ISS-015: note appended (F-1).
+
+### Found during reconcile, not acted on (hand back to /audit)
+- POL-002 § Verification still says "a second target has never been declared (IMP-004)" and that three absent paths (`baseline = null`, `caches = {}`, `guestConfig = {}`) are "only reasoned" (RSK-002). goad-walk has been a second declared target since SL-003, and `fixture/` now builds all three absent paths. That section, and possibly IMP-004 and RSK-002, need re-reading. This is a new gap, not part of the brief.
+
+Reconcile pass complete; hand off to /close.

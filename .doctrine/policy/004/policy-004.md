@@ -10,7 +10,7 @@
   which tears the proxy down.
 
 **No tap name, no hypervisor, no Linux-only tool goes in there.** Anything
-platform-shaped belongs at the call site in `flake.nix` (`perimeterChecks`).
+platform-shaped belongs at the call site in `mkfleet.nix` (`perimeterChecks`).
 
 **`host/git-channel.nix` has the same seam for the same reason**: it knows a git
 URL and a `transport` fragment, both injected, and nothing about taps or
@@ -51,7 +51,7 @@ its subjects' `runtimeInputs`, so nothing in a sandbox can stub `ssh`.
 **Applies to** `perimeter/`, `host/git-channel.nix`, and any new component
 intended to outlive this hypervisor.
 
-**Excluded**: `flake.nix`'s call sites, which are where platform-shaped things
+**Excluded**: `mkfleet.nix`'s call sites, which are where platform-shaped things
 belong; `host/netns.nix` and `host/services.nix`, which are the jail.
 
 Two adjacent rules of the same family:
@@ -74,13 +74,16 @@ Two adjacent rules of the same family:
 - **Build**: every `*-cases.nix` suite exists because of this seam. One suite per
   file, beside the program it pins — `host/<name>-cases.nix`, a function of
   `pkgs`, `lib` and **the store path the program ships**, with a short `import`
-  in `flake.nix` (`NOTES item 51` step 0). A new suite goes in its own file and
+  in `mkfleet.nix` (`NOTES item 51` step 0). A new suite goes in its own file and
   takes its subject as an argument — **never a second render of the text it
   claims to pin**.
 - **All suites are in `just build`, so a failing case is a failing build.**
   Check that when you add one: `observeCases` and `baselineCases` were written,
   wired into `just cases`, and **left out of `just build` for a session**
-  (`NOTES item 51` step 3).
+  (`NOTES item 51` step 3). One exception, by design: `templateCases` is
+  oubliette's own check and runs in oubliette's default gate, since the shared
+  `build` recipe ships to every consumer and no consumer has the template
+  (SL-004 PHASE-08).
 - **Two rules for writing a case**: assert the **reason** as well as the exit
   status, since a refusal for the wrong reason is a different program passing;
   and **check the suite can fail** by mutating the behaviour it claims to pin —

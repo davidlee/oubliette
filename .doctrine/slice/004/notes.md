@@ -21,7 +21,7 @@ fresh-as-of: 2026-10-17 · audit (RV-013 concluded) · bb179e7
 - mem.fact.oubliette.design-apply-ordering, mem.fact.oubliette.codex-exec-reads-stdin — design stage
 
 ### Open
-- RV-013 reconciliation brief: F-1..F-8, F-12 (REVs, DEC-019 supersede, ASM-003 settle, design/slice edits, selector registry)
+- RV-013 reconciled (REV-003 done); hand-back: POL-002 § Verification vs goad-walk and the fixture (see RV-013 outcome)
 - IMP-015 closes at /close
 - CHR-017, ISS-018, ISS-017, IMP-016 — follow-ups
 

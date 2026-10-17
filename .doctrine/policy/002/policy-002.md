@@ -20,7 +20,8 @@ Three limbs:
    cargo", and emphatically not "copy the human's `~/.cargo/config.toml`" —
    which is a third failure, a config describing a machine the capsule is not.
    **The smell is a toolchain's name (`cargo`, `bun`, `sccache`) appearing
-   anywhere but `targets/`.**
+   anywhere but a consumer's `targets/` (or oubliette's `fixture/` and
+   `templates/`).**
 2. **Anything beyond the contract is declared and optional.** The contract is
    *be a git repo on this host, and expose one flake package that is your
    devshell's tool set* (`NOTES item 16`). Everything else is a field of the
@@ -31,17 +32,21 @@ Three limbs:
    leniency in the flake**. Strict-and-owned beats lenient-and-coupled: it fails
    loudly here, and it is the only thing that ports.
 
-**A target's name may appear in code** (`*.nix`, `*.sh` and the justfile,
-outside comments, `.doctrine/` and the tool configuration — `.mcp.json`,
-`.claude/`, `.codex/`) **only in `targets/`, in `flake.nix`'s target inputs
-and its `targetFlakes` map, as the probe subject (`probeTarget` in `flake.nix`),
-and as a slot's `profile` value in `capsules.nix`** (SL-003, `REV-002`). Generic source never hardcodes a
+**A target's name may appear in code** (`*.nix`, `*.sh` and the justfiles —
+`justfile` and `just/fleet.just` — outside comments, `.doctrine/` and the tool
+configuration — `.mcp.json`, `.claude/`, `.codex/`) **only in a consumer
+flake** — the repo that calls `lib.mkFleet` with its host's declarations: its
+`targets/`, its target inputs and the `targets` argument pairing each with its
+flake, its `probe.target`, and a slot's `profile` in its `capsules.nix` — **and,
+in oubliette, only in `fixture/` and `templates/`**, whose targets are nobody's
+(SL-004, `REV-003`). `inputs.doctrine` in oubliette's `flake.nix` is the
+governance CLI, not a target binding, and is excluded by name. Generic source never hardcodes a
 target's identity or branches on it; a host-declared value may be threaded into
 a generated front end. A case suite's fixture may reproduce a target's layout as
 data, since a fixture is what a program is run against, not what it is. The list
 keeps this checkable by search: in those files and outside comments, a hit
 anywhere else is a violation (`REV-001`, SL-001). Nothing target-shaped goes in
-`perimeter/`, `vm/capsule.nix` or the justfile; it comes from there as a value.
+`perimeter/`, `vm/capsule.nix` or the justfiles; it comes from there as a value.
 **And nothing target-shaped is ever read *out of the target repo*** — the agent
 can edit that (`NOTES item 16`).
 
@@ -72,14 +77,16 @@ this one lives here, and they are **separate id spaces** (`ADR-001` term 2).
 
 ## Scope
 
-**Applies to** every host-side program, `perimeter/`, `vm/`, the justfile, and
-every printed string.
+**Applies to** every host-side program, `mkfleet.nix`, `perimeter/`, `vm/`, the
+justfiles, and every printed string.
 
-**Excluded**: `targets/` itself, which is where a target's values are *supposed*
-to live; `flake.nix`'s target inputs, `targetFlakes` and `probeTarget`; and a
-slot's `profile` value in `capsules.nix` — the host operator saying which client
-a slot serves, which for a declared slot also selects its image (`DEC-017`,
-`docs/contract-assignment.md`).
+**Excluded**: a consumer flake — its `targets/`, which is where a target's
+values are *supposed* to live, its target inputs and `targets` argument, its
+`probe.target`, and a slot's `profile` value in its `capsules.nix`, the host
+operator saying which client a slot serves, which for a declared slot also
+selects its image (`DEC-017`, `docs/contract-assignment.md`); oubliette's
+`fixture/` and `templates/`, whose targets are nobody's; and `inputs.doctrine`
+in oubliette's `flake.nix`, the governance CLI.
 
 The surface this rule produces is written down field by field:
 `docs/contract-target.md` is what any repo must supply and may rely on;

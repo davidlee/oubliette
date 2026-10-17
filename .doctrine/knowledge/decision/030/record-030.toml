@@ -12,7 +12,7 @@ tags = []
 
 [facet]                         # every field typed; seeded empty (captured later)
 context = "the user chose a public doctrine-only example inside oubliette; oubliette's lock cannot carry doctrine, so an unchecked template would rot."
-choice = "templates.default = templates/fleet/, a doctrine-only consumer (flake, targets/doctrine.nix, one slot, policies, allowlists, net.nix, setup.nix, justfile, .gitignore); a templateCases suite evaluates its declaration files (not its flake.nix) through mkFleet with a stub flake for doctrine."
+choice = "templates.default = templates/fleet/, a doctrine-only consumer (flake, targets/doctrine.nix, one slot, policies, allowlists, net.nix, setup.nix, justfile, .gitignore); a templateCases suite evaluates the template's actual flake.nix outputs against stub inputs (oubliette's lib, a stub doctrine flake, oubliette's nixpkgs), so the template's own wiring into mkFleet is what is checked (design sec-5, RV-012 F-8, RV-013 F-3)."
 alternatives = ["a separate public example repo", "no check on the template"]
 rationale = "public usability without target inputs in oubliette's lock; the check pins the template's declarations to the builder's argument surface."
 consequences = ["the template is example data and is named as an exclusion in POL-002's search rule", "the template carries the reference commentary (inq-10)"]

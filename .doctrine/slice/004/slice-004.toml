@@ -16,7 +16,7 @@ intent = "design-target"
 
 [[selector]]
 selector = "flake.lock"
-intent = "scope-relevant"
+intent = "design-target"
 
 [[selector]]
 selector = "targets/**"
@@ -36,7 +36,7 @@ intent = "design-target"
 
 [[selector]]
 selector = "perimeter/**"
-intent = "scope-relevant"
+intent = "design-target"
 
 [[selector]]
 selector = "fleet.nix"
@@ -44,7 +44,7 @@ intent = "design-target"
 
 [[selector]]
 selector = "fleet-cases.nix"
-intent = "scope-relevant"
+intent = "design-target"
 
 [[selector]]
 selector = "setup.nix"
@@ -56,14 +56,6 @@ intent = "design-target"
 
 [[selector]]
 selector = "probe/**"
-intent = "scope-relevant"
-
-[[selector]]
-selector = "host/services.nix"
-intent = "design-target"
-
-[[selector]]
-selector = "docs/contract-*.md"
 intent = "design-target"
 
 [[selector]]
@@ -91,47 +83,31 @@ selector = "templates/fleet/**"
 intent = "design-target"
 
 [[selector]]
-selector = "host/template-cases.nix"
-intent = "design-target"
-
-[[selector]]
-selector = "vm/capsule.nix"
-intent = "design-target"
-
-[[selector]]
-selector = "vm/stop-key.pub"
-intent = "design-target"
-
-[[selector]]
-selector = "host/programs.nix"
-intent = "design-target"
-
-[[selector]]
-selector = "host/guard-cases.nix"
-intent = "design-target"
-
-[[selector]]
-selector = "host/policy-cases.nix"
-intent = "design-target"
-
-[[selector]]
-selector = "host/volume-cases.nix"
-intent = "design-target"
-
-[[selector]]
-selector = "host/volume-root-cases.nix"
-intent = "design-target"
-
-[[selector]]
-selector = "perimeter/*.txt"
-intent = "design-target"
-
-[[selector]]
-selector = "docs/plan-d-fleet.md"
-intent = "design-target"
-
-[[selector]]
 selector = ".gitignore"
+intent = "design-target"
+
+[[selector]]
+selector = "templates/template-cases.nix"
+intent = "design-target"
+
+[[selector]]
+selector = "fragments.nix"
+intent = "design-target"
+
+[[selector]]
+selector = "host/**"
+intent = "design-target"
+
+[[selector]]
+selector = "vm/**"
+intent = "design-target"
+
+[[selector]]
+selector = "docs/*.md"
+intent = "design-target"
+
+[[selector]]
+selector = "host-capsules.nix"
 intent = "design-target"
 
 [[relation]]

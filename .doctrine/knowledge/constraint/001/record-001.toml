@@ -13,7 +13,7 @@ tags = []
 [facet]                         # every field typed; seeded empty (captured later)
 statement = "One extras list for the fleet, so one composition: one guest image per target, and every slot of a target boots the same one. The assignment record's extras and image fields are inert and nothing pins a composition."
 source = "technical"
-applies_to = ["fragments.nix", "flake.nix", "assignment record"]
+applies_to = ["fragments.nix", "mkFleet's flavour argument", "assignment record"]
 waiver_reason = ""
 waived_by     = ""
 waived_on     = ""
