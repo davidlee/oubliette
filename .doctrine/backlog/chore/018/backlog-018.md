@@ -50,7 +50,11 @@ exists yet.
 - The target files' `sizes` are placeholders the profile render requires; no
   slot binds these targets.
 
+Resized for cargo (consumer `7508079`): vcpu 4, mem 8192, work 65536 MiB. The
+agent manages its own free space, so there is no room-level cargo config. npm
+inside the room is `IMP-019`.
+
 Left open: deploying the room (it is satan's runner's live room, so a restart
-is the user's to schedule), and checking that `room.sizes` (mem 4096, work
-32768 MiB) holds eleven more clones. Possible trims, owned by the repos: rust
+is the user's to schedule). The new `work` size applies only once
+`room-work.img` is recreated, which discards the doctrine and goad-walk clones. Possible trims, owned by the repos: rust
 toolchains without `rust-docs`, and one shared rust channel.
