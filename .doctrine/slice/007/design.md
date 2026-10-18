@@ -68,8 +68,18 @@ to:
   `systemPackages` only for a room with repos.
 
 A repo's tool set is never unioned with the base: `tools` stays its own link,
-and it shadows the base on `PATH` rather than colliding with it. So the
-collision check is system-wide only (the user, 2026-10-19).
+and it shadows the base on `PATH` rather than colliding with it (the user,
+2026-10-19: the repo's package wins).
+
+**What the collision check covers, exactly.** `buildEnv` refuses two
+*different* files at one path. It accepts identical ones and a deliberate
+priority (`lib.hiPrio`), as `compose` already intends. It checks inside the
+base only. `system-path` around it ignores collisions, so against the rest of
+the system packages an interactive login gets whichever NixOS picks (`ISS-025`'s
+mechanism). `session` does not depend on that: it reads `/etc/room/base`
+directly, so the checked set is what a job runs. The floor's `bash` and
+`coreutils` are the same `pkgs` attributes NixOS's required packages use, so
+in this image they are the same store paths.
 
 **`session` (`vm/session.nix`).** One generic program, one store path
 (`DEC-049`), still reading only build-time paths. `root` stays its build
@@ -82,9 +92,12 @@ PATH = <root>/<repo>/tools/bin   (only when tools exists)
      : $PATH                     (only when set and non-empty)
 ```
 
-The caller's half is `${PATH:+:$PATH}`: an empty or unset `PATH` must not
-leave a trailing `:`, which would put the working directory on `PATH`, and
-under `set -u` an unset one must not abort.
+The caller's half is `${PATH:+:$PATH}` (escaped `''${…}` in the Nix string):
+an empty `PATH` must not leave a trailing `:`, which would put the working
+directory on `PATH`. An *unset* one never reaches the script as unset: this
+bash defaults it to `/no-such-path` (RV-019 note, GPT), which is harmless
+behind the base. A caller's relative `PATH` entries resolve against the clone
+after `cd -P`, which is today's behaviour too and the caller's to avoid.
 
 `runtimeInputs` stays `[]`: `session` uses builtins only, and anything there
 would sit ahead of `tools/bin`. If `<base>/bin` is absent, `session` refuses
@@ -130,11 +143,12 @@ is correct. The front end currently gets the reader's `jq` from
 
 | suite | what it pins (`STD-001`: the verb each covers) |
 | --- | --- |
-| `sessionCases` | over a fixture tree with `repo/` and `base/`: with a set, `PATH` is `tools/bin : base/bin : caller`; without, `base/bin : caller`; a base `git` marker resolves inside `session` when the caller's `PATH` has none; a repo's `git` marker shadows the base's; no `base/bin` → exit 2 with the reason; an unset or empty caller `PATH` gives `…base/bin` with no trailing `:`. The image case: the shipped tree's `room/base` holds `bin/git`, `bin/bash`, `bin/which` and a coreutils binary. Runs `session`'s text, not a room |
+| `sessionCases` | over a fixture tree with `repo/` and `base/`: with a set, `PATH` is `tools/bin : base/bin : caller`; without, `base/bin : caller`; a base `git` marker resolves inside `session` when the caller's `PATH` has none; a repo's `git` marker shadows the base's; no `base/bin` → exit 2 with the reason; an empty caller `PATH` gives `…base/bin` with no trailing `:`, and an unset one does not abort. The image case: the shipped tree's `room/base` holds `bin/git`, `bin/bash`, `bin/which` and a coreutils binary. Runs `session`'s text, not a room |
 | `roomsCases` | `extras` not a list, and an unknown name, are refused with the reason (and the vocabulary in it); absent gives `extras = []` on the record |
 | `profileCases` | the reader loads a document in a `runCommand` with **no `jq` on `PATH`**. One text, so this covers every splice |
+| `hostModuleUnits` (or the nearest suite holding the programs) | each shipped program that splices the reader (`capsule-provision`, `capsule-collect`, `capsule-refresh`, `capsule-brief`, `capsule-baseline`, `capsule-room-git`, `capsule`) has `jq`'s store path in its text. That proves the splice is the shared text, not that the program runs; `profileCases` proves the text runs (RV-019 note, GPT) |
 | `gitChannelCases`, `wrapCases` | `jq` leaves the `nativeBuildInputs` that hid `ISS-013`; a suite-owned `jq` stays only where the suite itself writes fixtures, and is named as such |
-| build | a fixture room declares one extra, so `just build` renders a base with extras. A base whose extras collide with the floor is not cased: it is `buildEnv`'s behaviour, observed once by hand while building |
+| build | a fixture room declares one extra, so `just build` renders a base with extras. A base whose extras put a *different* file at a floor path is not cased: it is `buildEnv`'s behaviour, observed once by hand while building. Collisions against the rest of `system-path` are not checked anywhere (sec-2) |
 
 Each new case is mutated once to watch it go red: `session` without the base
 line, the reader with a bare `jq`, `rooms.nix` without `reasons.extras`.
