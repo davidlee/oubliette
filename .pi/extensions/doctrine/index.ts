@@ -5,7 +5,7 @@ let cachedBoot: string | null = null;
 
 function resolveBoot(): string {
   try {
-    return execSync("/nix/store/p4r89h46hvapyf300ab61312r4ha8a4z-doctrine-0.46.5/bin/doctrine prompt resolve --role orchestrator", {
+    return execSync("/nix/store/h35v518mlxccp7m693fjjbjdg955363w-doctrine-0.46.7/bin/doctrine prompt resolve --role orchestrator", {
       encoding: "utf-8",
       cwd: process.cwd(),
       timeout: 5_000,

@@ -24,7 +24,7 @@ import type { ExtensionAPI } from "@earendil-works/pi-coding-agent";
 // ── BIN_PATH ──────────────────────────────────────────────────────────────────
 // Baked at install time by `doctrine boot install`.
 
-const BIN_PATH = "/nix/store/p4r89h46hvapyf300ab61312r4ha8a4z-doctrine-0.46.5/bin/doctrine";
+const BIN_PATH = "/nix/store/h35v518mlxccp7m693fjjbjdg955363w-doctrine-0.46.7/bin/doctrine";
 
 /** A hook that outlives its nudge has already missed its moment. */
 const SURFACE_TIMEOUT_MS = 5_000;

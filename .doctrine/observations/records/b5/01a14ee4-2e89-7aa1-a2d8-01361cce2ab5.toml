@@ -1,0 +1,18 @@
+schema = "doctrine.observation"
+schema_version = 1
+uid = "01a14ee4-2e89-7aa1-a2d8-01361cce2ab5"
+recorded_at = "2026-10-18T12:02:19.401070516Z"
+kind = "friction"
+summary = "capsule-driver: grandchild hand-backs routed to the seat, and a session restart killed the orchestrator mid-phase"
+detail = "SL-006 run 1: PHASE-01's planner and worker final reports arrived at the seat, not orch-sl006-a; the worker said its hand-back failed with 'the agent that spawned you is no longer running' while the orchestrator was listed as running. The seat relayed by SendMessage. Later the seat's session restarted; the orchestrator (a teammate) did not survive it and its hand-back was lost, leaving PHASE-02 blocked on VH-1 unreported and PHASE-03 in_progress with an unverified uncommitted delta. Recovery was by reading phase tomls, git log and git status."
+
+[facets.execution]
+schema_version = 1
+interface = "cli"
+interface_origin = "automatic"
+product_surface = "doctrine"
+product_surface_origin = "automatic"
+command = "observation record"
+command_origin = "automatic"
+repository_context = "primary"
+repository_context_origin = "automatic"

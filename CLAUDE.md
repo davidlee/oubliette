@@ -1,5 +1,5 @@
 @.doctrine/state/boot.md
-If you have NOT seen `BOOT-SENTINEL: doctrine-governance-snapshot` anywhere in your context (system prompt or preceding messages), you MUST read the file referenced above now. If you HAVE seen it, you MUST NOT — the content is already in context.
+If you have NOT seen `BOOT-SENTINEL: doctrine-governance-snapshot` anywhere in your context (system prompt or preceding messages), you MUST read the file referenced above now. If you HAVE seen it, you MUST NOT — the content is already in context. If that file does not exist, doctrine is not set up in this checkout: tell the user to install doctrine and run `doctrine install`.
 
 # CLAUDE.md
 
@@ -47,7 +47,7 @@ evaluates). `just` (default) runs the build, units, and fmt.
 `just check` parses and formats without evaluating. `hostModuleUnits` *evaluates*
 the NixOS module — what it says, including its programs, since a unit graph does
 not mention them. `guardCases`, `netnsCases`, `briefCases`, `snapshotCases`, `refreshCases`, `observeCases`,
-`baselineCases`, `policyCases`, `profileCases`, `vmCases`, `gitChannelCases`, `quarantineCases`,
+`baselineCases`, `policyCases`, `profileCases`, `vmCases`, `gitChannelCases`, `roomGitCases`, `quarantineCases`,
 `volumeRootCases`, `resetHomeCases`, `sessionCases`, `volumeCases`, `fleetCases`, `roomsCases`, `fabricCases` and `roomVerbsCases` *run* a
 program's own text with a substitute for the one thing tying it to this host
 (`just cases`), and are the answer whenever the interesting branches are ones a
@@ -62,7 +62,9 @@ in flight before it leaves that state, the front end's by editing the declared
 pool and writing the live record of a slot somebody is using, the front end's rooms by
 declaring one named for a verb, the profile's by
 holding two targets at once and by handing the render a target no host declares,
-the git channel's by confining a second project, the quarantine's bounded fetch by
+the git channel's by confining a second project, the room channel's by naming a room
+with no socket, a branch the host checkout lacks and a door that answers with no
+banner, the quarantine's bounded fetch by
 offering it a pack over the ceiling, a malformed object, a tag and a held ref lock,
 and the volume root helper's by
 deleting and overwriting a real slot's image as root, the guest's reset of
@@ -72,9 +74,9 @@ destructive command at a slot nobody named, racing a start against a clone, and
 injecting into a clone whose scrub failed. `resetHomeCases` and `sessionCases`
 are the two whose subject ships in the *guest* (`vm/`); the first reads the scrub
 list off the evaluated capsule and the second finds its program in an evaluated
-room, so `just build` evaluates the guest. **The git channel is the only one
-over a program that talks to a guest, and what it can reach is everything
-upstream of the door** — `pkgs.openssh` is in its subjects' `runtimeInputs`, so
+room, so `just build` evaluates the guest. **The two git channels, slot and
+room, are the only ones over a program that talks to a guest, and what they can
+reach is everything upstream of the door** — `pkgs.openssh` is in their subjects' `runtimeInputs`, so
 nothing in a sandbox can stub `ssh`, and that is a boundary to respect rather
 than work around.
 **A suite that composes a program's command line by hand pins only one end of
@@ -98,7 +100,7 @@ written, wired into `just cases`, and left out of `just build` for a session
 (NOTES item 51 step 3). **One suite per file, beside the program it pins** —
 `host/<name>-cases.nix`, or `vm/<name>-cases.nix` for a guest program, a function of `pkgs`, `lib` and **the store path the
 program ships**, with a short `import` in `mkfleet.nix` (NOTES item 51 step 0).
-Fourteen of them are handed a fixture instead and say so in their headers: the
+Fifteen of them are handed a fixture instead and say so in their headers: the
 guard's stubbed kernel, the namespace program's stubbed kernel and scratch
 `/etc/netns` (a build sandbox's `/etc` is read-only, and the program's path is
 fixed at build), the front end's pool that is not this host's (three times,
@@ -107,7 +109,8 @@ profile's target that is nobody's, the wrapper's four directories that are
 no host's, the volume root helper's sandbox roots, since a root program's
 paths are fixed at build and its shipped store path cannot be aimed anywhere else,
 the guest reset's fixture home, for the same reason one level down, the
-session's repo tree, since its root is fixed at build, the
+session's repo tree, since its root is fixed at build, the room
+channel's door, a socket nobody's, since its path is fixed under `/run`, the
 fleet's targets and slots that are nobody's (`fleet-cases.nix`), the
 quarantine's policy vocabulary that is no host's (`quarantine-cases.nix`), and the rooms and
 probe fabric that are nobody's (`rooms-cases.nix`, `fabric-cases.nix`). A new suite goes in

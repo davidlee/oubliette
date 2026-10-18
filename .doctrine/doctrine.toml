@@ -38,3 +38,6 @@
 # a second name for it. `commit` keeps its baked default, `just check`.
 [verification]
 gate = ["just"]
+
+[install]
+installed-version = "0.46.7"

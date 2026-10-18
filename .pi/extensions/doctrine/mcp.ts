@@ -24,7 +24,7 @@ import { Type } from 'typebox';
 // Baked at install time by `doctrine boot install` (SL-119 extended pattern).
 // Fallback in development: environment variable or hardcoded path.
 
-const BIN_PATH = "/nix/store/p4r89h46hvapyf300ab61312r4ha8a4z-doctrine-0.46.5/bin/doctrine";
+const BIN_PATH = "/nix/store/h35v518mlxccp7m693fjjbjdg955363w-doctrine-0.46.7/bin/doctrine";
 
 // ── State ─────────────────────────────────────────────────────────────────────
 
