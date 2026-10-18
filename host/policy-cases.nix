@@ -98,6 +98,7 @@
     inherit observe observeFragment programVerbs profileVerbs stateRefPrefix volumeRootHelper;
     capsules = fixture;
     moduleState = ''"$CASE_STATE"'';
+    rooms = {};
     # NOTES item 41's branch and its failure, made reachable from a sandbox
     # that has neither systemd nor root — which is exactly why the front end
     # takes this as an argument: `pkgs.systemd` is in its `runtimeInputs`, so

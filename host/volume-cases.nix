@@ -62,6 +62,7 @@
     inherit observe observeFragment programVerbs profileVerbs stateRefPrefix volumeRootHelper;
     capsules = fixture;
     microvms = ''"$CASE_ROOT/microvms"'';
+    rooms = {};
     moduleState = ''"$CASE_ROOT/state"'';
     # The root step logs its argv, and for a clone whether the destination's
     # record directory already existed when it was called: the operator makes

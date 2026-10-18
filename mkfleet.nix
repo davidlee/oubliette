@@ -554,6 +554,7 @@
   # of them can be missing.
   capsule-cli = import ./host/cli.nix {
     inherit pkgs lib net capsules policies guestSsh;
+    rooms = roomRecords;
     inherit (hostPrograms) observe observeFragment programVerbs profileVerbs stateRefPrefix volumeRootHelper;
   };
 
@@ -686,6 +687,16 @@
     inherit pkgs lib net policies guestSsh;
     capsules = casesCapsules;
     inherit (hostPrograms) observe observeFragment programVerbs profileVerbs stateRefPrefix volumeRootHelper;
+  };
+
+  # The front end's four room verbs and the refusal of the rest (SL-005
+  # sec-7): a fixture pool and rooms built by the real constructor, and its own
+  # render, for `policyCases`' reason (host/room-verbs-cases.nix).
+  roomVerbsCases = import ./host/room-verbs-cases.nix {
+    inherit pkgs lib net policies guestSsh;
+    capsules = casesCapsules;
+    inherit (hostPrograms) observe observeFragment programVerbs profileVerbs stateRefPrefix volumeRootHelper;
+    rooms = import ./rooms.nix;
   };
 
   # The one root program on the volume path (SL-002). Handed a fixture pool and
@@ -1595,7 +1606,7 @@ in {
       # The checks that need no root and no host: what the module says, what the
       # guard decides, and which policy a slot resolves to.
       inherit hostModuleUnits hostModulePrograms guardCases netnsCases policyCases observeCases;
-      inherit profileCases gitChannelCases vmCases wrapCases volumeRootCases resetHomeCases volumeCases fleetCases roomsCases fabricCases;
+      inherit profileCases gitChannelCases vmCases wrapCases volumeRootCases resetHomeCases volumeCases fleetCases roomsCases fabricCases roomVerbsCases;
       # Every declared room's image, checked and built (RV-014 F-7).
       inherit roomImages;
       # The rendered run-time half of every target, so a human can read what a
