@@ -1,0 +1,287 @@
+# Implementation plan for SL-005 — the authored, durable phase plan.
+#
+# Runtime status lives under .doctrine/state/ (phase tracking) — never record
+# progress here. Hand-edit freely: the tool reads this file but does not rewrite
+# it. Ids are immutable; edits append.
+schema  = "doctrine.plan.overview"
+version = 1
+slice   = "SL-005"
+
+[specs]
+primary       = []
+collaborators = []
+
+[requirements]
+targets      = []
+dependencies = []
+
+[[phase]]
+id        = "PHASE-01"
+name      = "rooms.nix: a room declaration becomes guest records, and refuses with its reason"
+objective = """
+Write `rooms.nix` (design sec-2), pure and in the shape of `fleet.nix`: a
+function of `lib`, the declared `rooms` and the slot names, returning
+`instances` (one record per room: name, `ns = "room-<n>"`, `uplink = null`,
+socket under `/run/capsule-room/<n>/`, users, sizes) and `reasons` (`names`,
+`users`). Every refusal is the string `instances` throws. `roomsCases`
+(`rooms-cases.nix`, beside it) reads each verdict with `tryEval (deepSeq …)`
+at eval and asserts exit and reason in the shell, as `fleet-cases.nix` does.
+Nothing calls `rooms.nix` from `mkFleet` yet, so no caller changes."""
+entrance_criteria = [
+  { id = "EN-1", text = "SL-005 design locked (run rev 35) and the slice at `ready`" },
+  { id = "EN-2", text = "`just` green at the starting commit" },
+]
+exit_criteria = [
+  { id = "EX-1", text = "`rooms.nix` returns `instances` and `reasons` as design sec-2 specifies; no host value and no derivation in it" },
+  { id = "EX-2", text = "`roomsCases` pins, each with its reason: a room named as a slot, `hello`, `capsule`, or a unit-unsafe name; a user named `root`; a user with an empty key list; a sizes set missing any of `vcpu`/`mem`/`volume`; and a well-formed declaration yielding the expected record" },
+  { id = "EX-3", text = "`roomsCases` is a package in `mkfleet.nix` and a line in `just/fleet.just`'s `build` (NOTES item 51 step 3), and `just` is green" },
+  { id = "EX-4", text = "mutation: dropping the slot-name collision check turns its case red; observed and reverted" },
+]
+verification = [
+  { id = "VT-1", expects = "the refusal reasons are exposed and each refusal is cased", test_file = "rooms-cases.nix", keywords = ["tryEval", "deepSeq", "reasons", "root", "capsule", "hello"], waived = false },
+  { id = "VT-2", expects = "the suite is in just build", test_file = "just/fleet.just", keywords = ["roomsCases"], waived = false },
+  { id = "VA-1", expects = "the EX-4 mutation was observed red, then reverted; recorded in the phase notes" },
+]
+specs        = []
+requirements = []
+
+[[phase]]
+id        = "PHASE-02"
+name      = "capsule-netns learns an absent uplink, and is run against a stubbed kernel"
+objective = """
+`host/netns.nix` (design sec-3): the uplink group is all set, all absent, or
+refused naming the mixed variables, before the trap is armed. With it absent,
+`up` builds only the namespace, `lo`, forwarding off and the tap guard rule,
+and `undo_up`/`down` delete no peer. `capsule-netns` takes `tools` as an argument,
+injected by `host/services.nix` as `host/guard.nix`'s is (`host/services.nix:196`;
+design sec-3 says "with a default", but guard has none and one caller needs
+none). `capsuleEnv` becomes a function of a guest record and emits only
+`NS TAP TAP_ADDR PREFIX` for `uplink = null`. `netnsCases`
+(`host/netns-cases.nix`) runs the shipped program with logging stubs for `ip`,
+`nft` and `sysctl`: the five cases of sec-3."""
+entrance_criteria = [
+  { id = "EN-1", text = "PHASE-01 complete" },
+]
+exit_criteria = [
+  { id = "EX-1", text = "`capsule-netns` refuses a partial uplink group naming which variables are set and unset, before any `ip` call" },
+  { id = "EX-2", text = "`netnsCases` cases 1–5 of design sec-3 pass, each asserting exit status and reason; case 1 asserts the slot `up` call sequence equals today's" },
+  { id = "EX-3", text = "`hostModuleUnits` is green with no check edited; the slot units' `Environment=` lines are unchanged (compare the rendered unit text before and after)" },
+  { id = "EX-4", text = "`netnsCases` is a package and a `just build` line; `CLAUDE.md`'s case-suite list gains it (design sec-10)" },
+  { id = "EX-5", text = "mutation: restoring an unconditional peer deletion turns case 4 red; observed and reverted" },
+]
+verification = [
+  { id = "VT-1", expects = "the suite runs the shipped program against stubs and covers the no-uplink path and its rollback", test_file = "host/netns-cases.nix", keywords = ["capsule-netns", "EGRESS_NS", "undo_up", "veth"], waived = false },
+  { id = "VT-2", expects = "capsule-netns takes its tools as an argument", test_file = "host/netns.nix", keywords = ["uplink == null", "tools"], waived = false },
+  { id = "VT-3", expects = "the suite is in just build", test_file = "just/fleet.just", keywords = ["netnsCases"], waived = false },
+  { id = "VA-1", expects = "EX-3's slot-unit text comparison and EX-5's mutation recorded in the phase notes" },
+]
+specs        = []
+requirements = []
+
+[[phase]]
+id        = "PHASE-03"
+name      = "vm/door.nix out of vm/capsule.nix, and the slot image is unchanged"
+objective = """
+Extract `vm/door.nix` (design sec-5): the tap interface and the guest's
+static side of the link (no DHCP, no gateway, resolved off; RV-014 F-1),
+sshd with root by key only and a host-key path the importer passes, and
+root's `adminKeys ++ [stopKey]`. `vm/capsule.nix` imports it and passes
+`${work}/ssh`. The instrument is SL-004's manifest
+(`.doctrine/slice/004/manifest.nix`): every slot runner's drvPath is equal
+before and after. If it is not, the difference is shown by `nix-diff` to be
+option-definition order only, and that is recorded in the commit (sec-9)."""
+entrance_criteria = [
+  { id = "EN-1", text = "PHASE-02 complete" },
+  { id = "EN-2", text = "the SL-004 manifest is taken at the starting commit and kept in the phase notes" },
+]
+exit_criteria = [
+  { id = "EX-1", text = "`vm/door.nix` holds the tap, the guest address, sshd, host-key path and root's keys; `vm/capsule.nix` no longer defines them and imports the module" },
+  { id = "EX-2", text = "the manifest's runner entries equal EN-2's, or a `nix-diff` confined to option order is quoted in the commit message" },
+  { id = "EX-3", text = "`just` green; `vmCases` and `resetHomeCases` unchanged" },
+]
+verification = [
+  { id = "VT-1", expects = "the door module carries the link, sshd and root keys", test_file = "vm/door.nix", keywords = ["useDHCP", "resolved", "openssh", "stopKey", "adminKeys"], waived = false },
+  { id = "VT-2", expects = "the capsule imports the door", test_file = "vm/capsule.nix", keywords = ["door.nix"], waived = false },
+  { id = "VA-1", expects = "manifest before and after compared; the outcome (equal, or the nix-diff) recorded in the commit message" },
+]
+specs        = []
+requirements = []
+
+[[phase]]
+id        = "PHASE-04"
+name      = "the ninth argument: rooms are declared, applied, and in liveNames"
+objective = """
+`mkfleet.nix` takes `rooms`, required, and applies `rooms.nix` to it and the
+slot names (design sec-2). `liveNames` gains each room's `ns` in its own branch,
+since a room has no `uplink` to dereference. The fixture declares `lounge`
+(users `ada`, `bob`) and `assistant` (user `agent`), off both fabrics; the
+template passes `rooms = {}` with a commented example; both "eight arguments"
+comments become nine. `templateCases` evaluates the template's wiring
+(RV-014 F-8). A fixture variant whose probe fabric names `room-lounge` throws
+from `borrowed`, pinned with its reason. The breaking change lands whole: the
+argument, the fixture and the template are one commit. Governance moves with
+it, each with the user's assent asked for and recorded: the `DEC-025`
+successor (nine arguments) and the `POL-003` revision (axis table gains
+`rooms`; `borrowed` covers room namespaces)."""
+entrance_criteria = [
+  { id = "EN-1", text = "PHASE-03 complete" },
+]
+exit_criteria = [
+  { id = "EX-1", text = "`mkFleet` without `rooms` fails at eval naming it; with `rooms = {}` every existing output is unchanged (SL-004 manifest equal to PHASE-03's end)" },
+  { id = "EX-2", text = "the fixture's two rooms evaluate to records; `liveNames` contains `room-lounge` and `room-assistant`" },
+  { id = "EX-3", text = "an eval verdict: a probe fabric naming `room-lounge` throws from `borrowed`, reason asserted; mutating `liveNames` to drop rooms turns it red" },
+  { id = "EX-4", text = "`templateCases` green with `rooms = {}`" },
+  { id = "EX-5", text = "a `DEC-025` successor is recorded, and a `POL-003` revision is approved and applied, each citing the user's reply; `RSK-005` gains its line (sec-10)" },
+  { id = "EX-6", text = "the consumer edit (`rooms = {};` in `/srv/fleet`) is named in the commit message as the user's change at the input bump, not made" },
+]
+verification = [
+  { id = "VT-1", expects = "the ninth argument is declared and applied", test_file = "mkfleet.nix", keywords = ["rooms.nix", "rooms"], waived = false },
+  { id = "VT-2", expects = "the fixture declares both rooms", test_file = "fixture/default.nix", keywords = ["lounge", "assistant", "ada", "bob", "nine"], waived = false },
+  { id = "VT-3", expects = "the template passes the ninth argument", test_file = "templates/fleet/flake.nix", keywords = ["rooms = {}", "nine"], waived = false },
+  { id = "VH-1", expects = "the user's assent to the DEC-025 successor and the POL-003 revision, quoted in the records" },
+]
+specs        = []
+requirements = []
+
+[[phase]]
+id        = "PHASE-05"
+name      = "room images: vm/room.nix, one nixosConfiguration per room, and a build gate"
+objective = """
+`vm/room.nix` (design sec-5) imports the door and adds sizes, one volume at
+`/home`, one normal user per declared user, host keys under
+`/home/.ssh-host-keys/`, `autologinUser = lib.mkForce null` (RV-014 F-2), and
+a first-boot seed. `mkfleet.nix`'s `vms` gains `mkVm "capsule" ./vm/room.nix
+{room = …;}` per room, hostName `capsule` (`DEC-032`). A `roomImages` output
+links the fixture rooms' declared runners and joins `just build`, which builds
+no VM image today (RV-014 F-7, route control)."""
+entrance_criteria = [
+  { id = "EN-1", text = "PHASE-04 complete" },
+]
+exit_criteria = [
+  { id = "EX-1", text = "`nixosConfigurations.lounge` and `.assistant` exist, hostName `capsule`; slot runner drvPaths equal PHASE-04's end" },
+  { id = "EX-2", text = "control, RV-014 F-7: `roomImages` is in `just build`'s list and builds both fixture runners; breaking `vm/room.nix` (an undefined option) fails `just build`, observed and reverted" },
+  { id = "EX-3", text = "the room image's evaluated config shows no root autologin, no DHCP, `/home` on the volume, and each declared user with its keys and no extra groups (an eval assertion or a `vmCases`-style check)" },
+  { id = "EX-4", text = "`CLAUDE.md`'s `DEC-020` reference becomes `DEC-032` (sec-10)" },
+]
+verification = [
+  { id = "VT-1", expects = "the room module overrides root autologin and mounts /home", test_file = "vm/room.nix", keywords = ["door.nix", "autologinUser", "mkForce null", "/home", "isNormalUser"], waived = false },
+  { id = "VT-2", expects = "control, RV-014 F-7: room images are a just build gate", test_file = "just/fleet.just", keywords = ["roomImages"], waived = false },
+  { id = "VA-1", expects = "the EX-2 break was observed to fail the build, then reverted" },
+]
+specs        = []
+requirements = []
+
+[[phase]]
+id        = "PHASE-06"
+name      = "host units over guests, and the guard audits rooms"
+objective = """
+`host/services.nix` (design sec-4) takes `rooms`, binds `guests`, and adds
+`perGuest` beside `perInstance`. Netns, tap drop-in, `microvm@` drop-in, ssh
+relay and the guard are per guest; proxy, allowlist, sudo and slot tmpfiles
+stay per slot. A room's netns does not require the aggregator, and its
+`microvm@` does not want a proxy. `host/guard.nix` takes `guests`; the report
+counts guests. `guardCases` gains a room in its fixture and a room VMM outside
+its namespace failing limb two. `hostModuleUnits` gains assertions over the
+room units' fields; no existing check is edited."""
+entrance_criteria = [
+  { id = "EN-1", text = "PHASE-05 complete" },
+]
+exit_criteria = [
+  { id = "EX-1", text = "the fixture module generates `capsule-netns-<room>`, the room `microvm@`/tap drop-ins and `capsule-ssh-relay-<room>` on `/run/capsule-room/<room>/ssh.sock`, and no proxy, allowlist, sudo rule or slot tmpfiles for a room" },
+  { id = "EX-2", text = "new `hostModuleUnits` assertions: a room's netns unit neither `requires` nor `after`s the aggregator, and its `microvm@` drop-in `wants` no proxy; the existing newline, bind/user and shellcheck checks pass over room units unedited" },
+  { id = "EX-3", text = "`guardCases`: a declared room's namespace is audited; a running room VMM outside `room-<n>` fails limb two with its reason; mutating the guard back to `capsules.instances` turns that case red" },
+  { id = "EX-4", text = "slot units' rendered text is unchanged by the refactor (compare before and after); `CON-005`'s scope note gains rooms; `docs/contract-assignment.md`'s noun table gains rooms as a second owner (sec-10)" },
+]
+verification = [
+  { id = "VT-1", expects = "units are built per guest where the design says, per slot elsewhere", test_file = "host/services.nix", keywords = ["perGuest", "rooms.instances"], waived = false },
+  { id = "VT-2", expects = "the guard iterates guests and is cased for a room", test_file = "host/guard-cases.nix", keywords = ["room-"], waived = false },
+  { id = "VT-3", expects = "the module-evaluation assertions cover room unit fields", test_file = "mkfleet.nix", keywords = ["room", "aggregator", "proxy"], waived = false },
+  { id = "VA-1", expects = "EX-3's mutation and EX-4's slot-unit comparison recorded in the phase notes" },
+]
+specs        = []
+requirements = []
+
+[[phase]]
+id        = "PHASE-07"
+name      = "the front end names rooms for four verbs and refuses the rest"
+objective = """
+`host/cli.nix` (design sec-7) bakes `rooms=(…)`; resolution tries slots, then
+rooms, argv only. `ssh [user] [-- cmd]` uses the door's human mode with the
+room's socket and `HostKeyAlias=<room>` (user defaults only when exactly one
+is declared). `start` is its own branch: `systemctl start`, readiness as
+`root@<net.guest>` (RV-014 F-4), no profile, record or injection. `stop` is
+`systemctl stop`. `status` prints a rooms block after the slot table. Every
+other verb refuses with exit 2 and the sec-7 message. `collide` widens to room
+names and names the kind (RV-014 F-5, F-9). `roomVerbsCases`
+(`host/room-verbs-cases.nix`) renders the front end against a fixture pool
+with rooms, as `policyCases` does, and pins only what it can observe
+(RV-014 F-6): argv of `ssh`/`start`/`stop` is left to PHASE-09."""
+entrance_criteria = [
+  { id = "EN-1", text = "PHASE-06 complete" },
+]
+exit_criteria = [
+  { id = "EX-1", text = "`roomVerbsCases` pins: a room name consumed as a name, not a verb; a slot verb on a room refusing with exit 2 and its message; a two-user room's `ssh` with no user refusing before any `ssh` runs; and an eval verdict that a room named `ssh` throws from `collide` with its reason" },
+  { id = "EX-2", text = "`doorsOpen` and slot transport selection are untouched: a room socket is never counted (shown by `sockOf` returning the record's socket)" },
+  { id = "EX-3", text = "`roomVerbsCases` is a package and a `just build` line; `CLAUDE.md`'s suite list gains `roomsCases` and `roomVerbsCases`" },
+  { id = "EX-4", text = "mutation: making resolution try rooms before slots, or dropping the room refusal, turns a case red; observed and reverted" },
+]
+verification = [
+  { id = "VT-1", expects = "the front end knows rooms and their four verbs", test_file = "host/cli.nix", keywords = ["rooms=(", "is a room; rooms take ssh, start, stop", "is both a room and a verb"], waived = false },
+  { id = "VT-2", expects = "the room verb suite exists and is in just build", test_file = "just/fleet.just", keywords = ["roomVerbsCases"], waived = false },
+  { id = "VA-1", expects = "EX-4's mutation recorded in the phase notes" },
+]
+specs        = []
+requirements = []
+
+[[phase]]
+id        = "PHASE-08"
+name      = "the docs footprint, and what two callers did and did not prove"
+objective = """
+The sec-10 items not already landed with their code: `docs/plan-e-room.md`
+("Where this stands", "What it touches") and `docs/plan-f-assistant.md` (§1,
+§4, §5) point at SL-005, `DEC-036`, `DEC-037`, `DEC-040`; `POL-004`'s
+rationale says what two callers proved and what they did not (sec-8), via a
+revision with the user's assent. The relay to `satan:IDE-007` / satan's
+SL-023 is drafted for the user to send; nothing is written into satan."""
+entrance_criteria = [
+  { id = "EN-1", text = "PHASE-07 complete" },
+]
+exit_criteria = [
+  { id = "EX-1", text = "every sec-10 row is landed or recorded as untouched-by-design; a checklist in the phase notes maps each row to its commit" },
+  { id = "EX-2", text = "the `POL-004` revision is approved and applied, citing the user's reply" },
+  { id = "EX-3", text = "the satan relay text is in the slice notes, for the user to send, and covers what the planning read of satan's SL-023 found: ASM-005 can settle on sec-6 (socket, `agent@<net.guest>`, `HostKeyAlias`); `guest_path` is the target's `guestPath`, not runner config, and the room channel is a follow-on slice (ISS-021); promotion is a plain `git fetch` from `/var/lib/capsule/collect/<room>/<target>.git`, with no land verb (DEC-040, satan DEC-061); the runner must run as the module owner, since the socket is 0600; and a stop is a reboot that cuts in-flight work, not a graceful stop" },
+]
+verification = [
+  { id = "VT-1", expects = "Plan E points at this slice", test_file = "docs/plan-e-room.md", keywords = ["SL-005", "DEC-036"], waived = false },
+  { id = "VT-2", expects = "Plan F points at the door and quarantine decisions", test_file = "docs/plan-f-assistant.md", keywords = ["DEC-037", "DEC-040"], waived = false },
+  { id = "VH-1", expects = "the user's assent to the POL-004 revision" },
+]
+specs        = []
+requirements = []
+
+[[phase]]
+id        = "PHASE-09"
+name      = "live: a room with no way out, and a door that works"
+objective = """
+The user's run, as root, after bumping the oubliette input in `/srv/fleet` and
+declaring `rooms.assistant` (design sec-8, sec-9 Live steps 1–4). This is
+where RV-014 F-6 (route demonstrate) is settled: the argv of `capsule <room>
+ssh`, `start` and `stop` is proven by behaviour. Evidence goes in
+`docs/probes.md` per `STD-001`, with what it does not prove."""
+entrance_criteria = [
+  { id = "EN-1", text = "PHASE-08 complete; oubliette pushed with the user's word" },
+  { id = "EN-2", text = "the user has bumped the input and declared `rooms.assistant` in `/srv/fleet`, and switched" },
+]
+exit_criteria = [
+  { id = "EX-1", text = "step 1: `capsule assistant start`; `room-assistant` has no default route and only `lo` and the tap; the guard reports N+1 namespaces" },
+  { id = "EX-2", text = "step 2, demonstrate RV-014 F-6: `capsule assistant ssh` reaches `agent`; `ssh -F` with the `ProxyCommand` line reaches it as a client would; the serial console asks for a login" },
+  { id = "EX-3", text = "step 3, both directions: from inside, no resolution, TCP to `net.host` refused, TCP off the `/30` gets no route; the door still works" },
+  { id = "EX-4", text = "step 4, demonstrate RV-014 F-6: a probe refuses while the room runs; `capsule assistant stop` exits through the stop key; the probe then runs" },
+  { id = "EX-5", text = "`docs/probes.md` records the run, citing the commit, with sec-9's not-proven list" },
+]
+verification = [
+  { id = "VH-1", expects = "the user ran sec-9 Live steps 1–4 as root and the transcript excerpts are in docs/probes.md" },
+  { id = "VT-1", expects = "the evidence is recorded", test_file = "docs/probes.md", keywords = ["room-assistant", "SL-005"], waived = false },
+]
+specs        = []
+requirements = []
