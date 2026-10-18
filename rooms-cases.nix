@@ -1,7 +1,7 @@
 # What a room declaration decides — SL-005 design sec-2, DEC-038.
 #
 # The subject is a *library*, not a program: `rooms.nix` is the function its one
-# caller (mkfleet.nix) will apply, and this suite applies the same function to
+# caller (mkfleet.nix) applies, and this suite applies the same function to
 # fixtures that are no host's — slots `s1` and `s2` that nobody runs, and rooms
 # nobody declares. Every verdict is a value of the function.
 #
@@ -16,14 +16,14 @@
 # verdict cannot say *why*, each refusal is also read off `reasons`, the string
 # `rooms.nix` throws.
 #
-# What it does not prove (STD-001): that `mkFleet` applies `rooms.nix` (it does
-# not yet), that any unit, namespace or image exists for a room, or that the
-# front end can name one. It is the function's verdicts over fixtures, and
-# nothing more.
+# What it does not prove (STD-001): that `mkFleet` applies `rooms.nix` to the
+# caller's declaration (it does, once; nothing here watches it), that any unit,
+# namespace or image exists for a room, or that the front end can name one. It
+# is the function's verdicts over fixtures, and nothing more.
 {
   pkgs,
   lib,
-  # `import ./rooms.nix`, unapplied: the function mkfleet.nix will call.
+  # `import ./rooms.nix`, unapplied: the function mkfleet.nix calls.
   rooms,
 }: let
   apply = rooms {inherit lib;};

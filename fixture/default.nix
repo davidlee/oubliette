@@ -1,4 +1,4 @@
-# The declarations oubliette builds itself over: the eight `mkFleet` arguments,
+# The declarations oubliette builds itself over: the nine `mkFleet` arguments,
 # with values that are nobody's (POL-002, NOTES item 51). Not this host's and
 # not any target's. A real host's declarations live in its own consumer flake,
 # which calls the same `lib.mkFleet` (SL-004 design sec-3).
@@ -68,6 +68,30 @@ in {
       egressPeerAddr = "10.121.0.1";
     };
     volumeReserve = 20 * 1024 * 1024 * 1024;
+  };
+
+  # Two rooms, nobody's: `lounge` is Plan E's shape (several people on one
+  # box) and `assistant` Plan F's door (one agent). No addressing — a room has
+  # no uplink — and off the probe fabric by its `room-` prefix. The keys are
+  # strings nobody holds.
+  rooms = let
+    sizes = {
+      vcpu = 1;
+      mem = 1024;
+      volume = 1024;
+    };
+  in {
+    lounge = {
+      users = {
+        ada = ["ssh-ed25519 AAAA fixture-ada"];
+        bob = ["ssh-ed25519 AAAA fixture-bob"];
+      };
+      inherit sizes;
+    };
+    assistant = {
+      users.agent = ["ssh-ed25519 AAAA fixture-agent"];
+      inherit sizes;
+    };
   };
 
   inherit policies;

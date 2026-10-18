@@ -36,6 +36,9 @@
   # `{target; fabric}`: the one real target the probes are about, and the
   # names and addressing a probe's egress fabric is built from.
   probe,
+  # Which rooms exist: guests that are not slots (rooms.nix). `{}` for none —
+  # required, so a consumer says so.
+  rooms,
   # Where this host's declarations live. Threaded to the module and read by
   # nothing yet (RV-012 F-11).
   fleetPath,
@@ -68,6 +71,16 @@
   # guest-facing link is *not* in here — it is identical in every capsule, so
   # it stays in `net`.
   capsules = import ./capsules.nix {inherit policies;} fleet;
+
+  # Each declared room's guest record — name, namespace, socket, no uplink —
+  # the function (rooms.nix) applied to the caller's `rooms` and the declared
+  # slot names, which a room may not take. Not called `rooms`: that is the
+  # declaration, and this is what it decides.
+  roomRecords =
+    (import ./rooms.nix {inherit lib;} {
+      inherit rooms;
+      slotNames = lib.attrNames fleet.slots;
+    }).instances;
 
   # The fabric the case suites run on (guardCases, netnsCases, policyCases,
   # volumeCases, volumeRootCases): the same function, applied to a declaration
@@ -647,6 +660,16 @@
     rooms = import ./rooms.nix;
   };
 
+  # Which names a probe's fabric may not borrow (NOTES item 38), against a slot
+  # and a room built by the real constructors over declarations that are no
+  # host's. Its subject is the unapplied function (fabric-cases.nix).
+  fabricCases = import ./fabric-cases.nix {
+    inherit pkgs lib;
+    fabric = import ./fabric.nix;
+    capsules = import ./capsules.nix;
+    rooms = import ./rooms.nix;
+  };
+
   resetHomeCases = import ./vm/reset-home-cases.nix {
     inherit pkgs lib;
     inherit targets;
@@ -1027,34 +1050,16 @@
         + builtins.readFile script;
     };
 
-  # `probeFabric` (the caller's `probe.fabric`) is the names, links and
-  # addressing a probe's egress fabric is built from — **and here is the
-  # eval-time refusal to share any of them with `capsules.nix`**, which is the
-  # whole reason it is a value rather than four literals in `probe/harness.sh`.
-  #
-  # `capsules.nix` copied its map *from* `probe/netns-egress.sh` once that probe
-  # had verified the shape, so the probe became a borrower of live addressing
-  # with no line of it changing and nothing to notice: on a module-path host
-  # `eg-rt` is the live aggregator's uplink to the root namespace, and the
-  # probe's own teardown deletes that name (NOTES item 38). The rule about not
-  # borrowing live addressing needs an enforcer, because it is broken by the
-  # *other* file moving.
+  # Which names the probe fabric borrows from the live declaration, and the
+  # reason to refuse it (fabric.nix, NOTES item 38). Thrown when the prelude is
+  # forced, which is every probe's build.
+  fabricCheck = import ./fabric.nix {inherit lib;} {
+    inherit capsules;
+    rooms = roomRecords;
+    fabric = probeFabric;
+  };
 
-  # Every string this host's declaration puts on a wire or in `ip netns list`.
-  # A probe may reuse none of them.
-  liveNames = let
-    eg = capsules.egress;
-    c = i: [i.ns i.uplink.dev i.uplink.peer i.uplink.addr i.uplink.gw];
-  in
-    [eg.ns eg.dev eg.peer eg.addr eg.peerAddr capsules.uplinkNet]
-    ++ lib.concatMap c (lib.attrValues capsules.instances);
-
-  borrowed =
-    lib.intersectLists (lib.attrValues probeFabric) liveNames;
-
-  fabricPrelude = assert borrowed
-  == []
-  || throw "mkFleet: probeFabric borrows '${builtins.head borrowed}' from capsules.nix — a probe's fabric may share no name, link, address or network with the live one (NOTES item 38)"; ''
+  fabricPrelude = assert fabricCheck.reason == null || throw fabricCheck.reason; ''
     EG_NS="${probeFabric.ns}"
     EG_DEV="${probeFabric.dev}"
     EG_PEER="${probeFabric.peer}"
@@ -1459,7 +1464,7 @@ in {
       # The checks that need no root and no host: what the module says, what the
       # guard decides, and which policy a slot resolves to.
       inherit hostModuleUnits hostModulePrograms guardCases netnsCases policyCases observeCases;
-      inherit profileCases gitChannelCases vmCases wrapCases volumeRootCases resetHomeCases volumeCases fleetCases roomsCases;
+      inherit profileCases gitChannelCases vmCases wrapCases volumeRootCases resetHomeCases volumeCases fleetCases roomsCases fabricCases;
       # The rendered run-time half of every target, so a human can read what a
       # program will resolve (host/profile.nix). `nix build .#capsule-profiles`.
       capsule-profiles = hostProfile.dir;

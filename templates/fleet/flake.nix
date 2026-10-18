@@ -39,7 +39,7 @@
 
   # This host's fleet: oubliette's builder applied to this host's declarations,
   # one argument per owner (mkfleet.nix's header says what each one is). All
-  # eight are required: omit one and the eval fails naming it.
+  # nine are required: omit one and the eval fails naming it.
   outputs = inputs: let
     inherit (inputs.nixpkgs) lib;
     policies = import ./policies.nix;
@@ -60,6 +60,19 @@
 
       # Which slots exist and the fabric they sit on (capsules.nix).
       fleet = import ./capsules.nix {inherit policies;};
+
+      # Rooms: guests that are not slots, each reached only through its
+      # host-local door. `{}` declares none. For example:
+      #
+      #   rooms.assistant = {
+      #     users.agent = ["ssh-ed25519 AAAA... you@host"];
+      #     sizes = {
+      #       vcpu = 2;
+      #       mem = 4096;
+      #       volume = 40960;
+      #     };
+      #   };
+      rooms = {};
 
       # What a slot may talk to and what may come back out of it (policies.nix).
       inherit policies;

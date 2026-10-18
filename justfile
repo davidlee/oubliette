@@ -5,7 +5,7 @@
 # through `.oubliette`. What stays here is oubliette's own development gate.
 
 # Every nix file that is ours. Explicit, so nothing walks .direnv or .vm.
-nix_paths := "flake.nix mkfleet.nix fleet.nix fleet-cases.nix rooms.nix rooms-cases.nix fixture templates targets capsules.nix fragments.nix perimeter host vm"
+nix_paths := "flake.nix mkfleet.nix fleet.nix fleet-cases.nix rooms.nix rooms-cases.nix fabric.nix fabric-cases.nix fixture templates targets capsules.nix fragments.nix perimeter host vm"
 
 # the gate: everything parses and is formatted
 default: check build template-cases units

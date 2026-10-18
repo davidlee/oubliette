@@ -47,7 +47,7 @@ evaluates). `just` (default) runs the build, units, and fmt.
 the NixOS module — what it says, including its programs, since a unit graph does
 not mention them. `guardCases`, `netnsCases`, `briefCases`, `snapshotCases`, `refreshCases`, `observeCases`,
 `baselineCases`, `policyCases`, `profileCases`, `vmCases`, `gitChannelCases`,
-`volumeRootCases`, `resetHomeCases`, `volumeCases` and `fleetCases` *run* a
+`volumeRootCases`, `resetHomeCases`, `volumeCases`, `fleetCases`, `roomsCases` and `fabricCases` *run* a
 program's own text with a substitute for the one thing tying it to this host
 (`just cases`), and are the answer whenever the interesting branches are ones a
 live host can only reach destructively or expensively — the guard's by unnaming a
@@ -92,7 +92,7 @@ written, wired into `just cases`, and left out of `just build` for a session
 (NOTES item 51 step 3). **One suite per file, beside the program it pins** —
 `host/<name>-cases.nix`, or `vm/<name>-cases.nix` for a guest program, a function of `pkgs`, `lib` and **the store path the
 program ships**, with a short `import` in `mkfleet.nix` (NOTES item 51 step 0).
-Nine of them are handed a fixture instead and say so in their headers: the
+Eleven of them are handed a fixture instead and say so in their headers: the
 guard's stubbed kernel, the namespace program's stubbed kernel and scratch
 `/etc/netns` (a build sandbox's `/etc` is read-only, and the program's path is
 fixed at build), the front end's pool that is not this host's (twice,
@@ -100,8 +100,9 @@ once for policy and once for the volume verb), the
 profile's target that is nobody's, the wrapper's four directories that are
 no host's, the volume root helper's sandbox roots, since a root program's
 paths are fixed at build and its shipped store path cannot be aimed anywhere else,
-the guest reset's fixture home, for the same reason one level down, and the
-fleet's targets and slots that are nobody's (`fleet-cases.nix`). A new suite goes in
+the guest reset's fixture home, for the same reason one level down, the
+fleet's targets and slots that are nobody's (`fleet-cases.nix`), and the rooms and
+probe fabric that are nobody's (`rooms-cases.nix`, `fabric-cases.nix`). A new suite goes in
 its own file and takes its subject as an argument — never a second render of the
 text it claims to pin. **A suite whose subject is a *library* rather than a
 program** takes the fragment its callers get and splices it into the smallest
