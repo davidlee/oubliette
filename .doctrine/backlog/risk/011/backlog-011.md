@@ -27,3 +27,25 @@ admits `capsule-one`, so a room so named shares slot `one`'s known_hosts entry:
   network namespace's prefix.
 
 Open: out of scope for SL-005 PHASE-10.
+
+**Fixed (2026-10-19, SL-006 PHASE-07), by `DEC-047`.** A room's doors file its
+key under `HostKeyAlias room-<room>`, in the room's own
+`$stateDir/room/<room>/known_hosts`. Nothing about a slot uses either that
+alias or that file. Resolution `fixed` rather than `mitigated`: the collision
+the risk names cannot happen at all, because `room-<n>` cannot equal
+`capsule-<n>` and the stores are separate files. Nothing residual is left to
+make it less likely.
+
+Live, A11 (runsheet bundle `~/sl006-live/bundle.txt`):
+
+- The stored key was swapped host-side for a throwaway. `capsule assistant ssh`
+  then failed with 255 (`REMOTE HOST IDENTIFICATION HAS CHANGED`), and `push`
+  and `collect` each failed with 1, stdout empty.
+- `forget-host-key` (0) emptied that file and no other. The next `ssh` (0)
+  re-learned `room-assistant` with the identical fingerprint, and a re-push (0)
+  printed the same oid.
+- The file was then byte-identical to the original.
+
+Not exercised: a room actually named `capsule-<slot>`, and a slot reprovision's
+`ssh-keygen -R` running alongside a room. Both are covered by construction,
+not by a run.

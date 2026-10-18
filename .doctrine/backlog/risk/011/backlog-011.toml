@@ -5,8 +5,8 @@ id = 11
 slug = "a-room-named-capsule-slot-shares-that-slots-hostkeyalias"
 title = "A room named capsule-<slot> shares that slot's HostKeyAlias"
 kind = "risk"
-status = "open"
-resolution = ""                 # seeded empty so `backlog edit` sets it in place
+status = "resolved"
+resolution = "fixed"
 created = "2026-10-18"
 updated = "2026-10-18"
 tags = []
@@ -26,3 +26,9 @@ controls   = []
 needs    = []                   # item→item hard prerequisite
 after    = []                   # item→item soft sequence: { to, rank? }
 triggers = []                   # watched source globs: { globs, note? }
+
+[[relation]]
+label = "references"
+role = "concerns"
+descriptor = "the decision that closes it by a disjoint alias and a per-room store"
+target = "DEC-047"

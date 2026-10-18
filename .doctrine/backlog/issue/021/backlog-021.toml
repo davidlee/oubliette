@@ -5,8 +5,8 @@ id = 21
 slug = "dec-040-puts-a-rooms-clone-at-guestpath-which-is-off-the-rooms-volume"
 title = "DEC-040 puts a room's clone at guestPath, which is off the room's volume"
 kind = "issue"
-status = "open"
-resolution = ""                 # seeded empty so `backlog edit` sets it in place
+status = "resolved"
+resolution = "fixed"
 created = "2026-10-18"
 updated = "2026-10-18"
 tags = []
@@ -31,3 +31,9 @@ target = "DEC-040"
 label = "references"
 role = "originates_from"
 target = "SL-005"
+
+[[relation]]
+label = "references"
+role = "concerns"
+descriptor = "the decision that closes it by a second volume"
+target = "DEC-043"

@@ -9,14 +9,15 @@ figures the first time one of them is edited.
 All of them need root, so they are the user's to run. `just build` shellchecks
 them. How to write one is in [CLAUDE.md](../CLAUDE.md).
 
-**Seven figures are also knowledge records, and this file is still their
+**Eight figures are also knowledge records, and this file is still their
 source.** Where another record load-bears on a number — a question it would
 answer, a constraint it prices — that number is minted as an `EVD` so the edge
 can be drawn (`doctrine knowledge list`, and `supports` edges onto `QUE-004`,
 `QUE-005`, `CON-001`, `CON-004`). `EVD-001` the ratchet, `EVD-002`
 time-to-interactive, `EVD-003` the relay, `EVD-004` probe totals, `EVD-009` disk
 (re-taken 2026-09-17; `EVD-005` superseded), `EVD-006` the scoped exhibit,
-`EVD-007` the flavour composition. **That is a citation, not a copy**: each
+`EVD-007` the flavour composition, `EVD-010` two tool sets in one room. **That
+is a citation, not a copy**: each
 says which section here it came from, and a re-taken figure is edited here and
 the record superseded. Do not mint an `EVD` for a figure nothing points at —
 this file is where a number lives by default.
@@ -313,6 +314,7 @@ it, because two samples say more about the noise than either says alone.
 | --- | --- | --- | --- | --- |
 | guest image closure | **12.4 GiB** since the flavour composition; 12175 MiB (11.9 GiB) before it, ~99% shared | 12175 | freshness, `nix path-info -S` on the runner; the current figure hand-measured on `/var/lib/microvms/a/current`, 2026-08-13 | under netns this is **the** image, once, however many capsules run. The two values are the same measurement on either side of one change — row below |
 | the flavour composition, on top of the target's floor | **+0.5 GiB** closure, **+100.9 MiB** erofs | — | hand-measured, runner closure before/after plus the switch diff, 2026-08-13 | `agents` + `dev-facilities` ([item 31](./ledger/031-the-fragment-vocabulary.md)): `claude`, `pi`, `rg`, `fd`, `tree`, `jq`, `bubblewrap`, `helix`, `tmux`, `btop`, `nushell`. The erofs delta is what every slot shares; the closure delta is what this host stores once. **No second toolchain came with `llm-agents`** — its `claude-code` landed as `2.1.224 → 2.1.229`, a version bump, so the pin dedupes against this repo's nixpkgs rather than doubling it |
+| two tool sets in one room, on top of the repo-less room | **+4.24 GiB** of new closure paths; **+1.95 GiB** erofs (0.62 → 2.57 GiB) | — | hand-measured, `nix path-info -S` / `nix-store -qR` set arithmetic on `/var/lib/microvms/assistant/current` before and after, 2026-10-19 | doctrine's `dev-tools` 4.9G and goad-walk's tools 170.4M, union **5.01 GiB**, 0.08 GiB shared between them, 0.77 GiB already in the room. The runner's raw `-S` went 4.28 → 9.81 GiB, but that delta also carries a nixpkgs bump and counts the store twice (paths and the image that copies them): [below](#two-repos-in-one-room-and-the-door-that-carries-them). `EVD-010` |
 | store image, per instance | 3.0 GiB of erofs | — | hand-measured, [Plan C](./plan-c-multi-capsule.md#the-cost-that-shapes-everything-else) | the blob the closure names, and it does not dedupe. Only a cost under the N-closures mechanism. **The probe does not measure this** — it measures the closure above |
 | guest kernel / initrd | 381 MiB / 25 MiB | — | same | shared |
 | volume, after boot before provision | 260 MiB | 260 | freshness | allocated blocks (`du -B1`). Empty ext4 for a 32 GiB declaration — this much exists before any content does |
@@ -1559,6 +1561,50 @@ anything about pi-env or satan's runner beyond reaching the door; the
 unit-level teardown after a failed `ExecStart` (`RSK-003`); a room's behaviour
 across a host suspend (`ISS-014`); a uid surviving a user added to a room that
 already holds files.
+
+## Two repos in one room, and the door that carries them
+
+SL-006 PHASE-07, 2026-10-19, on this host: `assistant` from the consumer at
+`7f63d55` (oubliette `cc72b97`), declaring `repos = {user = "agent"; targets =
+["doctrine" "goad-walk"];}`, `policy = "build"`, `sizes.work = 32768`. Run by
+the agent as the module's owner and, for the root half (switch, `microvm -u`,
+stop/start), by the user. Rung (`STD-001`): **triggered**, once, by hand — not a
+probe. Raw transcript: the phase's runsheet bundle (`~/sl006-live/bundle.txt`,
+26 step records), which is scratch, so this table is the record.
+
+| step | observed |
+| --- | --- |
+| state dir | the switch did **not** create `/var/lib/capsule/room/assistant`; `systemd-tmpfiles --create` refused *unsafe path transition* `/var/lib/capsule` (david) → `/var/lib/capsule/room` (root), since no rule names the intermediate. Worked round by hand (chown); `ISS-024` |
+| A5 volume | `/work` is `/dev/vdc` ext4, `/home` `/dev/vdb`; `room-work.img` 34359738368 B, made on first start; both clones `1001:100 700`, each only `.git` (the seed's unborn `work`) |
+| A6 session | `session goad-walk` → `/work/goad-walk`, its `tools/bin` first, `goad` found; `session doctrine` → its own `tools/bin`, `goad: absent`; `session nope` → 2. `git` inside either is the room's system `/run/current-system/sw/bin/git`, not a tool set's (`IMP-017`) |
+| A7 push | `push doctrine edge` → `962517cc…`, `push goad-walk main` → `6fe3a493…`, each equal to the host branch tip, one line on stdout, git on stderr; the room's clone gained `refs/host/<branch>` and stayed unborn on `work` |
+| A8–A9 collect | a commit through `session` (`fa1b71a2…`) on `job/sl006-live-1`; `collect doctrine job/sl006-live-1` → `fa1b71a2…<TAB>refs/capsule/assistant/heads/job/sl006-live-1`; `collect/assistant/` holds `doctrine.git` only, and no slot quarantine gained a `refs/capsule/assistant/` ref |
+| A10 caller errors | no such repo, no such host branch, `job/*` → all 2, stdout empty |
+| A11 host key | the stored key swapped host-side for a throwaway: `ssh` 255 (`REMOTE HOST IDENTIFICATION HAS CHANGED`), `push` 1, `collect` 1, stdout empty; `forget-host-key` 0 empties the file; next `ssh` 0 with `Permanently added 'room-assistant'`, the **same** fingerprint; re-push 0, same oid. The file is the room's own (`$stateDir/room/assistant/known_hosts`), under `room-assistant` |
+| A13 stopped | `push` and `collect` → **75** (`… is not answering: …/ssh.sock is not a socket`), a missing branch still **2**, `ssh` 1 |
+| A14 stop/start | clones, uids (1001), HEAD `job/sl006-live-1` at `fa1b71a2…`, `refs/host/*` and the host-key fingerprint all identical across the stop |
+| A15 slot collect | slot `j` (goad-walk) `capsule j collect` → 0, `refs/capsule/j/heads/work` at `b4bc42fd…` in a new `collect/j.git`; the installed `capsule-collect` carries `boundedFetch` (RV-015 F-5) |
+
+**The closure.** Baseline is **the repo-less room** (`9g8wkgzr…`), not
+`EVD-007`'s slot image. Before → after, runner `nix path-info -S`: 4.28 → 9.81
+GiB. That delta is **not** the price of two tool sets: the consumer's nixpkgs
+was bumped in a commit of its own (`f4b5d9e`) just before, so the base moved too
+(linux 6.18.53 → 6.18.56; 3.50 GiB of the before-closure dropped out), and a
+runner's closure counts the store twice, once as paths and once as the erofs
+image that copies them. The tool-set arithmetic, over `nix-store -qR`: the two
+sets' union is 5.01 GiB, of which 0.77 GiB the room already held and **4.24 GiB
+is new**; they share only 0.08 GiB. The guest-side figure is the store image:
+**0.62 → 2.57 GiB erofs, +1.95 GiB**, paid once per room image.
+
+**Not proven by any of this**: the banner branch — a socket present and no
+banner, which is 75 too — was not reached live (pinned by `roomGitCases`); an
+authentication failure → 1; a pack over `collectMaxPackBytes` (`RSK-006`); a
+collect of a branch absent from that clone (skipped, since it leaves an empty
+bare repo); a real build through `session`; pi-env's daemon, satan's runner and
+its reconnect after a stop (the relay to satan SL-023 is the user's act); a host
+suspend (`ISS-014`); `/work`'s growth (`RSK-007`); the closure figure's split
+between the nixpkgs bump and the tool sets beyond the set arithmetic above, since
+no build isolated either change.
 
 ## Still unproven
 

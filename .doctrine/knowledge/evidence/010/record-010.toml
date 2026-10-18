@@ -1,0 +1,37 @@
+schema = "doctrine.knowledge"
+version = 1
+
+id = 10
+slug = "two-tool-sets-in-one-room-cost-four-gigabytes-of-new-closure-and-two-of-store-image"
+title = "Two tool sets in one room cost four gigabytes of new closure and two of store image"
+record_kind = "evidence"
+status = "captured"
+created = "2026-10-18"
+updated = "2026-10-18"
+tags = []
+
+[facet]                         # every field typed; seeded empty (captured later)
+datum = "Declaring doctrine and goad-walk as a room's repos adds 4.24 GiB of new closure paths (the two tool sets' union is 5.01 GiB, 0.77 GiB of it already in the room) and +1.95 GiB of erofs store image (0.62 -> 2.57 GiB), against the repo-less room, 2026-10-19."
+provenance = "inspection"
+confidence = "medium"
+
+[evidence]                      # free-text citations (supports / contradicts / notes)
+supports    = []
+contradicts = []
+notes       = []
+
+[relationships]                 # verb-written edges (set by doctrine supersede)
+supersedes    = []   # record ids this one replaces (set by doctrine supersede)
+superseded_by = []   # set on superseded predecessor (verb-written)
+
+[[relation]]
+label = "references"
+role = "concerns"
+descriptor = "the same runner-closure measure, on a slot's flavour composition rather than a room's second floor"
+target = "EVD-007"
+
+[[relation]]
+label = "references"
+role = "concerns"
+descriptor = "PHASE-07's live rung, where the figure was taken"
+target = "SL-006"
