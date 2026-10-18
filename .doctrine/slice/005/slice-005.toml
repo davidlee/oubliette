@@ -12,15 +12,15 @@ after = []                      # slice→work soft sequence: { to, rank }
 
 [[selector]]
 selector = "host/netns.nix"
-intent = "scope-relevant"
+intent = "design-target"
 
 [[selector]]
 selector = "mkfleet.nix"
-intent = "scope-relevant"
+intent = "design-target"
 
 [[selector]]
 selector = "host/services.nix"
-intent = "scope-relevant"
+intent = "design-target"
 
 [[selector]]
 selector = "host/room*.nix"
@@ -48,11 +48,11 @@ intent = "scope-relevant"
 
 [[selector]]
 selector = "docs/plan-e-room.md"
-intent = "scope-relevant"
+intent = "design-target"
 
 [[selector]]
 selector = "docs/plan-f-assistant.md"
-intent = "scope-relevant"
+intent = "design-target"
 
 [[selector]]
 selector = "docs/contract-*.md"
@@ -60,19 +60,19 @@ intent = "scope-relevant"
 
 [[selector]]
 selector = "rooms.nix"
-intent = "scope-relevant"
+intent = "design-target"
 
 [[selector]]
 selector = "host/guard.nix"
-intent = "scope-relevant"
+intent = "design-target"
 
 [[selector]]
 selector = "host/cli.nix"
-intent = "scope-relevant"
+intent = "design-target"
 
 [[selector]]
 selector = "vm/capsule.nix"
-intent = "scope-relevant"
+intent = "design-target"
 
 [[selector]]
 selector = "vm/*.nix"
@@ -88,7 +88,47 @@ intent = "scope-relevant"
 
 [[selector]]
 selector = "just/fleet.just"
-intent = "scope-relevant"
+intent = "design-target"
+
+[[selector]]
+selector = "rooms-cases.nix"
+intent = "design-target"
+
+[[selector]]
+selector = "host/netns-cases.nix"
+intent = "design-target"
+
+[[selector]]
+selector = "host/guard-cases.nix"
+intent = "design-target"
+
+[[selector]]
+selector = "host/room-verbs-cases.nix"
+intent = "design-target"
+
+[[selector]]
+selector = "vm/door.nix"
+intent = "design-target"
+
+[[selector]]
+selector = "vm/room.nix"
+intent = "design-target"
+
+[[selector]]
+selector = "fixture/default.nix"
+intent = "design-target"
+
+[[selector]]
+selector = "templates/fleet/flake.nix"
+intent = "design-target"
+
+[[selector]]
+selector = "docs/contract-assignment.md"
+intent = "design-target"
+
+[[selector]]
+selector = "CLAUDE.md"
+intent = "design-target"
 
 [[relation]]
 label = "fulfils"
