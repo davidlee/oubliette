@@ -45,13 +45,14 @@ evaluates). `just` (default) runs the build, units, and fmt.
 **There are four kinds of check here, and they are not interchangeable.**
 `just check` parses and formats without evaluating. `hostModuleUnits` *evaluates*
 the NixOS module — what it says, including its programs, since a unit graph does
-not mention them. `guardCases`, `briefCases`, `snapshotCases`, `refreshCases`, `observeCases`,
+not mention them. `guardCases`, `netnsCases`, `briefCases`, `snapshotCases`, `refreshCases`, `observeCases`,
 `baselineCases`, `policyCases`, `profileCases`, `vmCases`, `gitChannelCases`,
 `volumeRootCases`, `resetHomeCases`, `volumeCases` and `fleetCases` *run* a
 program's own text with a substitute for the one thing tying it to this host
 (`just cases`), and are the answer whenever the interesting branches are ones a
 live host can only reach destructively or expensively — the guard's by unnaming a
-namespace under a running guest, the brief runner's by dirtying one capsule's
+namespace under a running guest, the namespace program's by building a namespace
+with no uplink and failing its rule load half way, the brief runner's by dirtying one capsule's
 worktree to watch another refuse it, the state snapshot's by driving a real unit
 of work in a checkout that holds several, the refresh's by giving it a target
 command that fails or eats its own stdin, the baseline's by having a build that
@@ -91,8 +92,10 @@ written, wired into `just cases`, and left out of `just build` for a session
 (NOTES item 51 step 3). **One suite per file, beside the program it pins** —
 `host/<name>-cases.nix`, or `vm/<name>-cases.nix` for a guest program, a function of `pkgs`, `lib` and **the store path the
 program ships**, with a short `import` in `mkfleet.nix` (NOTES item 51 step 0).
-Eight of them are handed a fixture instead and say so in their headers: the
-guard's stubbed kernel, the front end's pool that is not this host's (twice,
+Nine of them are handed a fixture instead and say so in their headers: the
+guard's stubbed kernel, the namespace program's stubbed kernel and scratch
+`/etc/netns` (a build sandbox's `/etc` is read-only, and the program's path is
+fixed at build), the front end's pool that is not this host's (twice,
 once for policy and once for the volume verb), the
 profile's target that is nobody's, the wrapper's four directories that are
 no host's, the volume root helper's sandbox roots, since a root program's

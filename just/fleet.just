@@ -70,10 +70,11 @@ build:
     '.#capsule-baseline' '.#capsule-refresh' '.#capsule-adopt' \
     '.#capsule-brief' \
     '.#hostModuleUnits' '.#hostModulePrograms' \
-    '.#guardCases' '.#policyCases' '.#briefCases' '.#snapshotCases' \
-    '.#refreshCases' '.#observeCases' '.#baselineCases' '.#profileCases' \
-    '.#gitChannelCases' '.#vmCases' '.#wrapCases' '.#volumeRootCases' \
-    '.#resetHomeCases' '.#volumeCases' '.#fleetCases' '.#roomsCases'
+    '.#guardCases' '.#netnsCases' '.#policyCases' '.#briefCases' \
+    '.#snapshotCases' '.#refreshCases' '.#observeCases' '.#baselineCases' \
+    '.#profileCases' '.#gitChannelCases' '.#vmCases' '.#wrapCases' \
+    '.#volumeRootCases' '.#resetHomeCases' '.#volumeCases' '.#fleetCases' \
+    '.#roomsCases'
 
 # which units the host module generates, without rebuilding a host — the only
 # mechanical check the NixOS half has
@@ -90,6 +91,7 @@ units:
 # holds several, or by having the target's own regeneration fail on demand.
 cases:
   @cat "$(nix build --no-link --print-out-paths '.#guardCases')"
+  @cat "$(nix build --no-link --print-out-paths '.#netnsCases')"
   @cat "$(nix build --no-link --print-out-paths '.#policyCases')"
   @cat "$(nix build --no-link --print-out-paths '.#briefCases')"
   @cat "$(nix build --no-link --print-out-paths '.#snapshotCases')"

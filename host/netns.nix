@@ -19,11 +19,27 @@
 # Two programs rather than N generated scripts, with every per-capsule value in
 # the unit's own `Environment=`: `systemctl cat` then shows the addressing of a
 # boundary instead of a store path.
+#
+# **`capsule-netns` takes its `tools` and its `etcNetns` as arguments**, for the
+# reason `host/guard.nix` takes `tools`: `writeShellApplication` prepends
+# `runtimeInputs` to `PATH`, so a suite cannot stub `ip` by prepending its own,
+# and `netnsCases` (host/netns-cases.nix) builds this same text against logging
+# stubs instead. The second seam exists because stubbing the kernel does not
+# reach a shell redirect: `up` writes the resolver file itself, and a build
+# sandbox's `/etc` is read-only, so the suite is handed a scratch directory —
+# the volume root helper's precedent, whose paths are likewise fixed at build.
+# Both default to the real thing, so every importer that passes neither builds
+# one store path.
 {
   pkgs,
   lib,
   net,
   capsules,
+  # What `capsule-netns` finds on `PATH`: iproute2, nftables, procps (for the
+  # `sysctl` inside `ip netns exec`), grep and coreutils.
+  tools ? [pkgs.iproute2 pkgs.nftables pkgs.procps pkgs.gnugrep pkgs.coreutils],
+  # Where iproute2's `ip netns exec` looks for a namespace's own files.
+  etcNetns ? "/etc/netns",
 }: let
   inherit (capsules) egress uplinkNet;
 
@@ -41,7 +57,7 @@
   # exec` bind-mounts this file over /etc/resolv.conf; **systemd does not**, so
   # a unit joined to the namespace has to be given it explicitly (see
   # host/services.nix).
-  resolvConf = ns: "/etc/netns/${ns}/resolv.conf";
+  resolvConf = ns: "${etcNetns}/${ns}/resolv.conf";
 
   # The one address a capsule may reach on this host: the resolver stub, on the
   # aggregator's host end. Anything else RFC1918 is dropped in the aggregator.
@@ -132,19 +148,35 @@
 
   capsuleProgram = pkgs.writeShellApplication {
     name = "capsule-netns";
-    runtimeInputs = [pkgs.iproute2 pkgs.nftables pkgs.procps pkgs.gnugrep pkgs.coreutils];
+    runtimeInputs = tools;
     text = ''
       ns=''${NS:?}
-      egress_ns=''${EGRESS_NS:?}
       tap=''${TAP:?}
       tap_addr=''${TAP_ADDR:?}
-      dev=''${DEV:?}
-      peer=''${PEER:?}
-      addr=''${ADDR:?}
-      gw=''${GW:?}
       prefix=''${PREFIX:?}
-      uplink_prefix=''${UPLINK_PREFIX:?}
-      resolver=''${RESOLVER:?}
+
+      # The uplink — the link to the aggregator and the resolver behind it — is
+      # all or nothing. With none, this is a namespace whose only way in and
+      # out is its tap. Anything between is a misconfigured unit, refused here,
+      # before anything is built: a teardown then has nothing to guess at
+      # (NOTES item 37). Empty counts as unset.
+      given=() missing=()
+      for v in EGRESS_NS DEV PEER ADDR GW UPLINK_PREFIX RESOLVER; do
+        if [ -n "''${!v:-}" ]; then given+=("$v"); else missing+=("$v"); fi
+      done
+      if [ ''${#given[@]} -gt 0 ] && [ ''${#missing[@]} -gt 0 ]; then
+        echo "capsule-netns: the uplink is all or nothing — set: ''${given[*]}; unset: ''${missing[*]}" >&2
+        exit 1
+      fi
+      uplink=0
+      [ ''${#given[@]} = 0 ] || uplink=1
+      egress_ns=''${EGRESS_NS:-}
+      dev=''${DEV:-}
+      peer=''${PEER:-}
+      addr=''${ADDR:-}
+      gw=''${GW:-}
+      uplink_prefix=''${UPLINK_PREFIX:-}
+      resolver=''${RESOLVER:-}
 
       # A capsule's VMM cannot be found by name — one image means every one of
       # them is `microvm@capsule` in the process table — so the namespace is the
@@ -169,13 +201,17 @@
       #
       # Two homes for the peer because an *aborted* `up` can leave it in
       # either: it is created in the root namespace and moved, and a failed
-      # move leaves a link where it was.
+      # move leaves a link where it was. With no uplink there is no peer, and
+      # an empty name is not one to delete. The resolver is cleaned up either
+      # way: removing a file that was never written costs nothing.
       undo_up() {
-        ip -n "$egress_ns" link del "$peer" 2>/dev/null || true
-        ip link del "$peer" 2>/dev/null || true
+        if [ "$uplink" = 1 ]; then
+          ip -n "$egress_ns" link del "$peer" 2>/dev/null || true
+          ip link del "$peer" 2>/dev/null || true
+        fi
         ip netns del "$ns" 2>/dev/null || true
-        rm -f "/etc/netns/$ns/resolv.conf"
-        rmdir "/etc/netns/$ns" 2>/dev/null || true
+        rm -f "${etcNetns}/$ns/resolv.conf"
+        rmdir "${etcNetns}/$ns" 2>/dev/null || true
       }
 
       case "''${1:-}" in
@@ -196,17 +232,21 @@
           ip netns exec "$ns" sysctl -q -w net.ipv4.ip_forward=0
           ip netns exec "$ns" sysctl -q -w net.ipv4.conf.all.forwarding=0
 
-          install -d -m 0755 "/etc/netns/$ns"
-          printf 'nameserver %s\n' "$resolver" >"/etc/netns/$ns/resolv.conf"
+          # The way out, through the aggregator, and the resolver on its far
+          # side. Without an uplink there is neither, and nothing to name one.
+          if [ "$uplink" = 1 ]; then
+            install -d -m 0755 "${etcNetns}/$ns"
+            printf 'nameserver %s\n' "$resolver" >"${etcNetns}/$ns/resolv.conf"
 
-          ip link add "$dev" type veth peer name "$peer"
-          ip link set "$dev" netns "$ns"
-          ip link set "$peer" netns "$egress_ns"
-          ip -n "$ns" addr add "$addr/$uplink_prefix" dev "$dev"
-          ip -n "$egress_ns" addr add "$gw/$uplink_prefix" dev "$peer"
-          ip -n "$ns" link set "$dev" up
-          ip -n "$egress_ns" link set "$peer" up
-          ip netns exec "$ns" ip route add default via "$gw"
+            ip link add "$dev" type veth peer name "$peer"
+            ip link set "$dev" netns "$ns"
+            ip link set "$peer" netns "$egress_ns"
+            ip -n "$ns" addr add "$addr/$uplink_prefix" dev "$dev"
+            ip -n "$egress_ns" addr add "$gw/$uplink_prefix" dev "$peer"
+            ip -n "$ns" link set "$dev" up
+            ip -n "$egress_ns" link set "$peer" up
+            ip netns exec "$ns" ip route add default via "$gw"
+          fi
 
           # The proxy's way out is a *local* address of this namespace, so a
           # packet from the guest to it is INPUT and no forwarding switch
@@ -365,19 +405,31 @@ in {
     LINK_PATTERN = egress.linkPattern;
   };
 
-  capsuleEnv = c: {
-    NS = c.ns;
-    EGRESS_NS = egress.ns;
-    TAP = net.tap;
-    TAP_ADDR = net.host;
-    PREFIX = toString net.prefix;
-    DEV = c.uplink.dev;
-    PEER = c.uplink.peer;
-    ADDR = c.uplink.addr;
-    GW = c.uplink.gw;
-    UPLINK_PREFIX = toString c.uplink.prefix;
-    RESOLVER = resolver;
-  };
+  #
+  # Over any guest's record. A guest with no uplink gets no uplink
+  # variable at all — unset rather than empty, so its unit's `Environment=`
+  # says nothing about a link it does not have.
+  capsuleEnv = c: let
+    base = {
+      NS = c.ns;
+      TAP = net.tap;
+      TAP_ADDR = net.host;
+      PREFIX = toString net.prefix;
+    };
+  in
+    if c.uplink == null
+    then base
+    else
+      base
+      // {
+        EGRESS_NS = egress.ns;
+        DEV = c.uplink.dev;
+        PEER = c.uplink.peer;
+        ADDR = c.uplink.addr;
+        GW = c.uplink.gw;
+        UPLINK_PREFIX = toString c.uplink.prefix;
+        RESOLVER = resolver;
+      };
 
   # Host-side, and none of it about a guest: the proxies' egress. NAT rather
   # than a route back, so nothing upstream needs to know these networks exist.

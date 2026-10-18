@@ -69,13 +69,13 @@
   # it stays in `net`.
   capsules = import ./capsules.nix {inherit policies;} fleet;
 
-  # The fabric the case suites run on (guardCases, policyCases, volumeCases,
-  # volumeRootCases): the same function, applied to a declaration that is no
-  # host's. No slots of its own — each suite declares its instances through
-  # `instancesOf`, as shapes the declaration's refusals would reject — so the
-  # refusals are vacuous and the fabric is independent of whoever calls this.
-  # The numbers equal what this host declared at SL-004, so the move was
-  # derivation-neutral; nothing ties them, and changing them moves four suites
+  # The fabric the case suites run on (guardCases, netnsCases, policyCases,
+  # volumeCases, volumeRootCases): the same function, applied to a declaration
+  # that is no host's. No slots of its own — each suite declares its instances
+  # through `instancesOf`, as shapes the declaration's refusals would reject —
+  # so the refusals are vacuous and the fabric is independent of whoever calls
+  # this. The numbers equal what this host declared at SL-004, so the move was
+  # derivation-neutral; nothing ties them, and changing them moves five suites
   # in every caller's build. Not a NOTES item 38 borrower: a suite runs in a
   # build sandbox and creates no link.
   casesCapsules = import ./capsules.nix {inherit policies;} {
@@ -490,6 +490,16 @@
   guardCases = import ./host/guard-cases.nix {
     inherit pkgs lib net;
     capsules = casesCapsules;
+  };
+
+  # The namespace program against a stubbed kernel and a scratch `/etc/netns`
+  # (SL-005 sec-3): handed a fixture, as its header says. Its subject and the
+  # room record's constructor are the unapplied functions.
+  netnsCases = import ./host/netns-cases.nix {
+    inherit pkgs lib net;
+    capsules = casesCapsules;
+    netns = import ./host/netns.nix;
+    rooms = import ./rooms.nix;
   };
 
   # The slots the caller's fleet declares, as the programs under test have them
@@ -1448,7 +1458,7 @@ in {
       inherit vm vm-stop capsule-halt capsule-net capsule-host;
       # The checks that need no root and no host: what the module says, what the
       # guard decides, and which policy a slot resolves to.
-      inherit hostModuleUnits hostModulePrograms guardCases policyCases observeCases;
+      inherit hostModuleUnits hostModulePrograms guardCases netnsCases policyCases observeCases;
       inherit profileCases gitChannelCases vmCases wrapCases volumeRootCases resetHomeCases volumeCases fleetCases roomsCases;
       # The rendered run-time half of every target, so a human can read what a
       # program will resolve (host/profile.nix). `nix build .#capsule-profiles`.
