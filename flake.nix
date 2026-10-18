@@ -72,7 +72,20 @@
 
       # Merged into mkFleet's set rather than beside it: a top-level `//` would
       # replace the whole `packages` attribute.
-      packages.${system} = fleet.packages.${system} // {inherit templateCases;};
+      #
+      # `dev-tools` is this repo's tool set as a room repo (CHR-018): what
+      # `just check` runs, the guest supplying `nix`. Here and not in mkFleet,
+      # since it is this repo's and no consumer's.
+      packages.${system} =
+        fleet.packages.${system}
+        // {
+          inherit templateCases;
+          dev-tools = with inputs.nixpkgs.legacyPackages.${system};
+            buildEnv {
+              name = "oubliette-dev-tools";
+              paths = [just alejandra shellcheck jq];
+            };
+        };
 
       # `nix flake init -t github:davidlee/oubliette`: a consumer confining
       # doctrine, every file commented as the reference for its field (DEC-030).
