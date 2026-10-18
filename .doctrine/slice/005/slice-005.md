@@ -106,9 +106,15 @@ capsule-netns up  (uplink env empty ⇒ no veth, no route, no resolver hop)
   only slots are instantiable and every image is hostName `capsule`. A room
   breaks that by construction. The design must say what it is named and how
   the "VMM identified by namespace" rule still holds.
-- **Addressing.** A room needs a `/30` and a tap that are not a slot's. Does
-  that come from the `net` declaration (one home per axis), and is it covered
-  by the same disjointness throw?
+- **Addressing (retired by research X2).** A room reuses `net`'s tap, `/30`
+  and MAC inside its own namespace, as every slot does (NOTES item 17). Only
+  the uplink `/30` is per-index, and a room has no uplink. The disjointness
+  throw therefore covers names: namespace, `nixosConfigurations` attr, relay
+  socket and unit, against both slots and `probe.fabric`.
+- **DEC-031 rests on the process name.** `any_vm_running` matches
+  `microvm@capsule`, so a room is caught by the probe refusal only if its
+  image is hostName `capsule`. That collides with DEC-020's "only slots are
+  instantiable" (research X1).
 - **Persistence.** Plan F §6 puts `/home` on a volume. The slot volume verbs
   are slot-scoped. Whether a room needs its own reset stays open, and is
   probably out of scope.
