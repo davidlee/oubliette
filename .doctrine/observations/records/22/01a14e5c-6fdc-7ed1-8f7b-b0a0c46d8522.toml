@@ -1,0 +1,18 @@
+schema = "doctrine.observation"
+schema_version = 1
+uid = "01a14e5c-6fdc-7ed1-8f7b-b0a0c46d8522"
+recorded_at = "2026-10-18T09:34:03.228551246Z"
+kind = "friction"
+summary = "revision new needs id reservation, so an assented policy revision cannot be drafted here"
+detail = "SL-005 PHASE-08: 'doctrine revision new' failed: reservation remote origin unreachable and local fallback declined (git@github.com publickey denied). The user's assented POL-004 revision and the POL-003 rooms-row revision stay undrafted; EX-2 blocked."
+
+[facets.execution]
+schema_version = 1
+interface = "cli"
+interface_origin = "automatic"
+product_surface = "doctrine"
+product_surface_origin = "automatic"
+command = "observation record"
+command_origin = "automatic"
+repository_context = "primary"
+repository_context_origin = "automatic"

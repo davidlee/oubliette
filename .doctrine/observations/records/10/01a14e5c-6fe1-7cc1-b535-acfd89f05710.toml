@@ -1,0 +1,18 @@
+schema = "doctrine.observation"
+schema_version = 1
+uid = "01a14e5c-6fe1-7cc1-b535-acfd89f05710"
+recorded_at = "2026-10-18T09:34:03.233928471Z"
+kind = "friction"
+summary = "verify-vt calls a keyword unattributable until the phase's delta is recorded"
+detail = "SL-005 PHASE-08 VT-1/VT-2 read UNATTRIBUTABLE after commit while in_progress; 'slice record-delta' made them PASS. Also: a phase planner ran out of its 40 turns exploring PHASE-08 and wrote nothing; a retry with pre-established facts and a 25-call budget finished in 19."
+
+[facets.execution]
+schema_version = 1
+interface = "cli"
+interface_origin = "automatic"
+product_surface = "doctrine"
+product_surface_origin = "automatic"
+command = "observation record"
+command_origin = "automatic"
+repository_context = "primary"
+repository_context_origin = "automatic"

@@ -1,0 +1,18 @@
+schema = "doctrine.observation"
+schema_version = 1
+uid = "01a14e5c-6fdf-7100-97c6-0eb870db6274"
+recorded_at = "2026-10-18T09:34:03.231529996Z"
+kind = "friction"
+summary = "revision list returns no rows though REV-004 exists"
+detail = "Seen by the PHASE-08 planner and worker in SL-005; 'doctrine revision show REV-004' works."
+
+[facets.execution]
+schema_version = 1
+interface = "cli"
+interface_origin = "automatic"
+product_surface = "doctrine"
+product_surface_origin = "automatic"
+command = "observation record"
+command_origin = "automatic"
+repository_context = "primary"
+repository_context_origin = "automatic"
