@@ -1,0 +1,50 @@
+memory_uid = "mem_01a14f894ac27b60a06c718a01944fe6"
+memory_key = "mem.fact.oubliette.tmpfiles-needs-every-parent-declared"
+schema_version = 1
+memory_type = "fact"
+status = "active"
+title = "A tmpfiles d rule under an owner-owned stateDir needs its parent declared too, and a switch hides the refusal"
+summary = "An undeclared intermediate is made root:root, tmpfiles then refuses the unsafe path transition, and systemd-tmpfiles-resetup counts that as success"
+created = "2026-10-18"
+updated = "2026-10-18"
+
+[scope]
+paths = ["host/services.nix", "rooms.nix"]
+globs = []
+commands = []
+tags = ["gotcha"]
+workspace = "default"
+repo = "github.com/davidlee/oubliette"
+repo_id_kind = "remote"
+repo_id_confidence = "high"
+
+[git]
+anchor_kind = "checkout_state"
+commit = ""
+tree = "c019e41b4e67029fcf2e139df86b085fdb817e6d"
+ref_name = "refs/heads/main"
+checkout_state_id = "88c8a41af25c2e933819bb13b77871165c3914ee6c9399b5785f25b2e09bc6a2"
+base_commit = "4c1d2105dfcd1a644645b7a9be11cb06a9b5b9c9"
+verified_sha = ""
+normalizer = "forget.checkout.v1"
+
+[review]
+verification_state = "unverified"
+reviewed = ""
+review_by = ""
+
+[trust]
+trust_level = "high"
+
+[ranking]
+severity = "medium"
+weight = 0
+
+[[source]]
+kind = "commit"
+ref = "4c1d210"
+
+[[source]]
+kind = "backlog"
+ref = "ISS-024"
+

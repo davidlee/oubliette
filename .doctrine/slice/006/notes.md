@@ -6,24 +6,31 @@ disposable phase sheet (`.doctrine/state/.../phase-NN.md`) that must survive
 
 ## Harvest
 <!-- single-copy: updated in place each harvest; ids only, never restated content -->
-fresh-as-of: 2026-10-18 · design locked, lifecycle plan · HEAD (this commit)
+fresh-as-of: 2026-10-19 · implementation complete (PHASE-07), before audit · 4c1d210
 
 ### Produced
-- DEC-043..DEC-051 (DEC-051 supersedes DEC-041); IDE-003 (model door, split out)
-- design.md (11 sections, locked); RV-015 (waived, no findings)
+- PHASE-01..07 done (commits 6f103c7..4c1d210 on 3a52d2e); `doctrine check gate` rc 0 at 4c1d210
+- PHASE-01 quarantine fragments + `quarantineCases`; PHASE-02 room fields in `rooms.nix` + REV-007 (POL-003 rooms row); PHASE-03 `/work`, clones, `session`; PHASE-04 `capsule-room-git` + `roomGitCases`; PHASE-05 front end's room push/collect/forget-host-key; PHASE-06 docs, template, contracts, Plan F; PHASE-07 live rung (consumer `/srv/fleet` 7f63d55 on oubliette cc72b97)
+- EVD-010 + docs/probes.md *Two repos in one room…* — the live rung's record and figures
+- ISS-021 — answered by DEC-043; RSK-011 — answered by DEC-047 (live evidence in 8fb6db7)
+- ISS-024 — raised live, fix in 4c1d210 (tmpfiles parent rules + `unparented` check); the live host takes it at the user's next rebuild
+- minted: ISS-023 — the slot channel's profile reader leans on an ambient jq; IMP-017 — `session`'s git rides an unpromised system PATH; IMP-018 — `just up`/`refresh-build` cannot serve a room; CHR-018 — the assistant room takes the rest of the user's repos; ISS-025 — slot `pkgs.git` vs the target tool set's git collide silently (`ignoreCollisions`); rooms unaffected
+- for reconcile (phase sheets' Findings): departures from design — banner check is a prefix match, not D9's exact; `--` ends `capsule-room-git`'s options (D1); banner branches are suite-reachable, against sec-8/DEC-050's "live-only"; `profileLoad` behind `refuseToken 2`, not `select`; `push` added via a `roomVerbs` list, so the verb-collision throw does not cover a room named `push`; `boundedFetch` adds `|| exit 1` after `ulimit` (slot tightening)
+- for reconcile: stale prose — DEC-040's title ("pinned and not built"); docs/contract-target.md:19-25
+- for reconcile: PHASE-07 was never flipped in_progress, so no code-start boundary is recorded; PHASE-02's range was tightened by `record-delta`
+- `.doctrine` changes committed with each piece; this harvest commits ISS-025 and one memory separately
 
 ### Learned
-- friction: `doctrine design apply` processes a batch's declarations in
-  lexical subject order (inq-1, inq-10, inq-11, … inq-2), so a `needs` or
-  `adopt` pointing at a later-sorting subject in the same batch is refused as
-  "unknown node". Declare nodes first, edges in a second submission.
+- mem.fact.oubliette.tmpfiles-needs-every-parent-declared — an undeclared parent is made root:root, refused, and a switch reports success
+- EVD-010 — what two tool sets cost a room, against the repo-less room (figures in docs/probes.md)
+- friction observations (24253c4, 9c45d55): named-orchestrator children hand back to the seat; a sweep commit reset a phase's index; `just` hides a cached suite's output; a phase sheet's line refs predated the file
+- friction: `doctrine design apply` processes a batch in lexical subject order, so declare nodes before edges
 
 ### Open
-- DEC-044 provisional by the user's word (no fleet extras in a room)
-- ISS-021, RSK-011: close at implementation, by DEC-043 and DEC-047
-- POL-003 rooms-row REV: needs the user's assent in the phase that moves it
-- sequencing: implement after SL-005 PHASE-10 commits; live after SL-005 PHASE-09
-- relay sec-6 to satan SL-023 (user's act), now that the design is locked
+- DEC-044 — held provisional by the user's word (no fleet extras in a room)
+- ISS-023, ISS-025, IMP-017, IMP-018, CHR-018 — follow-up work, outside this slice
+- satan SL-023 relay — the user's act; relay text delivered in session, satan side not done
+- live rung not exercised: wrong-repo collect, socket-present-no-banner 75 (suite only), auth failure, oversize pack, a build through `session`
 
 ## Design review passes (2026-10-18)
 
