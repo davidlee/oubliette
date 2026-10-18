@@ -1,0 +1,248 @@
+# Implementation plan for SL-006 — the authored, durable phase plan.
+#
+# Runtime status lives under .doctrine/state/ (phase tracking) — never record
+# progress here. Hand-edit freely: the tool reads this file but does not rewrite
+# it. Ids are immutable; edits append.
+schema  = "doctrine.plan.overview"
+version = 1
+slice   = "SL-006"
+
+[specs]
+primary       = []
+collaborators = []
+
+[requirements]
+targets      = []
+dependencies = []
+
+[[phase]]
+id        = "PHASE-01"
+name      = "Three shared fragments leave the slot channel, and the fetch gets a suite that reaches it"
+objective = """
+Design sec-4 "Shared, not copied", before anything calls them twice.
+`host/quarantine.nix` gains `refuseToken <status>` with `checkToken =
+refuseToken 1` (no caller edited, RV-015 F-8) and the bounded fsck fetch as a
+fragment taking the URL and the refspecs (`ulimit -f`, `transfer.fsckObjects`,
+`--no-tags`, `--atomic`); the policy lookup (`policyCase` and the `case` that
+reads it, `host/git-channel.nix`) becomes a fragment yielding `maxBytes`/`may`.
+`capsule-collect` calls both instead of its inline copies. The ProxyCommand
+line spelled in `host/guest-ssh.nix` and in the front end's `doorVia` becomes
+one helper both use (not `viaSocket`, RV-015 F-4). `quarantineCases`
+(`host/quarantine-cases.nix`) splices the fetch fragment into the smallest
+`main` and runs it against local bare repos over `file://`. Slot behaviour does
+not change: this is a refactor plus the suite that pins what it moved."""
+entrance_criteria = [
+  { id = "EN-1", text = "SL-006 design locked (run rev 38, after RV-015) and the slice at `ready`" },
+  { id = "EN-2", text = "SL-005 PHASE-09 and PHASE-10 committed (`a07094d`, `a22f882`): `rooms.nix`, `vm/room.nix` and the room door are what this slice builds on" },
+  { id = "EN-3", text = "`just` green at the starting commit" },
+]
+exit_criteria = [
+  { id = "EX-1", text = "`capsule-collect` holds no inline fetch subshell and no inline policy `case`; both come from the fragments, and its text is otherwise unchanged in behaviour" },
+  { id = "EX-2", text = "`quarantineCases` pins, each with exit status and reason: a pack over the ceiling fails; a malformed object fails fsck; an offered tag is not taken; with two refspecs and one destination's `.lock` in place, neither ref moves (`--atomic`, RV-015 F-5); `checkToken` exits 1 and `refuseToken 2` exits 2 (RV-015 F-8)" },
+  { id = "EX-3", text = "`gitChannelCases`, `roomVerbsCases` and `hostModuleUnits` green with no case edited; `guest-ssh.nix` and `doorVia` both call the one ProxyCommand helper" },
+  { id = "EX-4", text = "`quarantineCases` is a package in `mkfleet.nix`, a line in `just/fleet.just`'s `build` and `cases`, and named in `CLAUDE.md`'s suite list" },
+  { id = "EX-5", text = "mutation: dropping `--atomic` from the fragment turns the lock case red; observed and reverted" },
+]
+verification = [
+  { id = "VT-1", expects = "the fetch fragment is exercised against local repos, including the atomic and tag cases", test_file = "host/quarantine-cases.nix", keywords = ["file://", ".lock", "refuseToken", "fsck", "ulimit"], waived = false },
+  { id = "VT-2", expects = "the fragments live in quarantine.nix", test_file = "host/quarantine.nix", keywords = ["refuseToken", "checkToken = refuseToken 1", "--atomic"], waived = false },
+  { id = "VT-3", expects = "the suite is in just build", test_file = "just/fleet.just", keywords = ["quarantineCases"], waived = false },
+  { id = "VA-1", expects = "EX-5's mutation observed red then reverted; recorded in the phase notes" },
+]
+specs        = []
+requirements = []
+
+[[phase]]
+id        = "PHASE-02"
+name      = "A room declares repos, a policy and a work volume, and rooms.nix refuses each wrong one by name"
+objective = """
+Design sec-2. `rooms.nix` takes `targets` and `policies` at its one binding site
+in `mkfleet.nix`; its three other appliers (`fabric-cases.nix`,
+`host/guard-cases.nix`, `host/netns-cases.nix`) pass declared fixture values
+(RV-015 F-7). A room carries `repos = { user; targets; }`, `policy` and
+`sizes.work`, all or none. New pinned `reasons`, in the existing
+`rooms.nix: <rule> (DEC-0NN); <clauses>` form: the partial set; a target not
+declared, an empty list, a target twice; `repos.user` not a declared room user;
+a policy not in `policies.everything`; a repo name outside `[A-Za-z0-9._-]+` or
+`.`/`..` (RV-015 F-6). The record gains `repos` (per target `{ name; guestPath;
+}`) and `policy`, or `null` for both; a repo-less room's record is unchanged.
+`POL-003`'s rooms row gains the three fields by a REV, on the user's assent in
+this phase."""
+entrance_criteria = [
+  { id = "EN-1", text = "PHASE-01 complete" },
+]
+exit_criteria = [
+  { id = "EX-1", text = "`roomsCases` pins each new reason by its text, read with `tryEval (deepSeq …)`; a well-formed room yields the expected `repos`/`policy`; a repo-less room's record is unchanged" },
+  { id = "EX-2", text = "`fabricCases`, `guardCases`, `netnsCases` and `roomVerbsCases` green, the three appliers passing declared `targets`/`policies`, never an implicit default (`POL-003`)" },
+  { id = "EX-3", text = "the `POL-003` rooms-row REV is approved on the user's recorded assent and applied" },
+  { id = "EX-4", text = "mutation: dropping the repo-name grammar check turns its case red; observed and reverted" },
+]
+verification = [
+  { id = "VT-1", expects = "each new reason is cased with its text", test_file = "rooms-cases.nix", keywords = ["repos", "policy", "work", "tryEval", "deepSeq"], waived = false },
+  { id = "VT-2", expects = "rooms.nix takes the new arguments and exposes the reasons", test_file = "rooms.nix", keywords = ["targets", "policies", "guestPath", "A-Za-z0-9._-"], waived = false },
+  { id = "VH-1", expects = "the user assents to the POL-003 rooms-row REV" },
+  { id = "VA-1", expects = "EX-4's mutation observed red then reverted; recorded in the phase notes" },
+]
+specs        = []
+requirements = []
+
+[[phase]]
+id        = "PHASE-03"
+name      = "The room guest holds a work volume, one clone per repo and a generic session over a repo tree"
+objective = """
+Design sec-3, sec-7's fixture. `roomVms` passes `targetFlakes`; `vm/room.nix`,
+when the record has repos: `room-work.img` at `/work` sized `sizes.work`;
+`room-seed` per repo (`install -d` then `git init --initial-branch=<workBranch>`
+as `repos.user` when `.git` is absent, nothing else); `git` in
+`systemPackages`; the `/etc/room/repo/<repo>/{clone,tools}` links
+(`environment.etc`; `tools` only for a non-null `toolsPackage`, never in
+`systemPackages`; no fleet extras, `DEC-044`). `vm/session.nix` is one generic
+`writeShellApplication` whose root is a build argument defaulting to
+`/etc/room/repo`, in `systemPackages`. `sessionCases` (`vm/session-cases.nix`)
+runs it against a fixture tree. `roomChecks` gains the `/work` rule both ways.
+The fixture gains a second target whose stub flake exports a tiny real tool
+package; the fixture `assistant` declares both as repos, `policy = "build"` and
+`sizes.work`; the lounge stays repo-less."""
+entrance_criteria = [
+  { id = "EN-1", text = "PHASE-02 complete" },
+]
+exit_criteria = [
+  { id = "EX-1", text = "`sessionCases` pins: a bad name, `.`/`..`, an unknown repo, or no `--` → 2 with its reason; `PATH` gains `tools/bin` only for a repo with a set; cwd is the clone's physical path; argv passes untouched (spaces, a leading `-`); stdout empty" },
+  { id = "EX-2", text = "the fixture assistant's image builds in `just build` with both tool sets linked under `/etc/room/repo`, neither in `systemPackages`, and `/work` declared; the lounge's image has no `/work`" },
+  { id = "EX-3", text = "`roomChecks` asserts `/work` present for a room with repos and absent without; `templateCases` and the room images green" },
+  { id = "EX-4", text = "`sessionCases` is a package, a `just build` and `cases` line, and in `CLAUDE.md`'s suite list" },
+  { id = "EX-5", text = "mutation: making `session` prepend `tools/bin` unconditionally turns the no-set case red; observed and reverted" },
+]
+verification = [
+  { id = "VT-1", expects = "the launcher's contract is cased against a fixture tree", test_file = "vm/session-cases.nix", keywords = ["session", "--", "tools/bin", "clone"], waived = false },
+  { id = "VT-2", expects = "session reads the tree and holds no repo table", test_file = "vm/session.nix", keywords = ["/etc/room/repo", "cd -P", "exec"], waived = false },
+  { id = "VT-3", expects = "the guest renders the volume, seed and tree", test_file = "vm/room.nix", keywords = ["room-work.img", "/work", "/etc/room/repo", "initial-branch"], waived = false },
+  { id = "VT-4", expects = "the suite is in just build", test_file = "just/fleet.just", keywords = ["sessionCases"], waived = false },
+  { id = "VA-1", expects = "EX-5's mutation observed red then reverted; the built image's /etc/room/repo inspected; recorded in the phase notes" },
+]
+specs        = []
+requirements = []
+
+[[phase]]
+id        = "PHASE-04"
+name      = "capsule-room-git: one program pushes a ref into a room clone and collects one branch into its quarantine"
+objective = """
+Design sec-4. `host/room-git.nix`: `capsule-room-git --room <r> --profile
+<repo> --user <u> --policy <p> push|collect <branch>`. Step 1 decides every
+caller error on this host: usage, `refuseToken 2` on room and profile, unknown
+policy or `may != yes`, a branch `git check-ref-format --branch` refuses
+(stdout discarded), and for push the oid resolved in `profile_path`. Step 2 is
+the pre-flight (socket and an `SSH-2.0` banner, else 75). Push sends
+`+<oid>:refs/host/<branch>` to `ssh://<u>@room-<r><guestPath>`; collect fetches
+`+refs/heads/<branch>` into `collect/<r>/<repo>.git` through PHASE-01's
+fragment. ssh is strict: `StrictHostKeyChecking=accept-new`,
+`HostKeyAlias=room-<r>`, `UserKnownHostsFile=$state/room/<r>/known_hosts`, via
+PHASE-01's ProxyCommand helper. `host/programs.nix` builds it; `host/services.nix`
+installs it through `wrap` (RV-015 F-3) and makes `room/<r>` by tmpfiles."""
+entrance_criteria = [
+  { id = "EN-1", text = "PHASE-01 complete (fragments); PHASE-02 complete (the record carries `repos`/`policy`)" },
+]
+exit_criteria = [
+  { id = "EX-1", text = "`roomGitCases` runs the shipped store path and pins: usage and token refusals → 2; unknown policy and `may != yes` → 2; a refused branch (`*`, `a..b`) → 2 for both verbs; no socket → 75 with stdout empty; push of a branch the host checkout lacks → 2 with no socket (decided before the pre-flight)" },
+  { id = "EX-2", text = "`hostModuleUnits` pins the `room/<r>` tmpfiles directory (`0700`, owner) and that the installed `capsule-room-git` is the wrapped one" },
+  { id = "EX-3", text = "`roomGitCases` is a package, a `just build` and `cases` line, and in `CLAUDE.md`'s suite list; `just` green" },
+  { id = "EX-4", text = "mutation: moving push's rev-parse after the pre-flight turns the no-socket absent-branch case from 2 to 75 (red); observed and reverted" },
+]
+verification = [
+  { id = "VT-1", expects = "the program's upstream-of-the-door contract is cased on its shipped store path", test_file = "host/room-git-cases.nix", keywords = ["capsule-room-git", "check-ref-format", "75", "--room", "--profile"], waived = false },
+  { id = "VT-2", expects = "the program composes the shared fragments and is strict about host keys", test_file = "host/room-git.nix", keywords = ["refuseToken 2", "accept-new", "HostKeyAlias=room-", "refs/host/", "SSH-2.0"], waived = false },
+  { id = "VT-3", expects = "the suite is in just build", test_file = "just/fleet.just", keywords = ["roomGitCases"], waived = false },
+  { id = "VA-1", expects = "EX-4's mutation observed red then reverted; recorded in the phase notes" },
+]
+specs        = []
+requirements = []
+
+[[phase]]
+id        = "PHASE-05"
+name      = "The front end resolves a room's repo, and every door to a room checks one known_hosts"
+objective = """
+Design sec-5 (`DEC-047`, `DEC-051`). The room branch of `host/cli.nix` grows
+from three verbs to six: `push <repo> <branch>` and `collect <repo> <branch>`
+refuse unless `repo` is in the room's `repos.targets`, then exec
+`capsule-room-git` with `--room`, `--profile`, `--user <repos.user>` and
+`--policy <policy>` filled from the record; `forget-host-key` truncates the
+room's `known_hosts`. A repo-less room refuses `push` and `collect` by name
+("declares no repos"). The room `ssh` door moves onto the room's store and
+alias (`accept-new`, `room-<r>`), so the front end, both channel verbs and
+satan's runner share one file and a changed key is refused everywhere at once.
+Live rooms learn their key afresh on first contact after the rebuild."""
+entrance_criteria = [
+  { id = "EN-1", text = "PHASE-04 complete" },
+]
+exit_criteria = [
+  { id = "EX-1", text = "`roomVerbsCases` pins: `push`/`collect` resolve and exec with the record's values (argv printed by a stub); a repo the room lacks → 2; a repo-less room refuses both by name; `forget-host-key` empties the room's file; the room `ssh` argv carries `accept-new`, `HostKeyAlias=room-<r>` and the room's file" },
+  { id = "EX-2", text = "every other room verb refuses as before; `status` unchanged; slot verbs unchanged (`roomVerbsCases`, `gitChannelCases` green)" },
+  { id = "EX-3", text = "mutation: dropping the repo-membership check turns its case red; observed and reverted" },
+]
+verification = [
+  { id = "VT-1", expects = "the new verbs resolve and refuse over a fixture pool", test_file = "host/room-verbs-cases.nix", keywords = ["push", "collect", "forget-host-key", "declares no repos", "room-"], waived = false },
+  { id = "VT-2", expects = "the front end execs the channel with the record's values", test_file = "host/cli.nix", keywords = ["capsule-room-git", "forget-host-key", "known_hosts"], waived = false },
+  { id = "VA-1", expects = "EX-3's mutation observed red then reverted; recorded in the phase notes" },
+]
+specs        = []
+requirements = []
+
+[[phase]]
+id        = "PHASE-06"
+name      = "The template, the contracts and Plan F say what was built"
+objective = """
+Design sec-7 and sec-9. `templates/fleet/flake.nix`'s commented assistant gains
+`repos`, `policy` and `sizes.work`. `docs/contract-assignment.md`'s room row
+gains repos, policy, the work volume, the quarantine and the known_hosts store;
+`docs/contract-target.md` says a target may be a room's repo and its
+`guestPath` is that clone; `docs/plan-f-assistant.md` §3 and §4 move from "to
+check" to what was built. SL-005 design sec-6's `HostKeyAlias=<room>` and "no
+room channel" sentences are noted as superseded, not rewritten. `CLAUDE.md`'s
+suite list is already current from PHASE-01, 03 and 04; this phase checks it."""
+entrance_criteria = [
+  { id = "EN-1", text = "PHASE-05 complete" },
+]
+exit_criteria = [
+  { id = "EX-1", text = "`templateCases` green with the extended commented example" },
+  { id = "EX-2", text = "the three docs and the SL-005 note match design sec-9 and name no target outside `fixture/` and `templates/` (`POL-002`'s search)" },
+  { id = "EX-3", text = "`just check` and `just` green" },
+]
+verification = [
+  { id = "VT-1", expects = "the template carries the three fields", test_file = "templates/fleet/flake.nix", keywords = ["repos", "policy", "work"], waived = false },
+  { id = "VT-2", expects = "the assignment contract names the room's repos and store", test_file = "docs/contract-assignment.md", keywords = ["repos", "known_hosts", "/work"], waived = false },
+  { id = "VA-1", expects = "a POL-002 search over the changed files finds no target name outside fixture/ and templates/" },
+]
+specs        = []
+requirements = []
+
+[[phase]]
+id        = "PHASE-07"
+name      = "The live rung: the assistant on this host holds two real repos, and push, session and collect work through the door"
+objective = """
+Design sec-8's live rung (`STD-001`). On the user's edit of `/srv/fleet`
+adding `repos`, `policy` and `sizes.work` to the live assistant, and the user's
+rebuild in `~/flakes`: `capsule assistant push <repo> <branch>` prints an oid;
+`session <repo> -- git switch -c job/<id> <oid>` and a commit through it;
+`capsule assistant collect <repo> job/<id>` lands in that repo's quarantine and
+no other; the banner pre-flight answers 75 with the room stopped; a changed host
+key refuses at the front end and both channel verbs until `forget-host-key`;
+stop/start keeps clones, uids and host keys; a slot `capsule-collect` still
+lands its refs on the shared fetch fragment (RV-015 F-5). The closure size with
+two tool sets is measured and recorded as an EVD against `EVD-007`. `ISS-021`
+and `RSK-011` close. The sec-6 relay to satan SL-023 is the user's act."""
+entrance_criteria = [
+  { id = "EN-1", text = "PHASE-06 complete and committed" },
+  { id = "EN-2", text = "the user has edited `/srv/fleet` and rebuilt this host (both the user's acts, never the agent's)" },
+]
+exit_criteria = [
+  { id = "EX-1", text = "each live observation above is recorded with its command and output in the phase notes, and what was not exercised is said" },
+  { id = "EX-2", text = "the closure-size EVD is recorded (`ADR-003`), citing `EVD-007`" },
+  { id = "EX-3", text = "`ISS-021` and `RSK-011` closed, citing `DEC-043` and `DEC-047`" },
+]
+verification = [
+  { id = "VH-1", expects = "the user's /srv/fleet edit and host rebuild" },
+  { id = "VA-1", expects = "push, session commit, collect into the right quarantine, 75 with the room stopped, host-key refusal and recovery, stop/start persistence, and a slot collect — each observed and recorded" },
+  { id = "VA-2", expects = "the closure EVD recorded and ISS-021/RSK-011 closed" },
+]
+specs        = []
+requirements = []

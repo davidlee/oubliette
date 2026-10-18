@@ -126,6 +126,26 @@ intent = "design-target"
 selector = "docs/contract-target.md"
 intent = "design-target"
 
+[[selector]]
+selector = "host/quarantine-cases.nix"
+intent = "design-target"
+note = "RV-015"
+
+[[selector]]
+selector = "fabric-cases.nix"
+intent = "design-target"
+note = "RV-015"
+
+[[selector]]
+selector = "host/guard-cases.nix"
+intent = "design-target"
+note = "RV-015"
+
+[[selector]]
+selector = "host/netns-cases.nix"
+intent = "design-target"
+note = "RV-015"
+
 [[relation]]
 label = "fulfils"
 degree = "partial"
