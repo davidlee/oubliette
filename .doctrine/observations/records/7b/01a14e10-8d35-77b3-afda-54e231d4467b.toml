@@ -1,0 +1,18 @@
+schema = "doctrine.observation"
+schema_version = 1
+uid = "01a14e10-8d35-77b3-afda-54e231d4467b"
+recorded_at = "2026-10-18T08:11:10.005108754Z"
+kind = "friction"
+summary = "grep -c FAIL over just cases miscounts"
+detail = '''SL-005 PHASE-05: an ok line containing CASE_PROGRAM_FAIL matches; use grep '^FAIL\|> FAIL'.'''
+
+[facets.execution]
+schema_version = 1
+interface = "cli"
+interface_origin = "automatic"
+product_surface = "doctrine"
+product_surface_origin = "automatic"
+command = "observation record"
+command_origin = "automatic"
+repository_context = "primary"
+repository_context_origin = "automatic"

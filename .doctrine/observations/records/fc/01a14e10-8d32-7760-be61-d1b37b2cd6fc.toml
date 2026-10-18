@@ -1,0 +1,18 @@
+schema = "doctrine.observation"
+schema_version = 1
+uid = "01a14e10-8d32-7760-be61-d1b37b2cd6fc"
+recorded_at = "2026-10-18T08:11:10.002668181Z"
+kind = "friction"
+summary = "vmCases sections depend on order"
+detail = "SL-005 PHASE-05: a red section in vmCases leaves .vm/ and a nix log behind, turning the following section red too. Fixed by placing the room section before 'a real name'; per-section resets would be sturdier."
+
+[facets.execution]
+schema_version = 1
+interface = "cli"
+interface_origin = "automatic"
+product_surface = "doctrine"
+product_surface_origin = "automatic"
+command = "observation record"
+command_origin = "automatic"
+repository_context = "primary"
+repository_context_origin = "automatic"

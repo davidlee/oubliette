@@ -1,0 +1,18 @@
+schema = "doctrine.observation"
+schema_version = 1
+uid = "01a14e10-8d37-71e2-8239-202096a7cf2e"
+recorded_at = "2026-10-18T08:11:10.007391735Z"
+kind = "friction"
+summary = "room user uids shift by name order each boot"
+detail = "SL-005 PHASE-05 worker: root fs is tmpfs, uids allocated from 1000 in name order each boot; adding a user sorting earlier shifts existing users' uids away from their files on /home. Backlog candidate."
+
+[facets.execution]
+schema_version = 1
+interface = "cli"
+interface_origin = "automatic"
+product_surface = "doctrine"
+product_surface_origin = "automatic"
+command = "observation record"
+command_origin = "automatic"
+repository_context = "primary"
+repository_context_origin = "automatic"

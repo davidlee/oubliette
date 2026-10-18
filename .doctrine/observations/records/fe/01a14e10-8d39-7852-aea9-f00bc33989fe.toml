@@ -1,0 +1,18 @@
+schema = "doctrine.observation"
+schema_version = 1
+uid = "01a14e10-8d39-7852-aea9-f00bc33989fe"
+recorded_at = "2026-10-18T08:11:10.009638836Z"
+kind = "friction"
+summary = "slice research reports drift from added plan files"
+detail = "SL-005 PHASE-05 planner: doctrine slice research 5 reports drift only because design.md and plan files were added; subjects unchanged. Re-stamping writes state; left for the seat."
+
+[facets.execution]
+schema_version = 1
+interface = "cli"
+interface_origin = "automatic"
+product_surface = "doctrine"
+product_surface_origin = "automatic"
+command = "observation record"
+command_origin = "automatic"
+repository_context = "primary"
+repository_context_origin = "automatic"
