@@ -63,3 +63,12 @@ Choices made at plan time, where the design left one open:
 - **Research drift** (`doctrine slice research 7`) is the slice's own
   `slice-007.md` and `design.md` only. Code premises were re-grepped at plan
   time and hold.
+- **The consumer moved after planning** (`/srv/fleet` `b3011a7`, `7508079`):
+  the assistant room holds all thirteen `CHR-018` repos (20.4 GiB closure,
+  5.4 GiB store image) at 4 vcpu / 8 GiB, and `work` is 64 GiB, which takes
+  effect only when `room-work.img` is recreated. PHASE-05 does not depend on
+  that: the base lives in the image and `/etc`, not on a volume, so the live
+  check needs a rebuild and a room restart, not a new work volume. Design
+  sec-6's image-size risk now sits on a 5.4 GiB image; `emacs` is the extra to
+  weigh.
+
