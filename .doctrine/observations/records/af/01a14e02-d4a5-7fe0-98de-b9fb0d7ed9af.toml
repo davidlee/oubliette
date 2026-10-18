@@ -1,0 +1,18 @@
+schema = "doctrine.observation"
+schema_version = 1
+uid = "01a14e02-d4a5-7fe0-98de-b9fb0d7ed9af"
+recorded_at = "2026-10-18T07:56:10.789378642Z"
+kind = "friction"
+summary = "doctrine new fails when the reservation remote is unreachable"
+detail = "SL-005 PHASE-04: 'doctrine knowledge new' / 'revision new' failed with git@github.com Permission denied (publickey); DOCTRINE_RESERVATION_FALLBACK=1 allocated DEC-042 and REV-004 locally, which could collide if the remote is reconnected."
+
+[facets.execution]
+schema_version = 1
+interface = "cli"
+interface_origin = "automatic"
+product_surface = "doctrine"
+product_surface_origin = "automatic"
+command = "observation record"
+command_origin = "automatic"
+repository_context = "primary"
+repository_context_origin = "automatic"

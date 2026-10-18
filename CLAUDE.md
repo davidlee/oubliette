@@ -157,7 +157,7 @@ passes for the wrong reason, and never borrow live addressing — a probe on the
 real `/30` tests the real capsule — **nor a live *name***. Both halves of that
 are now *enforced* rather than asked for: the `probe.fabric` argument of `mkFleet` holds every
 name, link, address and network a probe's egress fabric is built from, and
-`borrowed` (in `mkfleet.nix`), its intersection with what the caller's `fleet` declares, **throws at
+`borrowed` (in `fabric.nix`), its intersection with what the caller's `fleet` and `rooms` declare, **throws at
 eval** in every caller's eval, the consumer's included. Don't reach around it. The reason it exists rather than a comment is
 [NOTES item 38](./docs/ledger/038-a-probe-that-became-a-borrower.md), and the
 shape generalises: `probe/netns-egress.sh` shared `cap-egress`, `eg-up`/`eg-rt`,

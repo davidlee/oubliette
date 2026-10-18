@@ -1,0 +1,18 @@
+schema = "doctrine.observation"
+schema_version = 1
+uid = "01a14e02-d4aa-76a2-b54b-5fadfaf5ba6b"
+recorded_at = "2026-10-18T07:56:10.794050564Z"
+kind = "friction"
+summary = "no verb edits a risk's body, and a revision cannot target a RSK"
+detail = "SL-005 PHASE-04: design sec-10 says RSK-005 gains a line; 'backlog edit' only changes status and 'revision change' refuses RSK targets (revises must be SPEC/PRD/REQ/ADR/POL/STD). The line was parked in REV-004's rationale for a manual edit."
+
+[facets.execution]
+schema_version = 1
+interface = "cli"
+interface_origin = "automatic"
+product_surface = "doctrine"
+product_surface_origin = "automatic"
+command = "observation record"
+command_origin = "automatic"
+repository_context = "primary"
+repository_context_origin = "automatic"

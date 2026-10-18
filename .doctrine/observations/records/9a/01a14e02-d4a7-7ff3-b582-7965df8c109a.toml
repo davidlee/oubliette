@@ -1,0 +1,18 @@
+schema = "doctrine.observation"
+schema_version = 1
+uid = "01a14e02-d4a7-7ff3-b582-7965df8c109a"
+recorded_at = "2026-10-18T07:56:10.791564507Z"
+kind = "friction"
+summary = "knowledge edit list flags split on commas"
+detail = "SL-005 PHASE-04: 'doctrine knowledge edit decision --alternatives/--consequences' split their value on commas, so prose items containing commas had to be rewritten with ; or /."
+
+[facets.execution]
+schema_version = 1
+interface = "cli"
+interface_origin = "automatic"
+product_surface = "doctrine"
+product_surface_origin = "automatic"
+command = "observation record"
+command_origin = "automatic"
+repository_context = "primary"
+repository_context_origin = "automatic"

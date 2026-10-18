@@ -1,0 +1,18 @@
+schema = "doctrine.observation"
+schema_version = 1
+uid = "01a14e02-d4ac-72b2-acec-6d30f78d6067"
+recorded_at = "2026-10-18T07:56:10.796664422Z"
+kind = "friction"
+summary = "a phase sheet's mutation assumed tryEval catches a null dereference"
+detail = "SL-005 PHASE-04 M4: a planned 'tryEval (deepSeq liveNames)' check could never report false, because dereferencing a null uplink is a type error and tryEval only catches throw/assert. Found by mutating; the check was dropped. Candidate memory: tryEval does not catch type errors."
+
+[facets.execution]
+schema_version = 1
+interface = "cli"
+interface_origin = "automatic"
+product_surface = "doctrine"
+product_surface_origin = "automatic"
+command = "observation record"
+command_origin = "automatic"
+repository_context = "primary"
+repository_context_origin = "automatic"

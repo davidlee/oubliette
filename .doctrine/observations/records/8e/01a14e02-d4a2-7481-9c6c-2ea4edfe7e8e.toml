@@ -1,0 +1,18 @@
+schema = "doctrine.observation"
+schema_version = 1
+uid = "01a14e02-d4a2-7481-9c6c-2ea4edfe7e8e"
+recorded_at = "2026-10-18T07:56:10.786721774Z"
+kind = "friction"
+summary = "phase planner hit its 40-turn cap with no sheet written"
+detail = "SL-005 PHASE-04: the first capsule-phase-planner spent 45 tool calls researching (incl. governance verbs) and ended without SubagentHandback or a sheet; a retry told to write the sheet within ~15 calls and leave governance out finished in 17. Planners should write early and refine."
+
+[facets.execution]
+schema_version = 1
+interface = "cli"
+interface_origin = "automatic"
+product_surface = "doctrine"
+product_surface_origin = "automatic"
+command = "observation record"
+command_origin = "automatic"
+repository_context = "primary"
+repository_context_origin = "automatic"
