@@ -10,6 +10,17 @@ raiser    = "raiser"
 responder = "responder"
 rounds_base = 0
 contests_base = 0
+concluded = true
+
+[[review.turn]]
+act = "conclude"
+role = "raiser"
+note = "Adversarial pass by gpt-6-sol over SL-005 design.md and the code it cites (host/netns.nix, services.nix, guard.nix, cli.nix, mkfleet.nix, capsules.nix, fleet.nix, vm/capsule.nix, vm/common.nix, probe/harness.sh), two rounds plus a verification round, 2026-10-18."
+
+[[review.turn]]
+act = "conclude"
+role = "raiser"
+note = "Re-concluded after route-only reopens of F-1, F-2, F-5, F-7; substance unchanged."
 
 [target]                   # the outbound `reviews` edge: RV-NNN ──reviews──▶ <ref>
 ref   = "SL-005"
@@ -22,6 +33,7 @@ title = "sec-5: a room has a tap but no guest address"
 detail = "Adversarial pass (gpt-6-sol, 2026-10-18). vm/door.nix moves microvm.interfaces (vm/capsule.nix:125-131) but the guest address and networkd config stay in vm/capsule.nix:156-163; vm/common.nix:34 disables DHCP. A room built per sec-5 never answers at net.guest."
 disposition = "fix-now"
 response = "sec-5: vm/door.nix carries the guest's side of the link too (static net.guest address on the tap MAC, no DHCP, no gateway, resolved off), moved from vm/capsule.nix:150-163."
+route = "review"
 
 [[finding.turn]]
 act = "raise"
@@ -38,6 +50,23 @@ act = "verify"
 role = "raiser"
 note = "gpt-6-sol verification pass 2026-10-18: verified"
 
+[[finding.turn]]
+act = "reopen"
+role = "raiser"
+note = "reopened only to add the route the design lock requires; substance unchanged"
+
+[[finding.turn]]
+act = "dispose"
+role = "responder"
+disposition = "fix-now"
+route = "review"
+response = "sec-5: vm/door.nix carries the guest's side of the link too (static net.guest address on the tap MAC, no DHCP, no gateway, resolved off), moved from vm/capsule.nix:150-163."
+
+[[finding.turn]]
+act = "verify"
+role = "raiser"
+note = "re-verified after route-only reopen; the gpt-6-sol verification stands"
+
 [[finding]]
 id = "F-2"
 status = "verified"
@@ -46,6 +75,7 @@ title = "sec-5: a room keeps root console autologin"
 detail = "vm/common.nix:13 sets getty autologin root; vm/capsule.nix:280 overrides it to agent. sec-5's room adds no override, contradicting its root-by-key claim (POL-001 limb 3)."
 disposition = "fix-now"
 response = "sec-5: vm/room.nix sets services.getty.autologinUser = lib.mkForce null; sec-9 live step 2 checks the console asks for a login."
+route = "review"
 
 [[finding.turn]]
 act = "raise"
@@ -62,6 +92,23 @@ act = "verify"
 role = "raiser"
 note = "gpt-6-sol verification pass 2026-10-18: verified"
 
+[[finding.turn]]
+act = "reopen"
+role = "raiser"
+note = "reopened only to add the route the design lock requires; substance unchanged"
+
+[[finding.turn]]
+act = "dispose"
+role = "responder"
+disposition = "fix-now"
+route = "review"
+response = "sec-5: vm/room.nix sets services.getty.autologinUser = lib.mkForce null; sec-9 live step 2 checks the console asks for a login."
+
+[[finding.turn]]
+act = "verify"
+role = "raiser"
+note = "re-verified after route-only reopen; the gpt-6-sol verification stands"
+
 [[finding]]
 id = "F-3"
 status = "answered"
@@ -70,6 +117,7 @@ title = "sec-3/4: a room guest can initiate traffic to its namespace's tap addre
 detail = "The tap guard rule drops only daddr != tap_addr (host/netns.nix:217-224), and addr assigns net.host (227-235). sec-6/sec-9 say no host reachability; a TCP-only live check could miss ICMP or a future listener."
 disposition = "tolerated"
 response = "Deliberate. net.host is the room namespace's own end of the tap, not this host's root namespace; the namespace has no other link and nothing listens there, so guest-initiated traffic reaches no service. Plan F's model door (a future slice) is a listener at exactly net.host, so a drop here would be added now and removed then. If a room ever gains a listener at net.host, that slice owns its rule. User's call at review disposition."
+route = "review"
 
 [[finding.turn]]
 act = "raise"
@@ -92,6 +140,14 @@ role = "responder"
 disposition = "tolerated"
 response = "Deliberate. net.host is the room namespace's own end of the tap, not this host's root namespace; the namespace has no other link and nothing listens there, so guest-initiated traffic reaches no service. Plan F's model door (a future slice) is a listener at exactly net.host, so a drop here would be added now and removed then. If a room ever gains a listener at net.host, that slice owns its rule. User's call at review disposition."
 
+[[finding.turn]]
+act = "amend"
+role = "responder"
+note = "route required to lock the design run"
+disposition = "tolerated"
+route = "review"
+response = "Deliberate. net.host is the room namespace's own end of the tap, not this host's root namespace; the namespace has no other link and nothing listens there, so guest-initiated traffic reaches no service. Plan F's model door (a future slice) is a listener at exactly net.host, so a drop here would be added now and removed then. If a room ever gains a listener at net.host, that slice owns its rule. User's call at review disposition."
+
 [[finding]]
 id = "F-4"
 status = "answered"
@@ -100,6 +156,7 @@ title = "sec-7: room start cannot reuse the slot start path"
 detail = "Slot start waits on ssh as hardcoded agent (host/cli.nix:748) then injects (1858+). A lounge room declares ada and bob, so it would read as failed."
 disposition = "tolerated"
 response = "The fixture is never booted live; its slots' readiness fails the same way (agent is authorized by the same empty adminKeys). On a live host root holds access.adminKeys by vm/door.nix, and the host holds no declared user's private key, so root is the only login the host can test. sshd answering root proves the door process is up; a declared user's login is the client's concern and is checked by live step 2."
+route = "review"
 
 [[finding.turn]]
 act = "raise"
@@ -122,6 +179,14 @@ role = "responder"
 disposition = "tolerated"
 response = "The fixture is never booted live; its slots' readiness fails the same way (agent is authorized by the same empty adminKeys). On a live host root holds access.adminKeys by vm/door.nix, and the host holds no declared user's private key, so root is the only login the host can test. sshd answering root proves the door process is up; a declared user's login is the client's concern and is checked by live step 2."
 
+[[finding.turn]]
+act = "amend"
+role = "responder"
+note = "route required to lock the design run"
+disposition = "tolerated"
+route = "review"
+response = "The fixture is never booted live; its slots' readiness fails the same way (agent is authorized by the same empty adminKeys). On a live host root holds access.adminKeys by vm/door.nix, and the host holds no declared user's private key, so root is the only login the host can test. sshd answering root proves the door process is up; a declared user's login is the client's concern and is checked by live step 2."
+
 [[finding]]
 id = "F-5"
 status = "verified"
@@ -130,6 +195,7 @@ title = "sec-2/7: a room name can collide with a front-end verb"
 detail = "host/cli.nix:296-302 throws when a slot name is a verb or all. sec-2's room refusals omit verbs, so capsule ssh … becomes ambiguous."
 disposition = "fix-now"
 response = "sec-7/sec-2: host/cli.nix's collide widens to room names; pinned as an eval verdict in roomVerbsCases with its reason."
+route = "review"
 
 [[finding.turn]]
 act = "raise"
@@ -146,6 +212,23 @@ act = "verify"
 role = "raiser"
 note = "gpt-6-sol verification pass 2026-10-18: verified"
 
+[[finding.turn]]
+act = "reopen"
+role = "raiser"
+note = "reopened only to add the route the design lock requires; substance unchanged"
+
+[[finding.turn]]
+act = "dispose"
+role = "responder"
+disposition = "fix-now"
+route = "review"
+response = "sec-7/sec-2: host/cli.nix's collide widens to room names; pinned as an eval verdict in roomVerbsCases with its reason."
+
+[[finding.turn]]
+act = "verify"
+role = "raiser"
+note = "re-verified after route-only reopen; the gpt-6-sol verification stands"
+
 [[finding]]
 id = "F-6"
 status = "answered"
@@ -154,6 +237,7 @@ title = "sec-7/9: roomVerbsCases cannot stub ssh or systemctl"
 detail = "host/cli.nix:326 puts pkgs.systemd and pkgs.openssh in runtimeInputs, which writeShellApplication prepends; host/policy-cases.nix:104 says so. The argv cases would observe nothing."
 disposition = "tolerated"
 response = "Accepted as stated: argv is proven only by behaviour in the live run. Adding an ssh/systemctl seam to host/cli.nix (a tools argument as host/guard.nix has) is possible but widens the front end's signature for four lines of argv; noted as a follow-up candidate, not taken here."
+route = "demonstrate"
 
 [[finding.turn]]
 act = "raise"
@@ -176,6 +260,14 @@ role = "responder"
 disposition = "tolerated"
 response = "Accepted as stated: argv is proven only by behaviour in the live run. Adding an ssh/systemctl seam to host/cli.nix (a tools argument as host/guard.nix has) is possible but widens the front end's signature for four lines of argv; noted as a follow-up candidate, not taken here."
 
+[[finding.turn]]
+act = "amend"
+role = "responder"
+note = "route required to lock the design run"
+disposition = "tolerated"
+route = "demonstrate"
+response = "Accepted as stated: argv is proven only by behaviour in the live run. Adding an ssh/systemctl seam to host/cli.nix (a tools argument as host/guard.nix has) is possible but widens the front end's signature for four lines of argv; noted as a follow-up candidate, not taken here."
+
 [[finding]]
 id = "F-7"
 status = "verified"
@@ -184,6 +276,7 @@ title = "sec-9: just build does not build VM images"
 detail = "just/fleet.just:64-76 lists programs and cases, not runners; templateCases only forces drvPaths (templates/template-cases.nix:60-70). The room-image build claim has no gate."
 disposition = "fix-now"
 response = "sec-9/sec-12: a roomImages output linking the fixture rooms' runners joins just build's list as a new gate."
+route = "control"
 
 [[finding.turn]]
 act = "raise"
@@ -199,6 +292,23 @@ response = "sec-9/sec-12: a roomImages output linking the fixture rooms' runners
 act = "verify"
 role = "raiser"
 note = "gpt-6-sol verification pass 2026-10-18: verified"
+
+[[finding.turn]]
+act = "reopen"
+role = "raiser"
+note = "reopened only to add the route the design lock requires; substance unchanged"
+
+[[finding.turn]]
+act = "dispose"
+role = "responder"
+disposition = "fix-now"
+route = "control"
+response = "sec-9/sec-12: a roomImages output linking the fixture rooms' runners joins just build's list as a new gate."
+
+[[finding.turn]]
+act = "verify"
+role = "raiser"
+note = "re-verified after route-only reopen; the gpt-6-sol verification stands"
 
 [[finding]]
 id = "F-8"
