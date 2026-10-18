@@ -1,0 +1,18 @@
+schema = "doctrine.observation"
+schema_version = 1
+uid = "01a14f24-543a-7951-a45b-240761714bb3"
+recorded_at = "2026-10-18T13:12:23.354680699Z"
+kind = "friction"
+summary = "capsule children's hand-backs did not reach the orchestrator; a planner hit its 40-turn cap"
+detail = "SL-006 PHASE-03..05 orchestrator: all five spawned children (2 planners, 3 workers, foreground, unnamed) returned 'ended without delivering a report through SubagentHandback'. One SendMessage resume claimed delivery 'as a message' that never arrived. Recovery each time was reading the phase sheet's Findings and git status, which the workers had kept thorough. The PHASE-04 planner stopped at its 40-turn cap with the sheet written but no hand-back; its open questions were read from the sheet. Also: the user's 0af0359 'doctrine update' commit swept a worker's uncommitted CLAUDE.md edits and reset the index mid-phase."
+
+[facets.execution]
+schema_version = 1
+interface = "cli"
+interface_origin = "automatic"
+product_surface = "doctrine"
+product_surface_origin = "automatic"
+command = "observation record"
+command_origin = "automatic"
+repository_context = "primary"
+repository_context_origin = "automatic"
