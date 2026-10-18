@@ -10,7 +10,8 @@ names a value implicitly.**
 | addressing | **the caller's `net` argument** to `mkFleet` | tap name, both addresses, MAC, proxy port. Threaded to the guest via `specialArgs`. **Do not hardcode an address anywhere else.** |
 | slots | **the caller's `fleet` argument** (a consumer's `capsules.nix`) | which slots exist (`a`…`j`), the policy set an assigner may select within, and the profile each slot declares — for resolution a convenience, with no set beside it; for a declared slot also the build binding, since the slot boots that target's image (`DEC-017`) |
 | host controls | **the caller's `policies` argument** (a consumer's `policies.nix`) | an allowlist file, an ingestion bound and `mayCollect` per named policy |
-| the confined repos | **the caller's `targets` argument**, `<name> = {decl; flake}`, listed by hand (a consumer's `targets/`) | per target: path, tools package, caches, sizes; its name is its key. Its file and its tool-set flake are paired, so there is no second map to disagree (`DEC-018`, `DEC-025`; `DEC-019` superseded) |
+| the confined repos | **the caller's `targets` argument**, `<name> = {decl; flake}`, listed by hand (a consumer's `targets/`) | per target: path, tools package, caches, sizes; its name is its key. Its file and its tool-set flake are paired, so there is no second map to disagree (`DEC-018`, `DEC-042`; `DEC-019` and `DEC-025` superseded) |
+| rooms | **the caller's `rooms` argument** to `mkFleet` (`DEC-033`) | per room: declared users with their ssh public keys, and declared sizes (`vcpu`, `mem`, `volume`). No kind. Required, with no implicit default: a consumer with no rooms writes `rooms = {}` |
 | a probe's fabric | **the caller's `probe.fabric` argument** | every name, link, address and network a probe's egress fabric is built from |
 
 **And nothing has a default.** The four host programs take `--capsule <name>` or
@@ -43,9 +44,11 @@ the guest **image**, not a slot, and `microvm -c` will happily instantiate it
 (`RSK-005`).
 
 The probe fabric case is the sharpest, and it is **enforced rather than asked
-for**: `borrowed` (in `mkfleet.nix`), its intersection with what the caller's
-`fleet` declares, **throws at eval** in every caller's eval — the consumer's
-over the real slots, oubliette's over the fixture's. The reason it exists rather than a comment is `NOTES item 38` — a
+for**: `borrowed` (in `fabric.nix`), its intersection with what the caller's
+`fleet` and `rooms` declare, **throws at eval** in every caller's eval — the
+consumer's over the real slots, oubliette's over the fixture's — and `liveNames`
+includes each declared room's `room-<name>` namespace, so a probe may not borrow
+a room's namespace either. The reason it exists rather than a comment is `NOTES item 38` — a
 probe verified a shape *before* the shape was declared, and **became a borrower
 by standing still while the declaration moved onto it**, with no diff to notice.
 Its cleanup trap deletes `eg-rt`, the fleet's uplink, by name; only three

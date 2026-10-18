@@ -1,0 +1,29 @@
+schema = "doctrine.knowledge"
+version = 1
+
+id = 42
+slug = "mkfleet-has-nine-arguments"
+title = "mkFleet has nine arguments: DEC-025 restated with a required rooms"
+record_kind = "decision"
+status = "accepted"
+created = "2026-10-18"
+updated = "2026-10-18"
+tags = []
+
+[facet]                         # every field typed; seeded empty (captured later)
+context = "SL-005 PHASE-04 made rooms a required ninth mkFleet argument (DEC-033). DEC-025 (accepted) says eight arguments; this record restates it with nine so the accepted text matches the code. Originally: IMP-015/SL-004 moved the fleet declarations out of oubliette; RSK-004 needs the devshell and module CLIs from one evaluation."
+choice = "oubliette exports lib.mkFleet: the flake outputs body in one function of nine owner-grouped arguments — targets (each {decl; flake}); fleet (slots; addressing; volumeReserve); policies; net; flavour (extras; sources); access (adminKeys; stopKey; injections); probe; fleetPath; and rooms (required; no default; {} for none; shape per DEC-033). This breaks every caller including the consumer at /srv/fleet whose rooms = {}; edit is the user's change at the input bump. Oubliette's own outputs are mkFleet over a fixture; a consumer's are mkFleet over its host's values. Inside; each factory still receives only the fields it uses. (From DEC-025: grouped from eleven flat arguments; targets paired with their flakes; amended 2026-10-16 on the user's agreement.)"
+alternatives = ["separate builders per seam (images / module / programs / checks)", "host module takes declarations as data from ~/flakes", "rooms defaulted to {} (refused by DEC-033 and POL-003)"]
+rationale = """one call keeps the two CLI copies one store path (RSK-004) and moves the body with minimal text change so derivations can stay equal; sources replaces passing oubliette's whole inputs into every guest (research X6; NOTES item 26). rooms is required and undefaulted per POL-003 and DEC-033. User assent for acceptance, verbatim: "3. a) agreed b) agreed" (a = this successor to DEC-025; b = the POL-003 revision REV-004)."""
+consequences = ["oubliette's lock carries no target", "the builder argument list is the coupling surface and is reviewed as such", "every consumer plus the fixture and the template must pass rooms (the /srv/fleet edit is the user's)", "DEC-018/DEC-019 wording moves to the consumer at reconcile"]
+decided_by = 'user, on agent proposal (reply: "3. a) agreed b) agreed")'
+decided_on = "2026-10-18"
+
+[evidence]                      # free-text citations (supports / contradicts / notes)
+supports    = []
+contradicts = []
+notes       = []
+
+[relationships]                 # verb-written edges (set by doctrine supersede)
+supersedes    = ["DEC-025"]   # record ids this one replaces (set by doctrine supersede)
+superseded_by = []   # set on superseded predecessor (verb-written)

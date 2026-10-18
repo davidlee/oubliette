@@ -7,7 +7,7 @@ title = "One lib.mkFleet call emits every fleet output, and takes declarations a
 record_kind = "decision"
 status = "accepted"
 created = "2026-10-16"
-updated = "2026-10-16"
+updated = "2026-10-18"
 tags = []
 
 [facet]                         # every field typed; seeded empty (captured later)
@@ -26,7 +26,7 @@ notes       = []
 
 [relationships]                 # verb-written edges (set by doctrine supersede)
 supersedes    = ["DEC-019"]   # record ids this one replaces (set by doctrine supersede)
-superseded_by = []   # set on superseded predecessor (verb-written)
+superseded_by = ["DEC-042"]   # set on superseded predecessor (verb-written)
 
 [[relation]]
 label = "shapes"

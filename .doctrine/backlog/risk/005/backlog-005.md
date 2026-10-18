@@ -12,6 +12,10 @@ What guards it: `capsule` and `just up` refuse the name because it is not
 declared (`NOTES item 28`). **Nothing else.** The refusal is in the front end, and
 `microvm` is upstream of the front end.
 
+One resolvable attr per declared room, each with a drop-in that supplies its
+namespace: `microvm -c <room>` resolves a `nixosConfigurations` attr as a slot
+does, so the risk widens only by declared names (SL-005, `REV-004`).
+
 Severity is the reason this is tracked rather than filed: every other item here
 is about evidence, and this one is about the perimeter. It is a hole reachable by
 a plausible typo from a root shell.
