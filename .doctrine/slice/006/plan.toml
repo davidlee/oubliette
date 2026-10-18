@@ -92,7 +92,7 @@ name      = "The room guest holds a work volume, one clone per repo and a generi
 objective = """
 Design sec-3, sec-7's fixture. `roomVms` passes `targetFlakes`; `vm/room.nix`,
 when the record has repos: `room-work.img` at `/work` sized `sizes.work`;
-`room-seed` per repo (`install -d` then `git init --initial-branch=<workBranch>`
+`room-seed` per repo (`workBranch` is already in `mkVm`'s `specialArgs`; `install -d` then `git init --initial-branch=<workBranch>`
 as `repos.user` when `.git` is absent, nothing else); `git` in
 `systemPackages`; the `/etc/room/repo/<repo>/{clone,tools}` links
 (`environment.etc`; `tools` only for a non-null `toolsPackage`, never in
@@ -170,13 +170,16 @@ room's `known_hosts`. A repo-less room refuses `push` and `collect` by name
 ("declares no repos"). The room `ssh` door moves onto the room's store and
 alias (`accept-new`, `room-<r>`), so the front end, both channel verbs and
 satan's runner share one file and a changed key is refused everywhere at once.
+The readiness probe (`answers`, `doorVia`'s `probe` mode) keeps its
+`StrictHostKeyChecking=no` and `/dev/null` store: it carries no trust, and a
+key failure there would read as "room down", which `DEC-050` exists to prevent.
 Live rooms learn their key afresh on first contact after the rebuild."""
 entrance_criteria = [
   { id = "EN-1", text = "PHASE-04 complete" },
 ]
 exit_criteria = [
   { id = "EX-1", text = "`roomVerbsCases` pins: `push`/`collect` resolve and exec with the record's values (argv printed by a stub); a repo the room lacks → 2; a repo-less room refuses both by name; `forget-host-key` empties the room's file; the room `ssh` argv carries `accept-new`, `HostKeyAlias=room-<r>` and the room's file" },
-  { id = "EX-2", text = "every other room verb refuses as before; `status` unchanged; slot verbs unchanged (`roomVerbsCases`, `gitChannelCases` green)" },
+  { id = "EX-2", text = "every other room verb refuses as before; `status` unchanged; the probe door's argv unchanged; slot verbs unchanged (`roomVerbsCases`, `gitChannelCases` green)" },
   { id = "EX-3", text = "mutation: dropping the repo-membership check turns its case red; observed and reverted" },
 ]
 verification = [

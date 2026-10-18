@@ -68,6 +68,11 @@ rebuild in `~/flakes`.
 - **SL-005's constraint is met.** PHASE-09 (the door, `a07094d`) and PHASE-10
   (`a22f882`) are committed, so implementation can start at PHASE-01 and the
   live rung has its door.
+- **The `--atomic` case was checked before it was planned.** Against git
+  2.55 with two refspecs and a `.lock` on one destination, `--atomic` moved no
+  ref and the same fetch without it moved the other. The case discriminates.
+- **The probe door is not a trust door.** PHASE-05 leaves the readiness probe
+  unchecked: a key failure there would report a trust problem as downtime.
 - **`DEC-044` stays provisional.** No phase adds a fleet extra to a room. If
   the live rung shows a repo needs one, that calls for a successor decision,
   not a flag.
