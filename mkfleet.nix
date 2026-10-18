@@ -78,8 +78,16 @@
   # slot names, which a room may not take. Not called `rooms`: that is the
   # declaration, and this is what it decides — bound whole for the host module,
   # which takes it as rooms.nix returns it, and its records once for the rest.
+  # `fragmentNames` is the vocabulary's names, read only for a room that
+  # declares extras.
   roomDecision = import ./rooms.nix {inherit lib;} {
     inherit rooms targets policies;
+    fragmentNames =
+      lib.attrNames
+      (import ./fragments.nix {
+        inherit pkgs;
+        inherit (flavour) sources;
+      }).vocabulary;
     slotNames = lib.attrNames fleet.slots;
   };
   roomRecords = roomDecision.instances;

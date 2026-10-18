@@ -1,6 +1,7 @@
 # What a room declaration decides — SL-005 design sec-2, DEC-038; SL-006 design
 # sec-2, DEC-048 (a room's repos, policy and work volume) and DEC-046 (its
-# policy is one the fleet declares).
+# policy is one the fleet declares); SL-007 design sec-2, DEC-052 (a room's
+# extras are names from the fragment vocabulary).
 #
 # The subject is a *library*, not a program: `rooms.nix` is the function its one
 # caller (mkfleet.nix) applies, and this suite applies the same function to
@@ -10,7 +11,7 @@
 # **Handed a fixture, and it says so**: `slotNames`, the keys and the sizes below
 # are invented, and so are the `targets` (built by the real derivation,
 # targets/default.nix, so a record's `guestPath` is checked against it and not
-# against a second spelling) and the `policies`. The awkward target names
+# against a second spelling), the `policies` and the `fragmentNames`. The awkward target names
 # (`foo+bar`, `.`, `..`) are *declared*, so a grammar case is refused for its
 # grammar and for no other reason.
 #
@@ -40,11 +41,15 @@
   slotNames = ["s1" "s2"];
   targets = targetsOf (lib.genAttrs ["a" "b" "foo+bar" "." ".."] (_: {caches = {};}));
   policies = {everything = ["open" "shut"];};
-  with' = decls:
+  # A fragment vocabulary nobody's: the names are invented, not fragments.nix'.
+  fragmentNames = ["search" "editor"];
+  withVocabulary = names: decls:
     apply {
       rooms = decls;
+      fragmentNames = names;
       inherit slotNames targets policies;
     };
+  with' = withVocabulary fragmentNames;
 
   key = "ssh-ed25519 AAAA fixture";
   sizes = {
@@ -124,6 +129,9 @@
   # One room, `assistant`, refused by DEC-048 or DEC-046.
   repoRefused = title: room: needles: refusedUnder "DEC-048" title (with' {assistant = room;}) "repos" needles;
   repoOf = with' {assistant = withRepos {};};
+  # One room, `assistant`, refused by DEC-052.
+  extrasRefused = title: room: needles: refusedUnder "DEC-052" title (with' {assistant = room;}) "extras" needles;
+  withExtras = extras: (withUsers {agent = as 1001;}) // {inherit extras;};
 in
   pkgs.runCommand "rooms-cases" {} ''
     fail=0
@@ -202,6 +210,7 @@ in
         inherit sizes;
         repos = null;
         policy = null;
+        extras = [];
       })}
     ck "  with a namespace of its own" room-assistant ${good.instances.assistant.ns}
     ck "  no uplink" true ${lib.boolToString (good.instances.assistant.uplink == null)}
@@ -346,6 +355,63 @@ in
       ck "a repo room beside a repo-less room evaluates" false ${verdict d.instances}
       ck "  the repo-less record has no repos" true ${lib.boolToString (d.instances.lounge.repos == null)}
       ck "  and no policy" true ${lib.boolToString (d.instances.lounge.policy == null)}
+    ''}
+
+    # 18. extras is a list of strings, and a malformed one is its one reason,
+    # never a type-error abort (tryEval would not catch one).
+    ${extrasRefused "extras as a bare string throws" (withExtras "search") ["assistant" "not a list of fragment names"]}
+    ${extrasRefused "an extra that is not a string is a reason, not an abort" (withExtras [1]) ["assistant" "not a list of fragment names"]}
+
+    # 19. A name outside the vocabulary: the offender is named, and so is the
+    # vocabulary. The valid name beside it is not an offender; the bare name is
+    # in the vocabulary list, so the offender form is what is read.
+    ${let
+      d = with' {assistant = withExtras ["search" "nope"];};
+      r = lib.escapeShellArg (reason d.reasons.extras);
+    in ''
+      ${extrasRefused "a name outside the vocabulary throws" (withExtras ["search" "nope"]) ["assistant (\"nope\")" "search" "editor" "not in the vocabulary"]}
+      case ${r} in
+        *'assistant ("search")'*) echo "FAIL the valid name is not an offender" >&2; fail=1 ;;
+        *) echo "ok     the valid name is not an offender" >>"$log" ;;
+      esac
+    ''}
+
+    # 20. Absent: no extras is the empty list, and nothing to say.
+    ck "a room declaring no extras has []" true \
+      ${lib.boolToString (good.instances.assistant.extras == [] && repoOf.instances.assistant.extras == [])}
+    ck "  and no reason to refuse its extras" "" ${lib.escapeShellArg (reason good.reasons.extras + reason repoOf.reasons.extras)}
+
+    # 21. Declared: carried through in the declared order, on either kind of room.
+    ${let
+      d = with' {
+        assistant = withRepos {extras = ["editor" "search"];};
+        lounge = withExtras ["editor" "search"];
+      };
+    in ''
+      ck "rooms declaring extras from the vocabulary evaluate" false ${verdict d.instances}
+      ck "  with no reason to refuse them" "" ${lib.escapeShellArg (reason d.reasons.extras)}
+      ck "  a repo room's record carries them in order" "editor search" ${lib.escapeShellArg (toString d.instances.assistant.extras)}
+      ck "  and so does a repo-less room's" "editor search" ${lib.escapeShellArg (toString d.instances.lounge.extras)}
+    ''}
+
+    # 22. As with policy, nothing forces the vocabulary for a room with no extras.
+    ck "rooms without extras never force fragmentNames" false \
+      ${verdict (withVocabulary (throw "fragmentNames forced") {assistant = withRepos {};}).instances}
+    ck "  of either kind" false \
+      ${verdict (withVocabulary (throw "fragmentNames forced") {assistant = withUsers {agent = as 1001;};}).instances}
+
+    # 23. Independent of policy: both are reported.
+    ${let
+      d = with' {
+        assistant = withRepos {
+          policy = "nope";
+          extras = ["gone"];
+        };
+      };
+    in ''
+      ck "a bad policy and an unknown extra both throw" true ${verdict d.instances}
+      has "  the policy is still reported" nope ${lib.escapeShellArg (reason d.reasons.policy)}
+      has "  and so is the extra" 'assistant ("gone")' ${lib.escapeShellArg (reason d.reasons.extras)}
     ''}
 
     cat "$log"

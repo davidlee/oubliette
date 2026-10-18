@@ -131,3 +131,56 @@ units); zero FAIL lines.
   the user's. Case (2) proves the text, case (1) runs the shared text in a probe.
 - No suite runs the shipped `capsule-refresh`/`-brief`/`-baseline` programs
   (research Thread 2, unchanged).
+
+## PHASE-02
+
+### What landed
+- `rooms.nix`: `fragmentNames` in the second argument set (no default, POL-003);
+  `extrasShaped`/`extraPairs` beside `reposShaped` (shape before content, so a
+  non-list or `[1]` is its one reason, never a type-error abort);
+  `reasons.extras` (DEC-052: "extras not a list of fragment names", "not in the
+  vocabulary (<names>)"; the vocabulary sits only inside the clause's `what`, so
+  it stays lazy); record `extras = decl.extras or []`; `instances` throws
+  `reasons.extras` after `policy`; header updated.
+- `mkfleet.nix` `roomDecision`: `fragmentNames = attrNames (import ./fragments.nix
+  {inherit pkgs; inherit (flavour) sources;}).vocabulary` (names only).
+- Five fixture appliers: `rooms-cases.nix` (invented `["search" "editor"]`, via a
+  `withVocabulary` applier that `with'` is a partial application of), and
+  `fabric-cases.nix`, `host/guard-cases.nix`, `host/netns-cases.nix`,
+  `host/room-verbs-cases.nix` pass `fragmentNames = [];`.
+- `roomsCases` cases 18-23: not-a-list and `[1]`; unknown name (offender,
+  vocabulary, and `assistant ("search")` absent); absent -> `[]` on both kinds of
+  room, exact-record literal gained only `extras = [];`; declared -> carried in
+  order; `fragmentNames = throw` never forced (Q1 ruling, both kinds of room);
+  independence from policy.
+
+### T1 red
+With `fragmentNames` accepted but `reasons.extras = null` and the record field
+present, 15 FAIL lines: both not-a-list cases, the unknown-name case, each with
+its needles, and case 23's extra. (Before the record field existed the suite
+aborted at eval: `attribute 'extras' missing`, no FAIL lines.)
+
+### EX-3 mutation
+Mutant: deleted the `else if !(isNull reasons.extras) then throw reasons.extras`
+branch from `instances`. `nix build '.#roomsCases'`:
+```
+FAIL extras as a bare string throws: got 'false', wanted 'true'
+FAIL an extra that is not a string is a reason, not an abort: got 'false', wanted 'true'
+FAIL a name outside the vocabulary throws: got 'false', wanted 'true'
+```
+No eval error. The reason-needle checks stayed green (they read `reasons`, not
+`instances`), and case 23's verdict stays true because the policy throws first.
+Restored from scratchpad copy, `cmp` identical; `just` green.
+
+### Choices
+A1-A5 as the sheet. Q1: case 22 included. Q2: single-suite build used to read
+FAIL lines. Q3: no extra `nix eval`; the exact-record literal differing only by
+`extras = []`, and unchanged verdicts elsewhere, is the EX-4 evidence.
+
+### Verify
+`just check` rc 0; `just` rc 0, zero FAIL lines.
+
+### Not exercised
+- Nothing renders `extras` (PHASE-03); no image changed.
+- `/srv/fleet` declares no extras, so the binding's laziness against the
+  consumer is pinned by case 22 only, not observed.

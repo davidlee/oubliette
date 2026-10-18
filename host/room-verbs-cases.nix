@@ -90,13 +90,15 @@
         })
       decl;
       # Targets and a policy vocabulary that are nobody's, for the one room
-      # with repos — passed, never defaulted (POL-003). Only `guestPath` and
+      # with repos, and an empty fragment vocabulary, for rooms with no extras
+      # — passed, never defaulted (POL-003). Only `guestPath` and
       # `everything` are read.
       targets.byName = {
         alpha.guestPath = "/work/alpha";
         beta.guestPath = "/work/beta";
       };
       policies.everything = ["build"];
+      fragmentNames = [];
       slotNames = builtins.attrNames fixture.instances;
     }).instances;
   renderRecords = records:

@@ -3,8 +3,9 @@
 #
 # Pure: no host values. mkfleet.nix applies it once, to the declared `rooms`, the
 # slot names, the *derived* `targets` (targets/default.nix: only
-# `.byName.<n>.guestPath` is read) and the `policies` vocabulary (only
-# `.everything` is read), and is the one binding site; every other applier —
+# `.byName.<n>.guestPath` is read), the `policies` vocabulary (only
+# `.everything` is read) and the `fragmentNames` (the names of fragments.nix'
+# vocabulary: only their membership is read), and is the one binding site; every other applier —
 # rooms-cases.nix and the four suites that build a room — passes declared
 # fixtures (POL-003). A room is a guest that is not a slot: its record mirrors a slot's
 # (`name`, `ns`, `socket`, `uplink`) so the programs that take a guest take
@@ -24,6 +25,12 @@
 # (POL-003). `policy` names one of `policies.everything` (DEC-046). A room
 # without them is as it was, and its reasons and record never force `targets`
 # or `policies`: the absent path costs nothing and needs nothing (POL-002).
+#
+# Any room may also declare `extras`, a list of names from the fragment
+# vocabulary (DEC-052): the operator's tools for that room beyond its targets'.
+# Nothing here learns what a fragment is; a name is checked against
+# `fragmentNames` and carried through. A room without extras never forces
+# `fragmentNames`, as it never forces `targets` or `policies`.
 #
 # Rooms and slots share one unit-name space (`capsule-netns-<n>`, `microvm@<n>`)
 # and one `nixosConfigurations` space, which is why a room may not take a slot's
@@ -46,6 +53,7 @@
   slotNames,
   targets,
   policies,
+  fragmentNames,
 }: let
   inherit (builtins) attrNames concatStringsSep isAttrs isInt isList isNull isString mapAttrs match stringLength toJSON;
 
@@ -124,6 +132,13 @@
     repoRooms;
   repoNamed = p: "${p.r}/${p.t}";
 
+  # As for repos: a room's extras are checked for shape before their content.
+  extrasShaped = r: isList rooms.${r}.extras && lib.all isString rooms.${r}.extras;
+  extraPairs =
+    lib.concatMap
+    (r: map (n: {inherit r n;}) rooms.${r}.extras)
+    (lib.filter (r: rooms.${r} ? extras && extrasShaped r) roomNames);
+
   reasons = {
     names =
       refusal "DEC-038" "a room's name is its unit name, so it must be unique and unit-safe"
@@ -159,6 +174,12 @@
       (
         clause "not in policies.everything" (map (r: "${r} (${toJSON rooms.${r}.policy})") (lib.filter (r: rooms.${r} ? policy && !(builtins.elem rooms.${r}.policy policies.everything)) roomNames))
       );
+    extras =
+      refusal "DEC-052" "a room's extras are names from the fragment vocabulary"
+      (
+        clause "extras not a list of fragment names" (lib.filter (r: rooms.${r} ? extras && !extrasShaped r) roomNames)
+        ++ clause "not in the vocabulary (${concatStringsSep ", " fragmentNames})" (map (p: "${p.r} (${toJSON p.n})") (lib.filter (p: !(builtins.elem p.n fragmentNames)) extraPairs))
+      );
   };
 
   socketOf = name: "/run/capsule-room/${name}/ssh.sock";
@@ -185,6 +206,7 @@
       }
       else null;
     policy = decl.policy or null;
+    extras = decl.extras or [];
   };
 in {
   inherit reasons socketOf stateRootOf stateDirOf;
@@ -197,5 +219,7 @@ in {
     then throw reasons.repos
     else if !(isNull reasons.policy)
     then throw reasons.policy
+    else if !(isNull reasons.extras)
+    then throw reasons.extras
     else mapAttrs recordOf rooms;
 }

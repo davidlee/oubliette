@@ -63,10 +63,11 @@
         };
         sizes = {};
       };
-      # This suite's rooms declare no repos, so it declares no targets or policies
-      # for them — passed, never defaulted (POL-003).
+      # This suite's rooms declare no repos, so it declares no targets, policies or
+      # vocabulary for them — passed, never defaulted (POL-003).
       targets = {byName = {};};
       policies = {everything = [];};
+      fragmentNames = [];
       slotNames = ["s1"];
     }).instances;
 
