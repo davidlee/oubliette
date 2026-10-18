@@ -1,0 +1,46 @@
+memory_uid = "mem_01a14ea0687776528adad193ed23a905"
+memory_key = "mem.fact.oubliette.probe-built-from-consumer-needs-host-nixpkgs"
+schema_version = 1
+memory_type = "fact"
+status = "active"
+title = "A probe built straight from the consumer can fail to open a PAM session"
+summary = "nix build /srv/fleet#probe-* uses the consumer's nixpkgs; if that lags the system's, runuser cannot load the host's PAM modules: 'cannot open session: Module is unknown'"
+created = "2026-10-18"
+updated = "2026-10-18"
+
+[scope]
+paths = []
+globs = ["probe/*.sh"]
+commands = ["nix build /srv/fleet#probe-"]
+tags = ["gotcha"]
+workspace = "default"
+repo = "github.com/davidlee/oubliette"
+repo_id_kind = "remote"
+repo_id_confidence = "high"
+
+[git]
+anchor_kind = "commit"
+commit = "419997bccce6676b084e77b83283375dd0708315"
+tree = "32f36278f94256039a90aa8cdb07bfdfb33ca038"
+ref_name = "refs/heads/main"
+checkout_state_id = ""
+base_commit = "419997bccce6676b084e77b83283375dd0708315"
+verified_sha = ""
+normalizer = ""
+
+[review]
+verification_state = "unverified"
+reviewed = ""
+review_by = ""
+
+[trust]
+trust_level = "high"
+
+[ranking]
+severity = "medium"
+weight = 0
+
+[[source]]
+kind = "slice"
+ref = "SL-005"
+
