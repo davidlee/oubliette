@@ -86,7 +86,7 @@ in
     export PATH=$PWD/stub:$PATH NIX_LOG=$PWD/nixlog RUNNER=$PWD/runner RUN_LOG=$PWD/runlog
 
     # A VMM as the process table sees one: every capsule image is hostName
-    # `capsule` (DEC-020), so its runner is `microvm@capsule` whatever slot it
+    # `capsule` (DEC-032), so its runner is `microvm@capsule` whatever slot it
     # serves. The sandbox has its own netns, and this process is in it, so
     # `own_vms` finds it with nothing stubbed — which is the point of the case:
     # the lookup is the shipped one.

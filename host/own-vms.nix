@@ -4,7 +4,7 @@
 #
 # **Keyed by process name, never by slot name.** A runner is
 # `exec -a microvm@<hostName>`, and every capsule image is hostName `capsule`
-# (DEC-020), so a slot's name is never in the process table. `vm-stop` used to
+# (DEC-032), so a slot's or room's name is never in the process table. `vm-stop` used to
 # grep `microvm@$name`, which found slot `c` only because `c` is a prefix of
 # `capsule` — and told every other slot it was down over a running VMM
 # (ISS-016). `vmmOf` is that mapping, and `capsuleNames` is its one input: the

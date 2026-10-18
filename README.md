@@ -482,6 +482,37 @@ nobody runs. Then `just verify`, `just fetch`, `just branches`,
 `just --list` for the rest. Addresses come from the consumer's `net` and target paths from
 the target's file in its `targets/`, never a literal.
 
+## Rooms
+
+A room is a shared guest that is not a capsule: no target, no assignment, and
+no uplink, proxy or route out (`DEC-036`; [Plan E](docs/plan-e-room.md),
+[Plan F](docs/plan-f-assistant.md)). It is declared in `mkFleet`'s `rooms`
+argument (`rooms = {}` for none) with its sizes and its users, each user
+`{ uid; keys; }`. The uid is declared, in 1000-29999, so adding an earlier name
+never re-owns `/home` (`RSK-012`). The module owns no toolchain or agent names
+(`POL-002`); a room's contents are the caller's values.
+
+```
+capsule <room> ssh [user] [-- cmd]
+capsule <room> start
+capsule <room> stop
+```
+
+A room is named on argv and never resolved implicitly. Every other verb
+refuses it: `capsule: '<room>' is a room; rooms take ssh, start, stop (status
+lists them)`. `ssh` with no user named on a room that declares several refuses
+and asks for one; on a room that is not up it says
+`capsule: no socket at <path>, so room '<room>' is not up.`. A stop is a
+reboot through the stop key, so it cuts in-flight work.
+
+`capsule status` ends with a `rooms:` block (`room`, `vm`, `socket` columns)
+whenever the host declares any. A running room makes a probe refuse (`DEC-031`).
+
+The door is a per-room unix socket, `/run/capsule-room/<room>/ssh.sock`, mode
+`0600`, owned by the module's owner and present only while the room's tap is.
+A client runs as that owner and reaches the guest by `ProxyCommand` as a
+declared user (`DEC-037`).
+
 ## Moving one capsule's work to another slot
 
 Run once, c→d, 2026-08-16 — every step is a built verb, none of it is

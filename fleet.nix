@@ -5,7 +5,7 @@
 # it to a stub `mkVm` and fixtures. This is also what IMP-015's exported builder
 # grows from, so it is named for the fleet rather than for this host.
 #
-# One image per declared target, every one hostName `capsule` (DEC-020): the
+# One image per declared target, every one hostName `capsule` (DEC-032): the
 # hostname is in the closure and is the process name `microvm@capsule`, so
 # keeping it one word keeps "a VMM is identified by its namespace, never by its
 # name" the only rule anything relies on. A slot boots the image its profile

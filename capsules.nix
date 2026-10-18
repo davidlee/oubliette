@@ -105,7 +105,7 @@ let
 
   # Where a capsule's way in lives. Its identity is its namespace and this
   # socket, never the VMM's name — every image is hostName `capsule`, so every VMM is
-  # `microvm@capsule` whichever target it runs (fleet.nix, DEC-020). Exposed as a function because a probe's throwaway capsule is not
+  # `microvm@capsule` whichever target it runs (fleet.nix, DEC-032). Exposed as a function because a probe's throwaway capsule is not
   # an instance and must not invent a second convention for the same path.
   socketOf = name: "/run/capsule/${name}/ssh.sock";
 

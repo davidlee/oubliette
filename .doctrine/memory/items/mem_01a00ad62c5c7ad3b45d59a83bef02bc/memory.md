@@ -7,7 +7,7 @@ bare template: root namespace, no tap, EPERM, restarting every 5 s.
 Nix will happily generate it and only a load says otherwise.
 
 **Everything else looked fine** — both proxies and relays active, both sockets
-present, `capsule-perimeter-guard: 2 capsule namespace(s) verified` — because
+present, `capsule-perimeter-guard: 2 of 2 declared guest namespace(s) verified` — because
 none of them can see inside a VMM's unit. The one witness is
 `journalctl -u microvm@<name>`, and the confirmation is
 `systemctl show microvm@<name> -P NetworkNamespacePath -P Restart`.

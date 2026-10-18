@@ -7,7 +7,7 @@ status = "active"
 title = "A newline in a unit directive silently deletes the rest of the drop-in"
 summary = "systemd reads it as unbalanced quoting and does not reliably resume; everything else looks fine and the one witness is journalctl."
 created = "2026-08-16"
-updated = "2026-08-16"
+updated = "2026-10-18"
 
 [scope]
 paths = ["host/services.nix"]

@@ -96,3 +96,61 @@ fresh-as-of: 2026-10-18 · plan authored, slice ready, no phase started · 0d261
 - DEC-025 successor + POL-003 revision need the user's assent (PHASE-04/EX-5); POL-004 revision likewise (PHASE-08/EX-2)
 - satan relay (PHASE-08/EX-3), the user's to send; ISS-021 named in it
 - PHASE-09 live run is the user's, as root
+
+## PHASE-08: docs footprint
+
+### Blame-ignore (T10)
+No `.git-blame-ignore-revs` entry for 57e28ad. `git show --stat` is 2686+/2357-
+(host/cli.nix reindent), but `git show -w --stat` is 368+/39-: the reindent and the
+room-verb logic share one commit, so ignoring it would attribute the room verbs to
+the previous author. A future reindent-only commit is the thing to ignore.
+
+### Drift: REV-A and REV-B not drafted
+`doctrine revision new` failed twice (both titles) with:
+`Error: reach=auto: reservation remote origin unreachable and local fallback declined. Set [reservation] allow-local-fallback=true or DOCTRINE_RESERVATION_FALLBACK=1 to allocate locally.`
+caused by `git fetch origin +refs/doctrine/reservation/*: git@github.com: Permission denied (publickey)`.
+No revision was created. EX-2 stays open until the orchestrator re-runs T1/T2
+(POL-004 has assent "4. agree"; POL-003's `{ uid; keys; }` row has none yet, so
+POL-003 stays stale on room users until the user agrees).
+
+### Other notes
+- `docs/probes.md`: only a guard line is :1080 ("2 of 10 declared"), already the
+  new form and measured evidence; no change.
+- `doctrine revision list` returns no rows although REV-004 exists (friction).
+- `CLAUDE.md` "one list for the fleet today" (extras) left alone: `vm/room.nix` takes no extras.
+
+## Relay to satan (for the user to send)
+
+To `satan:IDE-007` / satan SL-023, from oubliette SL-005 (design sec-6):
+1. ASM-005 can settle: the door is a unix socket (`/run/capsule-room/<room>/ssh.sock`),
+   login `agent@<net.guest>` through `ProxyCommand`, with `HostKeyAlias` and strict
+   host-key checking (host keys are stable for the volume's life). DEC-037.
+2. `guest_path` is the target's `guestPath`, not runner config. The room's git
+   channel is a follow-on slice (ISS-021).
+3. Promotion is a plain `git fetch` from `/var/lib/capsule/collect/<room>/<target>.git`,
+   with no land verb (DEC-040, satan DEC-061). IDE-007's "fetch straight into
+   `refs/remotes/satan/*`" should change (oubliette plan-f §4 already says so).
+4. The runner must run as the module owner: the socket is mode 0600.
+5. A stop is a reboot through the stop key that cuts in-flight work, not a graceful stop.
+6. A room user is `{ uid; keys; }` with a declared uid in 1000-29999 (RSK-012, a22f882),
+   so a satan room declaration must carry a uid per user.
+
+## EX-1 checklist (sec-10)
+
+| sec-10 row | landed |
+|---|---|
+| DEC-025 -> nine arguments (DEC-042) | 33dafaf |
+| POL-003 rooms axis + `borrowed` | 33dafaf (REV-004). REV-B (`{ uid; keys; }`, a22f882 drift): NOT drafted, see drift above |
+| POL-004 rationale | REV-A: NOT drafted (reservation error); CLAUDE.md:28-31 aligned in the PHASE-08 commit |
+| CON-005 scope note | ed1a4e3 |
+| RSK-005 | 33dafaf |
+| docs/contract-assignment.md noun table | ed1a4e3, a22f882 |
+| docs/contract-target.md | untouched by design |
+| docs/plan-e-room.md | PHASE-08 commit |
+| docs/plan-f-assistant.md | PHASE-08 commit |
+| CLAUDE.md case list `netnsCases` | 2b7709f |
+| CLAUDE.md case list `roomsCases` | 9d6f69b |
+| CLAUDE.md `DEC-032` | 9a76496 |
+| NOTES item 18 | untouched by design |
+| "no bridge, no LAN exposure" | untouched by design |
+| satan relay | PHASE-08 commit (above) |

@@ -27,10 +27,11 @@ every measured figure, so link to it rather than copying a number out.
 Plans are scoping, not commitments: `plan-b-other-jails.md` is the
 non-firecracker shapes, `plan-c-multi-capsule.md` is what N capsules on one host
 would cost, `plan-e-room.md` is a guest that is **not** a capsule — several
-people ssh'd into one shared box — and is the first test of whether the
-machinery underneath is separable from the product, and `plan-f-assistant.md` is
-its second caller — one persistent agent over many repos, a room rather than a
-slot. Do not put present-tense
+people ssh'd into one shared box — and `plan-f-assistant.md` is one
+persistent agent over many repos, a room rather than a slot. Those two rooms
+(SL-005) proved that one `capsule-netns`, one unit set and one guard serve
+slots and rooms; they did not prove the room module separable, since the two
+fixture rooms differ only in values (`POL-004`). Do not put present-tense
 state in a plan; that is a backlog or knowledge record's job.
 
 ## Working here
@@ -202,9 +203,9 @@ the first time one is edited. Same rule, same file, for **the egress fabric** �
 in a namespace and ask the guest to get out.
 
 **A VMM is identified by its namespace, never by its name.** There is one image
-per target, and every slot bound to a target runs that image's runner from one
-store path (`fleet.nix`). Every image is hostName `capsule` (`DEC-032`), so every
-VMM, whichever target, is `microvm@capsule` in the process table: `pkill -f` on that name is a
+per target and one per declared room, and every slot bound to a target runs that
+target's runner from one store path (`fleet.nix`). Every image, slot or room, is
+hostName `capsule` (`DEC-032`), so every VMM, whichever target, is `microvm@capsule` in the process table: `pkill -f` on that name is a
 power cut for the siblings, and it reads as a clean teardown while doing it.
 `vm_running`, `wait_vm` and `halt_guest` all take a namespace and scope
 themselves with `ip netns pids`; the unscoped question survives as

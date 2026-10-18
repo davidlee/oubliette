@@ -21,7 +21,10 @@ follows from refusing to make it a slot.
 
 ## Where this stands
 
-Nothing is built. Where the *work* is up to is `doctrine backlog list`; figures
+[SL-005](../.doctrine/slice/005/design.md) (`doctrine show SL-005`) took
+§1–2 and the door: a room is a guest record with no uplink (`DEC-036`), the
+uplink is all-or-nothing (`DEC-035`), and the door is a per-room unix-socket
+relay (`DEC-037`). Tailnet ingress and the furniture stay open. Where the *work* is up to is `doctrine backlog list`; figures
 are [probes.md](./probes.md); the reasoning this leans on is in the
 [ledger](./ledger/index.md), chiefly items 18, 28, 32, 37 and 38.
 
@@ -240,14 +243,15 @@ whether `vm-stop`'s branch learns about it or whether a hard kill is accepted.
 
 ## What it touches
 
+What the first cut touched is SL-005's design, "Code impact" (`doctrine show
+SL-005`), and not a guess made here. There is no new address: the room uses
+the one `net` declares. What Plan E still needs:
+
 | file | what |
 | --- | --- |
-| `vm/room.nix` | new — users and keys, sshd, limits, home on a volume or not, motd. Most of the work, and it is ordinary NixOS. |
-| `flake.nix` | one line in `vms`; the `vm-stop` branch if a graceful halt is wanted |
-| `rooms.nix` | new, tiny — namespace name and drop port, with the disjointness assert |
-| `host/netns.nix` | uplink block conditional on empty environment variables |
-| `host/room.nix` | new — netns unit, tap unit, `.socket` plus `.service` |
+| a tailnet `.socket` forwarder | the same relay, reached from the tailnet rather than a unix socket (`DEC-037` is the unix-socket case only) |
 | `~/flakes` | the port, on the tailscale interface only |
+| furniture | motd, limits, anything a shared box wants that a bare room does not |
 
 The room's units belong **inside the existing NixOS module** rather than beside
 it: that is what gives them the newline check, the bind-versus-user pairing and

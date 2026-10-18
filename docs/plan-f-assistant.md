@@ -59,11 +59,13 @@ flake and `lib.mkFleet` exist, so the room's declarations have a place to go.
 
 ### 1. The namespace is Plan E's, with no uplink
 
-[Plan E](./plan-e-room.md) §1–2 apply unchanged: `capsule-netns` learns that a
-namespace may have no uplink (an absence, not a kind), and the room's namespace
-name is declared and asserted disjoint from `capsules.nix` the way
-`probeFabric`/`borrowed` is. Building both rooms on one change is the point —
-two callers is what shows the seam is in the right place.
+[Plan E](./plan-e-room.md) §1–2 apply unchanged, and SL-005 built them
+(`doctrine show SL-005`): `capsule-netns` learns that a namespace may have no
+uplink (an absence, not a kind; `DEC-036`), and the room's namespace name is
+declared and asserted disjoint from `capsules.nix` the way
+`probeFabric`/`borrowed` is. Two callers has shown the seam between slot and
+room is in the right place. It has not shown the room module separable: that
+meets a second shape at §3–4 here or at Plan E's tailnet ingress (`POL-004`).
 
 **Default egress is none.** No proxy, no allowlist, no route; the model path
 below is not egress, it is a door. Open: whether any repo's build fetches at
@@ -135,23 +137,27 @@ guest clone and fetches proposals out. **Fetches land in a per-repo quarantine
 repository, not in the real repo**, for the reasons the capsule's channel does
 it (NOTES item 34, `RSK-006`): guest-authored packs are attacker-shaped, and
 the size bound covers one packfile, not the transfer. Promotion into the real
-repo is the human's step. This differs from `satan:IDE-007`'s "fetch straight into
+repo is the human's step.
+The layout is pinned by `DEC-040` and not built: one bare repo per room and
+repo at `/var/lib/capsule/collect/<room>/<target>.git`, promotion a plain
+`git fetch` from it, no land verb. The guest clone is the target's `guestPath`. This differs from `satan:IDE-007`'s "fetch straight into
 `refs/remotes/satan/*`, no ref policy needed"; that record should change, not
 this one.
 
 `host/git-channel.nix` takes injected fragments (`POL-004`), so the intent is
-one instance per repo rather than a second channel. To check before designing:
-whether its profile-document shape takes a room's repo without learning what a
-room is, or whether its programs assume a slot behind the transport.
+one instance per repo rather than a second channel, given a room transport
+fragment over the room's socket. That build is a follow-on slice (`ISS-021`).
 
 ### 5. Ingress: the runner ssh's in, and lives elsewhere
 
 Scheduling, the queue, prompt composition and result classification are
 satan's (`satan:IDE-007`). Oubliette's part is a door: a non-root agent user whose
 key is the runner's, reached through a relay like the capsule's — but not *the*
-capsule relay socket, whose existence selects a transport (Plan E). Whether the
-runner is on this host (a unix-socket relay) or on the tailnet (Plan E's
-`.socket` forwarder) decides which; the first is the expected case.
+capsule relay socket, whose existence selects a transport (Plan E). The door is
+`DEC-037`: a unix-socket relay per room, reached by `ProxyCommand` as a
+declared user, and the runner must run as the module owner (the socket is mode
+0600). A runner on the tailnet instead would use Plan E's `.socket` forwarder,
+which is not built; the unix socket is the expected case.
 
 ### 6. Persistence is a volume, stated
 
