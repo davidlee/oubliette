@@ -252,6 +252,7 @@ revision with the user's assent. The relay to `satan:IDE-007` / satan's
 SL-023 is drafted for the user to send; nothing is written into satan."""
 entrance_criteria = [
   { id = "EN-1", text = "PHASE-07 complete" },
+  { id = "EN-2", text = "PHASE-10 complete" },
 ]
 exit_criteria = [
   { id = "EX-1", text = "every sec-10 row is landed or recorded as untouched-by-design; a checklist in the phase notes maps each row to its commit" },
@@ -289,6 +290,44 @@ exit_criteria = [
 verification = [
   { id = "VH-1", expects = "the user ran sec-9 Live steps 1–4 as root and the transcript excerpts are in docs/probes.md" },
   { id = "VT-1", expects = "the evidence is recorded", test_file = "docs/probes.md", keywords = ["room-assistant", "SL-005"], waived = false },
+]
+specs        = []
+requirements = []
+
+[[phase]]
+id        = "PHASE-10"
+name      = "a room user keeps its uid, and an unnamed status reaches the rooms"
+objective = """
+Two user-directed fixes, executed after PHASE-07 and before PHASE-08; both are
+deviations from the locked design, recorded for /reconcile rather than by
+reopening the design run. (a) `RSK-012`: a room's root fs is tmpfs, so NixOS
+reallocates its users' uids on every boot in name order, and a user whose name
+sorts earlier shifts every later user's uid away from their files on the
+persistent `/home` (folds into sec-5, and sec-2 where the declaration or
+`rooms.nix` changes). Each room user's record carries a stable uid, declared or
+derived from the name; `rooms.nix` refuses a collision or an out-of-range uid
+with its reason, and `vm/room.nix` sets it. (b) design sec-7: an unnamed
+`capsule status` with no slot up but a room up refuses "no capsule is up"
+before the rooms block; it falls through and lists the rooms, while every other
+unnamed verb still refuses."""
+entrance_criteria = [
+  { id = "EN-1", text = "PHASE-07 complete" },
+]
+exit_criteria = [
+  { id = "EX-1", text = "every room user's record carries a stable uid (declared or derived from the name, the choice and its POL-003 reasoning recorded in the phase notes); `vm/room.nix` sets `users.users.<u>.uid` from it; `roomImages`' checks refuse an image whose user's uid is not the record's" },
+  { id = "EX-2", text = "`rooms.nix` refuses, with the reason in `reasons` and exactly that string thrown by `instances`, two users of one room on one uid and a uid outside the normal-user range; `roomsCases` pins each verdict forced with `deepSeq` and reads its reason" },
+  { id = "EX-3", text = "`roomsCases` pins that a user's uid is unchanged when a user whose name sorts earlier is added to the same room" },
+  { id = "EX-4", text = "`roomVerbsCases` pins that an unnamed `capsule status` with no slot up and a room up exits 0 and lists the room in the rooms block, and that an unnamed `ssh` with nothing up still refuses \"no capsule is up\"" },
+  { id = "EX-5", text = "mutations watched red and reverted: uids reassigned in name order (EX-3's case), `vm/room.nix` without the uid (`roomImages`), the early refusal restored for status (EX-4's case)" },
+  { id = "EX-6", text = "`RSK-012`'s body says the risk and the fix and it is resolved through `doctrine backlog edit`; `RSK-011`'s body says its risk and it stays open" },
+  { id = "EX-7", text = "`just` and `just check` green; any new suite is in `just build` and `justfile`'s `nix_paths`; `CLAUDE.md`'s suite list and counts stay true; a changed room declaration shape is reflected in `fixture/`, `templates/fleet/flake.nix` and `docs/contract-assignment.md`" },
+]
+verification = [
+  { id = "VT-1", expects = "the uid survives an earlier-sorting user, and collisions and range are refused with their reason", test_file = "rooms-cases.nix", keywords = ["uid", "sorts earlier"], waived = false },
+  { id = "VT-2", expects = "an unnamed status with only a room up lists it", test_file = "host/room-verbs-cases.nix", keywords = ["only a room up"], waived = false },
+  { id = "VT-3", expects = "the room image is refused unless each user carries the record's uid", test_file = "mkfleet.nix", keywords = ["the record's uid"], waived = false },
+  { id = "VA-1", expects = "EX-5's mutations, and the uid scheme chosen with its POL-003 reasoning, recorded in the phase notes" },
+  { id = "VA-2", expects = "RSK-012 resolved and both risk bodies filled (doctrine backlog show RSK-011, RSK-012)" },
 ]
 specs        = []
 requirements = []
