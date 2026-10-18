@@ -25,3 +25,9 @@ the pairing instead.
 
 Active, and load-bearing. Adding a second reader means adding a second thing that
 can be wrong about the perimeter.
+
+**Scope (SL-005, `DEC-039`).** A room's namespace (`room-<n>`) is a guest
+namespace like a slot's. The guard takes `guests` (slots then rooms, bound once
+in `host/services.nix`) and audits each on both limbs, so it is the sole reader
+of a room's namespace too, and a room failing an audit tears down the fleet's
+egress exactly as a slot's does. Nothing else in this record changes.

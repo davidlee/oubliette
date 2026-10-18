@@ -7,13 +7,13 @@ title = "Only the guard can read the inside of a capsule's namespace"
 record_kind = "constraint"
 status = "active"
 created = "2026-08-16"
-updated = "2026-08-16"
+updated = "2026-10-18"
 tags = []
 
 [facet]                         # every field typed; seeded empty (captured later)
 statement = "The perimeter guard is the sole reader of the inside of a capsule namespace, so nothing can independently confirm ip_forward=0; acceptable only because the guard holds egress bound to itself."
 source = "technical"
-applies_to = ["capsule-perimeter-guard", "host/netns.nix"]
+applies_to = ["capsule-perimeter-guard", "host/netns.nix", "host/guard.nix", "room namespaces (room-<n>)"]
 waiver_reason = ""
 waived_by     = ""
 waived_on     = ""

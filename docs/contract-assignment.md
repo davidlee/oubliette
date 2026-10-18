@@ -60,6 +60,7 @@ this repo has already had to undo once.
 | noun | what it decides | owner | when it changes | who may change it |
 | --- | --- | --- | --- | --- |
 | **slot** | identity, namespace, uplink /30, socket, units | host declaration (`capsules.nix`) | host rebuild | host operator |
+| **room** | identity, namespace, socket, units, users, sizes (vcpu, mem, volume) — no uplink, no proxy, no assignment | host declaration (`mkFleet`'s `rooms`, decided by `rooms.nix`) | host rebuild | host operator |
 | **flavour** | the guest's capability and tool closure | **not declared — composed** from the profile's floor and the assignment's extras ([contract-flavour.md](./contract-flavour.md)) | stop, build, start — a symlink re-point, not a rebuild of the fleet | both owners, within a fragment vocabulary the host declares |
 | **class** | machine config: `mem`, `vcpu` | the runner's JSON | stop / start | host operator declares; an assigner selects within the slot's set |
 | **policy** | egress allowlist, ingestion bounds, whether this slot may collect | host declaration, *selected* by the assignment | live — see the refresh rule | host operator declares the set; an assigner selects within it, or is refused |
@@ -67,6 +68,12 @@ this repo has already had to undo once.
 | **source** | where *this host* has the profile's repo | the profile document's `path`, pinned with the profile | pinned per assignment generation | host operator only — never an assigner |
 | **assignment** | binds a slot to profile + policy + class + extras + base commit + purpose | `/var/lib/capsule/<slot>/` | run time, free unless the composition is unbuilt | an assigner |
 | **volume** | everything mutable: checkout, `$HOME`, caches, build tree, host keys | the volume | verbs (Plan D D3); size fixed at creation | host operator |
+
+Namespace, socket and units have two owners since SL-005, slot and room: both
+are guests, so the units built per guest (namespace, tap, VMM, relay) are built
+for either, and the perimeter guard audits both. A room's sizes and its one
+volume are declared with it rather than selected; it has none of the other
+nouns — no flavour, class, policy, profile, source or assignment.
 
 Six consequences worth stating rather than deriving:
 
