@@ -50,6 +50,9 @@ host ◀─collect <room> <repo> <branch>── /var/lib/capsule/      │ room 
    from that set, `cd`s into the clone and execs. One session is one repo.
    How pi-env (SL-023's execution environment, which ssh's in as the agent user
    with the clone as `cwd`) gets that environment is a design question.
+   Whether a repo's set includes the fleet extras (`CON-001`) is decided, not
+   inherited. The fixture gains a second target with a real tool package so
+   two sets can be told apart.
 4. **The per-repo git channel** (`DEC-040`, Plan F §4): `host/git-channel.nix`
    gains a room transport fragment over the room's socket, with the quarantine
    key separate from the transport name, so N repos in one room do not collide
@@ -62,8 +65,9 @@ host ◀─collect <room> <repo> <branch>── /var/lib/capsule/      │ room 
    <repo> …`, widening `DEC-041`'s verb set), with outcomes a caller can tell
    apart: room unreachable vs anything else (SL-023's `ChannelUnavailable` /
    `ChannelFailed`).
-5. **Stable room uids** (`RSK-012`): a persistent `/home` must not change owner
-   because a user was added and the name order shifted.
+5. **Stable room uids** (`RSK-012`): resolved by SL-005 PHASE-10 (room users
+   declare `{uid; keys;}`). SL-006 keeps only the rule that any user it adds
+   carries a declared uid.
 6. **No HostKeyAlias collision** (`RSK-011`): a room's alias cannot equal a
    slot's, since the runner pins room host keys strictly (`DEC-037`).
 7. **Relay the pinned interface to satan**: what SL-023's room adapter and door
@@ -133,7 +137,9 @@ host ◀─collect <room> <repo> <branch>── /var/lib/capsule/      │ room 
   `job/<id>` in one clone collects into that repo's quarantine and nowhere
   else; a room stop/start keeps clones, uids and host keys.
 - satan SL-023 told what to build its room adapter against; `ASM-005` checkable.
-- `ISS-021`, `RSK-011`, `RSK-012` closed; `IDE-002` fulfilled in full except
+- A measured closure size for the room image with N tool sets, minted as an
+  EVD (`ADR-003`; compare `EVD-007`).
+- `ISS-021`, `RSK-011` closed (`RSK-012` by SL-005); `IDE-002` fulfilled in full except
   `IDE-003`.
 
 ## Summary
