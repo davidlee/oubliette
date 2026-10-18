@@ -1,0 +1,81 @@
+# rooms.nix — from a room declaration to its guest records. SL-005 design sec-2,
+# DEC-038.
+#
+# Pure: no host values. mkfleet.nix applies it once, to the declared `rooms` and
+# the slot names, and is the one binding site; rooms-cases.nix applies it to
+# fixtures. A room is a guest that is not a slot: its record mirrors a slot's
+# (`name`, `ns`, `socket`, `uplink`) so the programs that take a guest take
+# either, but it has no uplink, and nothing here learns what a room is for
+# (POL-002) — users and sizes are values, passed through.
+#
+# Rooms and slots share one unit-name space (`capsule-netns-<n>`, `microvm@<n>`)
+# and one `nixosConfigurations` space, which is why a room may not take a slot's
+# name, or either image's name.
+#
+# Each refusal's message is a value in `reasons` (`null` when there is none) and
+# is exactly what `instances` throws, so a suite can assert *why* as well as
+# *that* — a `tryEval` verdict carries no message.
+{lib}: {
+  rooms,
+  slotNames,
+}: let
+  inherit (builtins) attrNames concatStringsSep isNull mapAttrs match stringLength;
+
+  # mkfleet.nix's `vms` keys that are not slots (`hello`, and `capsule` the
+  # probe target's image). Oubliette's own names, not a target's.
+  reservedNames = ["hello" "capsule"];
+
+  # A systemd instance name needing no escaping, a directory, a nix attr.
+  unitSafe = n: match "[a-z0-9][a-z0-9_-]*" n != null;
+  # A subset of NixOS's `users.users` names, and its 31-character limit.
+  userSafe = u: match "[a-z_][a-z0-9_-]*" u != null && stringLength u < 32;
+
+  # One clause of a reason: empty when nobody offends, else "<what>: <who>".
+  clause = what: offenders:
+    lib.optional (offenders != []) "${what}: ${concatStringsSep ", " offenders}";
+  # Null when no clause offends, else the whole message.
+  refusal = rule: clauses:
+    if clauses == []
+    then null
+    else "rooms.nix: ${rule} (DEC-038); ${concatStringsSep "; " clauses}";
+
+  roomNames = attrNames rooms;
+  userPairs =
+    lib.concatMap
+    (r: map (u: {inherit r u;}) (attrNames rooms.${r}.users))
+    roomNames;
+  userNamed = p: "${p.r}/${p.u}";
+
+  reasons = {
+    names =
+      refusal "a room's name is its unit name, so it must be unique and unit-safe"
+      (
+        clause "slot name" (lib.filter (n: builtins.elem n slotNames) roomNames)
+        ++ clause "reserved image name" (lib.filter (n: builtins.elem n reservedNames) roomNames)
+        ++ clause "not unit-safe ([a-z0-9][a-z0-9_-]*)" (lib.filter (n: !unitSafe n) roomNames)
+      );
+    users =
+      refusal "a room's user is a non-root login with keys"
+      (
+        clause "root" (map userNamed (lib.filter (p: p.u == "root") userPairs))
+        ++ clause "no keys" (map userNamed (lib.filter (p: rooms.${p.r}.users.${p.u} == []) userPairs))
+        ++ clause "not user-safe ([a-z_][a-z0-9_-]*, under 32 characters)" (map userNamed (lib.filter (p: !userSafe p.u) userPairs))
+      );
+  };
+
+  recordOf = name: decl: {
+    inherit name;
+    ns = "room-${name}";
+    uplink = null;
+    socket = "/run/capsule-room/${name}/ssh.sock";
+    inherit (decl) users sizes;
+  };
+in {
+  inherit reasons;
+  instances =
+    if !(isNull reasons.names)
+    then throw reasons.names
+    else if !(isNull reasons.users)
+    then throw reasons.users
+    else mapAttrs recordOf rooms;
+}

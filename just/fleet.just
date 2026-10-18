@@ -73,7 +73,7 @@ build:
     '.#guardCases' '.#policyCases' '.#briefCases' '.#snapshotCases' \
     '.#refreshCases' '.#observeCases' '.#baselineCases' '.#profileCases' \
     '.#gitChannelCases' '.#vmCases' '.#wrapCases' '.#volumeRootCases' \
-    '.#resetHomeCases' '.#volumeCases' '.#fleetCases'
+    '.#resetHomeCases' '.#volumeCases' '.#fleetCases' '.#roomsCases'
 
 # which units the host module generates, without rebuilding a host — the only
 # mechanical check the NixOS half has
@@ -104,6 +104,7 @@ cases:
   @cat "$(nix build --no-link --print-out-paths '.#resetHomeCases')"
   @cat "$(nix build --no-link --print-out-paths '.#volumeCases')"
   @cat "$(nix build --no-link --print-out-paths '.#fleetCases')"
+  @cat "$(nix build --no-link --print-out-paths '.#roomsCases')"
 
 # every target's guest closure and runner (`image-<target>`) — the slow one.
 # The list comes from the flake, so this file names no target.

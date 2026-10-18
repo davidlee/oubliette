@@ -630,6 +630,13 @@
     fleet = import ./fleet.nix;
   };
 
+  # A room declaration's verdicts (SL-005 sec-2), against fixtures that are no
+  # host's. Its subject is the unapplied function (rooms-cases.nix).
+  roomsCases = import ./rooms-cases.nix {
+    inherit pkgs lib;
+    rooms = import ./rooms.nix;
+  };
+
   resetHomeCases = import ./vm/reset-home-cases.nix {
     inherit pkgs lib;
     inherit targets;
@@ -1442,7 +1449,7 @@ in {
       # The checks that need no root and no host: what the module says, what the
       # guard decides, and which policy a slot resolves to.
       inherit hostModuleUnits hostModulePrograms guardCases policyCases observeCases;
-      inherit profileCases gitChannelCases vmCases wrapCases volumeRootCases resetHomeCases volumeCases fleetCases;
+      inherit profileCases gitChannelCases vmCases wrapCases volumeRootCases resetHomeCases volumeCases fleetCases roomsCases;
       # The rendered run-time half of every target, so a human can read what a
       # program will resolve (host/profile.nix). `nix build .#capsule-profiles`.
       capsule-profiles = hostProfile.dir;
