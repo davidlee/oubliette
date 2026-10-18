@@ -75,27 +75,35 @@ every caller), DEC-030 (template eval-check), DEC-031, CON-005.
 
 ## Harvest
 <!-- single-copy: updated in place each harvest; ids only, never restated content -->
-fresh-as-of: 2026-10-18 · plan authored, slice ready, no phase started · 0d2618c
+fresh-as-of: 2026-10-18 · implementation complete, PHASE-01..10 completed, before /audit · cd78f4c
 
 ### Produced
-- DEC-031 (probe refusal), DEC-032 (supersedes DEC-020), DEC-033..DEC-041
-- RV-014 (design review, concluded; F-3/F-4/F-6 tolerated)
-- design.md (run locked, rev 38: sec-1/9/12 amended at planning — devshell refusal; re-attested on the user's answer)
-- plan.toml / plan.md, PHASE-01..09; phase sheets materialised
-- ISS-021 (DEC-040's clone path is off a room's volume; for the follow-on channel slice)
+- DEC-031..DEC-041 (design); DEC-042 supersedes DEC-025 (nine arguments; user assent quoted)
+- REV-004 (POL-003 rooms axis + borrowed), REV-005 (POL-004 two callers), REV-006 (POL-003 room uid) — approved, hand-applied, done
+- RV-014 (design review); F-6 settled by behaviour at PHASE-09 (docs/probes.md "A room with no way out")
+- PHASE-01..10 code: 233a0e3 2b7709f 0723d6c 9d6f69b daffe6c 9a76496 8838a61 ed1a4e3 57e28ad 93a672f c24ebad a22f882 8ebf3e6; evidence a07094d (PHASE-09 probes.md); governance 33dafaf 6f7b754
+- PHASE-10 appended by hand (no verb appends a phase; user accepted): RSK-012 fix + sec-7 status fall-through
+- RSK-011 (open), RSK-012 (resolved, fixed)
+- new files: rooms.nix, fabric.nix, vm/door.nix, vm/room.nix, + cases (rooms, fabric, netns, room-verbs); roomImages in just build
+- consumer /srv/fleet d3bf0a0: rooms.assistant (agent uid 1001), oubliette f2ce48c — live on this host
+- memories: mem_01a00ad6…ea57 corrected (5b42e1b: ~/flakes' override keeps its own lock for fleet inputs); mem.fact.oubliette.probe-built-from-consumer-needs-host-nixpkgs (cd78f4c)
+- observations: committed per charter (35f686e, daffe6c, e3a1c51, c5f8495, d0364fc, 09c6975, 8591ebd)
 
 ### Learned
-- research.md X1: `any_vm_running` is scoped by process name, not namespace (now DEC-032)
-- research.md X6: pi-env reaches a unix-socket relay via `-F` + ProxyCommand (in DEC-037)
-- planning: `packages` maps every `vms` entry by name (mkfleet.nix:1428), so any image in `vms` is a devshell-bootable attr (design sec-1 rev 38)
-- planning: host/netns.nix has three importers (services, guard-cases, mkfleet), so a `tools` seam needs a default
+- tryEval catches throw/assert only, not type errors (PHASE-04 M4) — candidate memory, not yet recorded
+- room tmpfs uid-map is wiped every boot and /home mounts after activation (PHASE-10 sheet) — candidate memory, not recorded (id reservation)
+- a build sandbox's /etc is read-only, so a program writing /etc/netns needs a path seam (etcNetns)
 
-### Open
-- RV-014 F-6 follow-up candidate: an ssh/systemctl seam for `host/cli.nix` (not a backlog item yet)
-- Consumer `/srv/fleet` must pass `rooms` at the input bump (user's change; design sec-8; PHASE-04/EX-6, PHASE-09/EN-2)
-- DEC-025 successor + POL-003 revision need the user's assent (PHASE-04/EX-5); POL-004 revision likewise (PHASE-08/EX-2)
-- satan relay (PHASE-08/EX-3), the user's to send; ISS-021 named in it
-- PHASE-09 live run is the user's, as root
+### Open (audit inputs)
+- design drift for /reconcile, recorded in gitignored phase sheets 02/04/05/10: sec-2 (borrowed in fabric.nix; declaration `{uid; keys;}`), sec-3 (etcNetns seam beside tools), sec-5 (kernel locks; declared uid 1000–29999), sec-7 (unnamed status falls through to rooms)
+- no suite pins that mkFleet throws on fabric.nix's `reason` (only a hand eval + M1)
+- PHASE-07 refactor (doorVia/stopUnit) of slot start readiness is unpinned by any suite
+- RSK-011: a room named capsule-<slot> shares that slot's HostKeyAlias
+- locally allocated ids (reservation remote refuses the ssh key): DEC-042, REV-004..006 — collision risk if the remote returns
+- PHASE-09 not proven: serial console login prompt; satan's runner beyond the door; uid survival over existing files; suspend (ISS-014)
+- slice status still `ready` with 10/10 phases — needs advancing
+- /srv/fleet flake.lock nixpkgs bump is uncommitted (the user's)
+- RV-014 F-6 follow-up candidate: an ssh/systemctl seam for host/cli.nix
 
 ## PHASE-08: docs footprint
 
