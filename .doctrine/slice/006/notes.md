@@ -38,7 +38,19 @@ What has reviewed this design, and what has not:
 - **satan SL-023's agent, on sec-6** as its consumer. Two corrections folded
   (commit 94cf91d): `guest_path` is checked in `preparing`, not at startup;
   the clone starts unborn and the clean-tree check is the runner's.
-- **RV-015** holds no findings: no document-level adversarial pass was run.
+- **RV-015, GPT (gpt-6-sol) document-level pass** (user-requested before
+  /plan). Seven findings plus one found adjudicating (F-8), all verified and
+  fixed in the design: generic `session` over an `/etc/room/repo` tree (F-1, the
+  user's choice — amends DEC-049); branch validation and push resolution before
+  the pre-flight (F-2); the program wrapped on the module path (F-3); DEC-045's
+  stale `viaSocket` (F-4); `quarantineCases` for the extracted fetch plus a slot
+  collect on the live rung (F-5); repo-name grammar at eval (F-6); three
+  `rooms.nix` fixture callers (F-7); `checkToken`'s exit status (F-8). The run
+  was regressed locked → reviewing and the edit adopted, which invalidated the
+  acceptance act: it relocks on the user's re-acceptance.
+- **satan's two questions** (via the user): the room needs no guest address in
+  satan's config (ProxyCommand + HostKeyAlias; `net.guest` is the relay's), and
+  `session` is at `/run/current-system/sw/bin/session` — sec-6.
 
 What a further pass would probe, if one were wanted: whether sec-4's
 extraction of the policy and fetch fragments changes `capsule-collect`'s

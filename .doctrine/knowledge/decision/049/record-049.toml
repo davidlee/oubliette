@@ -12,9 +12,9 @@ tags = []
 
 [facet]                         # every field typed; seeded empty (captured later)
 context = "SL-006 inq-8, Plan F section 3, research thread 3. pi-env's daemon inherits the environment it is started with (pi env daemon/src/sys/unix.rs:250-265) and its launch command is caller-supplied (src/connection.ts:66-72); it speaks a binary protocol on stdio."
-choice = "A guest program generated from the room record: session <repo> -- <argv…> puts that repo's tool set ahead of the base PATH, cds into its guestPath and execs argv unchanged. It writes nothing to stdout, needs no login shell and exits 2 for an unknown repo. Each set is also linked at /etc/room/tools/<repo>. One session is one repo."
+choice = "One generic guest program, one store path for every room, at /run/current-system/sw/bin/session: session <repo> -- <argv…> puts /etc/room/repo/<repo>/tools/bin (when that link exists) ahead of the base PATH, cds into the physical path of /etc/room/repo/<repo>/clone and execs argv unchanged. The image renders those links (clone -> guestPath, tools -> toolsPackage) as data; session holds no repo table. It writes nothing to stdout, needs no login shell and exits 2 for a bad or unknown repo. One session is one repo."
 alternatives = ["wrap each command (pi-durable prepare)", "ssh SetEnv or ForceCommand", "a user per repo"]
-rationale = "Setting the environment before the harness's daemon starts is Plan F's shape, and inheritance carries it to every command; the others need login-shell scope, proxy pi-env's probe or multiply users."
+rationale = "Setting the environment before the harness's daemon starts is Plan F's shape, and inheritance carries it to every command; the others need login-shell scope, proxy pi-env's probe or multiply users. Reading the repo tree instead of a rendered table keeps target names and values out of program text (POL-002; RV-015 F-1, user's choice 2026-10-18)."
 consequences = ["satan starts pi-env's daemon under session <repo> -- via a custom Connection command and tests a reconnect", "the repo comes from each job, not from the door config"]
 decided_by = "user, on agent proposal (amended after a GPT review)"
 decided_on = "2026-10-18"
