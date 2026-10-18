@@ -6,7 +6,7 @@ disposable phase sheet (`.doctrine/state/.../phase-NN.md`) that must survive
 
 ## Harvest
 <!-- single-copy: updated in place each harvest; ids only, never restated content -->
-fresh-as-of: 2026-10-19 · audited (RV-018 done), before reconcile · e16fe32 + audit commit
+fresh-as-of: 2026-10-19 · closed (RV-018 done, reconciled 8d20361)
 
 ### Produced
 - PHASE-01..07 done (commits 6f103c7..4c1d210 on 3a52d2e); `doctrine check gate` rc 0 at 4c1d210
@@ -21,16 +21,20 @@ fresh-as-of: 2026-10-19 · audited (RV-018 done), before reconcile · e16fe32 + 
 - `.doctrine` changes committed with each piece; this harvest commits ISS-025 and one memory separately
 
 - RV-018 — the audit: 9 findings, all verified; its `## Reconciliation Brief` is reconcile's input and supersedes the two "for reconcile" lines above. F-7 (contract-target intro) fixed in the audit commit
+- reconciled in 8d20361 per RV-018 § Reconciliation Outcome: design sec-3/4/5/6/8/11, seven selectors, DEC-040, DEC-050, ISS-024, IMP-017, contract-target
 - PHASE-07 source-delta bootstrapped (`record-delta --start cc72b97 --end 4c1d210`)
 
 ### Learned
+- memory: nothing new from audit/reconcile — the one hazard met is already `mem.fact.oubliette.reconcile-edits-are-invisible-to-the-design-run` (consciously rejected as a new record)
 - mem.fact.oubliette.tmpfiles-needs-every-parent-declared — an undeclared parent is made root:root, refused, and a switch reports success
 - EVD-010 — what two tool sets cost a room, against the repo-less room (figures in docs/probes.md)
 - friction observations (24253c4, 9c45d55): named-orchestrator children hand back to the seat; a sweep commit reset a phase's index; `just` hides a cached suite's output; a phase sheet's line refs predated the file
 - friction: `doctrine design apply` processes a batch in lexical subject order, so declare nodes before edges
 
 ### Open
-- RV-018 F-1 — the user chooses: promise a room's non-login PATH, or `session` supplies base tools (IMP-017); reconcile asks before editing
+- IMP-017 — the user chose (b): `session` supplies the base tools, as its own slice
+- design run (rev 38) is behind design.md after reconcile: never `design materialise SL-006`
+- IDE-002 left open: SL-006 fulfils it except IDE-003 (the model door)
 - RV-018 F-4 — design sec-6's `ssh <user> true` reachability row needs correcting in the satan SL-023 relay too (the user's act)
 - DEC-044 — held provisional by the user's word (no fleet extras in a room)
 - ISS-023, ISS-025, IMP-017, IMP-018, CHR-018 — follow-up work, outside this slice
