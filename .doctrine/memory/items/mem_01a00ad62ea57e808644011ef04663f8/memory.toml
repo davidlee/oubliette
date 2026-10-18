@@ -7,7 +7,7 @@ status = "active"
 title = "~/flakes builds this repo two ways and only one of them is the lock"
 summary = "The override reads committed HEAD of this checkout and will build from a dirty tree, after which the next build from HEAD silently loses it."
 created = "2026-08-16"
-updated = "2026-10-17"
+updated = "2026-10-18"
 
 [scope]
 paths = []

@@ -10,8 +10,15 @@ But `just system-switch` (and `system-build`, `update-local`) passes a local
 override built by `~/flakes/bin/dev-checkouts`: `fleet` resolves to
 `$FLAKES_FLEET`, default **`/srv/fleet`**, as `--override-input fleet
 git+file:///srv/fleet` — and **that is what actually lands**. A lock update
-alone changes nothing. Oubliette edits reach the host only through the
-consumer's lock (or an override of `oubliette` inside the consumer).
+alone changes nothing. **But the override swaps only the fleet's own tree:
+the fleet's inputs stay at `~/flakes`' lock**, not the consumer's. So
+oubliette reaches the host at whatever `fleet/oubliette` `~/flakes/flake.lock`
+pins, and a consumer bump alone changes nothing either. Seen 2026-10-18 at
+SL-005's ninth argument: `/srv/fleet` locked oubliette `f2ce48c` and passed
+`rooms`; the switch evaluated it against `~/flakes`' `63cc360` and failed with
+`called with unexpected argument 'rooms'`. An oubliette change lands by:
+oubliette pushed → consumer bumped, committed, **pushed** → `nix flake update
+fleet` in `~/flakes` → switch.
 
 The override reads **committed HEAD** there, and it will happily build from a
 **dirty** tree — after which the next build from HEAD **silently loses whatever
