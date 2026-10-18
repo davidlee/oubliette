@@ -1,0 +1,18 @@
+schema = "doctrine.observation"
+schema_version = 1
+uid = "01a14e53-3583-7530-a6b9-ef6512e0cbdf"
+recorded_at = "2026-10-18T09:23:58.467387978Z"
+kind = "friction"
+summary = "A durable fact could not be recorded because id reservation fails"
+detail = "The tmpfs root makes /var/lib/nixos/uid-map non-persistent in a room, and /home mounts after activation, so persisting it would not help. Worth a memory; recording one needs an id and reservation fails here (ssh key refused by the reservation remote)."
+
+[facets.execution]
+schema_version = 1
+interface = "cli"
+interface_origin = "automatic"
+product_surface = "doctrine"
+product_surface_origin = "automatic"
+command = "observation record"
+command_origin = "automatic"
+repository_context = "primary"
+repository_context_origin = "automatic"

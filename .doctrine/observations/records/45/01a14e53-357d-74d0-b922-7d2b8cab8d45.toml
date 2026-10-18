@@ -1,0 +1,18 @@
+schema = "doctrine.observation"
+schema_version = 1
+uid = "01a14e53-357d-74d0-b922-7d2b8cab8d45"
+recorded_at = "2026-10-18T09:23:58.461606426Z"
+kind = "friction"
+summary = "A plan cannot be appended to through a verb"
+detail = "SL-005 PHASE-10 was added by hand-editing plan.toml (its header sanctions it) then 'doctrine slice phases 5'. 'slice plan' only scaffolds. An orchestrator told to append via the CLI has no verb to reach for."
+
+[facets.execution]
+schema_version = 1
+interface = "cli"
+interface_origin = "automatic"
+product_surface = "doctrine"
+product_surface_origin = "automatic"
+command = "observation record"
+command_origin = "automatic"
+repository_context = "primary"
+repository_context_origin = "automatic"

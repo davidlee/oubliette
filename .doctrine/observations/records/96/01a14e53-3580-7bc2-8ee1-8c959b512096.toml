@@ -1,0 +1,18 @@
+schema = "doctrine.observation"
+schema_version = 1
+uid = "01a14e53-3580-7bc2-8ee1-8c959b512096"
+recorded_at = "2026-10-18T09:23:58.46476224Z"
+kind = "friction"
+summary = "A phase planner's numeric range was unsafe and only evaluating the image showed it"
+detail = "SL-005 PHASE-10 sheet proposed room uids in [1000,60000]; the worker evaluated the room image and found nixbld1..32 at 30001-30032, so the safe range is NixOS's normal 1000-29999. The sheet's list of room-declaration constructors also missed host/guard-cases.nix and host/netns-cases.nix; grep found them."
+
+[facets.execution]
+schema_version = 1
+interface = "cli"
+interface_origin = "automatic"
+product_surface = "doctrine"
+product_surface_origin = "automatic"
+command = "observation record"
+command_origin = "automatic"
+repository_context = "primary"
+repository_context_origin = "automatic"
