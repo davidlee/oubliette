@@ -12,19 +12,19 @@ after = []                      # slice→work soft sequence: { to, rank }
 
 [[selector]]
 selector = "vm/session.nix"
-intent = "scope-relevant"
+intent = "design-target"
 
 [[selector]]
 selector = "vm/session-cases.nix"
-intent = "scope-relevant"
+intent = "design-target"
 
 [[selector]]
 selector = "vm/room.nix"
-intent = "scope-relevant"
+intent = "design-target"
 
 [[selector]]
 selector = "host/profile.nix"
-intent = "scope-relevant"
+intent = "design-target"
 
 [[selector]]
 selector = "host/programs.nix"
@@ -52,11 +52,71 @@ intent = "scope-relevant"
 
 [[selector]]
 selector = "mkfleet.nix"
-intent = "scope-relevant"
+intent = "design-target"
 
 [[selector]]
 selector = "docs/contract-target.md"
-intent = "scope-relevant"
+intent = "design-target"
+
+[[selector]]
+selector = "rooms.nix"
+intent = "design-target"
+
+[[selector]]
+selector = "rooms-cases.nix"
+intent = "design-target"
+
+[[selector]]
+selector = "fragments.nix"
+intent = "design-target"
+
+[[selector]]
+selector = "docs/contract-flavour.md"
+intent = "design-target"
+
+[[selector]]
+selector = "docs/contract-assignment.md"
+intent = "design-target"
+
+[[selector]]
+selector = "fixture/default.nix"
+intent = "design-target"
+
+[[selector]]
+selector = "host/room-git.nix"
+intent = "design-target"
+
+[[selector]]
+selector = "host/profile-cases.nix"
+intent = "design-target"
+
+[[selector]]
+selector = "host/state-snapshot-cases.nix"
+intent = "design-target"
+
+[[selector]]
+selector = "host/observe-cases.nix"
+intent = "design-target"
+
+[[selector]]
+selector = "host/git-channel-cases.nix"
+intent = "design-target"
+
+[[selector]]
+selector = "host/wrap-cases.nix"
+intent = "design-target"
+
+[[selector]]
+selector = "host/room-git-cases.nix"
+intent = "design-target"
+
+[[selector]]
+selector = "templates/fleet/flake.nix"
+intent = "design-target"
+
+[[selector]]
+selector = "CLAUDE.md"
+intent = "design-target"
 
 [[relation]]
 label = "references"

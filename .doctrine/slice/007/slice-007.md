@@ -41,9 +41,13 @@ session <repo> -- argv                  capsule-provision, capsule-collect,
 
 ## Scope & Objectives
 
-1. `session` runs every argv with a fixed base tool set ahead of the caller's
-   `PATH` and behind the repo's `tools/bin`, so what `git` resolves to inside
-   a room no longer depends on how the caller logged in.
+1. Every room has a **base**: a fixed floor (`git`, `bash`, `coreutils`,
+   `which`) plus the extras the room declares (`rooms.<r>.extras`, names from
+   `fragments.nix`), rendered once as `/etc/room/base` and put in the room's
+   system packages. `session` runs every argv with `tools/bin`, then the base,
+   then the caller's `PATH`, so what `git` resolves to no longer depends on how
+   the caller logged in (`DEC-052`, superseding `DEC-044`; the user, 2026-10-19,
+   wanting their shell, emacs, `fd`, `rg` and nushell in malebolge).
 2. Every program that splices the profile reader carries the reader's tools,
    and it should be impossible to splice one without the other.
 3. The suites stop hiding (2): `jq` leaves the `nativeBuildInputs` that exist to
@@ -58,7 +62,9 @@ session <repo> -- argv                  capsule-provision, capsule-collect,
 
 - Which tools a repo's tool set carries (the target's `toolsPackage`, POL-002).
 - The slot guest's `PATH` and its colliding `git` (`ISS-025`).
-- Fleet extras inside a room (`DEC-044`, provisional).
+- A room user's login shell, and any editor or shell *configuration*
+  (convenience is declared, never copied from `$HOME`; `~/.config/emacs` is a
+  repo on `CHR-018`'s list).
 - Any other program's reliance on an ambient tool, beyond the profile reader's
   callers. If design finds more of them, it records them as backlog items,
   not scope.
@@ -72,27 +78,17 @@ Affected surface:
 | path | why |
 | --- | --- |
 | `vm/session.nix`, `vm/session-cases.nix` | the base tool set and its order on `PATH`; the cases |
-| `vm/room.nix` | whether `git` stays in the room's system packages once `session` carries it |
+| `vm/room.nix` | render `/etc/room/base` (floor plus extras, collision-checked) and add it to system packages |
+| `rooms.nix`, `rooms-cases.nix` | `extras` on a room, and its refusals |
+| `fragments.nix` | finer fragments as values (emacs; search tools apart from the agent CLIs) |
 | `host/profile.nix`, `host/programs.nix` | the reader and its tools as one thing to splice |
 | `host/git-channel.nix`, `host/refresh.nix`, `host/brief.nix`, `host/baseline.nix` | callers that lack the reader's tools |
 | `host/*-cases.nix` (`git-channel`, `wrap`, and any others found) | stop supplying `jq`; add the no-ambient-`jq` case |
-| `docs/contract-target.md`, `DEC-043`, `.doctrine/slice/006/design.md` | the promise, stated once |
+| `docs/contract-target.md`, `docs/contract-flavour.md`, `docs/contract-assignment.md` | the promise, stated once; a room's extras |
 
-Open questions, for design:
-- **OQ-1:** what the base tool set is. Candidates: `git` alone (`DEC-043`);
-  `git`, `bash`, `coreutils` and `which` (SL-006 design sec-3); or a declared
-  list.
-- **OQ-2:** the order and the shadowing rule. `writeShellApplication`'s
-  `runtimeInputs` prepends ahead of everything, including `tools/bin`, so the
-  base set has to be added in the program's text, not through `runtimeInputs`.
-  Does the base set also shadow the caller's `git` when the repo has no tool
-  set? It does under option (b).
-- **OQ-3:** the shape that keeps the reader's text and its tools together:
-  `profileSelect` carrying its inputs, a builder that adds them, or a
-  build-time check. Each has a different coupling cost.
-- **OQ-4:** whether `refresh`, `brief` and `baseline` actually reach the reader
-  at run time. Their suites carry no `jq`, which suggests their cases never
-  read a document, or read one some other way.
+Open questions: settled in the design run. OQ-1 and OQ-2 by `DEC-052`,
+OQ-3 by `DEC-053`; OQ-4 by research (no suite runs those three programs, so
+the gap is real in all five).
 
 Risks: the `session` change alters `PATH` for every satan job in a running
 room. The user's standing direction is to design forward and flag disruption
@@ -107,6 +103,8 @@ red; `sessionCases` pinning the `PATH` order; a live check that `git` inside
 `IMP-017` resolved, and `ISS-023` closed as a duplicate.
 
 ## Follow-Ups
+
+- A room user's login shell (`users.users.<u>.shell` from the room declaration).
 
 - `ISS-025` (slot `git` collision): the same question on the slot side, not
   taken here.

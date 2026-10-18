@@ -1,0 +1,33 @@
+schema = "doctrine.knowledge"
+version = 1
+
+id = 53
+slug = "profile-reader-carries-its-jq"
+title = "The profile reader names its own jq by store path, so no caller can splice it without one"
+record_kind = "decision"
+status = "accepted"
+created = "2026-10-18"
+updated = "2026-10-18"
+tags = []
+
+[facet]                         # every field typed; seeded empty (captured later)
+context = "SL-007 inq-3, ISS-013. host/profile.nix exported inputs = [jq coreutils] for callers to add to runtimeInputs; five of six splices (provision, collect, capsule-refresh, capsule-brief, capsule-baseline) did not, and two suites hid it with nativeBuildInputs jq."
+choice = "The reader interpolates lib.getExe pkgs.jq at each call, adding no shell name to its host scope. jq is the only tool it calls, so profile.inputs is deleted and its users drop it."
+alternatives = ["fix the five call sites under the callers-add-inputs convention", "a builder that adds the inputs", "a build-time check that every splicer carries jq"]
+rationale = "The convention failed five times in six; a fragment that owns its dependency cannot be spliced without it. Same precedent as socat in host/room-git.nix. host/record.nix keeps its convention: its one caller is correct."
+consequences = ["profile.inputs deleted; capsule-room-git and three library suites drop it", "one library case covers every splice", "gitChannelCases and wrapCases lose the masking jq"]
+decided_by = "user, on agent proposal"
+decided_on = "2026-10-19"
+
+[evidence]                      # free-text citations (supports / contradicts / notes)
+supports    = []
+contradicts = []
+notes       = []
+
+[relationships]                 # verb-written edges (set by doctrine supersede)
+supersedes    = []   # record ids this one replaces (set by doctrine supersede)
+superseded_by = []   # set on superseded predecessor (verb-written)
+
+[[relation]]
+label = "shapes"
+target = "SL-007"
