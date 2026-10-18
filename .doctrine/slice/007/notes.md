@@ -6,7 +6,7 @@ disposable phase sheet (`.doctrine/state/.../phase-NN.md`) that must survive
 
 ## Harvest
 <!-- single-copy: updated in place each harvest; ids only, never restated content -->
-fresh-as-of: 2026-10-19 · design locked (run rev 36) · plan next · head dd9252d+
+fresh-as-of: 2026-10-19 · plan authored (5 phases), slice ready · PHASE-01 next
 
 ### Produced
 - DEC-052 (room base = floor + declared extras; supersedes DEC-044)
