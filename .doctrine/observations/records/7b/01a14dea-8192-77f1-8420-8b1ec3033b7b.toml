@@ -1,0 +1,18 @@
+schema = "doctrine.observation"
+schema_version = 1
+uid = "01a14dea-8192-77f1-8420-8b1ec3033b7b"
+recorded_at = "2026-10-18T07:29:36.658571923Z"
+kind = "friction"
+summary = "a design seam measured insufficient at phase planning"
+detail = "SL-005 PHASE-02: design sec-3 said capsule-netns takes only 'tools'; the planner measured the build sandbox's /etc as read-only, so stubbing ip/nft/sysctl never reaches the resolver write. Adopted a second defaulted argument etcNetns. The locked design text still says one seam."
+
+[facets.execution]
+schema_version = 1
+interface = "cli"
+interface_origin = "automatic"
+product_surface = "doctrine"
+product_surface_origin = "automatic"
+command = "observation record"
+command_origin = "automatic"
+repository_context = "primary"
+repository_context_origin = "automatic"

@@ -1,0 +1,18 @@
+schema = "doctrine.observation"
+schema_version = 1
+uid = "01a14dea-818c-7d73-b25c-7ad649107dab"
+recorded_at = "2026-10-18T07:29:36.652806201Z"
+kind = "friction"
+summary = "verify-vt attributes a VT only after phase completion binds its commit"
+detail = "SL-005 PHASE-01: after committing, verify-vt still said UNATTRIBUTABLE until the phase flipped to completed (solo phase-binding). Workers read UNATTRIBUTABLE on their uncommitted delta and could not see PASS. Conversely PHASE-04 VT-1 already PASSes before PHASE-04 starts, because mkfleet.nix was modified by earlier phases and the keyword exists: attribution is per-slice, not per-phase."
+
+[facets.execution]
+schema_version = 1
+interface = "cli"
+interface_origin = "automatic"
+product_surface = "doctrine"
+product_surface_origin = "automatic"
+command = "observation record"
+command_origin = "automatic"
+repository_context = "primary"
+repository_context_origin = "automatic"

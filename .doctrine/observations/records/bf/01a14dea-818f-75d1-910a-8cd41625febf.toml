@@ -1,0 +1,18 @@
+schema = "doctrine.observation"
+schema_version = 1
+uid = "01a14dea-818f-75d1-910a-8cd41625febf"
+recorded_at = "2026-10-18T07:29:36.655879004Z"
+kind = "friction"
+summary = "memory retrieve takes no positional query"
+detail = "Both SL-005 planners reached for 'doctrine memory retrieve <topic>'; it needs --query or --path-scope, and its --json output was empty for path scopes. They fell back to per-word 'doctrine memory search'."
+
+[facets.execution]
+schema_version = 1
+interface = "cli"
+interface_origin = "automatic"
+product_surface = "doctrine"
+product_surface_origin = "automatic"
+command = "observation record"
+command_origin = "automatic"
+repository_context = "primary"
+repository_context_origin = "automatic"
