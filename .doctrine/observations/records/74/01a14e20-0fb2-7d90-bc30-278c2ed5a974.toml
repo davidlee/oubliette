@@ -1,0 +1,18 @@
+schema = "doctrine.observation"
+schema_version = 1
+uid = "01a14e20-0fb2-7d90-bc30-278c2ed5a974"
+recorded_at = "2026-10-18T08:28:06.450340626Z"
+kind = "friction"
+summary = "PHASE-06 planner ran out of turns before writing the sheet"
+detail = "SL-005 PHASE-06: first planner hit its 40-turn cap after taking baselines, sheet still a skeleton. Retry with a tight brief (reuse baselines, selective reads, write by turn 20) succeeded."
+
+[facets.execution]
+schema_version = 1
+interface = "cli"
+interface_origin = "automatic"
+product_surface = "doctrine"
+product_surface_origin = "automatic"
+command = "observation record"
+command_origin = "automatic"
+repository_context = "primary"
+repository_context_origin = "automatic"

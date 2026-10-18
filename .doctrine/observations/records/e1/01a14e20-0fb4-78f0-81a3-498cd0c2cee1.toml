@@ -1,0 +1,18 @@
+schema = "doctrine.observation"
+schema_version = 1
+uid = "01a14e20-0fb4-78f0-81a3-498cd0c2cee1"
+recorded_at = "2026-10-18T08:28:06.452836423Z"
+kind = "friction"
+summary = "knowledge edit facet subverb takes ID after the kind"
+detail = "SL-005 PHASE-06: 'doctrine knowledge edit CON-005 constraint --applies-to …' fails with a missing <ID>; the form is 'doctrine knowledge edit constraint CON-005 …', while body edits take the ID first. The worker's proposed command had the wrong order."
+
+[facets.execution]
+schema_version = 1
+interface = "cli"
+interface_origin = "automatic"
+product_surface = "doctrine"
+product_surface_origin = "automatic"
+command = "observation record"
+command_origin = "automatic"
+repository_context = "primary"
+repository_context_origin = "automatic"

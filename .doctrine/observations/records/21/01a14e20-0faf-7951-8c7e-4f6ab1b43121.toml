@@ -1,0 +1,18 @@
+schema = "doctrine.observation"
+schema_version = 1
+uid = "01a14e20-0faf-7951-8c7e-4f6ab1b43121"
+recorded_at = "2026-10-18T08:28:06.447900211Z"
+kind = "friction"
+summary = "a sed mutation half-applied and looked like a full mutant"
+detail = "SL-005 PHASE-06 worker: a sed mutation reverting guard.nix to capsules.instances changed only the count, not 'declared'; the room limb-two case stayed green. Apply mutants with an assert-count==1 script and diff against the saved copy before building."
+
+[facets.execution]
+schema_version = 1
+interface = "cli"
+interface_origin = "automatic"
+product_surface = "doctrine"
+product_surface_origin = "automatic"
+command = "observation record"
+command_origin = "automatic"
+repository_context = "primary"
+repository_context_origin = "automatic"
