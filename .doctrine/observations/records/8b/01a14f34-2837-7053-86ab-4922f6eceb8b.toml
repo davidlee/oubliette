@@ -1,0 +1,18 @@
+schema = "doctrine.observation"
+schema_version = 1
+uid = "01a14f34-2837-7053-86ab-4922f6eceb8b"
+recorded_at = "2026-10-18T13:29:40.663965478Z"
+kind = "friction"
+summary = "planner line refs predate on-disk CLAUDE.md"
+detail = "SL-006 PHASE-06: the phase sheet's CLAUDE.md line refs and the copy in the worker's context predated the file on disk (already 'Fifteen' fixtures), so T8's recount was a check not an edit. Also: doctrine memory retrieve takes --query/--path-scope, not a positional; path-scoped probes on doc files returned nothing."
+
+[facets.execution]
+schema_version = 1
+interface = "cli"
+interface_origin = "automatic"
+product_surface = "doctrine"
+product_surface_origin = "automatic"
+command = "observation record"
+command_origin = "automatic"
+repository_context = "primary"
+repository_context_origin = "automatic"
