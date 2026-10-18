@@ -1,0 +1,233 @@
+# Implementation plan for SL-007 — the authored, durable phase plan.
+#
+# This is the single source of each phase's objective, criteria, verification,
+# and links. Runtime status lives separately under .doctrine/state/ (phase
+# tracking) — never record progress here. Hand-edit freely: the tool reads this
+# file but does not rewrite it.
+schema  = "doctrine.plan.overview"
+version = 1
+slice   = "SL-007"
+
+# Canonical spec/requirement links — cite ids, never restate what they say. The
+# plan reader does not model these yet, so nothing downstream consumes them.
+[specs]
+primary       = []
+collaborators = []
+
+[requirements]
+targets      = []
+dependencies = []
+
+# One [[phase]]
+id        = "PHASE-01"
+name      = "The profile reader names its own jq, and the suites stop supplying it"
+objective = """
+Design sec-3, `DEC-053`, `ISS-013`. `host/profile.nix` binds `jq = lib.getExe
+pkgs.jq` and every reader call becomes `${jq}`, adding no shell name to the scope
+a caller splices into. `inputs` is deleted; so are its users: `++ profile.inputs`
+in `host/room-git.nix`, and `inherit (hostProfile) inputs` for `snapshotCases`,
+`observeCases` and `profileCases` in `mkfleet.nix` (each suite stops taking it).
+`check` drops `jq` from its `runtimeInputs`. Before deleting `inputs`, confirm
+against the reader's text that `jq` is its only non-builtin (DEC-053's premise);
+if it is not, `/consult`.
+
+`profileCases` gains two cases. (1) The reader loads a document in a
+`runCommand` with no `jq` on `PATH`: one text, so it covers every splice. (2) It
+is handed the shipped splicers (`capsule-provision`, `capsule-collect`,
+`capsule-refresh`, `capsule-brief`, `capsule-baseline`, `capsule-room-git`,
+`capsule`), as `mkfleet.nix` binds them and unwrapped, and asserts each one's
+text holds `jq`'s store path. That is design sec-4's "nearest suite holding the
+programs": `hostModuleUnits` is eval-only and cannot read a built program's
+text. It proves the splice is the shared text, not that the program runs.
+
+`gitChannelCases` and `wrapCases` lose the `jq` in `nativeBuildInputs` that
+hid the defect. Where a suite's own text runs `jq` (`git-channel-cases.nix`'s
+`write`, which renders fixture documents), it keeps a `jq` of its own, named in
+that text by store path, so its `PATH` still has none. `room-git-cases.nix`'s
+header stops citing `profile.inputs`."""
+entrance_criteria = [
+  { id = "EN-1", text = "SL-007 design locked (run rev 36) and the slice at `ready`" },
+  { id = "EN-2", text = "`just` green at the starting commit" },
+]
+exit_criteria = [
+  { id = "EX-1", text = "`host/profile.nix` has no bare `jq` in `validator` or `profileShow`, exports no `inputs`, and nothing in the tree reads `profile.inputs` or `hostProfile.inputs`" },
+  { id = "EX-2", text = "`profileCases` reads a document with no `jq` on `PATH`, and asserts `jq`'s store path in each of the seven shipped splicers' text, naming any that lacks it" },
+  { id = "EX-3", text = "No case suite has `pkgs.jq` in `nativeBuildInputs` or `runtimeInputs` to serve the reader; a suite-owned `jq` is by store path and a comment says it writes fixtures" },
+  { id = "EX-4", text = "Mutation: one reader call put back to bare `jq` turns case (1) red; observed and reverted" },
+  { id = "EX-5", text = "`just` and `just check` green" },
+]
+verification = [
+  { id = "VT-1", expects = "the reader interpolates its jq and exports no inputs", test_file = "host/profile.nix", keywords = ["lib.getExe pkgs.jq", "${jq} -e"], waived = false },
+  { id = "VT-2", expects = "profileCases runs the reader with no jq on PATH and checks every shipped splicer", test_file = "host/profile-cases.nix", keywords = ["capsule-provision", "capsule-collect", "capsule-refresh", "capsule-brief", "capsule-baseline", "capsule-room-git", "jq"], waived = false },
+  { id = "VT-3", expects = "the shipped splicers are handed to profileCases", test_file = "mkfleet.nix", keywords = ["profileCases", "splicers"], waived = false },
+  { id = "VA-1", expects = "EX-4's mutation observed red then reverted, recorded in the phase notes" },
+  { id = "VA-2", expects = "`grep -rn 'inputs' host/ mkfleet.nix` shows no reader `inputs` left, and `record.inputs` untouched (design sec-3)" },
+]
+specs        = []
+requirements = []
+
+[[phase]]
+id        = "PHASE-02"
+name      = "A room may declare extras from the vocabulary, and rooms.nix refuses each wrong one by name"
+objective = """
+Design sec-2 "Declaration" and "`rooms.nix`", `DEC-052`. `rooms.nix` takes
+`fragmentNames`, a list of names, in the same set as `targets` and `policies`.
+`mkfleet.nix` binds it to `attrNames (import ./fragments.nix {…}).vocabulary`.
+The five fixture appliers (`rooms-cases.nix`, `fabric-cases.nix`,
+`host/guard-cases.nix`, `host/netns-cases.nix`, `host/room-verbs-cases.nix`)
+pass fixture lists, as they pass `policies` today.
+
+A new `reasons.extras`, cited to `DEC-052` in the existing
+`rooms.nix: <rule> (DEC-NNN); <clauses>` form, refuses `extras` that is not a
+list of strings, and a name not in `fragmentNames`. The second clause's message
+lists the vocabulary. The record gains `extras` (`decl.extras or []`).
+`instances` throws `reasons.extras` after `reasons.policy`. As with `policy`,
+nothing forces `fragmentNames` for a room that declares no extras.
+
+`roomsCases` pins both refusals, each with its reason and the vocabulary, plus
+the absent default (`extras = []` on the record) and a declared list carried
+through. Nothing renders extras yet; that is PHASE-03."""
+entrance_criteria = [
+  { id = "EN-1", text = "PHASE-01 committed, `just` green" },
+]
+exit_criteria = [
+  { id = "EX-1", text = "`rooms.nix` has `fragmentNames`, `reasons.extras` and the record's `extras`, and all six appliers pass `fragmentNames`" },
+  { id = "EX-2", text = "`roomsCases` pins: not a list (and a list with a non-string), refused with reason; an unknown name refused, with the vocabulary in the message; absent → `[]`; declared → carried" },
+  { id = "EX-3", text = "Mutation: `instances` without the `reasons.extras` branch turns the unknown-name case red; observed and reverted" },
+  { id = "EX-4", text = "`just` and `just check` green; no existing room's record differs except by `extras = []`" },
+]
+verification = [
+  { id = "VT-1", expects = "rooms.nix refuses bad extras and records them", test_file = "rooms.nix", keywords = ["fragmentNames", "extras =", "reasons.extras", "DEC-052"], waived = false },
+  { id = "VT-2", expects = "roomsCases pins the refusals and the default", test_file = "rooms-cases.nix", keywords = ["extras", "fragmentNames", "DEC-052"], waived = false },
+  { id = "VT-3", expects = "the binding site hands rooms.nix the vocabulary", test_file = "mkfleet.nix", keywords = ["fragmentNames", "vocabulary"], waived = false },
+  { id = "VA-1", expects = "EX-3's mutation observed red then reverted, recorded in the phase notes" },
+]
+specs        = []
+requirements = []
+
+[[phase]]
+id        = "PHASE-03"
+name      = "Every room renders a base, and session runs each argv with it behind the repo's tools"
+objective = """
+Design sec-2 "The floor", "The render", "`session`" and "Extras in the
+vocabulary", `DEC-052`, `IMP-017`.
+
+`fragments.nix` gains `search` (`ripgrep`, `fd`) and `emacs` as values. `agents`
+and `dev-facilities` are unchanged.
+
+`vm/room.nix` takes `flavour`, imports `fragments.nix` with `flavour.sources` as
+`vm/capsule.nix` does, and renders
+`base = pkgs.buildEnv { name = "room-base"; paths = fragments.compose { floor =
+[git bash coreutils which]; extras = room.extras; }; }` without
+`ignoreCollisions`. Every room, with or without repos, gets
+`environment.etc."room/base".source = base` and `base` in `systemPackages`,
+which replaces `pkgs.git`. `session` stays in `systemPackages` only when the room
+has repos. This deliberately changes a repo-less room's image (it gains the
+floor); the header's "its image is what it was before repos existed" is
+rewritten to say so.
+
+`vm/session.nix` takes `base ? "/etc/room/base"` beside `root`. After the
+existing name and repo checks, so a call that names no repo is still refused for
+that, it refuses with exit 2 and "no base at <base>" when `<base>/bin` is not a
+directory. `PATH` becomes `[<root>/<repo>/tools/bin:]<base>/bin${PATH:+:$PATH}`.
+In the Nix text that is `''${PATH:+:$PATH}`. `runtimeInputs` stays `[]`. The
+header is rewritten for `DEC-052`.
+
+`vm/session-cases.nix`: the fixture tree gains `base/bin` with a `git` marker;
+the fixture `session` is built with `base` pointing there; `mkfleet.nix` passes
+what it needs. Cases: with a set, `tools/bin : base/bin : caller`; without,
+`base/bin : caller`; the base's `git` marker resolves when the caller's `PATH`
+has none; a repo's `git` marker shadows it; a `base` with no `bin` gives exit 2
+and the reason; an empty caller `PATH` ends at `base/bin` with no trailing `:`;
+an unset one (`env -u PATH`) does not abort. The shipped copy's refusals are
+unchanged (the sandbox has no `/etc/room/repo`, so they fire first). The image
+case also asserts that the shipped image's `etc."room/base".source` has `bin/git`,
+`bin/bash`, `bin/which` and `bin/ls`.
+
+`fixture/default.nix`'s `assistant` room declares `extras = ["search"]`, so
+`just build` renders a base with an extra. Collision behaviour is observed once
+by hand: temporarily declare an extra holding a second `git`, watch the build
+fail, revert, and record the message in notes. Not cased (design sec-4)."""
+entrance_criteria = [
+  { id = "EN-1", text = "PHASE-02 committed: the record carries `extras`" },
+]
+exit_criteria = [
+  { id = "EX-1", text = "`vm/room.nix` renders `/etc/room/base` for every room from `compose { floor; extras = room.extras; }` with no `ignoreCollisions`, and `pkgs.git` is gone from its `systemPackages`" },
+  { id = "EX-2", text = "`session`'s `PATH` is `[tools/bin:]base/bin[:caller]`, it refuses a missing `base/bin` with exit 2 and the reason, and `runtimeInputs` is `[]`" },
+  { id = "EX-3", text = "`sessionCases` pins every case listed in the objective, including the image's `room/base` contents, against the fixture's room declaring `search`" },
+  { id = "EX-4", text = "Mutation: `session` without the base line turns the order and base-`git` cases red; observed and reverted" },
+  { id = "EX-5", text = "The collision build failure was observed by hand and its message recorded in notes" },
+  { id = "EX-6", text = "`just` and `just check` green, with `roomsCases`, `fabricCases` and the room suites unchanged in verdict" },
+]
+verification = [
+  { id = "VT-1", expects = "session puts the base behind tools/bin and refuses without it", test_file = "vm/session.nix", keywords = ["base ?", "/etc/room/base", "no base at", "''${PATH:+:$PATH}"], waived = false },
+  { id = "VT-2", expects = "sessionCases pins the order, shadowing, refusal, empty/unset PATH and image base", test_file = "vm/session-cases.nix", keywords = ["base/bin", "no base at", "room/base", "env -u PATH"], waived = false },
+  { id = "VT-3", expects = "the room renders its base from fragments", test_file = "vm/room.nix", keywords = ["buildEnv", "room-base", "fragments.compose", "\"room/base\""], waived = false },
+  { id = "VT-4", expects = "the vocabulary has the finer room fragments", test_file = "fragments.nix", keywords = ["search", "emacs", "fd"], waived = false },
+  { id = "VT-5", expects = "a fixture room declares an extra", test_file = "fixture/default.nix", keywords = ["extras = [\"search\"]"], waived = false },
+  { id = "VA-1", expects = "EX-4's mutation and EX-5's collision observed, recorded in the phase notes" },
+]
+specs        = []
+requirements = []
+
+[[phase]]
+id        = "PHASE-04"
+name      = "The binding sources say one thing about a room's base"
+objective = """
+Design sec-5. `docs/contract-target.md`: the `toolsPackage` absent path and the
+room tools row say `session` supplies the base (floor plus the room's extras,
+`DEC-052`), and drop "until `IMP-017`" and "no fleet extras".
+`docs/contract-flavour.md`: a room selects extras per room from the same
+vocabulary, and the floor is the room's, not a target's.
+`docs/contract-assignment.md`: the room row gains `extras`. `DEC-043`'s "git
+joins the room's base tools" points to `DEC-052`, edited with the knowledge
+verb rather than by hand. `templates/fleet/flake.nix`: the commented room
+example shows `extras`. `CLAUDE.md`: the "tool set has two owners" paragraph
+gains the room's case in one sentence. Any other `DEC-044` citation in source
+comments is re-pointed to `DEC-052` where it describes the base."""
+entrance_criteria = [
+  { id = "EN-1", text = "PHASE-03 committed" },
+]
+exit_criteria = [
+  { id = "EX-1", text = "No binding doc says `session`'s base tools come from the caller's `PATH`, or cites `IMP-017` as pending" },
+  { id = "EX-2", text = "`doctrine show DEC-043` points to `DEC-052` for the base" },
+  { id = "EX-3", text = "`just check` green (the template parses)" },
+]
+verification = [
+  { id = "VT-1", expects = "the target contract states the base", test_file = "docs/contract-target.md", keywords = ["DEC-052", "extras"], waived = false },
+  { id = "VT-2", expects = "the flavour contract covers a room's extras", test_file = "docs/contract-flavour.md", keywords = ["DEC-052", "room"], waived = false },
+  { id = "VT-3", expects = "the template shows a room's extras", test_file = "templates/fleet/flake.nix", keywords = ["extras"], waived = false },
+  { id = "VA-1", expects = "`grep -rn 'until .IMP-017\\|DEC-044' docs/ vm/ host/ CLAUDE.md` leaves only historical citations, each read and judged" },
+]
+specs        = []
+requirements = []
+
+[[phase]]
+id        = "PHASE-05"
+name      = "Live: after the user's rebuild, git inside session is the base's with no caller PATH"
+objective = """
+Design sec-4 "Live". The user rebuilds the host with this repo, which changes
+the assistant room's `PATH` for every satan job (design sec-6, flagged). Then,
+from this host:
+`capsule assistant ssh agent -- env -i /run/current-system/sw/bin/session <repo> -- sh -c 'command -v git'`
+prints a path under `/etc/room/base` (or its store target), with no `PATH` from
+the caller. An interactive login to the room has a declared extra on `PATH`, if
+the consumer declares one; otherwise the floor's `which`. Record the output in
+notes, along with what was not exercised: two extras colliding, and the three
+host programs live with no system `jq`. The satan relay line (design sec-6) is
+drafted here for the user to deliver."""
+entrance_criteria = [
+  { id = "EN-1", text = "PHASE-04 committed and pushed as far as the consumer's lock needs (`mem.fact.oubliette.target-input-reads-pushed-edge` and `mem.fact.oubliette.flakes-builds-this-repo-two-ways` for which way)" },
+  { id = "EN-2", text = "The user has rebuilt and restarted the assistant room" },
+]
+exit_criteria = [
+  { id = "EX-1", text = "The `env -i` check's output is recorded in notes and names the base's `git`" },
+  { id = "EX-2", text = "The interactive-login check is recorded" },
+  { id = "EX-3", text = "The satan relay line is drafted for the user" },
+]
+verification = [
+  { id = "VH-1", expects = "the user runs the rebuild and accepts the live outputs" },
+  { id = "VA-1", expects = "the outputs recorded in notes match design sec-4's live claims" },
+]
+specs        = []
+requirements = []
