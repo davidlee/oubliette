@@ -29,10 +29,9 @@
 # not ssh, is **75**; a banner that is ssh's and then a failed key exchange is
 # **1** — and the pre-flight's own speed (`readbytes`).
 #
-# **No `jq` on this suite's `PATH`**, on purpose: the profile reader needs it, and
-# the program must carry its own (`profile.inputs`). `gitChannelCases` puts `jq`
-# in its `nativeBuildInputs`, which is how its subjects' missing `jq` stays
-# hidden; the fixture documents here are written with `printf` instead.
+# **No `jq` on this suite's `PATH`**, on purpose: the profile reader needs it,
+# and calls it by store path (`DEC-053`), so a program that splices the reader
+# carries it. The fixture documents here are written with `printf`.
 #
 # The policies are picked from the caller's vocabulary rather than named: one
 # that permits collecting and one that does not. A vocabulary lacking either

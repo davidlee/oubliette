@@ -37,13 +37,11 @@
   # needs; both arrive from `host/programs.nix`, never re-rendered.
   snapshotArgs,
   profileFragment,
-  inputs,
 }: let
   # The fragment plus the smallest `main` that exercises it: load a document,
   # print the tail. `host/profile-cases.nix`'s arrangement, one file over.
   argv = pkgs.writeShellApplication {
     name = "capsule-snapshot-argv";
-    runtimeInputs = inputs;
     text = ''
       ${profileFragment}
       ${snapshotArgs}
@@ -58,7 +56,7 @@
     ${quarantine.checkToken ''"$1"'' "'unit $1'"}
   '';
 in
-  pkgs.runCommand "capsule-snapshot-cases" {nativeBuildInputs = [pkgs.git pkgs.jq];} ''
+  pkgs.runCommand "capsule-snapshot-cases" {nativeBuildInputs = [pkgs.git];} ''
     export HOME=$PWD GIT_CONFIG_GLOBAL=/dev/null GIT_CONFIG_SYSTEM=/dev/null
     export GIT_AUTHOR_NAME=t GIT_AUTHOR_EMAIL=t@t
     export GIT_COMMITTER_NAME=t GIT_COMMITTER_EMAIL=t@t
@@ -92,7 +90,9 @@ in
     # not is the one this repo has already had, a collect that reports success
     # and brings back half a result (item 47).
     mkdir -p profiles
-    jq -n --arg m "$max" --arg a "''${paths[0]}" --arg b "''${paths[1]}" \
+    # Writes the fixture only, by store path and never on `PATH`: the reader
+    # under test names its own `jq` (`DEC-053`), so this suite supplies none.
+    ${pkgs.lib.getExe pkgs.jq} -n --arg m "$max" --arg a "''${paths[0]}" --arg b "''${paths[1]}" \
       '{ schema: 1, name: "fixture", path: "/h/fixture", guestPath: "/vol/fixture",
          volumePath: "/vol", cachePaths: [], baseline: null, refresh: null,
          statePaths: [$a, $b], stateMaxBytes: ($m | tonumber),

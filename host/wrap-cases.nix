@@ -107,10 +107,9 @@
   inherit (wrapWith plain) defaults;
   names = builtins.attrNames defaults;
 in
-  # `jq` for the provision case alone: the program reads its document with the
-  # `jq` on `PATH` rather than one of its own `runtimeInputs`, which
-  # `gitChannelCases` supplies the same way (`ISS-013`).
-  pkgs.runCommand "capsule-wrap-cases" {nativeBuildInputs = [pkgs.jq];} ''
+  # No `jq` here: the provision case's program carries its reader's own
+  # (`DEC-053`), which this suite once supplied and so hid (`ISS-013`).
+  pkgs.runCommand "capsule-wrap-cases" {} ''
     fail=0
     ck() {
       if [ "$2" = "$3" ]; then echo "ok   $1" >>"$log"

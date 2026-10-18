@@ -25,12 +25,10 @@
   # status would answer about the wrong three directories and every field would
   # look plausible.
   observeFragment,
-  inputs,
 }: let
   # The fragment plus the smallest `main` that exercises it.
   argv = pkgs.writeShellApplication {
     name = "capsule-observe-argv";
-    runtimeInputs = inputs;
     text = ''
       ${observeFragment}
       profileLoad "$1"
@@ -38,7 +36,7 @@
     '';
   };
 in
-  pkgs.runCommand "capsule-observe-cases" {nativeBuildInputs = [pkgs.git pkgs.jq];} ''
+  pkgs.runCommand "capsule-observe-cases" {nativeBuildInputs = [pkgs.git];} ''
     export HOME=$PWD GIT_CONFIG_GLOBAL=/dev/null GIT_CONFIG_SYSTEM=/dev/null
     export GIT_AUTHOR_NAME=t GIT_AUTHOR_EMAIL=t@t
     export GIT_COMMITTER_NAME=t GIT_COMMITTER_EMAIL=t@t
@@ -155,7 +153,9 @@ in
     printf 'stamp\tstatus\tseconds\tcommit\tmib_before\tmib_after\tcommand\n' \
       > third/baseline/history.tsv
     printf '20260404T000000Z\t0\t9\tabc\t1\t2\tmake\n' >> third/baseline/history.tsv
-    jq -n --arg v "$PWD/third" \
+    # Writes the fixture only, by store path and never on `PATH`: the reader
+    # under test names its own `jq` (`DEC-053`), so this suite supplies none.
+    ${pkgs.lib.getExe pkgs.jq} -n --arg v "$PWD/third" \
       '{ schema: 1, name: "third", path: "/h/third", guestPath: ($v + "/third"),
          volumePath: $v, cachePaths: [], baseline: "b", refresh: null,
          statePaths: [], stateMaxBytes: 0,

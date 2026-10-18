@@ -101,7 +101,7 @@
 
   program = pkgs.writeShellApplication {
     name = "capsule-room-git";
-    runtimeInputs = [pkgs.git pkgs.openssh pkgs.coreutils pkgs.socat] ++ profile.inputs;
+    runtimeInputs = [pkgs.git pkgs.openssh pkgs.coreutils pkgs.socat];
     text = ''
       ${quarantine.fragment}
       ${profile.fragment}

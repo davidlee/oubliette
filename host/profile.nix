@@ -83,6 +83,14 @@
   # convention of this repo and not as a value of the target's.
   hole = "{unit}";
 
+  # The reader's one non-builtin, by store path (`DEC-053`, `ISS-013`): the
+  # fragment carries its own dependency, so a splicer needs nothing on `PATH`
+  # for it and no shell name enters a splicer's scope. It was a list callers
+  # added to their `runtimeInputs`, and a caller that forgot was masked by any
+  # suite that had `jq` on `PATH` for its own reasons. Exported so
+  # `profileCases` asks each splicer for *this* call, not a second spelling.
+  jq = lib.getExe pkgs.jq;
+
   # ------------------------------------------------------------- the validator
   #
   # What a document *is*, in one place — half of `fragment`, and the half that
@@ -119,12 +127,12 @@
         return 1
       fi
 
-      if ! doc=$(jq -e 'if type == "object" then . else null end' "$file" 2>/dev/null); then
+      if ! doc=$(${jq} -e 'if type == "object" then . else null end' "$file" 2>/dev/null); then
         profileFail "$file is not a readable JSON object"
         return 1
       fi
 
-      f=$(printf '%s' "$doc" | jq -r '.schema // "-"')
+      f=$(printf '%s' "$doc" | ${jq} -r '.schema // "-"')
       if [ "$f" != ${toString schemaVersion} ]; then
         profileFail "$file declares schema $f; this host reads ${toString schemaVersion}"
         return 1
@@ -133,7 +141,7 @@
       # One spelling of the required list, so a field cannot be validated here
       # and read below under another name.
       for f in name path guestPath volumePath sizes.vcpu sizes.mem sizes.volume; do
-        if [ "$(printf '%s' "$doc" | jq -r --arg f "$f" 'getpath($f | split(".")) != null')" != true ]; then
+        if [ "$(printf '%s' "$doc" | ${jq} -r --arg f "$f" 'getpath($f | split(".")) != null')" != true ]; then
           profileFail "$file has no '$f', and every profile names one"
           return 1
         fi
@@ -146,7 +154,7 @@
       # refusal naming the document rather than a jq stack trace on stderr. First
       # failure wins: the reasons are not independent, and a human fixes one
       # thing at a time.
-      reason=$(printf '%s' "$doc" | jq -r 'try (
+      reason=$(printf '%s' "$doc" | ${jq} -r 'try (
         . as $d
         | [ (if ($d.name | length) == 0 or ($d.name | test("/")) then
                "`name` is a document filename, so it must be a name and not a path"
@@ -192,7 +200,7 @@
       # separators collapse and every later field shifts up by one. No value
       # holds a newline — the grammar above has just refused one.
       local -a scalars
-      mapfile -t scalars < <(printf '%s' "$doc" | jq -r '
+      mapfile -t scalars < <(printf '%s' "$doc" | ${jq} -r '
         [ .name, .path, .guestPath, .volumePath,
           (.baseline // ""), (.refresh // ""), (.stateMaxBytes // 0),
           .sizes.vcpu, .sizes.mem, .sizes.volume ] | .[] | tostring')
@@ -212,8 +220,8 @@
       profile_mem=''${scalars[8]}
       profile_volume_size=''${scalars[9]}
 
-      mapfile -t profile_cache_paths < <(printf '%s' "$doc" | jq -r '.cachePaths[]? // empty')
-      mapfile -t profile_state_paths < <(printf '%s' "$doc" | jq -r '.statePaths[]? // empty')
+      mapfile -t profile_cache_paths < <(printf '%s' "$doc" | ${jq} -r '.cachePaths[]? // empty')
+      mapfile -t profile_state_paths < <(printf '%s' "$doc" | ${jq} -r '.statePaths[]? // empty')
 
       # A ceiling that is not a byte count would make the comparison below a
       # `[: integer expression expected` under `set -e` — a bash diagnostic
@@ -494,7 +502,6 @@
   # nix could not build.
   check = pkgs.writeShellApplication {
     name = "capsule-profile-check";
-    runtimeInputs = [pkgs.jq pkgs.coreutils];
     text = ''
       ${validator}
       profileRead "''${1:-}"
@@ -502,7 +509,7 @@
     '';
   };
 in {
-  inherit dir documentOf jsonOf renderDocs check;
+  inherit dir documentOf jsonOf renderDocs check jq;
   # The names of the documents `dir` holds.
   names = builtins.attrNames targets.byName;
 
@@ -515,11 +522,6 @@ in {
   # ([item 38](../docs/ledger/038-a-probe-that-became-a-borrower.md) is what a
   # separately-maintained copy of a live value costs).
   needsUnitOf = target: lib.any (lib.hasInfix hole) (documentOf target).statePaths;
-
-  # Callers add these to their own `runtimeInputs`, so the dependency is visible
-  # at each call site rather than assumed — `host/record.nix`'s arrangement, for
-  # its reason.
-  inputs = [pkgs.jq pkgs.coreutils];
 
   # **A fragment, not a program**, and the same argument `host/record.nix` makes:
   # the programs that will read this are already separate store paths for reasons

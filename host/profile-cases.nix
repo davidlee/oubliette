@@ -7,11 +7,13 @@
 # caller, so there is one text and this suite is not a second render of it.
 #
 # **Two subjects, and both are the shipped ones.** The fragment, and the
-# directory this host actually rendered — the first case loads `<target>.json`
-# with no environment at all, which is also the only thing that makes the
-# document a build input of anything
+# directory this host actually rendered — the first case over it loads
+# `<target>.json` with no environment at all, which is also the only thing that
+# makes the document a build input of anything
 # ([item 37](../docs/ledger/037-a-teardown-that-only-unnames.md): a document
-# nothing builds is a document nothing checks).
+# nothing builds is a document nothing checks). Ahead of both, the shipped
+# programs that splice the fragment, read as text: that each carries the
+# reader's own `jq` (`DEC-053`).
 #
 # What a live host reaches only expensively or not at all is everything after
 # that: a second target on this host, a document truncated mid-write, one from a
@@ -31,7 +33,12 @@
   # (item 51 step 4). Its own subject: what a program does with no `--profile` is
   # the refusal decision 4 turns on, and it is not reachable through `fragment`.
   select,
-  inputs,
+  # The reader's `jq`, as the store path it splices (`DEC-053`). Never on this
+  # suite's `PATH`: it writes fixtures, and it is the call case (2) asks every
+  # splicer's text for — so the reader under test cannot reach it any other way.
+  jq,
+  # Every shipped program that splices the reader, by program name (mkfleet.nix).
+  splicers,
   # The directory this host rendered, and the names of the documents in it —
   # one per target this host declares (SL-003).
   dir,
@@ -234,7 +241,6 @@
   # of, so no case spells a jq path of its own.
   probe = pkgs.writeShellApplication {
     name = "capsule-profile-probe";
-    runtimeInputs = inputs;
     text = ''
       ${fragment}
       profileLoad "''${1:-}"
@@ -248,7 +254,6 @@
   # stay in the arguments a ref or a payload name is read out of.
   selector = pkgs.writeShellApplication {
     name = "capsule-profile-select-probe";
-    runtimeInputs = inputs;
     text = ''
       ${fragment}
       ${select}
@@ -264,7 +269,7 @@
     '';
   };
 in
-  pkgs.runCommand "capsule-profile-cases" {nativeBuildInputs = [pkgs.jq];} ''
+  pkgs.runCommand "capsule-profile-cases" {} ''
     fail=0
     log=$PWD/log
     : >"$log"
@@ -280,6 +285,48 @@ in
       if grep -qF -- "$1" err; then echo "ok   ...and says '$1'" >>"$log"
       else echo "FAIL missing reason '$1' in: $(cat err)" >&2; fail=1; fi
     }
+
+    # ------------------------------------------- the reader brings its own jq
+    #
+    # (1) `DEC-053`, `ISS-013`: nothing on this suite's `PATH` is `jq`, so a
+    # load that works is the reader's text running on the `jq` it names itself —
+    # and since every splicer carries that one text (design sec-4), this covers
+    # every splice. Each assertion reads a value a different reader call
+    # produces, because `profileRead` runs under `|| return 1` with errexit off
+    # inside it: a missing `jq` in the grammar gives an empty reason, and in the
+    # two arrays an empty list, and a valid document would still load.
+    ck "no jq on this suite's PATH" "" "$(command -v jq || true)"
+    mkdir -p nojq
+    cp ${jsonOf base} nojq/fixture.json
+    cp ${jsonOf (base
+      // {
+        name = "drifted";
+        guestPath = "/vol/elsewhere";
+      })} nojq/drifted.json
+    CAPSULE_PROFILE_DIR=$PWD/nojq run fixture
+    ck "with no jq on PATH, the reader still loads a document" 0 "$rc"
+    ck "  and reads its scalars" fixture "$(field name)"
+    ck "  and its caches" /vol/.cache "$(field cachePath)"
+    ck "  and its state templates" 1 "$(field statePath | grep -c . || true)"
+    CAPSULE_PROFILE_DIR=$PWD/nojq run drifted
+    ck "  and its grammar still refuses" 1 "$rc"
+    saw "must stay derived from"
+
+    # (2) Each shipped splicer's text holds the reader's own call, matched as
+    # `<jq> -e` and never as the bare store path: `capsule` has `jq` on its
+    # `PATH` for its own reasons (`record.inputs`), so a path match would pass
+    # there whatever the reader spelled. What this proves is that the splice
+    # carries the shared text; it does **not** prove the program runs with no
+    # `jq` on a host's `PATH` (STD-001) — (1) runs the text, and a live run is
+    # not exercised here. The names are spelled here, so a splicer that drops
+    # out of the handed set is a red and not a shorter loop.
+    ck "the seven shipped splicers are handed" \
+      "capsule capsule-baseline capsule-brief capsule-collect capsule-provision capsule-refresh capsule-room-git" \
+      ${lib.escapeShellArg (lib.concatStringsSep " " (builtins.attrNames splicers))}
+    ${lib.concatMapStringsSep "\n    " (n: ''
+      ck ${lib.escapeShellArg "${n} splices the reader's own jq"} yes \
+        "$(grep -qF -- ${lib.escapeShellArg "${jq} -e"} ${lib.getExe splicers.${n}} && echo yes || echo no)"'')
+    (builtins.attrNames splicers)}
 
     # ------------------------------------------------ the document this host has
     #
@@ -307,7 +354,7 @@ in
     # rebuild away, and a broken one cannot be rendered at all.
     mkdir -p profiles
     export CAPSULE_PROFILE_DIR=$PWD/profiles
-    write() { printf '%s' "$2" | jq -S . > "profiles/$1.json"; }
+    write() { printf '%s' "$2" | ${jq} -S . > "profiles/$1.json"; }
 
     write alpha '{ "schema": 1, "name": "alpha", "path": "/home/h/alpha",
       "guestPath": "/work/alpha", "volumePath": "/work",
@@ -538,7 +585,7 @@ in
     # would report a target nobody asked for.
     # `guestPath` moves with the name, or the document fails the derivation rule
     # first and this round would be pinning that one twice over.
-    jq -S '.name = "elsewhere" | .guestPath = "/work/elsewhere"' \
+    ${jq} -S '.name = "elsewhere" | .guestPath = "/work/elsewhere"' \
       profiles/alpha.json > profiles/mislabelled.json
     run mislabelled
     ck "a document whose name is not its filename refuses" 1 "$rc"
@@ -555,17 +602,17 @@ in
     ck "a document that is not an object refuses" 1 "$rc"
     saw "is not a readable JSON object"
 
-    jq -S '.schema = 2' profiles/alpha.json > profiles/newer.json
+    ${jq} -S '.schema = 2' profiles/alpha.json > profiles/newer.json
     run newer
     ck "a document from a newer schema refuses" 1 "$rc"
     saw "declares schema 2; this host reads 1"
 
-    jq -S 'del(.guestPath)' profiles/alpha.json > profiles/nopath.json
+    ${jq} -S 'del(.guestPath)' profiles/alpha.json > profiles/nopath.json
     run nopath
     ck "a document missing a required field refuses" 1 "$rc"
     saw "has no 'guestPath'"
 
-    jq -S 'del(.sizes.mem)' profiles/alpha.json > profiles/nomem.json
+    ${jq} -S 'del(.sizes.mem)' profiles/alpha.json > profiles/nomem.json
     run nomem
     ck "and one missing a nested required field refuses" 1 "$rc"
     saw "has no 'sizes.mem'"
@@ -574,12 +621,12 @@ in
     # one: a ceiling is what keeps an over-budget state half from taking a
     # collect's code refs down with it (host/state-snapshot.nix), so declared
     # paths with no ceiling is a document to refuse and not a default to invent.
-    jq -S 'del(.stateMaxBytes)' profiles/alpha.json > profiles/noceil.json
+    ${jq} -S 'del(.stateMaxBytes)' profiles/alpha.json > profiles/noceil.json
     run noceil
     ck "state paths with no ceiling refuse" 1 "$rc"
     saw "declares state paths and no stateMaxBytes"
 
-    jq -S '.stateMaxBytes = "lots"' profiles/alpha.json > profiles/words.json
+    ${jq} -S '.stateMaxBytes = "lots"' profiles/alpha.json > profiles/words.json
     run words
     ck "a ceiling that is not a byte count refuses" 1 "$rc"
     saw "is not a byte count"
@@ -634,6 +681,9 @@ in
     # directory the module installs whole.
     rc=0
     (
+      # The render is a build step with `jq` of its own (design sec-3), so this
+      # one subshell gets it on `PATH`. Not a reader case: (1) and (2) are.
+      PATH="${lib.getBin pkgs.jq}/bin:$PATH"
       out=$PWD/rendered
       ${renderDocs [
       {

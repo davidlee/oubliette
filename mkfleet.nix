@@ -664,7 +664,6 @@
     # that builds it off a document, and the reader it needs.
     snapshotArgs = hostPrograms.snapshotArgsFragment;
     profileFragment = hostProfile.fragment;
-    inherit (hostProfile) inputs;
   };
 
   baselineCases = import ./host/baseline-cases.nix {
@@ -675,7 +674,6 @@
   observeCases = import ./host/observe-cases.nix {
     inherit pkgs;
     inherit (hostPrograms) observe observeFragment;
-    inherit (hostProfile) inputs;
   };
 
   refreshCases = import ./host/refresh-cases.nix {
@@ -724,7 +722,16 @@
   # optional on anything (host/profile-cases.nix).
   profileCases = import ./host/profile-cases.nix {
     inherit pkgs lib;
-    inherit (hostProfile) fragment select inputs dir names check jsonOf renderDocs;
+    inherit (hostProfile) fragment select dir names check jsonOf renderDocs jq;
+    # Every shipped program that splices the reader, unwrapped and as this file
+    # binds them, keyed by program name: the suite asks each one's text for the
+    # reader's own `jq` (`DEC-053`). The suite spells the seven names itself,
+    # so one dropped from here is a red rather than a shorter loop.
+    splicers = {
+      inherit capsule-provision capsule-collect capsule-refresh capsule-brief capsule-baseline;
+      capsule-room-git = hostPrograms.roomGit;
+      capsule = capsule-cli;
+    };
     # The same construction this host's own profile comes from, so a fixture
     # document has the key set a real one has rather than the key set this
     # suite remembered. Since item 52 it is used for `.json` alone: the eleven

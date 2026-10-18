@@ -38,7 +38,7 @@
   slot,
 }:
 pkgs.runCommand "capsule-git-channel-cases" {
-  nativeBuildInputs = [pkgs.jq pkgs.git];
+  nativeBuildInputs = [pkgs.git];
 } ''
   export HOME=$PWD
   git config --global user.email c@example.invalid
@@ -71,7 +71,9 @@ pkgs.runCommand "capsule-git-channel-cases" {
 
   mkdir -p profiles
   export CAPSULE_PROFILE_DIR=$PWD/profiles
-  write() { printf '%s' "$2" | jq -S . > "profiles/$1.json"; }
+  # Writes fixtures only, by store path and never on `PATH`: the programs under
+  # test name their reader's own `jq` (`DEC-053`), so this suite supplies none.
+  write() { printf '%s' "$2" | ${lib.getExe pkgs.jq} -S . > "profiles/$1.json"; }
 
   # Two targets, one host, and every value below is one a program used to carry
   # in its text. `alpha` has this sandbox's repository as its checkout; `beta`
