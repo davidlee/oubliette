@@ -146,6 +146,41 @@ selector = "host/netns-cases.nix"
 intent = "design-target"
 note = "RV-015"
 
+[[selector]]
+selector = "flake.nix"
+intent = "design-target"
+note = "RV-018 F-5: mechanical consequences of declared changes"
+
+[[selector]]
+selector = "host/policy-cases.nix"
+intent = "design-target"
+note = "RV-018 F-5: mechanical consequences of declared changes"
+
+[[selector]]
+selector = "host/volume-cases.nix"
+intent = "design-target"
+note = "RV-018 F-5: mechanical consequences of declared changes"
+
+[[selector]]
+selector = "README.md"
+intent = "design-target"
+note = "RV-018 F-5: mechanical consequences of declared changes"
+
+[[selector]]
+selector = ".doctrine/slice/005/design.md"
+intent = "design-target"
+note = "RV-018 F-5: mechanical consequences of declared changes"
+
+[[selector]]
+selector = ".doctrine/slice/005/notes.md"
+intent = "design-target"
+note = "RV-018 F-5: PHASE-06 supersession note; PHASE-07 live figures"
+
+[[selector]]
+selector = "docs/probes.md"
+intent = "design-target"
+note = "RV-018 F-5: PHASE-06 supersession note; PHASE-07 live figures"
+
 [[relation]]
 label = "fulfils"
 degree = "partial"

@@ -15,7 +15,7 @@ context = "SL-006 inq-12. Every slot-channel failure is exit 1 (host/guest-ssh.n
 choice = "Before git runs, a pre-flight reads an SSH-2.0 banner through the room socket with socat and a timeout. A missing socket or no banner exits 75. A refusal (usage, unknown room or repo, policy) exits 2. Anything after a banner, including authentication and host-key refusal, exits 1; a room that dies mid-transfer exits 1 and the caller re-probes."
 alternatives = ["75 whenever ssh true fails", "parsing ssh's error text"]
 rationale = "A banner proves the room answers without trusting it, so trust failures stay failures; no text is parsed."
-consequences = ["cases pin no socket => 75; the banner and auth branches are proven live, since ssh cannot be stubbed"]
+consequences = ["cases pin no socket => 75 and through a fixture door no banner => 75 and a post-banner failure => 1 (RV-018 F-2); authentication and host-key refusal by a real sshd are proven live since ssh itself cannot be stubbed"]
 decided_by = "user, on agent proposal (amended after a GPT review)"
 decided_on = "2026-10-18"
 

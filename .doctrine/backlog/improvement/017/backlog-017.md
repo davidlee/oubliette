@@ -36,3 +36,13 @@ oubliette pins it, and satan's interface relies on it.
 
 Either way, design sec-6's "not promised" and the contract's "on the base
 `PATH`" should end up saying the same thing.
+
+## Direction (the user, 2026-10-19, SL-006 RV-018 F-1)
+
+Option two: **`session` supplies the base tools itself**, behind `tools/bin`
+and ahead of the caller's `PATH`, so the caller's `PATH` stops mattering. Its
+own slice, after SL-006. SL-006's design sec-3/sec-6 and
+`docs/contract-target.md` now say the base tools ride the inherited `PATH`
+*until* this lands. What changes when it does: `vm/session.nix` (whose header
+says `runtimeInputs` stays empty for exactly the reason this reverses), and
+`sessionCases`' "without a set, `PATH` is the caller's exactly" case.

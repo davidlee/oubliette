@@ -57,3 +57,12 @@ was silent.
 
 Not exercised: this host gets the fix at the user's next rebuild. A fresh host's
 first boot was not run.
+
+## Live acceptance (RV-018 F-8, 2026-10-19)
+
+The fix is pinned at eval (`hostModuleUnits`' `unparented` check, green at
+`e16fe32`). tmpfiles accepting the declared parent *on this host* is not yet
+observed: it waits on the user's next rebuild. Until then the live
+`/var/lib/capsule/room` is the hand-fixed one (`david:users 0750`), which
+matches the rule. After the rebuild, `sudo systemd-tmpfiles --create` with no
+"unsafe path transition" line is the observation.

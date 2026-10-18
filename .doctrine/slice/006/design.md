@@ -58,7 +58,9 @@ written and `ISS-021` closes by adding a volume.
 | `rooms.nix` | `targets`, `policies` arguments; `repos`/`policy`/`sizes.work`; reasons; record fields |
 | `rooms-cases.nix` | new verdicts |
 | `fabric-cases.nix`, `host/guard-cases.nix`, `host/netns-cases.nix` | apply `rooms.nix`, so pass the new `targets` and `policies` as declared fixture values (RV-015 F-7) |
-| `mkfleet.nix` | bind the new arguments; `roomVms` passes target flakes; `roomChecks` rules; wire `roomGitCases`, `quarantineCases`, `sessionCases`; install `capsule-room-git` |
+| `mkfleet.nix` | bind the new arguments; `roomVms` passes target flakes; `roomChecks` rules; wire `roomGitCases`, `quarantineCases`, `sessionCases`; install `capsule-room-git`; `hostModuleUnits`' `unparented` check (`ISS-024`) |
+| `flake.nix` | the fixture import takes `nixpkgs`, for the second target's stub package |
+| `host/policy-cases.nix`, `host/volume-cases.nix` | build `host/cli.nix`, so pass its new `roomTrust` |
 | `vm/room.nix` | `/work` volume, seed per repo, git, the `/etc/room/repo` tree, `session` |
 | `vm/session.nix` (new), `vm/session-cases.nix` (new) | the generic launcher (its root a build argument) and its suite |
 | `host/room-git.nix` (new), `host/room-git-cases.nix` (new) | the program and its suite |
@@ -69,11 +71,13 @@ written and `ISS-021` closes by adding a volume.
 | `host/programs.nix` | builds `capsule-room-git` beside the channel |
 | `host/cli.nix` | room verbs, the room's known_hosts and alias, `forget-host-key` |
 | `host/room-verbs-cases.nix` | new verb cases |
-| `host/services.nix` | `room/<r>` tmpfiles; `capsule-room-git` installed through `wrap` |
+| `host/services.nix` | `room/<r>` tmpfiles under a declared `room` parent (`stateRootOf`, `ISS-024`); `capsule-room-git` installed through `wrap` |
 | `fixture/default.nix`, `fixture/stub-flake.nix` | second target, its package, the assistant's repos |
 | `templates/fleet/flake.nix` | the commented example |
 | `just/fleet.just`, `CLAUDE.md` | the new suites |
 | `docs/contract-assignment.md`, `docs/contract-target.md`, `docs/plan-f-assistant.md` | sec-9 |
+| `README.md` | the Rooms section: repos, the three verbs, the trust store, the exit statuses |
+| `.doctrine/slice/005/design.md` | sec-9's supersession note |
 
 <!-- doctrine:section sec-2 -->
 ## The declaration and `rooms.nix` (`DEC-048`, `DEC-046`)
@@ -125,7 +129,12 @@ record has repos:
   Never anything else: the clone is the agent's from then on.
 - **Base tools.** `git` in `environment.systemPackages`. With NixOS's required
   packages that gives pi-env `sh`, `uname`, coreutils (`sha256sum`, `mktemp`),
-  `which` and `bash` on the base `PATH`.
+  `which` and `bash` in the system profile. Today `session` reaches them
+  through the `PATH` it inherits, which on NixOS a non-login ssh command
+  carries (PHASE-07 A7) and nothing here pins. They are `session`'s to supply,
+  behind `tools/bin` and ahead of the caller's `PATH`, so the caller's `PATH`
+  stops mattering (RV-018 F-1, the user's choice): that is `IMP-017`, not built
+  in this slice.
 - **The repo tree.** Per repo, the image renders links and nothing else
   (`environment.etc`): `/etc/room/repo/<repo>/clone` → its `guestPath`, and,
   for a target whose `toolsPackage` is not null, `/etc/room/repo/<repo>/tools`
@@ -163,7 +172,9 @@ capsule-room-git --room <r> --profile <repo> --user <u> --policy <p> push    <br
 capsule-room-git --room <r> --profile <repo> --user <u> --policy <p> collect <branch>
 ```
 
-`--profile` is the existing reader (`host/profile.nix` `select`), which yields
+`--profile` is the existing reader's `profileLoad` (`host/profile.nix`), not
+`select`, which exits 1 and falls back to `CAPSULE_PROFILE` — against both the
+2-before-the-door rule and argv-only naming (RV-018 F-3). It yields
 `profile_path` (the host checkout) and `profile_guest_path`. `--room` and
 `--profile` are checked with `refuseToken 2` (a refusal here exits **2**:
 `quarantine.nix` gains `refuseToken <status>`, and `checkToken` becomes
@@ -197,16 +208,23 @@ is strict with its own file (sec-5).
    (RV-015 F-2). **push** also resolves `git rev-parse --verify
    <branch>^{commit}` in `profile_path` here (refuse, exit 2, if absent): every
    caller error is decided on this host before the room is asked anything, so
-   none can read as 75.
+   none can read as 75. Step 1 also refuses (2): a `--user` that is not a login
+   name (it goes into the URL's userinfo); a state root holding whitespace or
+   `%` (ssh would read `UserKnownHostsFile` as a list or a token); an option
+   given twice or not its own (`--` ends the options). The branch passes
+   `check-ref-format --branch` *and* `refs/heads/<branch>` (inside a repository
+   `--branch` expands `@{-1}`), and push resolves `refs/heads/<branch>` exactly,
+   so a tag of the same name is never what it sends.
 2. Pre-flight: the socket exists **and** an `SSH-2.0` banner arrives through
    it (`socat` with a timeout). Otherwise exit **75**.
 3. **push**: `git push ssh://<user>@room-<r><guestPath>
    +<oid>:refs/host/<branch>` (the hostname is the alias; the ProxyCommand
-   carries the connection); print the oid. The worktree is never touched, so
+   carries the connection); print `<oid>`, alone on stdout. The worktree is never touched, so
    `updateInstead` and its residue (`ISS-009`) never arise.
 4. **collect**: create `collect/<r>/<repo>.git` bare if absent; bounded fetch
    of `+refs/heads/<branch>:refs/capsule/<r>/heads/<branch>` with
-   `transfer.fsckObjects`, `--no-tags`, `ulimit -f`; print the ref and its oid.
+   `transfer.fsckObjects`, `--no-tags`, `ulimit -f`; print `<oid>\t<ref>`, one
+   line in `ls-remote` order. Progress and errors go to stderr.
 5. Any failure after the banner exits **1** — including authentication and a
    changed host key, which are trust failures, not downtime.
 
@@ -222,7 +240,10 @@ and `capsule-collect` are: bare, `quarantine.nix`'s fragment falls back to
 ## Host keys and the front end (`DEC-047`, `DEC-051`)
 
 **One store per room.** `$stateDir/room/<room>/known_hosts`, the directory made
-by the module's tmpfiles (`0700 owner users`). Every door to a room uses it with
+by the module's tmpfiles (`0700 owner users`), under a parent `$stateDir/room`
+(`rooms.nix` `stateRootOf`) declared `0750 owner users` by its own rule: an
+undeclared parent is made `root:root`, and tmpfiles then refuses the step into
+it while the switch reports success (`ISS-024`). Every door to a room uses it with
 `StrictHostKeyChecking=accept-new` and `HostKeyAlias=room-<room>`: the front
 end's `ssh`, both channel verbs, and satan's runner (its `known_hosts` setting
 points here). First contact learns the key over a host-local socket into a VM
@@ -252,10 +273,10 @@ supersedes the slot recipe that `satan:ASM-005` stands in for.
 | door: ssh config | `ProxyCommand socat - UNIX-CONNECT:/run/capsule-room/<room>/ssh.sock`, user `repos.user`. No guest address: socat ignores `HostName` and `HostKeyAlias` keys the host key, so any name serves; the record carries none, and `net.guest` is the relay's alone |
 | door: `known_hosts` | `/var/lib/capsule/room/<room>/known_hosts`, `HostKeyAlias room-<room>` |
 | per-repo `guest_path` | the target's `guestPath`, `/work/<target>` — not `/work/repos/<target>`. Checked in `preparing`, before the first command in that repo (`test -d <guest_path>/.git` through the env), where room-down is already handled — not at runner startup, when the room may be routinely stopped (`DEC-031`) |
-| execution env | start pi-env's daemon as `/run/current-system/sw/bin/session <repo> -- <daemon path>` (absolute: a non-login ssh command's `PATH` is not promised) through a custom `Connection` command built from pi-env's exported `detectPlatform`/`deployDaemon`/`sshArguments`; the repo comes from each job's `RepoConfig`; test a reconnect after a room stop |
-| `GitChannel.refresh` | `capsule <room> push <repo> <branch>` → oid on stdout; then `git switch -c job/<id> <oid>` through the env |
-| `GitChannel.collect` | `capsule <room> collect <repo> job/<id>` → `refs/capsule/<room>/heads/job/<id>` in `/var/lib/capsule/collect/<room>/<repo>.git` |
-| `GitChannel.reachable` | exit 75 from either verb, or `capsule <room> ssh <user> true` |
+| execution env | start pi-env's daemon as `/run/current-system/sw/bin/session <repo> -- <daemon path>` (absolute: a non-login ssh command's `PATH` is not promised — and `session`'s own base tools ride that same `PATH` until `IMP-017`, sec-3) through a custom `Connection` command built from pi-env's exported `detectPlatform`/`deployDaemon`/`sshArguments`; the repo comes from each job's `RepoConfig`; test a reconnect after a room stop |
+| `GitChannel.refresh` | `capsule <room> push <repo> <branch>` → `<oid>` alone on stdout; then `git switch -c job/<id> <oid>` through the env |
+| `GitChannel.collect` | `capsule <room> collect <repo> job/<id>` → one line `<oid>\t<ref>` on stdout, `<ref>` = `refs/capsule/<room>/heads/job/<id>` in `/var/lib/capsule/collect/<room>/<repo>.git` |
+| `GitChannel.reachable` | exit 75 from either verb. Not `capsule <room> ssh <user> true`: that door exits 1 when the room is down and 255 for a changed key, and it is interactive (no `BatchMode`), so it reads distrust as downtime — the alternative `DEC-050` rejects (RV-018 F-4) |
 | typed errors | 75 → `ChannelUnavailable`; 1 → `ChannelFailed`; 2 → a refusal (a bug in the caller) |
 | clone state and hygiene | a fresh clone is `git init` on an unborn `workBranch`, no commits; `git switch -c job/<id> <oid>` works from there once `push` delivered the oid. `push` never touches the worktree, so residue is only what earlier jobs left: a clean-tree check before the switch is the runner's (`returnToWork` is slot-only) |
 | promotion | Emacs fetches the quarantine ref; no oubliette program (`DEC-040`) |
@@ -282,16 +303,17 @@ for the right reason.
 | suite | pins | kind |
 | --- | --- | --- |
 | `roomsCases` (extended) | each new reason by its text; the partial set; the record's `repos`/`policy`; a repo-less room unchanged | library, `tryEval` + `deepSeq` |
-| `roomGitCases` (new, `host/room-git-cases.nix`) | usage and token refusals → 2; unknown policy and `may != yes` → 2; a branch `check-ref-format --branch` refuses (`*`, `a..b`) → 2 for both verbs; no socket → **75** with stdout empty (the validation printed nothing); push of a branch the host checkout lacks → **2 with no socket**, which pins that it is decided before the pre-flight; argv up to the door | program, shipped store path |
+| `roomGitCases` (new, `host/room-git-cases.nix`) | usage and token refusals → 2; unknown policy and `may != yes` → 2; a branch `check-ref-format --branch` refuses (`*`, `a..b`) → 2 for both verbs; no socket → **75** with stdout empty (the validation printed nothing); push of a branch the host checkout lacks → **2 with no socket**, which pins that it is decided before the pre-flight; through a fixture door, a silent or non-ssh one → **75** and an `SSH-2.0-` banner then failure → **1**, the pre-flight stopping at the banner and nothing written before it; argv up to the door | program, shipped store path |
 | `quarantineCases` (new, `host/quarantine-cases.nix`) | the bounded fetch fragment against local bare repos over `file://`: a pack over the ceiling fails, a malformed object fails, an offered tag is not taken, with two refspecs and one destination's `.lock` already in place, neither ref moves (`--atomic` — a single-ref failure would not discriminate); `checkToken` still exits 1 and `refuseToken 2` exits 2 | library, spliced into the smallest `main` (`host/profile-cases.nix`'s arrangement) |
 | `sessionCases` (new, `vm/session-cases.nix`) | a bad or unknown repo, or no `--` → 2; `PATH` gains `tools/bin` only for a repo with a set; cwd is the clone's physical path; argv passes untouched; stdout empty | program, guest-shipped, handed a fixture tree as its root |
 | `roomVerbsCases` (extended) | `push`/`collect`/`forget-host-key` resolve and refuse; a repo the room lacks → 2; a repo-less room refuses by name | front end over a fixture pool |
 | `hostModuleUnits` | the room's state directory tmpfiles; the installed `capsule-room-git` is the wrapped one | evaluation |
 | image gate | the fixture assistant builds with both tool sets and `/work`; `roomChecks`' new rules | build |
 
-Not reachable by a case (ssh cannot be stubbed): the banner branch, an auth
-or host-key failure → 1, an actual push and collect. Those are the **live
-rung** (`STD-001`): the assistant on this host with two real repos; `push`;
+ssh cannot be stubbed, but the door can: `roomGitCases` serves a fixture
+socket, so no banner → 75 and a failure after a banner → 1 are cased (RV-018
+F-2). Not reachable by a case: authentication and host-key refusal by a real
+sshd, an actual push and collect. Those are the **live rung** (`STD-001`): the assistant on this host with two real repos; `push`;
 a commit on `job/<id>` via `session`; `collect` lands in that repo's quarantine
 and no other; a changed host key refuses everywhere; stop/start keeps clones,
 uids and host keys; and a **slot** `capsule-collect` on this host still lands

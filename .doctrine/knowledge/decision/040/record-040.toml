@@ -3,7 +3,7 @@ version = 1
 
 id = 40
 slug = "room-quarantine-layout"
-title = "A room's per-repo quarantine layout is pinned and not built"
+title = "A room's quarantine is one bare repo per room and repo"
 record_kind = "decision"
 status = "accepted"
 created = "2026-10-18"
@@ -15,7 +15,7 @@ context = "SL-005 inq-9, Plan F section 4, research X5. The quarantine is keyed 
 choice = "When built: one bare repo per room and repo at /var/lib/capsule/collect/<room>/<target>.git; the guest clone at the target's guestPath; host/git-channel.nix given a room transport fragment over the room's socket, with the quarantine key separate from the transport name; transfer.fsckObjects as today. Promotion into a real repo is never a program here: there is no room fetch."
 alternatives = ["one quarantine per room", "fetching straight into the real repo (satan:IDE-007's first sketch)"]
 rationale = "Guest packs are attacker-shaped (NOTES item 34, RSK-006), and a per-repo key avoids item 50's overwrite."
-consequences = ["the channel build-out is a follow-on slice", "satan's promotion surface reads these bare repos"]
+consequences = ["built by SL-006 as its own program capsule-room-git (DEC-045) rather than a room transport fragment in host/git-channel.nix", "satan's promotion surface reads these bare repos"]
 decided_by = "user, on agent proposal"
 decided_on = "2026-10-18"
 

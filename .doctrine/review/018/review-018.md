@@ -138,3 +138,53 @@ confound stated.
 ### Already done in the audit
 
 - **docs/contract-target.md:19-26 (F-7)** — fix-now, in the audit commit.
+
+## Reconciliation Outcome
+
+The user chose F-1 option (b), `session` supplies the base tools, and placed
+the code in `IMP-017` as its own slice, not this one. All proposed edits were
+agreed in session ("agreed").
+
+### Direct edits applied
+- design.md sec-3 Base tools: they ride the inherited `PATH` until `IMP-017`
+  makes `session` supply them (F-1).
+- design.md sec-4: `profileLoad`, not `select`; step 1's full refusal list;
+  stdout `<oid>` / `<oid>\t<ref>` (F-3).
+- design.md sec-5: the declared `0750` parent (`stateRootOf`, `ISS-024`) (F-8).
+- design.md sec-6: refresh/collect stdout shapes; `reachable` is 75 only, with
+  why `ssh <user> true` is not equivalent; execution env names `IMP-017` (F-1,
+  F-3, F-4).
+- design.md sec-8: the fixture door reaches 75 (no banner) and 1 (after a
+  banner); only a real sshd's auth/host-key refusal is live-only (F-2).
+- design.md sec-11: rows for `flake.nix`, the two cli-building suites,
+  `README.md`, SL-005's design; the parent rule and `unparented` check (F-5, F-8).
+- Selector registry: design-target `flake.nix`, `host/policy-cases.nix`,
+  `host/volume-cases.nix`, `README.md`, `.doctrine/slice/005/design.md`,
+  `.doctrine/slice/005/notes.md`, `docs/probes.md`. `slice conformance 6` now
+  shows only governance records undeclared (F-5).
+- docs/contract-target.md: intro (F-7, audit commit); `toolsPackage` absent
+  path and the room tools row say the inherited `PATH`, until `IMP-017` (F-1).
+
+### Records edited (no REV: none is an ADR, policy, standard or spec)
+- DEC-040: retitled "A room's quarantine is one bare repo per room and repo";
+  consequences say SL-006 built it as `capsule-room-git` (`DEC-045`) (F-6).
+- DEC-050: consequences say what a fixture door cases and what is live (F-2).
+- ISS-024: live acceptance pending the user's next rebuild, and what to observe (F-8).
+- IMP-017: the user's direction, and what it will change.
+- DEC-043: unchanged; "git joins the room's base tools" holds under (b).
+
+### Withdrawn / tolerated
+- F-9: tolerated — an sshd authentication failure is exercised nowhere;
+  rationale in the disposition.
+
+### Outside this repo
+- The F-4 correction (and F-3's stdout shapes) for satan SL-023: relay text
+  given to the user in session; delivering it is the user's act.
+
+### Hazard
+- `doctrine design show 6` reports design.md "behind its run (revision 38)".
+  The run cannot see reconcile edits; **do not `design materialise SL-006`**,
+  which would render the pre-reconcile prose over them
+  (`mem.fact.oubliette.reconcile-edits-are-invisible-to-the-design-run`).
+
+Reconcile pass complete — handoff to /close.
