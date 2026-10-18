@@ -63,18 +63,37 @@
 
       # Rooms: guests that are not slots, each reached only through its
       # host-local door. `{}` declares none. Each user declares its uid, which
-      # owns its files on the room's volume and so must never change. For
-      # example:
+      # owns its files on the room's volume and so must never change.
+      #
+      # A room may also hold repos: `repos`, `policy` and `sizes.work`, all
+      # three or none (DEC-048). `repos.targets` are names in `targets` above;
+      # each becomes one clone at that target's `guestPath`, on a second volume
+      # at `/work` (`sizes.work` MiB, sparse), `git init`ed on the unborn `work`
+      # branch and owned by `repos.user`, one of the room's declared users. A
+      # repo's tool set is its target's `toolsPackage`, reached only through
+      # `session <repo> -- <cmd>` in the room, never on its base PATH. `policy`
+      # names one in policies.nix; it bounds and permits what
+      # `capsule assistant collect <repo> <branch>` fetches back, into
+      # /var/lib/capsule/collect/assistant/<repo>.git, and its allowlist is
+      # inert, since a room has no uplink. `capsule assistant push <repo>
+      # <branch>` sends a branch of the target's `path` checkout. A room without
+      # repos needs none of this. For example:
       #
       #   rooms.assistant = {
       #     users.agent = {
       #       uid = 1001;
       #       keys = ["ssh-ed25519 AAAA... you@host"];
       #     };
+      #     repos = {
+      #       user = "agent";
+      #       targets = ["doctrine"];
+      #     };
+      #     policy = "build";
       #     sizes = {
       #       vcpu = 2;
       #       mem = 4096;
       #       volume = 40960;
+      #       work = 32768;
       #     };
       #   };
       rooms = {};

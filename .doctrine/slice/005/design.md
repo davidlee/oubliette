@@ -236,6 +236,8 @@ No egress, proxy, target tools, `reset-home` or kernel-command-line target marke
 <!-- doctrine:section sec-6 -->
 ## The door, and the quarantine layout
 
+> **Superseded in part by SL-006** (`DEC-045`, `DEC-047`, `DEC-051`): every door to a room checks `/var/lib/capsule/room/<room>/known_hosts` with `HostKeyAlias=room-<room>` and accept-new, not `<room>` (which could equal a slot's alias, `RSK-011`); the room channel is built, as `capsule-room-git` and the front end's `push` and `collect`. The sentences below are kept as SL-005 decided them.
+
 This section is **the interface `satan:IDE-007` designs against**. It restates `DEC-037` and `DEC-040` as a client sees them.
 
 ### Reaching a room (`DEC-037`)
@@ -276,6 +278,8 @@ The build-out is a follow-on slice. Until then a client can read and write the r
 ## The front end and stopping a room
 
 **`capsule` learns rooms for four verbs** (`DEC-041`). `host/cli.nix` gains a baked `rooms=(…)` list beside `declared` (329). Name resolution tries slots, then rooms. A room is only ever named on argv, never resolved implicitly or read from `CAPSULE_NAME`, which stays slot-only.
+
+> **Superseded in part by SL-006** (`DEC-051`, which supersedes `DEC-041`): a room takes six verbs (`push`, `collect` and `forget-host-key` added), `ssh` checks the room's own `known_hosts` with `HostKeyAlias=room-<room>` (`DEC-047`), and the refusal text names all six. The table below is kept as SL-005 decided it.
 
 | verb | for a room |
 |---|---|

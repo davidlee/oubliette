@@ -484,18 +484,27 @@ the target's file in its `targets/`, never a literal.
 
 ## Rooms
 
-A room is a shared guest that is not a capsule: no target, no assignment, and
-no uplink, proxy or route out (`DEC-036`; [Plan E](docs/plan-e-room.md),
+A room is a shared guest that is not a capsule: no assignment, and no uplink,
+proxy or route out (`DEC-036`; [Plan E](docs/plan-e-room.md),
 [Plan F](docs/plan-f-assistant.md)). It is declared in `mkFleet`'s `rooms`
 argument (`rooms = {}` for none) with its sizes and its users, each user
 `{ uid; keys; }`. The uid is declared, in 1000-29999, so adding an earlier name
 never re-owns `/home` (`RSK-012`). The module owns no toolchain or agent names
 (`POL-002`); a room's contents are the caller's values.
 
+A room may also hold targets as repos: `repos = { user; targets = [...]; }`,
+a `policy` and `sizes.work`, all three or none (`DEC-048`). Each repo is a
+clone at its target's `guestPath` on a `/work` volume, owned by `repos.user`;
+in the room, `session <repo> -- <cmd>` runs a command there with that target's
+tool set (the template's `flake.nix` comments the fields).
+
 ```
 capsule <room> ssh [user] [-- cmd]
 capsule <room> start
 capsule <room> stop
+capsule <room> push <repo> <branch>      # the target's checkout -> refs/host/<branch>; prints the oid
+capsule <room> collect <repo> <branch>   # -> <state>/collect/<room>/<repo>.git; prints <oid>\t<ref>
+capsule <room> forget-host-key
 ```
 
 A room is created once, as a slot is, before anything can start it:
@@ -503,8 +512,10 @@ A room is created once, as a slot is, before anything can start it:
 then its units fail as a *dependency*, naming neither the room nor the create.
 
 A room is named on argv and never resolved implicitly. Every other verb
-refuses it: `capsule: '<room>' is a room; rooms take ssh, start, stop (status
-lists them)`. `ssh` with no user named on a room that declares several refuses
+refuses it: `capsule: '<room>' is a room; rooms take ssh, start, stop, push,
+collect, forget-host-key (status lists them)`. A room with no repos refuses
+`push` and `collect`: `room '<room>' declares no repos, so it has nothing to
+push or collect.` `ssh` with no user named on a room that declares several refuses
 and asks for one; on a room that is not up it says
 `capsule: no socket at <path>, so room '<room>' is not up.`. A stop is a
 reboot through the stop key, so it cuts in-flight work.
@@ -516,6 +527,18 @@ The door is a per-room unix socket, `/run/capsule-room/<room>/ssh.sock`, mode
 `0600`, owned by the module's owner and present only while the room's tap is.
 A client runs as that owner and reaches the guest by `ProxyCommand` as a
 declared user (`DEC-037`).
+
+Every door to a room — `ssh`, `push`, `collect` — checks one `known_hosts` of
+the room's own, `<state>/room/<room>/known_hosts` (`<state>` is `CAPSULE_STATE`,
+else `/var/lib/capsule`), as `HostKeyAlias=room-<room>` with accept-new: the
+first contact learns the key, a changed one is refused (`DEC-047`). After the room's volume
+is deleted, `capsule <room> forget-host-key` empties that file
+(`capsule <room>: forgot the room's host key (<file>).`).
+
+`push` and `collect` exit 2 for a caller error, decided before the room is
+asked anything; **75 when the room is not answering** (no socket, or no ssh
+banner through it), which a script can treat as "start it"; and 1 for anything
+after the banner, a host-key or authentication failure included (`DEC-050`).
 
 ## Moving one capsule's work to another slot
 

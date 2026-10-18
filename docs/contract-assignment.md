@@ -60,7 +60,7 @@ this repo has already had to undo once.
 | noun | what it decides | owner | when it changes | who may change it |
 | --- | --- | --- | --- | --- |
 | **slot** | identity, namespace, uplink /30, socket, units | host declaration (`capsules.nix`) | host rebuild | host operator |
-| **room** | identity, namespace, socket, units, users (each `{ uid; keys; }`, the uid declared because it owns the user's files on the volume — `RSK-012`), sizes (vcpu, mem, volume) — no uplink, no proxy, no assignment | host declaration (`mkFleet`'s `rooms`, decided by `rooms.nix`) | host rebuild | host operator |
+| **room** | identity, namespace, socket, units, users (each `{ uid; keys; }`, the uid declared because it owns the user's files on the volume — `RSK-012`), sizes (vcpu, mem, volume); and optionally, all three or none (`DEC-048`), **`repos`** (`{ user; targets; }`: target names, one clone each at its `guestPath` on a second volume at **`/work`**, owned by the declared `user` — `DEC-043`), **`policy`** (a declared policy's name: the bound on and permission for its collects, its allowlist inert — `DEC-046`) and **`sizes.work`**. A room with repos has a **quarantine**, `<state>/collect/<room>/<repo>.git` with refs `refs/capsule/<room>/heads/<branch>` (`DEC-040`); every room has a **`known_hosts` store**, `<state>/room/<room>/known_hosts`, which every door to it checks (`HostKeyAlias=room-<room>`, accept-new — `DEC-047`). `<state>` is `CAPSULE_STATE`, else the module's `/var/lib/capsule` — no uplink, no proxy, no assignment | host declaration (`mkFleet`'s `rooms`, decided by `rooms.nix`) | host rebuild | host operator |
 | **flavour** | the guest's capability and tool closure | **not declared — composed** from the profile's floor and the assignment's extras ([contract-flavour.md](./contract-flavour.md)) | stop, build, start — a symlink re-point, not a rebuild of the fleet | both owners, within a fragment vocabulary the host declares |
 | **class** | machine config: `mem`, `vcpu` | the runner's JSON | stop / start | host operator declares; an assigner selects within the slot's set |
 | **policy** | egress allowlist, ingestion bounds, whether this slot may collect | host declaration, *selected* by the assignment | live — see the refresh rule | host operator declares the set; an assigner selects within it, or is refused |
@@ -72,8 +72,12 @@ this repo has already had to undo once.
 Namespace, socket and units have two owners since SL-005, slot and room: both
 are guests, so the units built per guest (namespace, tap, VMM, relay) are built
 for either, and the perimeter guard audits both. A room's sizes and its one
-volume are declared with it rather than selected; it has none of the other
-nouns — no flavour, class, policy, profile, source or assignment.
+volumes and policy are declared with it rather than selected: nobody assigns a
+room. A room with repos reads each repo's **profile** document by target name
+(`capsule-room-git --profile <repo>`), so it has a profile and a **source** per
+repo, the host's current document rather than one pinned per assignment. It
+still has no flavour (a repo's tool set is its target's floor alone, no fleet
+extras — `DEC-044`, provisional), no class and no assignment.
 
 Six consequences worth stating rather than deriving:
 

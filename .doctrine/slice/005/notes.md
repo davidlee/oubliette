@@ -145,6 +145,12 @@ To `satan:IDE-007` / satan SL-023, from oubliette SL-005 (design sec-6):
 6. A room user is `{ uid; keys; }` with a declared uid in 1000-29999 (RSK-012, a22f882),
    so a satan room declaration must carry a uid per user.
 
+## Superseded by SL-006
+
+- The room's git channel is built by SL-006 (`capsule-room-git`, `DEC-045`), and
+  `HostKeyAlias=<room>` above is `room-<room>` against a per-room `known_hosts`
+  (`DEC-047`); design sec-6 and sec-7 carry the note, unrewritten.
+
 ## EX-1 checklist (sec-10)
 
 | sec-10 row | landed |

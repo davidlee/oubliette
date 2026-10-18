@@ -87,12 +87,12 @@ changes until they are built.
 
 | field | owner | read by | required | absent path |
 | --- | --- | --- | --- | --- |
-| `name` | profile | guest (checkout dir, motd). **The target's key in the `targets` argument**, never a field of its file. **It is also the document's filename**, so it is the name every host-side program is given as `--profile`. **`-` is reserved** — the front end prints it for an absent field, so a profile of that name would read as none; `capsule-profile-check`, every program's lookup and the consumer's `capsules.nix` declared `profile` all refuse it | derived (the key) | — |
-| `path` | **source** | host: `capsule-provision` looks it up (its push source), `capsule-brief --from-host` (the checkout it snapshots), `capsule <slot> fetch` (the repo a quarantine lands in) | yes | `CAPSULE_REPO` overrides it for one invocation — and having a host-side override where no other field has any is the tell that it was never project state. Pinned with the rest of the document at provision (SL-001), so a moved checkout reads as drift until the slot is re-provisioned. The module's `repo` option is removed, and setting it fails at eval naming this field |
+| `name` | profile | guest (checkout dir, motd). **The target's key in the `targets` argument**, never a field of its file. **It is also the document's filename**, so it is the name every host-side program is given as `--profile`. **`-` is reserved** — the front end prints it for an absent field, so a profile of that name would read as none; `capsule-profile-check`, every program's lookup and the consumer's `capsules.nix` declared `profile` all refuse it. **As a room's repo the name is narrower**, `[A-Za-z0-9._-]+` and not `.` or `..`, refused at eval by `rooms.nix`, since it becomes a quarantine path and a ref (`DEC-048`) | derived (the key) | — |
+| `path` | **source** | host: `capsule-provision` looks it up (its push source), `capsule-brief --from-host` (the checkout it snapshots), `capsule <slot> fetch` (the repo a quarantine lands in), `capsule-room-git push` (the checkout it resolves a branch in and pushes from, as the human) | yes | `CAPSULE_REPO` overrides it for one invocation — and having a host-side override where no other field has any is the tell that it was never project state. Pinned with the rest of the document at provision (SL-001), so a moved checkout reads as drift until the slot is re-provisioned. The module's `repo` option is removed, and setting it fails at eval naming this field |
 | `volumePath` | capsule | guest: the mount point, and what `caches`/`guestConfig` resolve against. host: `capsule status` looks it up for the disk figure and for `<volumePath>/baseline`, which is where `capsule-baseline` writes its record. **Must match `^/[A-Za-z0-9._/@+-]+$`** — absolute, and nothing a shell reads as anything but a path. It is spliced unquoted into `capsule-reset-home`'s `rm` as root (`vm/guest-path.nix`), so a value carrying a space or a glob character would word-split into paths nobody named; a value that does not match throws at guest eval rather than building. One constant for every target, in oubliette's `targets/default.nix` | derived | — |
-| `guestPath` | capsule | guest: the checkout the seed creates. host: looked up by all five programs — it is the path half of the guest's git URL and the working directory of every script pushed into a capsule | derived | — |
-| `toolsPackage` | flavour | guest: `packages.<system>.<name>` from the target's own flake | in practice yes | `null` — the guest gets `extraTools` only, and loses the no-drift property that made threading the target's list worth it. **Available only to a target whose whole tool set is a list of nixpkgs attr names**: `extraTools` is a supplement, never a substitute, so anything built by a function — a `python3.withPackages (…)` has no attr name — has to export a package (NOTES item 23) |
-| `extraTools` | flavour | guest: nixpkgs attr names, resolved against the *guest's* pkgs | no | `[]` |
+| `guestPath` | capsule | guest: the checkout the seed creates. host: looked up by all five programs — it is the path half of the guest's git URL and the working directory of every script pushed into a capsule. In a room that holds the target as a repo: the clone, `git init`ed by the room's seed at this path on its `/work` volume, the path half of `capsule-room-git`'s URL, and where `session` `cd`s | derived | — |
+| `toolsPackage` | flavour | guest: `packages.<system>.<name>` from the target's own flake. A room reads it too, rendered as `/etc/room/repo/<repo>/tools` and never on the base `PATH` | in practice yes | `null` — the guest gets `extraTools` only, and loses the no-drift property that made threading the target's list worth it. **Available only to a target whose whole tool set is a list of nixpkgs attr names**: `extraTools` is a supplement, never a substitute, so anything built by a function — a `python3.withPackages (…)` has no attr name — has to export a package (NOTES item 23). In a room, `null` means `session` runs with the base `PATH` |
+| `extraTools` | flavour | guest: nixpkgs attr names, resolved against the *guest's* pkgs. **Not read by a room** | no | `[]` |
 | ~~`allowlist`~~ | — | — | **no such field** | deleted, and nothing replaces it: what a capsule may talk to is a host policy selected per slot from a declared set, never named by the project in it ([item 36](./ledger/036-a-policy-is-selected-not-named.md)) — see below |
 | `caches` | profile | guest: env var → directory under the volume, and the dirs the seed creates and chowns | no | `{}` — everything then writes wherever its tool defaults, which for a RAM-backed root means guest RAM |
 | `cachePaths` | capsule | guest seed (build time); host: `capsule-baseline` looks them up for its before/after sizing | derived | — |
@@ -339,6 +339,25 @@ construction rather than because of anything the confinement promises:
   for exactly this reason
   ([item 6](./ledger/006-proxy-env-login-shell-scope.md)). NixOS's, not the
   capsule's.
+
+## As a room's repo
+
+A target may also be a repo of one or more rooms (`repos.targets` in the
+consumer's `rooms` argument; [contract-assignment.md](./contract-assignment.md)
+is the room's row). A room reads `name`, `path` and `guestPath` (the last two
+through the profile document, by `capsule-room-git --profile <repo>`) and
+`toolsPackage`, and **ignores every other field** — `extraTools`, `caches`,
+`guestConfig`, `statePaths`, `baseline`, `refresh`, `commands`, `sizes`. What it
+supplies back is not the table above:
+
+| | what |
+| --- | --- |
+| clone | `guestPath` on the room's `/work` volume, `git init`ed on an unborn `work` branch, **no commits**, and never touched by the seed again (`DEC-043`) |
+| history | `capsule <room> push <repo> <branch>` sends a branch of `path` as `refs/host/<branch>`; the worktree is never touched, so `updateInstead` does not arise |
+| user | the room's declared `repos.user`, not `agent` uid 1000 |
+| tools | `git` on the base `PATH`; this target's `toolsPackage` only through `session <repo> -- <cmd>`, which prepends it and `cd`s into the clone (`DEC-049`); no fleet extras (`DEC-044`) |
+| egress | none: no proxy and no route |
+| proposals | `capsule <room> collect <repo> <branch>` lands in the room's quarantine for that repo, never in the real repo (`DEC-040`) |
 
 ## Commands and arguments at the boundary
 

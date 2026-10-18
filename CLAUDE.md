@@ -60,7 +60,8 @@ command that fails or eats its own stdin, the baseline's by having a build that
 can be asked to fail, the status's by catching an unprovisioned volume or a run
 in flight before it leaves that state, the front end's by editing the declared
 pool and writing the live record of a slot somebody is using, the front end's rooms by
-declaring one named for a verb, the profile's by
+declaring one named for a verb, exec'ing a faked channel to read what a `push` or
+`collect` hands it and reading a room door's ssh argv with `ssh -G`, the profile's by
 holding two targets at once and by handing the render a target no host declares,
 the git channel's by confining a second project, the room channel's by naming a room
 with no socket, a branch the host checkout lacks and a door that answers with no
@@ -335,11 +336,12 @@ behind it is the ratchet starting again in a new file.
   so it can change without a rebuild.
 - **Two paths run the same code.** `capsule-host` composes the proxy plus the
   watch in the foreground as you; `host/services.nix` runs the same proxy as a
-  unit under `capsule-proxy`, and installs the same two git-channel programs
-  wrapped with its own paths. Don't grow a second implementation for either — if
-  a unit needs something, it comes from the same program. **Two programs read the
-  real repo** — `capsule-provision`, and `capsule-brief --from-host` for a unit
-  no capsule has driven yet (NOTES item 42) — and both always run as the human.
+  unit under `capsule-proxy`, and installs the same two git-channel programs,
+  and the room channel `capsule-room-git`, wrapped with its own paths. Don't grow a second implementation for either — if
+  a unit needs something, it comes from the same program. **Three programs read the
+  real repo** — `capsule-provision`, `capsule-brief --from-host` for a unit
+  no capsule has driven yet (NOTES item 42), and `capsule-room-git push`, which
+  pushes from it to a URL and so moves no ref there — and all three always run as the human.
   The second writes one ref there and drops it again: it **keeps no archive**,
   because a quarantine is what a capsule sent back rather than a place state
   lives, which is the same decision that makes a source name which is not a

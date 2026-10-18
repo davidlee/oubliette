@@ -125,10 +125,20 @@ so no login-shell scope question (`mem.fact.oubliette.environment-variables-is-l
 Stated rather than discovered: **one session is one repo.** A harness that
 `cd`s into a second clone keeps the first one's tools.
 
+SL-006 built it (`doctrine show SL-006`). A repo is a target's name in the
+room's `repos.targets`; its clone is the target's `guestPath` on a second
+volume at `/work` (`DEC-043`), and its tool set is the target's `toolsPackage`,
+rendered as `/etc/room/repo/<repo>/tools` and kept out of `systemPackages`.
+`session` is one generic program at `/run/current-system/sw/bin/session` that
+holds no repo table: the rendered tree is the table (`DEC-049`). No fleet
+extras reach a room (`DEC-044`, provisional).
+
 Costs to measure, not assume: the closure of seven tool sets (they share most
 of nixpkgs, and `EVD-007` priced one composition at about half a gigabyte), and
 that a tool change is an image rebuild plus a reboot. The volume makes the
-reboot cheap; it does not make it free.
+reboot cheap; it does not make it free. The closure is measured at SL-006's
+live rung and recorded as evidence against `EVD-007`; no figure belongs here
+([probes.md](./probes.md) owns them).
 
 ### 4. Git: one quarantine per repo
 
@@ -138,15 +148,25 @@ repository, not in the real repo**, for the reasons the capsule's channel does
 it (NOTES item 34, `RSK-006`): guest-authored packs are attacker-shaped, and
 the size bound covers one packfile, not the transfer. Promotion into the real
 repo is the human's step.
-The layout is pinned by `DEC-040` and not built: one bare repo per room and
-repo at `/var/lib/capsule/collect/<room>/<target>.git`, promotion a plain
-`git fetch` from it, no land verb. The guest clone is the target's `guestPath`. This differs from `satan:IDE-007`'s "fetch straight into
+The layout is pinned by `DEC-040`, and SL-006 built it: one bare repo per room
+and repo at `/var/lib/capsule/collect/<room>/<target>.git`, refs
+`refs/capsule/<room>/heads/<branch>`, promotion a plain `git fetch` from it, no
+land verb. The guest clone is the target's `guestPath`. This differs from `satan:IDE-007`'s "fetch straight into
 `refs/remotes/satan/*`, no ref policy needed"; that record should change, not
 this one.
 
-`host/git-channel.nix` takes injected fragments (`POL-004`), so the intent is
-one instance per repo rather than a second channel, given a room transport
-fragment over the room's socket. That build is a follow-on slice (`ISS-021`).
+The intent was one instance of `host/git-channel.nix` per repo. What SL-006
+built instead is **a second program, `capsule-room-git`, composed from three
+fragments the slot channel now shares** — the quarantine paths and token check,
+the policy lookup, and the bounded fsck fetch (`DEC-045`). A push lands as
+`refs/host/<branch>` and never touches the worktree; a collect is the bounded
+fetch with `fsckObjects` and a file-size ulimit, under the room's declared
+policy (`DEC-046`). Its exits are 2 for a caller error, 75 for a room not
+answering, 1 for anything after the ssh banner (`DEC-050`). Every door to a room
+checks one strict `known_hosts` of its own (`DEC-047`), and the front end's
+verbs are `capsule <room> push|collect <repo> <branch>` and `forget-host-key`
+(`DEC-051`). This build was once attributed to `ISS-021`; that issue is the
+clone off the room's volume, which `DEC-043` answers.
 
 ### 5. Ingress: the runner ssh's in, and lives elsewhere
 
@@ -188,8 +208,8 @@ room does.
 
 ```
 IMP-015 (done) ──▶ room namespace (shared with Plan E) ──▶ model door
-                                                        ├─▶ per-repo tools + session
-                                                        └─▶ per-repo git channel
+                                                        ├─▶ per-repo tools + session (SL-006)
+                                                        └─▶ per-repo git channel (SL-006)
 ```
 
 The model door and the git channel are independent of each other once the
