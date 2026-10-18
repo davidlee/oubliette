@@ -222,7 +222,8 @@
       ];
 
     # The work volume and the tree `session` reads (sec-3). A repo-less room is
-    # asserted to have neither, so its image stays what it was.
+    # asserted to have neither; it still gains the base, as every room does
+    # (DEC-052).
     work = lib.filter (v: v.mountPoint == targets.volumePath) c.microvm.volumes;
     etc = c.environment.etc;
     tree = lib.filter (lib.hasPrefix "room/repo/") (lib.attrNames etc);
@@ -269,6 +270,8 @@
     [
       (check (c.networking.hostName == "capsule")
         "hostName is '${c.networking.hostName}', not 'capsule' (DEC-032)")
+      (check (etc ? "room/base" && builtins.elem (toString etc."room/base".source) onPath)
+        "/etc/room/base is absent or its base is not in environment.systemPackages (DEC-052)")
       (check (c.services.getty.autologinUser == null)
         "the console autologs '${toString c.services.getty.autologinUser}'; a room autologs nobody (POL-001 limb 3, RV-014 F-2)")
       (check (!c.networking.useDHCP

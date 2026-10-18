@@ -4,18 +4,26 @@
 # same one a capsule has; what this adds is sizes, the volume at `/home`, one
 # normal user per declared user, and a first-boot seed that makes their homes.
 #
+# Every room, with repos or without, renders a **base** (DEC-052): one
+# `buildEnv` of the floor (`git bash coreutils-full which`) and the extras the
+# room selects from `fragments.nix`, on `systemPackages` and at
+# `/etc/room/base`. No `ignoreCollisions`: a fragment that collides with the
+# floor fails the build. So a repo-less room's image is no longer what it was
+# before repos existed — it gains the floor, and whatever it selects.
+#
 # A room that declares repos (SL-006 design sec-3) also gets a second volume at
 # `/work` (`targets.volumePath`), one `git init`ed clone per repo at its
-# target's `guestPath`, `git`, and `session`, which runs a command in one repo
-# over the tree rendered under `/etc/room/repo`: per repo a `clone` link and,
-# for a target with a tool set, a `tools` link. A repo-less room renders none of
-# it, and its image is what it was before repos existed.
+# target's `guestPath`, and `session`, which runs a command in one repo over the
+# tree rendered under `/etc/room/repo` — per repo a `clone` link and, for a
+# target with a tool set, a `tools` link — with the base behind the repo's
+# tools. A repo-less room renders none of that.
 #
 # What it deliberately lacks, against `vm/capsule.nix`: no egress (a room has
-# no uplink), so no proxy; no tool set on the base `PATH` — a repo's is reached
-# only through `session` (DEC-044); no marker on the kernel command line; and
-# no `reset-home`. Nothing here learns what a room is for — `room.users`,
-# `room.sizes` and `room.repos` are values (POL-002).
+# no uplink), so no proxy; no repo's tool set on the login `PATH` — one is
+# reached only through `session` (DEC-044), and only the base is everyone's
+# (DEC-052); no marker on the kernel command line; and no `reset-home`. Nothing
+# here learns what a room is for — `room.users`, `room.sizes`, `room.repos` and
+# `room.extras` are values (POL-002).
 {
   lib,
   pkgs,
@@ -27,8 +35,25 @@
   targetFlakes,
   session,
   workBranch,
+  # The fragment sources (mkFleet's `flavour.sources`), which a room's extras
+  # are built from, as a capsule's are.
+  flavour,
   ...
 }: let
+  # The vocabulary, resolved against this guest's pkgs, as `vm/capsule.nix` does.
+  fragments = import ../fragments.nix {
+    inherit pkgs;
+    inherit (flavour) sources;
+  };
+  # The room's base (DEC-052): the floor and its extras, one tree. Collisions
+  # fail the build on purpose.
+  base = pkgs.buildEnv {
+    name = "room-base";
+    paths = fragments.compose {
+      floor = with pkgs; [git bash coreutils-full which];
+      inherit (room) extras;
+    };
+  };
   users = lib.attrNames room.users;
   repos =
     if room.repos == null
@@ -91,20 +116,24 @@ in {
   security.lockKernelModules = true;
   security.protectKernelImage = true;
 
-  # `git` for the clones, and `session` for running in one (DEC-044, DEC-049).
-  # No repo's tool set: those are reached only through the tree below.
-  environment.systemPackages = lib.optionals (room.repos != null) [pkgs.git session];
+  # The base for every room, and `session` for running in a repo (DEC-044,
+  # DEC-049, DEC-052). No repo's tool set: those are reached only through the
+  # tree below.
+  environment.systemPackages = [base] ++ lib.optional (room.repos != null) session;
 
-  # The tree `session` reads, links and nothing else: a `clone` per repo, its
+  # `/etc/room/base`, which `session` puts behind a repo's tools, and the tree
+  # `session` reads, links and nothing else: a `clone` per repo, its
   # `guestPath` as a string so the link points out of the store rather than at
   # a copy, and a `tools` for a repo whose target has a set.
-  environment.etc = lib.listToAttrs (lib.concatMap (r: let
-    tools = toolsOf r;
-  in
-    [(lib.nameValuePair "room/repo/${r.name}/clone" {source = r.guestPath;})]
-    ++ lib.optional (tools != null)
-    (lib.nameValuePair "room/repo/${r.name}/tools" {source = tools;}))
-  repos);
+  environment.etc =
+    {"room/base".source = base;}
+    // lib.listToAttrs (lib.concatMap (r: let
+      tools = toolsOf r;
+    in
+      [(lib.nameValuePair "room/repo/${r.name}/clone" {source = r.guestPath;})]
+      ++ lib.optional (tools != null)
+      (lib.nameValuePair "room/repo/${r.name}/tools" {source = tools;}))
+    repos);
 
   # First boot, and every boot after: the host-key directory and one home per
   # declared user, on the volume. `capsule-seed`'s shape. With repos, then one

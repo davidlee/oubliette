@@ -38,6 +38,8 @@
 #     item 21). Selection per assignment — and with it the record's `image`, the
 #     gcroot that retains it, and the refusal to change a composition under a
 #     dirty volume — is Plan D D7. This file is what that would select *from*.
+#     A room is the exception, because it is its own image: it selects its own
+#     list (`rooms.<r>.extras`) into its base (DEC-052).
 {
   pkgs,
   # The flake inputs a fragment is built from (mkFleet's `flavour.sources`):
@@ -62,7 +64,9 @@
 
   # Name -> fragment. Small on purpose: a fragment used by one slot is its own
   # 3.0 GiB image, so broad-and-few is arithmetic rather than taste
-  # (docs/contract-flavour.md, docs/probes.md).
+  # (docs/contract-flavour.md, docs/probes.md). That arithmetic is slot-grain: a
+  # room is its own image already, so a fragment only rooms select costs only
+  # their images (DEC-052).
   vocabulary = {
     # What makes the capsule a place an agent can work at all. `bubblewrap`
     # because an agent that jails its own subprocesses needs one in the guest —
@@ -80,6 +84,15 @@
     # is the one that survives the rule.
     dev-facilities = {
       packages = with pkgs; [helix tmux btop nushell];
+    };
+
+    # Room-grain, finer than a slot would want, since a room is its own image
+    # (DEC-052): search without the agents, and an editor of a person's choosing.
+    search = {
+      packages = with pkgs; [ripgrep fd];
+    };
+    emacs = {
+      packages = [pkgs.emacs];
     };
   };
 

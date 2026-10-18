@@ -92,8 +92,9 @@ in {
   };
 
   # Two rooms, nobody's: `lounge` is Plan E's shape (several people on one
-  # box) and the absent path of repos, policy and a work volume; `assistant` is
-  # Plan F's door (one agent) and the case with all three, over both targets.
+  # box) and the absent path of repos, policy, a work volume and extras;
+  # `assistant` is Plan F's door (one agent) and the case with all four, over
+  # both targets, selecting `search` into its base (DEC-052).
   # No addressing — a room has no uplink — and off the probe fabric by its
   # `room-` prefix. The keys are
   # strings nobody holds.
@@ -127,6 +128,7 @@ in {
         targets = ["fixture" "tooled"];
       };
       policy = "build";
+      extras = ["search"];
       sizes = sizes // {work = 1024;};
     };
   };

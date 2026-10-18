@@ -184,3 +184,103 @@ FAIL lines. Q3: no extra `nix eval`; the exact-record literal differing only by
 - Nothing renders `extras` (PHASE-03); no image changed.
 - `/srv/fleet` declares no extras, so the binding's laziness against the
   consumer is pinned by case 22 only, not observed.
+
+## PHASE-03
+
+### What landed
+- `fragments.nix`: `search` (`ripgrep`, `fd`) and `emacs` (`[pkgs.emacs]`,
+  ruling 4) in the vocabulary, one comment over both (room-grain, DEC-052).
+  Header: per-slot selection bullet gains that a room selects its own
+  (`rooms.<r>.extras`); "broad-and-few" gains that the arithmetic is slot-grain.
+- `vm/session.nix`: `base ? "/etc/room/base"` beside `root`; refuses `no base
+  at <base>` (exit 2) after the name and repo checks; one assignment
+  `PATH="$tools$base/bin''${PATH:+:$PATH}"` (A4). Header rewritten for DEC-052;
+  `runtimeInputs = []` with its comment updated.
+- `vm/room.nix`: names `flavour`; imports `fragments.nix` as `vm/capsule.nix`
+  does; `base = buildEnv {name = "room-base"; paths = compose {floor = [git
+  bash coreutils-full which]; inherit (room) extras;};}`, no `ignoreCollisions`.
+  `systemPackages = [base] ++ optional repos session` (`pkgs.git` gone);
+  `etc."room/base".source = base` for every room. `room-seed`'s own `pkgs.git`
+  untouched. Header rewritten: a repo-less room now gains the floor.
+- `mkfleet.nix`: `roomChecks` rule over every room, `etc ? "room/base"` and
+  its source in `systemPackages`; the `:224-225` comment no longer says a
+  repo-less image "stays what it was". `sessionCases` call unchanged (A5).
+- `vm/session-cases.nix`: tree gains `base` (a `git` marker printing
+  `base-git`) and `nobase/`; `kit`'s set is a `symlinkJoin` of `kit-marker` and
+  a `git` marker (`kit-git`); `render base` builds `fixture` and `noBase`.
+  Two cases rewritten (order with a set; order without), new: base `git`
+  found, repo shadows base, no-bin refusal + repo-check-first, empty `PATH`
+  (both repos), `env -u PATH`. Image block: `etc."room/base"` found or throw;
+  `bin/{git,bash,sh,which,ls}` executable; base in `systemPackages`. Floor
+  only (ruling 3).
+- `fixture/default.nix`: `assistant` declares `extras = ["search"]`; comment
+  says `lounge` is extras' absent path.
+
+### Red
+1. Suite written first: eval error `function 'anonymous lambda' called with
+   unexpected argument 'base'` (expected first red).
+2. `session` accepting `base` with no behaviour: the image block's throw
+   `sessionCases: the evaluated room has no environment.etc."room/base"` fires
+   at eval and hides the run cases. **Deviation:** to see FAIL lines, the throw
+   was temporarily replaced by `{source = "/nonexistent";}` (restored from a
+   scratchpad copy, `cmp` identical). Red then: no-bin refusal (exit 0, reason),
+   both order cases, base `git`, both empty-`PATH` cases, unset prefix, all
+   five image binaries, base-in-`systemPackages`. Green already: repo shadows
+   base, repo-check-first, every usage/grammar/shipped refusal.
+3. After T3 the run cases went green; the image block stayed red (eval throw)
+   until T4.
+
+### EX-4 mutation (VA-1)
+Mutant: `PATH="$tools''${PATH:+:$PATH}"` (refusal kept, so `$base` is still
+read). No eval or shellcheck error; the suite ran:
+```
+FAIL   with tools/bin, then the base, then the caller's PATH: got '<tree>/kit/tools/bin:<caller>' …
+FAIL   with the base ahead of the caller's PATH: got ':<caller>' …
+FAIL the base's git is found when the caller has none: got '', wanted 'base-git'
+FAIL an empty caller PATH ends at the base, with no trailing :: got '<tree>/kit/tools/bin:' …
+FAIL   and without a set is the base alone: got '', wanted '<tree>/base/bin'
+FAIL   and the child's PATH starts at the base
+```
+Green under the mutant: shadow, refusals, image block. Restored from copy,
+`cmp` identical, suite green.
+
+### T6 roomChecks mutation
+- Mutant A: `etc = {} // …` (no `room/base` for any room). `nix build
+  '.#roomImages'`: `roomImages: room 'assistant': /etc/room/base is absent or
+  its base is not in environment.systemPackages (DEC-052)` — `assistant` is
+  hit first (name order) and aborts.
+- Mutant B: `lib.optionalAttrs (room.repos != null) {"room/base".source =
+  base;}`, to reach the repo-less room: `roomImages: room 'lounge': /etc/room/base
+  is absent or …` (same reason).
+Both restored from copy, `cmp` identical.
+
+### EX-5 collision (VA-1)
+Temporary `collide = {packages = [pkgs.gitMinimal];};` in the vocabulary and
+`assistant.extras = ["search" "collide"]`; `nix build '.#sessionCases'` failed
+building `room-base` (rc 1, builder exit 25):
+```
+pkgs.buildEnv error: two given paths contain a conflicting subpath:
+  `/nix/store/3ba67bl…-git-minimal-2.55.0/libexec/git-core/git-bugreport' and
+  `/nix/store/msr1v91…-git-2.55.0/libexec/git-core/git-bugreport'
+hint: this may be caused by two different versions of the same package in buildEnv's `paths` parameter
+```
+The first conflict reported is under `libexec/`, not `bin/git` as the sheet
+guessed; the claim (a colliding extra fails the build) holds. Both files
+restored from copies, `cmp` identical. Collisions between the base and the rest
+of `system-path` stay unchecked (design sec-2).
+
+### EX-6 / verify
+`just check` rc 0; `just` rc 0, zero FAIL lines. Out paths of `roomsCases`,
+`fabricCases`, `roomGitCases`, `roomVerbsCases`, `vmCases`, `hostModuleUnits`
+identical before (T0) and after (T9): verdicts trivially unchanged. Rendered
+bases: `assistant` `bin/` has `bash fd git ls rg sh which`; `lounge` has `bash
+git ls sh which`. VT-1..VT-5 greps all hit.
+
+### Not exercised
+- No room booted: a login `PATH` and `session` inside a live guest are not
+  observed; the image case asserts the render, not the boot.
+- `emacs` is in the vocabulary but no fixture room selects it, so it is never
+  built here.
+- `unset PATH`: the child received `<tree>/base/bin:/no-such-path` (bash's build
+  default exported by `writeShellApplication`'s preamble); only the prefix is
+  asserted.
