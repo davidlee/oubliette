@@ -222,12 +222,13 @@ supersedes the slot recipe that `satan:ASM-005` stands in for.
 | --- | --- |
 | door: ssh config | `ProxyCommand socat - UNIX-CONNECT:/run/capsule-room/<room>/ssh.sock`, user `repos.user` |
 | door: `known_hosts` | `/var/lib/capsule/room/<room>/known_hosts`, `HostKeyAlias room-<room>` |
-| per-repo `guest_path` | the target's `guestPath`, `/work/<target>` — not `/work/repos/<target>`; check it at startup |
+| per-repo `guest_path` | the target's `guestPath`, `/work/<target>` — not `/work/repos/<target>`. Checked in `preparing`, before the first command in that repo (`test -d <guest_path>/.git` through the env), where room-down is already handled — not at runner startup, when the room may be routinely stopped (`DEC-031`) |
 | execution env | start pi-env's daemon as `session <repo> -- <daemon path>` through a custom `Connection` command built from pi-env's exported `detectPlatform`/`deployDaemon`/`sshArguments`; the repo comes from each job's `RepoConfig`; test a reconnect after a room stop |
 | `GitChannel.refresh` | `capsule <room> push <repo> <branch>` → oid on stdout; then `git switch -c job/<id> <oid>` through the env |
 | `GitChannel.collect` | `capsule <room> collect <repo> job/<id>` → `refs/capsule/<room>/heads/job/<id>` in `/var/lib/capsule/collect/<room>/<repo>.git` |
 | `GitChannel.reachable` | exit 75 from either verb, or `capsule <room> ssh <user> true` |
 | typed errors | 75 → `ChannelUnavailable`; 1 → `ChannelFailed`; 2 → a refusal (a bug in the caller) |
+| clone state and hygiene | a fresh clone is `git init` on an unborn `workBranch`, no commits; `git switch -c job/<id> <oid>` works from there once `push` delivered the oid. `push` never touches the worktree, so residue is only what earlier jobs left: a clean-tree check before the switch is the runner's (`returnToWork` is slot-only) |
 | promotion | Emacs fetches the quarantine ref; no oubliette program (`DEC-040`) |
 
 <!-- doctrine:section sec-7 -->
