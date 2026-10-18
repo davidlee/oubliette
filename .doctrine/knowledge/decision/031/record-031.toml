@@ -1,0 +1,33 @@
+schema = "doctrine.knowledge"
+version = 1
+
+id = 31
+slug = "room-stops-before-probe"
+title = "A running room is stopped before a probe; the any_vm_running refusal is not narrowed"
+record_kind = "decision"
+status = "proposed"
+created = "2026-10-18"
+updated = "2026-10-18"
+tags = []
+
+[facet]                         # every field typed; seeded empty (captured later)
+context = "Probes refuse while any VMM runs on this host (any_vm_running, deliberately unscoped: it is the probe refusal's only question). A room (Plan E) or assistant (Plan F, IDE-002) is meant to stay up, so every probe run collides with it. Plan E recommends accepting this; Plan F leaves it open."
+choice = "Stopping a running room is a routine step before any probe run. any_vm_running stays unscoped and no probe learns about rooms."
+alternatives = ["narrow the refusal to slot namespaces or to the probe fabric's own namespaces", "exempt declared room namespaces from the refusal"]
+rationale = "The refusal is a safety guard whose whole value is that it does not reason about which VM is safe to ignore. Narrowing it is a separate safety decision and should not ride in on a room slice. The cost is operational, known in advance, and paid only when probes run."
+consequences = ["a room's stop path must be cheap and graceful (bears on vm-stop's non-slot branch)", "the room's persistent state must survive a stop (Plan F §6: /home on a volume)", "narrowing the refusal later needs its own decision record superseding this one"]
+decided_by   = ""
+decided_on   = ""
+
+[evidence]                      # free-text citations (supports / contradicts / notes)
+supports    = []
+contradicts = []
+notes       = []
+
+[relationships]                 # verb-written edges (set by doctrine supersede)
+supersedes    = []   # record ids this one replaces (set by doctrine supersede)
+superseded_by = []   # set on superseded predecessor (verb-written)
+
+[[relation]]
+label = "shapes"
+target = "SL-005"

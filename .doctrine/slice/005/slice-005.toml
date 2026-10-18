@@ -1,0 +1,93 @@
+id = 5
+slug = "room-namespace"
+title = "Rooms: a namespace with no uplink, and the door a room is reached by"
+status = "proposed"
+created = "2026-10-18"
+updated = "2026-10-18"
+tags = []
+
+[relationships]
+needs = []                      # slice→work hard prerequisite
+after = []                      # slice→work soft sequence: { to, rank }
+
+[[selector]]
+selector = "host/netns.nix"
+intent = "scope-relevant"
+
+[[selector]]
+selector = "mkfleet.nix"
+intent = "scope-relevant"
+
+[[selector]]
+selector = "host/services.nix"
+intent = "scope-relevant"
+
+[[selector]]
+selector = "host/room*.nix"
+intent = "scope-relevant"
+
+[[selector]]
+selector = "host/*-cases.nix"
+intent = "scope-relevant"
+
+[[selector]]
+selector = "vm/room*.nix"
+intent = "scope-relevant"
+
+[[selector]]
+selector = "vm/assistant*.nix"
+intent = "scope-relevant"
+
+[[selector]]
+selector = "templates/**"
+intent = "scope-relevant"
+
+[[selector]]
+selector = "fixture/**"
+intent = "scope-relevant"
+
+[[selector]]
+selector = "docs/plan-e-room.md"
+intent = "scope-relevant"
+
+[[selector]]
+selector = "docs/plan-f-assistant.md"
+intent = "scope-relevant"
+
+[[selector]]
+selector = "docs/contract-*.md"
+intent = "scope-relevant"
+
+[[relation]]
+label = "fulfils"
+degree = "partial"
+target = "IDE-002"
+
+[[relation]]
+label = "governed_by"
+target = "ADR-001"
+
+[[relation]]
+label = "governed_by"
+target = "POL-001"
+
+[[relation]]
+label = "governed_by"
+target = "POL-002"
+
+[[relation]]
+label = "governed_by"
+target = "POL-003"
+
+[[relation]]
+label = "governed_by"
+target = "POL-004"
+
+# STRUCTURAL relations are uniform `[[relation]]` rows, never a typed
+# `[relationships]` axis. Slices carry no typed STRUCTURAL
+# relation axes — the `[relationships]` table above holds only the dep/seq payload
+# (`needs`/`after`). Author a structural edge with the `doctrine link` verb
+# — it validates the (source, label) pair and resolves the target:
+#   doctrine link SL-NNN specs SPEC-NNN
+#   doctrine link SL-NNN governed_by ADR-NNN
+# `doctrine inspect SL-NNN` renders the inbound + outbound edges.
