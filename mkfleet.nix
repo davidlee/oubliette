@@ -1043,6 +1043,31 @@
         (binds n))
     units;
 
+    # The other half of the same pairing, read the other way up: not who may
+    # pass through a declared directory, but whether tmpfiles will make it at
+    # all. It refuses an "unsafe path transition" — a step from a directory not
+    # owned by root into one owned by someone else — and a parent nothing
+    # declares is one it makes itself, `root:root`. So a `d` rule under the
+    # owner's `stateDir` with an undeclared parent is never made, and silently:
+    # a switch reruns tmpfiles as `systemd-tmpfiles-resetup`, whose
+    # `SuccessExitStatus` includes the refusal's `CANTCREAT` (ISS-024, SL-006
+    # PHASE-07: `stateDir/room`). Under `stateDir`, every declared directory's
+    # parent must be declared too, owned by root or by the same user; each
+    # parent is checked in turn, so the whole chain up to `stateDir` is.
+    # Generic rather than the two names it was found on, since a third is one
+    # `++` away.
+    unparented = lib.concatMap (d: let
+      parent = builtins.dirOf d.path;
+      declared = lib.filter (p: p.path == parent) dirRules;
+      safe = p: p.owner == "root" || p.owner == d.owner;
+    in
+      if !(lib.hasPrefix "${cfg.stateDir}/" d.path) || lib.any safe declared
+      then []
+      else if declared == []
+      then ["${d.path} (owned by ${d.owner}) has no `d ${parent}` rule, so tmpfiles makes ${parent} root:root and then refuses the unsafe path transition into it"]
+      else ["${d.path} (owned by ${d.owner}) is under ${parent}, which is declared owned by ${(lib.head declared).owner}, so tmpfiles refuses the unsafe path transition into it"])
+    dirRules;
+
     # `capsule <slot> policy <name>` ends in `sudo systemctl restart
     # capsule-proxy-<slot>`, and on a host that does not permit it the verb
     # cannot finish — it now undoes the selection rather than half-applying it,
@@ -1148,6 +1173,8 @@
       then throw "capsule-perimeter: the guard's CapabilityBoundingSet has no CAP_SYS_PTRACE, so `ip netns pids` will silently omit the VMM it is asked about and the guard will refuse a correctly-bound guest (NOTES item 30)."
       else if unreachable != []
       then throw "capsule-perimeter: ${lib.concatStringsSep "; " unreachable} (NOTES item 39)."
+      else if unparented != []
+      then throw "capsule-perimeter: ${lib.concatStringsSep "; " unparented} (ISS-024)."
       else if unrestartable != []
       then throw "capsule-perimeter: no sudoers rule permits restarting ${lib.concatStringsSep ", " unrestartable}, so `capsule <slot> policy <name>` cannot finish a selection for those slots and will undo it instead (NOTES item 41)."
       else if !(repoReadable.success && repoReadable.value)

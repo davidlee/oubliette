@@ -34,3 +34,26 @@ Declare both intermediates — `d ${stateDir}/room` and `d ${stateDir}/slot`, mo
 every declared path's parent chain is itself declared. Also say whether the
 switch itself is meant to make these (the comment at ~:802 says tmpfiles runs
 at boot, and activation at switch).
+
+**Fixed (2026-10-19, SL-006, before audit).** `host/services.nix` declares both
+intermediates ahead of the per-name rules: `d <stateDir>/slot 0750 <owner> users`
+when any slot is declared, and `d <rooms.stateRootOf stateDir> 0750 <owner> users`
+when any room is. `rooms.nix` gains `stateRootOf`, and `stateDirOf` is written in
+terms of it, so the room root has one spelling. 0750 matches `stateDir`, the
+slot directories and the user's hand fix. `capsule-room-git`'s `mkdir -p` under
+`umask 077` still makes the room root 0700 when nothing else has. tmpfiles sets
+an existing directory's mode and owner to the rule's, so a switch moves it to 0750.
+
+`hostModuleUnits` pins the class, not the two names: under `stateDir`, every
+declared `d` rule's parent must be declared too, owned by root or by the same
+user (`unparented`, `mkfleet.nix`, beside item 39's traversal pairing). It went
+red on the unfixed module naming both `slot` and `room`. Dropping either new
+rule, or giving the slot root another owner, sends it red for that reason.
+
+On the switch question: a switch does rerun tmpfiles, as
+`systemd-tmpfiles-resetup` (nixpkgs `tmpfiles.nix`). Its `SuccessExitStatus`
+includes `CANTCREAT`, so the refusal never failed the switch. That is why it
+was silent.
+
+Not exercised: this host gets the fix at the user's next rebuild. A fresh host's
+first boot was not run.

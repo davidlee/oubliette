@@ -36,7 +36,8 @@
 # Two path conventions live here too, one definition each (POL-003): a room's
 # door, `socketOf` (the record's `socket` is that function at the room's name),
 # and its host-side state directory, `stateDirOf` (where its known_hosts lives,
-# DEC-047). Plain functions of strings, so a caller hands them a nix value or a
+# DEC-047), which is under every room's `stateRootOf` — the parent the module's
+# tmpfiles must declare too, or it refuses the room's (ISS-024). Plain functions of strings, so a caller hands them a nix value or a
 # shell expression alike — `capsule-room-git` calls them with `"$room"`, the
 # module's tmpfiles with a name — and reading them forces neither `reasons` nor
 # `instances` (SL-006 design sec-4, sec-5).
@@ -161,7 +162,8 @@
   };
 
   socketOf = name: "/run/capsule-room/${name}/ssh.sock";
-  stateDirOf = state: name: "${state}/room/${name}";
+  stateRootOf = state: "${state}/room";
+  stateDirOf = state: name: "${stateRootOf state}/${name}";
 
   recordOf = name: decl: {
     inherit name;
@@ -185,7 +187,7 @@
     policy = decl.policy or null;
   };
 in {
-  inherit reasons socketOf stateDirOf;
+  inherit reasons socketOf stateRootOf stateDirOf;
   instances =
     if !(isNull reasons.names)
     then throw reasons.names

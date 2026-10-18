@@ -121,6 +121,8 @@
   };
 
   allowlistOf = c: "${cfg.allowlistDir}/${c.name}";
+  # Every slot's record directory is under this one (host/record.nix's `slotDir`).
+  slotRoot = "${cfg.stateDir}/slot";
   policyFile = name: "${cfg.policyDir}/${policies.policies.${name}.allowlist}";
 
   # The guest is not routable from the root namespace any more, so the human's
@@ -778,14 +780,20 @@ in {
         # unassigned slot runs and an assigner's selection survives every boot.
         # That is the whole of "a declared default, not a fallback" — there is no
         # code path that picks a policy, only a link that exists.
+        #
+        # Each per-name directory's parent is declared ahead of it: one tmpfiles
+        # makes itself is `root:root`, and the step down into it from the
+        # owner's `stateDir` is an unsafe path transition it refuses (ISS-024).
+        ++ lib.optional (instances != []) "d ${slotRoot} 0750 ${cfg.owner} users -"
         ++ lib.concatMap (c: [
-          "d ${cfg.stateDir}/slot/${c.name} 0750 ${cfg.owner} users -"
+          "d ${slotRoot}/${c.name} 0750 ${cfg.owner} users -"
           "L ${allowlistOf c} - - - - ${policyFile c.policy}"
         ])
         instances
         # A room's trust store: its one known_hosts, which every door to it
         # checks (DEC-047). Every room, with repos or not, because the front
         # end's ssh is a door too (SL-006 design sec-5). The owner's alone.
+        ++ lib.optional (rooms.instances != {}) "d ${rooms.stateRootOf cfg.stateDir} 0750 ${cfg.owner} users -"
         ++ map (r: "d ${rooms.stateDirOf cfg.stateDir r.name} 0700 ${cfg.owner} users -")
         (lib.attrValues rooms.instances);
 
