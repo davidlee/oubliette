@@ -18,7 +18,8 @@ collaborators = []
 targets      = []
 dependencies = []
 
-# One [[phase]]
+# One [[phase]] per phase.
+[[phase]]
 id        = "PHASE-01"
 name      = "The profile reader names its own jq, and the suites stop supplying it"
 objective = """
