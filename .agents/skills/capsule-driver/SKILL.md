@@ -34,10 +34,12 @@ hand-backs.
    *your* session naming the asker — it will not deadlock, but it will pepper
    you and defeat the point. Confirm the operator is running a posture they are
    happy to have inherited by the whole tree.
-2. **Spawn depth.** The tree needs 2 layers below you. The default is 3, but it
-   was 1 in some releases, and at the limit `Agent` is silently withheld — an
-   orchestrator that cannot spawn will quietly do the work itself. Pin it:
-   `CLAUDE_CODE_MAX_SUBAGENT_SPAWN_DEPTH: "2"` in settings.
+2. **Spawn depth.** The tree needs 2 layers below you. The default (3) is
+   enough, so nothing needs setting. Only a value set too low blocks: if
+   `CLAUDE_CODE_MAX_SUBAGENT_SPAWN_DEPTH` is set below 2, at the limit `Agent`
+   is silently withheld — an orchestrator that cannot spawn will quietly do the
+   work itself. Check with `printenv CLAUDE_CODE_MAX_SUBAGENT_SPAWN_DEPTH`;
+   unset or ≥ 2 passes.
 3. **No competing writers.** Everything runs in the main worktree with no
    confinement. Confirm no other agent is active in this tree before you start.
 4. **The slice is planned.** Design locked, `plan.toml` authored, phases exist.
@@ -59,7 +61,10 @@ hand-backs.
 
 1. Charter an orchestrator: a named slice and a contiguous run of phases,
    typically 3. Spawn `capsule-orchestrator` with that charter, the slice id,
-   and any standing constraint the human has set.
+   and any standing constraint the human has set. **Spawn it unnamed — never
+   pass `name`.** A named spawn makes the orchestrator a teammate, and a
+   teammate's children cannot hand back to it: their reports land at your seat
+   ("the agent that spawned you is no longer running") instead.
 2. Read its hand-back. Check the per-worker model choices carry real arguments —
    "the default" is not one. Check what it adapted in the plan.
 3. **Reap it.** `TaskStop` the orchestrator the moment you hold its hand-back.
