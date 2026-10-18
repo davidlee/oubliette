@@ -5,8 +5,8 @@ id = 23
 slug = "capsule-collect-and-capsule-provision-read-profiles-with-an-ambient-jq-and-gitchannelcases-masks-it"
 title = "capsule-collect and capsule-provision read profiles with an ambient jq, and gitChannelCases masks it"
 kind = "issue"
-status = "open"
-resolution = ""                 # seeded empty so `backlog edit` sets it in place
+status = "resolved"
+resolution = "duplicate"
 created = "2026-10-18"
 updated = "2026-10-18"
 tags = []
@@ -20,3 +20,7 @@ tags = []
 needs    = []                   # item→item hard prerequisite
 after    = []                   # item→item soft sequence: { to, rank? }
 triggers = []                   # watched source globs: { globs, note? }
+
+[[relation]]
+label = "related"
+target = "ISS-013"

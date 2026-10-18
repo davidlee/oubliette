@@ -1,0 +1,74 @@
+id = 7
+slug = "programs-bring-their-own-tools"
+title = "Programs bring their own tools: session's base tools and the profile reader's jq"
+status = "design"
+created = "2026-10-18"
+updated = "2026-10-18"
+tags = []
+
+[relationships]
+needs = []                      # slice→work hard prerequisite
+after = []                      # slice→work soft sequence: { to, rank }
+
+[[selector]]
+selector = "vm/session.nix"
+intent = "scope-relevant"
+
+[[selector]]
+selector = "vm/session-cases.nix"
+intent = "scope-relevant"
+
+[[selector]]
+selector = "vm/room.nix"
+intent = "scope-relevant"
+
+[[selector]]
+selector = "host/profile.nix"
+intent = "scope-relevant"
+
+[[selector]]
+selector = "host/programs.nix"
+intent = "scope-relevant"
+
+[[selector]]
+selector = "host/git-channel.nix"
+intent = "scope-relevant"
+
+[[selector]]
+selector = "host/refresh.nix"
+intent = "scope-relevant"
+
+[[selector]]
+selector = "host/brief.nix"
+intent = "scope-relevant"
+
+[[selector]]
+selector = "host/baseline.nix"
+intent = "scope-relevant"
+
+[[selector]]
+selector = "host/*-cases.nix"
+intent = "scope-relevant"
+
+[[selector]]
+selector = "mkfleet.nix"
+intent = "scope-relevant"
+
+[[selector]]
+selector = "docs/contract-target.md"
+intent = "scope-relevant"
+
+[[relation]]
+label = "references"
+role = "concerns"
+descriptor = "what a room's base tools are"
+target = "DEC-043"
+
+# STRUCTURAL relations are uniform `[[relation]]` rows, never a typed
+# `[relationships]` axis. Slices carry no typed STRUCTURAL
+# relation axes — the `[relationships]` table above holds only the dep/seq payload
+# (`needs`/`after`). Author a structural edge with the `doctrine link` verb
+# — it validates the (source, label) pair and resolves the target:
+#   doctrine link SL-NNN specs SPEC-NNN
+#   doctrine link SL-NNN governed_by ADR-NNN
+# `doctrine inspect SL-NNN` renders the inbound + outbound edges.

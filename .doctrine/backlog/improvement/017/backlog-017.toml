@@ -31,3 +31,7 @@ label = "references"
 role = "concerns"
 descriptor = "the room's base tools, which promise git on PATH"
 target = "DEC-043"
+
+[[relation]]
+label = "related"
+target = "SL-007"
