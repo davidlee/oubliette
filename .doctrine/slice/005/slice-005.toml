@@ -80,11 +80,13 @@ intent = "scope-relevant"
 
 [[selector]]
 selector = "capsules.nix"
-intent = "scope-relevant"
+intent = "design-target"
+note = "RV-017 F-8: touched by SL-005 phases, mirrored in design sec-12"
 
 [[selector]]
 selector = "fleet.nix"
-intent = "scope-relevant"
+intent = "design-target"
+note = "RV-017 F-8: touched by SL-005 phases, mirrored in design sec-12"
 
 [[selector]]
 selector = "just/fleet.just"
@@ -129,6 +131,51 @@ intent = "design-target"
 [[selector]]
 selector = "CLAUDE.md"
 intent = "design-target"
+
+[[selector]]
+selector = "fabric.nix"
+intent = "design-target"
+note = "RV-017 F-8: touched by SL-005 phases, mirrored in design sec-12"
+
+[[selector]]
+selector = "fabric-cases.nix"
+intent = "design-target"
+note = "RV-017 F-8: touched by SL-005 phases, mirrored in design sec-12"
+
+[[selector]]
+selector = "host/vm-cases.nix"
+intent = "design-target"
+note = "RV-017 F-8: touched by SL-005 phases, mirrored in design sec-12"
+
+[[selector]]
+selector = "docs/probes.md"
+intent = "design-target"
+note = "RV-017 F-8: touched by SL-005 phases, mirrored in design sec-12"
+
+[[selector]]
+selector = "README.md"
+intent = "design-target"
+note = "RV-017 F-8: touched by SL-005 phases, mirrored in design sec-12"
+
+[[selector]]
+selector = "justfile"
+intent = "design-target"
+note = "RV-017 F-8: touched by SL-005 phases, mirrored in design sec-12"
+
+[[selector]]
+selector = "host/policy-cases.nix"
+intent = "design-target"
+note = "RV-017 F-8: touched by SL-005 phases, mirrored in design sec-12"
+
+[[selector]]
+selector = "host/volume-cases.nix"
+intent = "design-target"
+note = "RV-017 F-8: touched by SL-005 phases, mirrored in design sec-12"
+
+[[selector]]
+selector = "host/own-vms.nix"
+intent = "design-target"
+note = "RV-017 F-8: touched by SL-005 phases, mirrored in design sec-12"
 
 [[relation]]
 label = "fulfils"

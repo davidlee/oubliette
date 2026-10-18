@@ -86,6 +86,8 @@ The design-target selectors. Each path is one this design commits to changing or
 |---|---|---|
 | `rooms.nix` | new: declaration to guest records, `reasons` | sec-2 |
 | `rooms-cases.nix` | new: refusal verdicts and reasons, beside `rooms.nix` | sec-2, sec-9 |
+| `fabric.nix` | new: `liveNames`, `borrowed`, `reason`, moved out of `mkfleet.nix` | sec-2 |
+| `fabric-cases.nix` | new: the fabric's verdicts and reason, beside `fabric.nix` | sec-2, sec-9 |
 | `host/netns.nix` | uplink all or nothing; `tools` argument; `capsuleEnv` over a guest record | sec-3 |
 | `host/netns-cases.nix` | new | sec-3 |
 | `host/services.nix` | `rooms` argument, `guests`, `perGuest`, conditional aggregator and proxy edges | sec-4 |
@@ -102,6 +104,11 @@ The design-target selectors. Each path is one this design commits to changing or
 | `templates/fleet/flake.nix` | `rooms = {}` and a commented example | sec-8 |
 | `just/fleet.just` | new suites and `roomImages` in `build` | sec-9 |
 | `docs/plan-e-room.md`, `docs/plan-f-assistant.md`, `docs/contract-assignment.md`, `CLAUDE.md` | footprint | sec-10 |
+| `docs/probes.md` | the live run's evidence and what it does not prove | sec-9 |
+| `README.md` | rooms' usage, `microvm -c <room>` before the first start | sec-7, sec-10 |
+| `justfile` | the new files in `nix_paths` | sec-9 |
+| `host/policy-cases.nix`, `host/volume-cases.nix` | `rooms = {}` for the front end's render | sec-7 |
+| `capsules.nix`, `fleet.nix`, `host/own-vms.nix` | comments only: `DEC-020` becomes `DEC-032` | sec-10 |
 
 The front end's existing suites (`policyCases`, `volumeCases`) are per concern, so room verbs get their own suite file rather than growing one of them.
 
@@ -113,7 +120,7 @@ The front end's existing suites (`policyCases`, `volumeCases`) are per concern, 
 ```nix
 rooms = {
   assistant = {
-    users.agent = ["ssh-ed25519 AAAA… satan-runner"];
+    users.agent = { uid = 1001; keys = ["ssh-ed25519 AAAA… satan-runner"]; };
     sizes = { vcpu = 4; mem = 8192; volume = "40G"; };
   };
 };
@@ -121,7 +128,7 @@ rooms = {
 
 | field | meaning | checked |
 |---|---|---|
-| `users.<user>` | a non-root login with these authorized keys; no wheel, sudo or su | `root` refused; empty key list refused; name unit- and user-safe |
+| `users.<user>` | a non-root login, `{ uid; keys; }`: these authorized keys and a declared uid; no wheel, sudo or su | `root` refused; exactly `{ uid; keys; }`; keys non-empty; uid an integer in 1000-29999 and unique within the room; name unit- and user-safe |
 | `sizes` | `vcpu`, `mem`, `volume`, with the shape a target's `sizes` has | all three required: nothing defaults (POL-003) |
 
 There is no `kind`. A people-room and an assistant differ in which users are declared, and nothing generic learns what a room is for (POL-002). The assistant's repos are **named here and not built**: a later `repos = [<target name>]` reuses `targets/`, so a repo's tools come from its target's `toolsPackage` and no second per-repo declaration appears (DEC-018).
@@ -138,9 +145,9 @@ There is no `kind`. A people-room and an assistant differ in which users are dec
 Each refusal is a value in `reasons` and is exactly what `instances` throws, as `fleet.nix` does (`fleet.nix:15-17, 42-47`), so a suite asserts *why* and not only *that* (`DEC-038`):
 
 - **names**: a room name that is a slot name, `hello` or `capsule`, or not unit-safe. Rooms and slots share one unit-name space (`capsule-netns-<n>`, `microvm@<n>`) and one `nixosConfigurations` space, which is what makes the first three collisions real.
-- **users**: a user named `root`, or a user with no keys.
+- **users**: a user named `root`, a user that is not `{ uid; keys; }`, no uid, no keys, a uid outside 1000-29999, or a uid shared within one room. The uid is declared because a room's root is tmpfs, so NixOS would allocate undeclared uids afresh every boot in name order, while `/home` keeps the numbers its files were written under (`RSK-012`, PHASE-10). 1000-29999 is NixOS's normal-user range; `nixbld*` sit at 30001 and up.
 
-**The probe fabric** is checked where it is today. `liveNames` (`mkfleet.nix:1028-1033`) gains every room's `ns`, so `borrowed` throws if a probe fabric value equals one. That makes the check three declarations wide: slots, rooms and the probe fabric (NOTES item 38's "one declaration wide" gap closed for rooms). Socket paths are disjoint by prefix and need no check. A room name that is a front-end verb or `all` is refused by the front end's own `collide`, where the verbs are known (sec-7).
+**The probe fabric** is checked at the same moment and with the same message as before, but by a pure `fabric.nix` (`{lib}: {capsules, rooms, fabric}: {liveNames; borrowed; reason;}`), which `mkfleet.nix` applies once and whose `reason` it throws in the probe prelude. It left `mkfleet.nix`'s `let` so a suite (`fabricCases`) can read the reason as a value, the `fleet.nix`/`rooms.nix` shape (PHASE-04). The throw fires when a probe is forced, not in every eval, and the wiring line is pinned by no suite (`ISS-022`). `liveNames` gains every room's `ns`, so `borrowed` is non-empty if a probe fabric value equals one. That makes the check three declarations wide: slots, rooms and the probe fabric (NOTES item 38's "one declaration wide" gap closed for rooms). Socket paths are disjoint by prefix and need no check. A room name that is a front-end verb or `all` is refused by the front end's own `collide`, where the verbs are known (sec-7).
 
 <!-- doctrine:section sec-3 -->
 ## `capsule-netns` with no uplink
@@ -159,7 +166,7 @@ One program, two callers (`DEC-035`, Plan E §1). The program learns that **a na
 
 `capsuleEnv` (`host/netns.nix:368-380`) becomes a function of a guest record. For `uplink = null` it emits only `NS TAP TAP_ADDR PREFIX`. Unset rather than empty-string is the convention, so the unit's `Environment=` lines carry nothing for a room. The program accepts both, since an empty value is the same absence.
 
-**`capsule-netns` takes `tools` as an argument with a default**, exactly as `host/guard.nix` does, so `host/services.nix` builds it with the real `iproute2`/`nftables`/`procps` and a suite builds the same text against stubs (POL-004). Both shipped copies stay one store path because the default is the real set.
+**`capsule-netns` takes `tools` and `etcNetns ? "/etc/netns"` as arguments with defaults**, as `host/guard.nix` takes `tools`, so `host/services.nix` builds it with the real `iproute2`/`nftables`/`procps` and path, and a suite builds the same text against stubs (POL-004). Both shipped copies stay one store path because the defaults are the real ones. `etcNetns` exists because a build sandbox's `/etc` is read-only and stubbing the tools cannot reach the resolver file's shell redirect, so `netnsCases` is handed a scratch `/etc/netns` and says so; cases 1 and 2 then assert the resolver file's content and absence positively (PHASE-02).
 
 **`netnsCases`** (`host/netns-cases.nix`) runs the shipped `capsule-netns` with a stub `ip`, `nft` and `sysctl` that log their argv and can be told to fail:
 
@@ -216,7 +223,8 @@ The aggregator checks are unchanged and remain unconditional. A room failing a c
 **`vm/room.nix`** imports `vm/door.nix` and adds only:
 
 - `microvm.{vcpu, mem}` and one volume, `room-home.img` mounted at `/home` with `size = sizes.volume`. Exec is permitted, since a client may upload a tool daemon (`DEC-037`);
-- one `users.users.<user>` per declared user: `isNormalUser`, home `/home/<user>`, the declared keys, no extra groups;
+- one `users.users.<user>` per declared user: `isNormalUser`, home `/home/<user>`, the declared keys and the declared uid (sec-2), no extra groups;
+- `security.lockKernelModules` and `security.protectKernelImage`, as the capsule sets them and for `vm/capsule.nix`'s reasons. They are in `vm/room.nix`, not `vm/door.nix`, so the slot images do not move (user-directed, PHASE-05);
 - host keys under `/home/.ssh-host-keys/`, so they live on the volume and survive reboots;
 - `services.getty.autologinUser = lib.mkForce null`: `vm/common.nix:13` autologs root on the console, the capsule overrides it to `agent` (`vm/capsule.nix:280`), and a room overrides it to nobody, so root stays key-only (POL-001 limb 3; RV-014 F-2);
 - a first-boot seed that makes each home and the host-key directory with the right owners, the shape of `capsule-seed` (`vm/capsule.nix:302-340`) without the repository.
@@ -274,7 +282,7 @@ The build-out is a follow-on slice. Until then a client can read and write the r
 | `capsule <room> ssh [user] [-- cmd]` | `door`'s `human` mode (`host/cli.nix:728-740`) with the room's socket and `HostKeyAlias=<room>`, as `<user>@<net.guest>`. `user` defaults to the room's only user if it has exactly one, and is required otherwise: the declaration is the default, not a guess |
 | `capsule <room> start` | its own branch, not the slot path: `systemctl start microvm@<room>`, then the readiness check asks **`root@<net.guest>`**, since the host's admin key is root's in every guest (`vm/door.nix`). No profile resolution, record or injection. The slot path's readiness is hardcoded to `agent` (`host/cli.nix:748`) and then injects (1858+), so a room with users `ada` and `bob` would read as failed (RV-014 F-4) |
 | `capsule <room> stop` | `systemctl stop microvm@<room>`: the drop-in's `ExecStop` reboots the guest through the stop key, then `microvm-shutdown` (`host/services.nix:434-438`) |
-| `capsule status` | a rooms block after the slot table: name, running or not, and socket present. That is what a refused probe needs to see. It is a separate block so `IMP-009`'s width problem does not grow |
+| `capsule status` | a rooms block after the slot table: name, running or not, and socket present. That is what a refused probe needs to see. It is a separate block so `IMP-009`'s width problem does not grow. With no slot up and a room up, an unnamed `capsule status` answers as `capsule all status`, so that block is reachable without naming `all`; any other unnamed verb with no slot up refuses as before (PHASE-10) |
 | any other verb | refuses: `capsule: '<room>' is a room; rooms take ssh, start, stop (status lists them)`, exit 2 |
 
 **A room name may not be a verb or `all`.** The front end already throws at eval when a slot name is one (`host/cli.nix:296-302`, `collide`). `collide` widens to slot and room names, because verbs are known only there, and its message names which kind collided: `'<n>' is both a room and a verb (or all)` (RV-014 F-5, F-9).
@@ -290,8 +298,8 @@ The build-out is a follow-on slice. Until then a client can read and write the r
 
 **The fixture** (`fixture/default.nix`) declares two rooms, nobody's, through the one module:
 
-- `lounge`: users `ada` and `bob`, each with a fixture key. This is Plan E's shape.
-- `assistant`: user `agent` with a fixture key. This is Plan F's door.
+- `lounge`: users `ada` (uid 1001) and `bob` (uid 1002), each with a fixture key. This is Plan E's shape.
+- `assistant`: user `agent` (uid 1001) with a fixture key. This is Plan F's door.
 
 Both use the fixture's `net` and sizes off the live fabric. Its probe fabric stays disjoint from `room-lounge` and `room-assistant`. The two rooms differ only in values, and that is stated rather than oversold: the seam proved here is slot versus room through one `capsule-netns`, one unit set and one guard. Plan E's tailnet ingress and Plan F's repos are where the room module itself meets a second shape (inq-11).
 
@@ -310,13 +318,13 @@ Every check here is in `just build` (`just/fleet.just:64-76` lists them by hand,
 |---|---|---|
 | no-uplink `capsule-netns`, the partial-group refusal, rollback with no peer, slot path unchanged | program cases | `netnsCases` (sec-3) over the shipped store path |
 | `rooms.nix` refusals and their reasons | eval verdicts | `roomsCases` (`rooms-cases.nix`, beside `rooms.nix` as `fleet-cases.nix` is beside `fleet.nix`): `tryEval (deepSeq …)` per refusal, reason asserted in the shell, as `fleet-cases.nix` does |
-| the probe fabric meets a room namespace | eval verdict | a fixture variant whose fabric names `room-lounge` throws, with the reason, from `borrowed` |
+| the probe fabric meets a room namespace | library values | `fabricCases` (`fabric-cases.nix`, beside `fabric.nix`): `borrowed` and `reason` read as values for a fabric naming a room's and a slot's namespace. That `mkFleet` throws on `reason` is pinned by no suite (`ISS-022`) |
 | room units evaluate, carry no newline, pair binds with users, programs shellcheck | module evaluation | `hostModuleUnits`/`hostModulePrograms` over the fixture with rooms, no check edited (sec-4) |
 | a room's netns unit does not require the aggregator, and its `microvm@` does not want a proxy | module evaluation | new assertions in `hostModuleUnits` over the room units' fields |
 | the guard audits rooms | program cases | `guardCases` gains a room, and a room VMM outside its namespace failing limb two |
 | front-end room resolution and refusals, and the verb collision | program cases, eval verdict | `roomVerbsCases` (sec-7); argv of `ssh`/`start`/`stop` is live-only |
 | the devshell refuses rooms | program cases | `vmCases` gains a fixture room: `vm <room>` and `vm-stop <room>` exit 2 with the reason and create no `.vm/<room>/` (sec-1) |
-| room images build | build | a `roomImages` output linking the fixture rooms' declared runners, added to `just build`'s list. That recipe lists no VM images today (`just/fleet.just:64-76`), so this is a new gate, not an existing one (RV-014 F-7) |
+| room images build, and say what a room must | build | a `roomImages` output linking the fixture rooms' declared runners, each forced through `roomChecks` first, so a broken rule throws with its reason: hostName `capsule`; the console autologs nobody; DHCP off with the door's static link; `room-home.img` at `/home`; root's keys exactly the admin keys and the stop key; kernel modules and image locked; and per declared user: present, a normal user, exactly its keys, its record's uid, no extra groups. Added to `just build`'s list. That recipe lists no VM images today (`just/fleet.just:64-76`), so this is a new gate, not an existing one (RV-014 F-7) |
 | the template's wiring of the ninth argument | eval | `templateCases` with `rooms = {}`. It exercises the argument, not a room. Room evaluation and builds are the fixture's (RV-014 F-8) |
 | the capsule guest is unchanged by the door module | build comparison | `nix-store --query` the fixture slot image's toplevel before and after: equal, or a diff confined to option order, recorded in the commit |
 

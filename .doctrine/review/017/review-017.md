@@ -142,3 +142,42 @@ SL-006's to reconcile.
 
 ### Not reconcile's
 - F-1 → ISS-022, F-10 → RSK-011 (backlog, code). F-2 and F-9 are tolerated.
+
+## Reconciliation Outcome
+
+User's assent to the whole brief: "agreed". Written against SL-005's state at
+`6a91942`; SL-006's later `rooms.nix` changes are SL-006's to reconcile.
+
+### Direct edits applied (design.md)
+- sec-2: the example, the `users.<user>` row and the `users` refusal bullet become
+  `{ uid; keys; }` with a declared uid in 1000-29999, with the reason (F-3).
+- sec-2: the probe fabric is checked by pure `fabric.nix`, thrown in the probe
+  prelude. The probe-only firing and the unpinned wiring cite ISS-022 (F-4).
+- sec-3: `capsule-netns` takes `tools` and `etcNetns`, and netnsCases is handed a
+  scratch `/etc/netns` (F-5).
+- sec-5: the user bullet carries the declared uid (F-3). New bullet: the kernel locks
+  are in `vm/room.nix`, not the door (F-6).
+- sec-7: an unnamed `status` with only a room up answers as `all status` (F-7).
+- sec-8: the fixture users' uids (F-3).
+- sec-9: the probe-fabric row is now `fabricCases` with ISS-022 named (F-4). The
+  roomImages row lists every `roomChecks` rule (F-6).
+- sec-12: rows for fabric.nix, fabric-cases.nix, docs/probes.md, README.md,
+  justfile, the two cases files' `rooms = {}`, and the comment-only DEC-032 files
+  (F-8 mirror).
+
+`doctrine design adopt` was refused by design ("at reconcile, edit design.md
+directly and do not adopt"), so the run stays locked over the edited text.
+
+### Selector registry
+- `doctrine slice selector add 5 --intent design-target` for 11 paths (F-8).
+  Conformance: 0 undelivered, 31 conformant. The only undeclared paths are
+  `.doctrine/` records (governance, memory, observations, notes).
+
+### REVs completed
+- none needed: REV-004, REV-005, REV-006 and DEC-042 landed during the slice.
+
+### Not reconcile's
+- F-1 → ISS-022 and F-10 → RSK-011 (backlog). F-2 and F-9 are tolerated, with
+  rationale in their dispositions.
+
+Reconcile pass complete — handoff to /close.
