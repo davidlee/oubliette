@@ -47,7 +47,7 @@ evaluates). `just` (default) runs the build, units, and fmt.
 the NixOS module — what it says, including its programs, since a unit graph does
 not mention them. `guardCases`, `netnsCases`, `briefCases`, `snapshotCases`, `refreshCases`, `observeCases`,
 `baselineCases`, `policyCases`, `profileCases`, `vmCases`, `gitChannelCases`,
-`volumeRootCases`, `resetHomeCases`, `volumeCases`, `fleetCases`, `roomsCases` and `fabricCases` *run* a
+`volumeRootCases`, `resetHomeCases`, `volumeCases`, `fleetCases`, `roomsCases`, `fabricCases` and `roomVerbsCases` *run* a
 program's own text with a substitute for the one thing tying it to this host
 (`just cases`), and are the answer whenever the interesting branches are ones a
 live host can only reach destructively or expensively — the guard's by unnaming a
@@ -58,7 +58,8 @@ of work in a checkout that holds several, the refresh's by giving it a target
 command that fails or eats its own stdin, the baseline's by having a build that
 can be asked to fail, the status's by catching an unprovisioned volume or a run
 in flight before it leaves that state, the front end's by editing the declared
-pool and writing the live record of a slot somebody is using, the profile's by
+pool and writing the live record of a slot somebody is using, the front end's rooms by
+declaring one named for a verb, the profile's by
 holding two targets at once and by handing the render a target no host declares,
 the git channel's by confining a second project, and the volume root helper's by
 deleting and overwriting a real slot's image as root, the guest's reset of
@@ -92,11 +93,11 @@ written, wired into `just cases`, and left out of `just build` for a session
 (NOTES item 51 step 3). **One suite per file, beside the program it pins** —
 `host/<name>-cases.nix`, or `vm/<name>-cases.nix` for a guest program, a function of `pkgs`, `lib` and **the store path the
 program ships**, with a short `import` in `mkfleet.nix` (NOTES item 51 step 0).
-Eleven of them are handed a fixture instead and say so in their headers: the
+Twelve of them are handed a fixture instead and say so in their headers: the
 guard's stubbed kernel, the namespace program's stubbed kernel and scratch
 `/etc/netns` (a build sandbox's `/etc` is read-only, and the program's path is
-fixed at build), the front end's pool that is not this host's (twice,
-once for policy and once for the volume verb), the
+fixed at build), the front end's pool that is not this host's (three times,
+once for policy, once for the volume verb and once for rooms), the
 profile's target that is nobody's, the wrapper's four directories that are
 no host's, the volume root helper's sandbox roots, since a root program's
 paths are fixed at build and its shipped store path cannot be aimed anywhere else,
