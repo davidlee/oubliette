@@ -1525,6 +1525,41 @@ Both arms of `door` are host state, so no case suite reaches this: the fix is
 evidenced by these timings and by the output being unchanged row for row, and
 the two devshell rows of item 40's table are reasoned rather than re-run.
 
+## A room with no way out, and a door that works
+
+SL-005 PHASE-09, 2026-10-18, on this host: `room-assistant` from the consumer at
+`d3bf0a0`, built from oubliette `f2ce48c`. Design sec-9's live steps, run by the
+user as root and, for the client half, by the agent as the module's owner.
+Rung (`STD-001`): **triggered**, once, by hand — not a probe, and nothing here
+repeats unattended.
+
+| step | observed |
+| --- | --- |
+| create | `microvm -c assistant` was needed first; before it, the relay and `microvm@assistant` failed as a dependency (tap-up absent) |
+| 1. namespace | `ip netns exec room-assistant ip route` → only `10.99.0.0/30 dev vm-capsule`; `ip link` → `lo` and `vm-capsule`, nothing else |
+| 1. guard | `capsule-perimeter-guard`: `3 of 11 declared guest namespace(s) verified` → `4 of 11` as the room came up (10 slots + 1 room declared) |
+| 2. the door | `capsule assistant ssh` → `agent@capsule`. As a client would: `ssh -F /dev/null -i ~/.ssh/malebolge.key -o ProxyCommand="socat - UNIX-CONNECT:/run/capsule-room/assistant/ssh.sock"` → `uid=1001(agent)`, the declared uid; the same key as `root` → `Permission denied (publickey,keyboard-interactive)`. Socket `srw-------` owned by the module's owner |
+| 3. no way out | from inside: `ip route` → the `/30` only; `getent hosts example.com` → nothing, exit 2; TCP `10.99.0.1:22` → *Connection refused*; TCP `1.1.1.1:443` → *Network is unreachable* |
+| 4. probes | `probe-netns-boot` while the room ran → `a microvm is already running — vm-stop first.`; `capsule assistant stop` → the guest shut down and `microvm@assistant` deactivated; the probe then ran, **9 passed, 0 failed** |
+
+This settles RV-014 F-6 by behaviour: the argv `capsule <room> ssh`, `start` and
+`stop` build reaches the right socket, user and stop key.
+
+Two findings on the way, neither about rooms. **A probe built straight from the
+consumer can disagree with the host's PAM**: `nix build /srv/fleet#probe-…`
+uses the consumer's own nixpkgs lock, whose `runuser` (glibc 2.42) cannot load
+the system's PAM modules (glibc 2.44) and fails `cannot open session: Module is
+unknown`; built with `--override-input nixpkgs` at `~/flakes`' rev it ran. And
+the probe's ssh-identity refusal sits ahead of its running-VM refusal, so the
+first attempt refused for a reason that was not the one under test.
+
+**Not proven by any of this**: the serial console asking for a login rather than
+handing over root (not observed: the getty prompt is not in the journal);
+anything about pi-env or satan's runner beyond reaching the door; the
+unit-level teardown after a failed `ExecStart` (`RSK-003`); a room's behaviour
+across a host suspend (`ISS-014`); a uid surviving a user added to a room that
+already holds files.
+
 ## Still unproven
 
 - ~~**Egress under netns.**~~ Proven: `probe-netns-egress`, above. ~~What is

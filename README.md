@@ -498,6 +498,10 @@ capsule <room> start
 capsule <room> stop
 ```
 
+A room is created once, as a slot is, before anything can start it:
+`sudo microvm -c <room> -f git+file:///srv/fleet` (the consumer's path). Until
+then its units fail as a *dependency*, naming neither the room nor the create.
+
 A room is named on argv and never resolved implicitly. Every other verb
 refuses it: `capsule: '<room>' is a room; rooms take ssh, start, stop (status
 lists them)`. `ssh` with no user named on a room that declares several refuses
