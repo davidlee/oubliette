@@ -79,7 +79,7 @@
   # declaration, and this is what it decides — bound whole for the host module,
   # which takes it as rooms.nix returns it, and its records once for the rest.
   roomDecision = import ./rooms.nix {inherit lib;} {
-    inherit rooms;
+    inherit rooms targets policies;
     slotNames = lib.attrNames fleet.slots;
   };
   roomRecords = roomDecision.instances;
@@ -750,6 +750,7 @@
   roomsCases = import ./rooms-cases.nix {
     inherit pkgs lib;
     rooms = import ./rooms.nix;
+    targetsOf = import ./targets;
   };
 
   # Which names a probe's fabric may not borrow (NOTES item 38), against a slot

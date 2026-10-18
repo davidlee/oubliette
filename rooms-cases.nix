@@ -1,4 +1,6 @@
-# What a room declaration decides — SL-005 design sec-2, DEC-038.
+# What a room declaration decides — SL-005 design sec-2, DEC-038; SL-006 design
+# sec-2, DEC-048 (a room's repos, policy and work volume) and DEC-046 (its
+# policy is one the fleet declares).
 #
 # The subject is a *library*, not a program: `rooms.nix` is the function its one
 # caller (mkfleet.nix) applies, and this suite applies the same function to
@@ -6,7 +8,11 @@
 # nobody declares. Every verdict is a value of the function.
 #
 # **Handed a fixture, and it says so**: `slotNames`, the keys and the sizes below
-# are invented.
+# are invented, and so are the `targets` (built by the real derivation,
+# targets/default.nix, so a record's `guestPath` is checked against it and not
+# against a second spelling) and the `policies`. The awkward target names
+# (`foo+bar`, `.`, `..`) are *declared*, so a grammar case is refused for its
+# grammar and for no other reason.
 #
 # What it pins is mostly `throw`s, so the verdicts are read at eval with
 # `builtins.tryEval` and asserted in the shell (`fleet-cases.nix`' arrangement).
@@ -18,20 +24,26 @@
 #
 # What it does not prove (STD-001): that `mkFleet` applies `rooms.nix` to the
 # caller's declaration (it does, once; nothing here watches it), that any unit,
-# namespace or image exists for a room, or that the front end can name one. It
+# namespace or image exists for a room, that the front end can name one, that
+# any guest holds `/work` or a clone (SL-006 PHASE-03), or that any program
+# reads a room's `policy` (PHASE-04, PHASE-05). It
 # is the function's verdicts over fixtures, and nothing more.
 {
   pkgs,
   lib,
   # `import ./rooms.nix`, unapplied: the function mkfleet.nix calls.
   rooms,
+  # `import ./targets`, unapplied: the constructor mkfleet.nix derives targets with.
+  targetsOf,
 }: let
   apply = rooms {inherit lib;};
   slotNames = ["s1" "s2"];
+  targets = targetsOf (lib.genAttrs ["a" "b" "foo+bar" "." ".."] (_: {caches = {};}));
+  policies = {everything = ["open" "shut"];};
   with' = decls:
     apply {
       rooms = decls;
-      inherit slotNames;
+      inherit slotNames targets policies;
     };
 
   key = "ssh-ed25519 AAAA fixture";
@@ -47,6 +59,25 @@
     inherit uid;
     keys = [key];
   };
+  # A room with repos, a policy and a work volume, fine in every way; `extra`
+  # overrides, and the partial cases take fields away with `removeAttrs`.
+  withRepos = extra:
+    {
+      users.agent = as 1001;
+      sizes = sizes // {work = 512;};
+      repos = {
+        user = "agent";
+        targets = ["a" "b"];
+      };
+      policy = "open";
+    }
+    // extra;
+  withReposIn = repos: withRepos {inherit repos;};
+  withTargets = ts:
+    withReposIn {
+      user = "agent";
+      targets = ts;
+    };
   # A room that is fine in every way but its name.
   named = name: with' {${name} = withUsers {ada = as 1001;};};
 
@@ -82,13 +113,17 @@
 
   # One refusal, both halves: `instances` throws, and `reasons.<field>` says
   # why — naming every needle. Needles are the offender and the clause.
-  refused = title: decl: field: needles: ''
+  refusedUnder = decision: title: decl: field: needles: ''
     ck ${lib.escapeShellArg title} true ${verdict decl.instances}
     ${lib.concatMapStrings (n: ''
         has ${lib.escapeShellArg "  naming ${n}"} ${lib.escapeShellArg n} ${lib.escapeShellArg (reason decl.reasons.${field})}
       '')
-      (needles ++ ["DEC-038"])}
+      (needles ++ [decision])}
   '';
+  refused = refusedUnder "DEC-038";
+  # One room, `assistant`, refused by DEC-048 or DEC-046.
+  repoRefused = title: room: needles: refusedUnder "DEC-048" title (with' {assistant = room;}) "repos" needles;
+  repoOf = with' {assistant = withRepos {};};
 in
   pkgs.runCommand "rooms-cases" {} ''
     fail=0
@@ -165,6 +200,8 @@ in
           };
         };
         inherit sizes;
+        repos = null;
+        policy = null;
       })}
     ck "  with a namespace of its own" room-assistant ${good.instances.assistant.ns}
     ck "  no uplink" true ${lib.boolToString (good.instances.assistant.uplink == null)}
@@ -193,6 +230,122 @@ in
       has "  the name is still reported" x.y ${lib.escapeShellArg (reason d.reasons.names)}
       has "  and so is the user" root ${lib.escapeShellArg (reason d.reasons.users)}
       has "  and so is the uid" "x.y/ada (70000)" ${lib.escapeShellArg (reason d.reasons.users)}
+    ''}
+
+    # 11. A room's repos: the record resolves each to the target derivation's
+    # path, in the declaration's order, and says nothing it was not told.
+    ck "a well-formed repo room evaluates" false ${verdict repoOf.instances}
+    ck "  with no reason to refuse its repos" "" ${lib.escapeShellArg (reason repoOf.reasons.repos)}
+    ck "  and none to refuse its policy" "" ${lib.escapeShellArg (reason repoOf.reasons.policy)}
+    ck "  its record's repos are the user and each target's derived path" true \
+      ${lib.boolToString (repoOf.instances.assistant.repos
+      == {
+        user = "agent";
+        targets = [
+          {
+            name = "a";
+            inherit (targets.byName.a) guestPath;
+          }
+          {
+            name = "b";
+            inherit (targets.byName.b) guestPath;
+          }
+        ];
+      })}
+    ck "  and the path is the derivation's, /work/a" /work/a \
+      ${(builtins.head repoOf.instances.assistant.repos.targets).guestPath}
+    ck "  its policy is the declared one" open ${repoOf.instances.assistant.policy}
+    ck "  and sizes.work passes through" 512 ${toString repoOf.instances.assistant.sizes.work}
+    ck "  and the declaration's order is kept" "b a" \
+      ${lib.escapeShellArg (toString (map (t: t.name) (with' {assistant = withTargets ["b" "a"];}).instances.assistant.repos.targets))}
+    ck "a room declaring none is repo-less and policy-less" true \
+      ${lib.boolToString (good.instances.assistant.repos == null && good.instances.assistant.policy == null)}
+
+    # 12. All or none: a room names every one of repos, policy and sizes.work.
+    ${repoRefused "repos without a policy throws" (removeAttrs (withRepos {}) ["policy"]) ["assistant (no policy)" "partial"]}
+    ${repoRefused "repos and policy without sizes.work throws" (withRepos {inherit sizes;}) ["assistant (no sizes.work)" "partial"]}
+    ${repoRefused "a policy alone throws" {
+      users.agent = as 1001;
+      inherit sizes;
+      policy = "open";
+    } ["assistant (no repos, sizes.work)"]}
+    ${repoRefused "sizes.work alone throws" {
+      users.agent = as 1001;
+      sizes = sizes // {work = 512;};
+    } ["assistant (no policy, repos)"]}
+
+    # 13. repos is { user; targets = [ <target name> ]; } and a malformed one is
+    # its one reason, never a missing-attribute abort.
+    ${repoRefused "repos as a bare list throws" (withReposIn ["a"]) ["assistant" "{ user; targets"]}
+    ${repoRefused "repos with no user throws" (withReposIn {targets = ["a"];}) ["assistant" "{ user; targets"]}
+    ${repoRefused "repos with a field beyond user and targets throws" (withReposIn {
+      user = "agent";
+      targets = ["a"];
+      extra = 1;
+    }) ["assistant" "{ user; targets"]}
+    ${repoRefused "targets as a bare string throws" (withReposIn {
+      user = "agent";
+      targets = "a";
+    }) ["assistant" "{ user; targets"]}
+    ${repoRefused "a target that is not a string is a reason, not an abort" (withTargets [1]) ["assistant" "{ user; targets"]}
+
+    # 14. Each repo is a declared target, named once, with a name a path can bear.
+    ${repoRefused "no targets throws" (withTargets []) ["assistant" "no targets"]}
+    ${repoRefused "a target nobody declares throws" (withTargets ["a" "zz"]) ["assistant/zz" "not a declared target"]}
+    ${repoRefused "a target named twice throws" (withTargets ["a" "a"]) ["assistant/a" "named twice"]}
+    ${repoRefused "a declared target with a + throws" (withTargets ["foo+bar"]) ["assistant/foo+bar" "[A-Za-z0-9._-]"]}
+    ${repoRefused "a declared target named . throws" (withTargets ["."]) ["assistant/." "[A-Za-z0-9._-]"]}
+    ${repoRefused "a declared target named .. throws" (withTargets [".."]) ["assistant/.." "[A-Za-z0-9._-]"]}
+    ${repoRefused "a repo user the room does not declare throws" (withReposIn {
+      user = "carol";
+      targets = ["a"];
+    }) ["assistant/carol" "user not a declared user"]}
+
+    # 15. A policy is one the fleet declares (DEC-046).
+    ${refusedUnder "DEC-046" "a policy nobody declares throws" (with' {assistant = withRepos {policy = "nope";};}) "policy" ["assistant (\"nope\")" "policies.everything"]}
+
+    # 16. The fields are independent, and so are they of the users'.
+    ${let
+      d = with' {
+        assistant = withRepos {
+          policy = "nope";
+          repos = {
+            user = "agent";
+            targets = ["zz"];
+          };
+        };
+      };
+    in ''
+      ck "a bad target and a bad policy both throw" true ${verdict d.instances}
+      has "  the target is still reported" assistant/zz ${lib.escapeShellArg (reason d.reasons.repos)}
+      has "  and so is the policy" nope ${lib.escapeShellArg (reason d.reasons.policy)}
+    ''}
+    ${let
+      d = with' {
+        assistant = withRepos {
+          users.agent = as 70000;
+          repos = {
+            user = "carol";
+            targets = ["a"];
+          };
+        };
+      };
+    in ''
+      ck "a bad uid and a bad repos user both throw" true ${verdict d.instances}
+      has "  the uid is still reported" "assistant/agent (70000)" ${lib.escapeShellArg (reason d.reasons.users)}
+      has "  and so is the repos user" assistant/carol ${lib.escapeShellArg (reason d.reasons.repos)}
+    ''}
+
+    # 17. The absent path: repo rooms and repo-less rooms in one declaration.
+    ${let
+      d = with' {
+        assistant = withRepos {};
+        lounge = withUsers {ada = as 1001;};
+      };
+    in ''
+      ck "a repo room beside a repo-less room evaluates" false ${verdict d.instances}
+      ck "  the repo-less record has no repos" true ${lib.boolToString (d.instances.lounge.repos == null)}
+      ck "  and no policy" true ${lib.boolToString (d.instances.lounge.policy == null)}
     ''}
 
     cat "$log"

@@ -67,6 +67,10 @@
           };
         })
         decl;
+      # This suite's rooms declare no repos, so it declares no targets or policies
+      # for them — passed, never defaulted (POL-003).
+      targets = {byName = {};};
+      policies = {everything = [];};
       slotNames = builtins.attrNames fixture.instances;
     }).instances;
   renderRecords = records:
