@@ -205,7 +205,7 @@ exit_criteria = [
 verification = [
   { id = "VT-1", expects = "the target contract states the base", test_file = "docs/contract-target.md", keywords = ["DEC-052", "extras"], waived = false },
   { id = "VT-2", expects = "the flavour contract covers a room's extras", test_file = "docs/contract-flavour.md", keywords = ["DEC-052", "room"], waived = false },
-  { id = "VT-3", expects = "the template shows a room's extras", test_file = "templates/fleet/flake.nix", keywords = ["extras"], waived = false },
+  { id = "VT-3", expects = "the template's commented room example shows extras, citing DEC-052", test_file = "templates/fleet/flake.nix", keywords = ["DEC-052"], waived = false },
   { id = "VA-1", expects = "`grep -rn 'until .IMP-017\\|DEC-044' docs/ vm/ host/ CLAUDE.md` leaves only historical citations, each read and judged" },
 ]
 specs        = []
