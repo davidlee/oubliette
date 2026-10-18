@@ -17,8 +17,7 @@ DEC-046 chose to bound a room's collects by a named policy. Both put a new field
 on the rooms axis, so the row that names that axis's one home must say what it
 holds. The fields come from existing axes (`targets`, `policies`) and are not new
 homes; that is what POL-003 requires. This extends DEC-033's shape and does not
-replace it. Assent: *(left blank for the orchestrator — the user's verbatim reply
-goes here when it is obtained)*.
+replace it. Assent: the user replied "agreed" in session (2026-10-18), after the seat laid out this row change.
 
 ### POL-003 — the rooms row of the axis table (`.doctrine/policy/003/policy-003.md:14`)
 

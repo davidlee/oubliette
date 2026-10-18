@@ -1,8 +1,8 @@
 id      = 7
 slug    = "pol-003-room-repos"
 title   = "POL-003's rooms row gains repos, policy and a work volume"
-status  = "proposed"   # work lifecycle: proposed | started | done | abandoned
-approval = "none"      # SEPARATE axis, orthogonal to status: none | requested | approved | rejected
+status = "done"
+approval = "approved"
 updated = "2026-10-18"
 tags    = []
 
