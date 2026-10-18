@@ -1,0 +1,33 @@
+schema = "doctrine.knowledge"
+version = 1
+
+id = 33
+slug = "rooms-are-declared-users-and-sizes"
+title = "Rooms are a required mkFleet argument: per room, declared users with their keys and declared sizes, and no kind"
+record_kind = "decision"
+status = "accepted"
+created = "2026-10-18"
+updated = "2026-10-18"
+tags = []
+
+[facet]                         # every field typed; seeded empty (captured later)
+context = "SL-005 inq-1. Plan E (people) and Plan F (assistant) both need a non-slot guest. POL-003 gives each axis one home and no implicit default. DEC-025/026 put declarations in the consumer as mkFleet arguments."
+choice = "mkFleet takes a ninth, required argument: rooms.<name> = { users.<user> = [ssh public keys]; sizes = { vcpu; mem; volume; }; }. A consumer with no rooms passes rooms = {}. Users are non-root and get no wheel, sudo or su. The runner's key is a declared user's keys, so a people-room and an assistant differ only in values. Named, not built: the assistant's repos will be repos = [<target name>], reusing targets/ so per-repo tools come from each target's toolsPackage."
+alternatives = ["a kind field (people | assistant) selecting different modules", "rooms ? {} as a default", "agent's keys from access.adminKeys"]
+rationale = "No kind keeps POL-002: nothing generic learns what a room is for. Required, not defaulted, per POL-003. Reusing targets for repos avoids a second per-repo tool declaration (DEC-018)."
+consequences = ["every consumer, the fixture and the template must pass rooms (the consumer at /srv/fleet is the user's change)", "DEC-025 now has nine arguments", "POL-003's axis table gains a rooms row"]
+decided_by = "user, on agent proposal"
+decided_on = "2026-10-18"
+
+[evidence]                      # free-text citations (supports / contradicts / notes)
+supports    = []
+contradicts = []
+notes       = []
+
+[relationships]                 # verb-written edges (set by doctrine supersede)
+supersedes    = []   # record ids this one replaces (set by doctrine supersede)
+superseded_by = []   # set on superseded predecessor (verb-written)
+
+[[relation]]
+label = "shapes"
+target = "SL-005"

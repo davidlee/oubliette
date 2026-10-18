@@ -1,0 +1,33 @@
+schema = "doctrine.knowledge"
+version = 1
+
+id = 32
+slug = "rooms-are-hostname-capsule"
+title = "Every image, slot or room, is hostName capsule; slots and declared rooms are instantiable"
+record_kind = "decision"
+status = "accepted"
+created = "2026-10-18"
+updated = "2026-10-18"
+tags = []
+
+[facet]                         # every field typed; seeded empty (captured later)
+context = "SL-005: a room needs a nixosConfigurations attr for microvm -c, which DEC-020 forbade (only slots instantiable). DEC-031 relies on any_vm_running = pgrep microvm@capsule (probe/harness.sh:294), which is scoped by process name, and the process name is microvm@<hostName>. Research X1."
+choice = "Supersedes DEC-020, restating it with one clause amended. Every image keeps hostName capsule, room images included. nixosConfigurations holds hello, capsule (the probe target image), one attr per slot, and one attr per declared room. Target runners stay packages-only (image-<target>)."
+alternatives = ["a room hostName of its own, which takes it out of any_vm_running and vmmOf, so DEC-031 is not enforced", "widen the probe pattern to microvm@, which teaches a probe about rooms, against DEC-031"]
+rationale = "Keeps every VMM matchable as microvm@capsule and a VMM identified by its namespace, so DEC-031 holds with no probe change. Room attrs are declared, and their microvm@ drop-in supplies the namespace, so RSK-005 widens by declared names only."
+consequences = ["a running room makes every probe refuse, as DEC-031 intends", "ps and the guest prompt still do not say which room or target", "RSK-005 lists one more resolvable attr per declared room"]
+decided_by = "user, on agent proposal (research X1 option a)"
+decided_on = "2026-10-18"
+
+[evidence]                      # free-text citations (supports / contradicts / notes)
+supports    = []
+contradicts = []
+notes       = []
+
+[relationships]                 # verb-written edges (set by doctrine supersede)
+supersedes    = ["DEC-020"]   # record ids this one replaces (set by doctrine supersede)
+superseded_by = []   # set on superseded predecessor (verb-written)
+
+[[relation]]
+label = "shapes"
+target = "SL-005"

@@ -1,0 +1,33 @@
+schema = "doctrine.knowledge"
+version = 1
+
+id = 39
+slug = "rooms-join-the-guard"
+title = "Rooms join the perimeter guard's declared set and get the slot checks"
+record_kind = "decision"
+status = "accepted"
+created = "2026-10-18"
+updated = "2026-10-18"
+tags = []
+
+[facet]                         # every field typed; seeded empty (captured later)
+context = "SL-005 inq-8, research X3. The guard audits only slots (host/guard.nix:56, 67). CON-005 names it as the only reader of namespaces. POL-001: the drop is verified at run time."
+choice = "The guard's declared list is guests = slots and rooms. Each gets limb two (its VMM is inside its own namespace) and, when present, forwarding off and the capsule-guard tap rule. A failure is fleet-wide, as for a slot."
+alternatives = ["amend CON-005 to leave rooms unaudited"]
+rationale = "A room VMM outside its namespace would sit on a root-namespace tap, which is a breach. The checks already exist and are per namespace."
+consequences = ["a broken room tears the fleet's egress down, as a broken slot does", "guardCases gains a room case"]
+decided_by = "user, on agent proposal"
+decided_on = "2026-10-18"
+
+[evidence]                      # free-text citations (supports / contradicts / notes)
+supports    = []
+contradicts = []
+notes       = []
+
+[relationships]                 # verb-written edges (set by doctrine supersede)
+supersedes    = []   # record ids this one replaces (set by doctrine supersede)
+superseded_by = []   # set on superseded predecessor (verb-written)
+
+[[relation]]
+label = "shapes"
+target = "SL-005"

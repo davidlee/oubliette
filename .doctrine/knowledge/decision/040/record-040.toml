@@ -1,0 +1,33 @@
+schema = "doctrine.knowledge"
+version = 1
+
+id = 40
+slug = "room-quarantine-layout"
+title = "A room's per-repo quarantine layout is pinned and not built"
+record_kind = "decision"
+status = "accepted"
+created = "2026-10-18"
+updated = "2026-10-18"
+tags = []
+
+[facet]                         # every field typed; seeded empty (captured later)
+context = "SL-005 inq-9, Plan F section 4, research X5. The quarantine is keyed by the --capsule name (host/quarantine.nix:45), so N repos in one room would collide on one bare repo and one work branch."
+choice = "When built: one bare repo per room and repo at /var/lib/capsule/collect/<room>/<target>.git; the guest clone at the target's guestPath; host/git-channel.nix given a room transport fragment over the room's socket, with the quarantine key separate from the transport name; transfer.fsckObjects as today. Promotion into a real repo is never a program here: there is no room fetch."
+alternatives = ["one quarantine per room", "fetching straight into the real repo (satan:IDE-007's first sketch)"]
+rationale = "Guest packs are attacker-shaped (NOTES item 34, RSK-006), and a per-repo key avoids item 50's overwrite."
+consequences = ["the channel build-out is a follow-on slice", "satan's promotion surface reads these bare repos"]
+decided_by = "user, on agent proposal"
+decided_on = "2026-10-18"
+
+[evidence]                      # free-text citations (supports / contradicts / notes)
+supports    = []
+contradicts = []
+notes       = []
+
+[relationships]                 # verb-written edges (set by doctrine supersede)
+supersedes    = []   # record ids this one replaces (set by doctrine supersede)
+superseded_by = []   # set on superseded predecessor (verb-written)
+
+[[relation]]
+label = "shapes"
+target = "SL-005"

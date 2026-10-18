@@ -1,7 +1,7 @@
 id = 5
 slug = "room-namespace"
 title = "Rooms: a namespace with no uplink, and the door a room is reached by"
-status = "proposed"
+status = "design"
 created = "2026-10-18"
 updated = "2026-10-18"
 tags = []
@@ -56,6 +56,38 @@ intent = "scope-relevant"
 
 [[selector]]
 selector = "docs/contract-*.md"
+intent = "scope-relevant"
+
+[[selector]]
+selector = "rooms.nix"
+intent = "scope-relevant"
+
+[[selector]]
+selector = "host/guard.nix"
+intent = "scope-relevant"
+
+[[selector]]
+selector = "host/cli.nix"
+intent = "scope-relevant"
+
+[[selector]]
+selector = "vm/capsule.nix"
+intent = "scope-relevant"
+
+[[selector]]
+selector = "vm/*.nix"
+intent = "scope-relevant"
+
+[[selector]]
+selector = "capsules.nix"
+intent = "scope-relevant"
+
+[[selector]]
+selector = "fleet.nix"
+intent = "scope-relevant"
+
+[[selector]]
+selector = "just/fleet.just"
 intent = "scope-relevant"
 
 [[relation]]

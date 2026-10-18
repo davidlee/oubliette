@@ -1,0 +1,33 @@
+schema = "doctrine.knowledge"
+version = 1
+
+id = 35
+slug = "netns-uplink-is-all-or-nothing"
+title = "capsule-netns's uplink is all or nothing: every uplink value empty means no uplink, and a partial set refuses before anything is built"
+record_kind = "decision"
+status = "accepted"
+created = "2026-10-18"
+updated = "2026-10-18"
+tags = []
+
+[facet]                         # every field typed; seeded empty (captured later)
+context = "SL-005 inq-4, Plan E section 1. capsule-netns reads every uplink variable with ${VAR:?} (host/netns.nix:137-147). NOTES item 37 requires one teardown that undoes everything up built, and a rollback on an aborted up."
+choice = "The uplink group is EGRESS_NS, DEV, PEER, ADDR, GW, UPLINK_PREFIX, RESOLVER. All set: today's behaviour. All empty: up skips the resolver file and the veth/route (host/netns.nix:199-209), and undo_up skips both peer deletions (174-175). Any other mix refuses with a reason before the trap is armed. capsule-netns takes its tools as an argument with a default, as host/guard.nix does, so a netnsCases suite can run the shipped text against stub ip/nft/sysctl."
+alternatives = ["a ROOM=1 flag or kind", "a second, smaller program for rooms"]
+rationale = "An absence, not a kind (Plan E section 1): the program never learns what a room is. One program keeps item 37's three lessons for both callers."
+consequences = ["netnsCases joins just build", "the slot path's call sequence is pinned unchanged by the same suite"]
+decided_by = "user, on agent proposal"
+decided_on = "2026-10-18"
+
+[evidence]                      # free-text citations (supports / contradicts / notes)
+supports    = []
+contradicts = []
+notes       = []
+
+[relationships]                 # verb-written edges (set by doctrine supersede)
+supersedes    = []   # record ids this one replaces (set by doctrine supersede)
+superseded_by = []   # set on superseded predecessor (verb-written)
+
+[[relation]]
+label = "shapes"
+target = "SL-005"

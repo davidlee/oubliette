@@ -1,0 +1,33 @@
+schema = "doctrine.knowledge"
+version = 1
+
+id = 41
+slug = "front-end-room-verbs"
+title = "The front end drives a room with ssh, start and stop, and lists rooms in status; every other verb refuses by name"
+record_kind = "decision"
+status = "accepted"
+created = "2026-10-18"
+updated = "2026-10-18"
+tags = []
+
+[facet]                         # every field typed; seeded empty (captured later)
+context = "SL-005 inq-10. The front end resolves only declared slots (host/cli.nix:372-380), so a room name would be read as a verb. DEC-031 makes stopping a room routine before probes."
+choice = "capsule <room> ssh [user] connects through the room socket (the ProxyCommand line the front end builds for slots, host/cli.nix:736). capsule <room> start | stop are systemctl on microvm@<room>. capsule status lists rooms, so what blocks a probe is visible. Every other verb refuses, naming the room. Devshell programs refuse room names."
+alternatives = ["a clear refusal only", "systemctl and raw ssh with no front-end knowledge of rooms"]
+rationale = "The routine stop DEC-031 asks for should be one verb, and the pieces already exist."
+consequences = ["the front end bakes the declared room list", "a front-end case covers each room verb and a refused verb"]
+decided_by = "user, on agent proposal"
+decided_on = "2026-10-18"
+
+[evidence]                      # free-text citations (supports / contradicts / notes)
+supports    = []
+contradicts = []
+notes       = []
+
+[relationships]                 # verb-written edges (set by doctrine supersede)
+supersedes    = []   # record ids this one replaces (set by doctrine supersede)
+superseded_by = []   # set on superseded predecessor (verb-written)
+
+[[relation]]
+label = "shapes"
+target = "SL-005"

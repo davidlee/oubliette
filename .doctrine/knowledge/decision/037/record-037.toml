@@ -1,0 +1,33 @@
+schema = "doctrine.knowledge"
+version = 1
+
+id = 37
+slug = "the-room-door"
+title = "The room door: a unix-socket relay per room, reached by ProxyCommand as a declared user, with host keys stable for the volume's life"
+record_kind = "decision"
+status = "accepted"
+created = "2026-10-18"
+updated = "2026-10-18"
+tags = []
+
+[facet]                         # every field typed; seeded empty (captured later)
+context = "SL-005 inq-6, Plan F section 5. satan:IDE-007 / satan SL-023 design against this. The capsule relay socket's path selects transport and is counted by the front end (host/guest-ssh.nix:160-204, host/cli.nix:698-705), so a room must not use it. pi-env accepts an ssh config file and an ssh override (pi env src/ssh.ts:90, 134)."
+choice = "Per room: capsule-ssh-relay-<room> runs socat UNIX-LISTEN:/run/capsule-room/<room>/ssh.sock,fork,mode=0600 TCP:<net.guest>:22 as the module owner, inside the room namespace, BindsTo the tap. A client reaches it as <declared user>@<net.guest> with ProxyCommand=socat - UNIX-CONNECT:<socket>. sshd host keys live on the room volume, so they are stable until the volume is deleted, and a client may pin them (HostKeyAlias, strict checking). /home is on the volume and permits exec, so an uploaded tool daemon can run. Root is reachable only by the host's admin and stop keys. The tailnet ingress (Plan E) is not part of this door."
+alternatives = ["the capsule relay socket path", "a DynamicUser forwarder (Plan E's network-facing shape) for a host-local socket", "StrictHostKeyChecking off as for capsules"]
+rationale = "One relay construction with a different path keeps transport selection untouched (NOTES items 20, 40). Owner-only mode 0600 matches the capsule relay. Persistent host keys make strict checking workable, which the capsule cannot offer (NOTES item 18)."
+consequences = ["a runner must run as the module owner to open the socket", "deleting a room volume changes its host keys", "satan reads this record as its door interface"]
+decided_by = "user, on agent proposal"
+decided_on = "2026-10-18"
+
+[evidence]                      # free-text citations (supports / contradicts / notes)
+supports    = []
+contradicts = []
+notes       = []
+
+[relationships]                 # verb-written edges (set by doctrine supersede)
+supersedes    = []   # record ids this one replaces (set by doctrine supersede)
+superseded_by = []   # set on superseded predecessor (verb-written)
+
+[[relation]]
+label = "shapes"
+target = "SL-005"

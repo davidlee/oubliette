@@ -55,11 +55,26 @@ capsule-netns up  (uplink env empty ⇒ no veth, no route, no resolver hop)
    - Plan F §4: the per-repo quarantine layout, and whether
      `host/git-channel.nix`'s profile shape takes a room's repo without
      learning what a room is.
-5. **Record the probe-refusal answer** as a knowledge decision. Probes refuse
-   on `any_vm_running` (deliberately unscoped), so a room that is always up
-   means a routine stop before any probe. Plan E's answer is to accept that
-   rather than soften a safety refusal. It is prose today and should be a
-   decision record.
+5. **Record the probe-refusal answer** as a knowledge decision: done,
+   `DEC-031`.
+6. **The front end drives rooms** (`DEC-041`): `capsule <room> ssh [user] |
+   start | stop`, rooms listed in `capsule status`, every other verb refused
+   by name.
+
+**Settled by the design run (inquiring stage):**
+
+| question | decision |
+| --- | --- |
+| image identity | `DEC-032` (supersedes `DEC-020`) |
+| declaration | `DEC-033` |
+| guest module, shared door module | `DEC-034` |
+| no-uplink `capsule-netns` | `DEC-035` |
+| guest record, units over guests | `DEC-036` |
+| the door (satan's interface) | `DEC-037` |
+| names disjoint at eval | `DEC-038` |
+| guard covers rooms | `DEC-039` |
+| quarantine layout, pinned not built | `DEC-040` |
+| front-end room verbs | `DEC-041` |
 
 ## Non-Goals
 
@@ -67,9 +82,9 @@ capsule-netns up  (uplink env empty ⇒ no veth, no route, no resolver hop)
   gateway socket). It is a follow-on slice, independent of the git channel once
   the namespace exists.
 - **Per-repo tools and the `session` launcher** (Plan F §3). Follow-on.
-- **Building the per-repo git channel.** This slice pins its interface (item
-  4) and builds it only if the design finds it is one instance of
-  `host/git-channel.nix` per repo with no new code.
+- **Building the per-repo git channel.** The layout is pinned (`DEC-040`); the
+  build is a follow-on, since it needs a room transport fragment and a
+  quarantine key separate from the transport name (research X5).
 - Plan E's furniture: shared tmux, chat, identity beyond the door, fork-bomb
   limits (Plan E §5–6).
 - Narrowing `any_vm_running`. That is a separate safety decision.
@@ -80,17 +95,21 @@ capsule-netns up  (uplink env empty ⇒ no veth, no route, no resolver hop)
 
 ## Affected surface
 
-- `host/netns.nix`: the conditional uplink block.
-- `mkfleet.nix`: a `rooms` argument, the disjointness throw, and room outputs.
-- `host/services.nix` (or a new `host/room.nix` imported by it): the room's
-  netns, tap, and relay units, inside the existing module.
-- `vm/`: new room guest modules.
-- `templates/` and `fixture/`: the example consumer and fixture gain a room
-  declaration (DEC-030 eval-checks the template).
-- `host/*-cases.nix`: a case suite for the no-uplink path of `capsule-netns`
-  and for the throw.
-- `docs/plan-e-room.md`, `docs/plan-f-assistant.md`, `docs/contract-*.md`:
-  annotated in the same commit as anything that moves the boundary.
+- `host/netns.nix`: uplink all or nothing (`DEC-035`); `tools` as an argument.
+- `rooms.nix` (new, pure): declaration to guest records, refusals, `reasons`
+  (`DEC-036`, `DEC-038`).
+- `mkfleet.nix`: the ninth argument, room `nixosConfigurations`, `liveNames`
+  widened, new suites wired.
+- `host/services.nix`: per-guest units over slots and rooms (`DEC-036`).
+- `host/guard.nix`: rooms in the declared set (`DEC-039`).
+- `host/cli.nix`: room verbs and status (`DEC-041`).
+- `vm/room.nix` (new), a shared door module, `vm/capsule.nix` importing it
+  (`DEC-034`).
+- `fixture/`, `templates/`: rooms declared (`lounge`, `assistant` in the
+  fixture).
+- `host/netns-cases.nix`, `host/rooms-cases.nix` (new); `guardCases`, the
+  front-end suite and `templateCases` extended.
+- `docs/`: Plan E/F, `contract-*.md`, and the sentences a room makes false.
 
 ## Risks, assumptions, open questions
 

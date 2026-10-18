@@ -1,0 +1,33 @@
+schema = "doctrine.knowledge"
+version = 1
+
+id = 38
+slug = "room-names-are-disjoint-at-eval"
+title = "Room names are thrown on at eval if they meet a slot, a reserved image name or the probe fabric, and the reason is a pinned value"
+record_kind = "decision"
+status = "accepted"
+created = "2026-10-18"
+updated = "2026-10-18"
+tags = []
+
+[facet]                         # every field typed; seeded empty (captured later)
+context = "SL-005 inq-7, Plan E section 2, NOTES item 38 (a declaration that copies live names becomes a borrower with no diff; the check was one declaration wide)."
+choice = "rooms.nix refuses a room name that is a slot name, hello or capsule, or is not unit-safe, and a user named root or with no keys. Each refusal's message is a value in rooms.nix reasons, thrown verbatim, as fleet.nix does. mkfleet.nix's liveNames gains every room namespace, so the probe fabric's borrowed throw covers rooms. A roomsCases suite pins each verdict and reason with tryEval and deepSeq."
+alternatives = ["a comment in both files", "checking only the namespace name"]
+rationale = "Item 38's lesson: enforce, and cover every name that reaches a wire, a unit or ip netns list."
+consequences = ["the throw runs in every caller's eval (DEC-029)", "roomsCases joins just build"]
+decided_by = "user, on agent proposal"
+decided_on = "2026-10-18"
+
+[evidence]                      # free-text citations (supports / contradicts / notes)
+supports    = []
+contradicts = []
+notes       = []
+
+[relationships]                 # verb-written edges (set by doctrine supersede)
+supersedes    = []   # record ids this one replaces (set by doctrine supersede)
+superseded_by = []   # set on superseded predecessor (verb-written)
+
+[[relation]]
+label = "shapes"
+target = "SL-005"

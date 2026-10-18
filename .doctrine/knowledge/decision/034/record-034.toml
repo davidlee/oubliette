@@ -1,0 +1,33 @@
+schema = "doctrine.knowledge"
+version = 1
+
+id = 34
+slug = "one-room-module-and-a-shared-door"
+title = "One generic room guest module, built per room, sharing a door module with the capsule guest"
+record_kind = "decision"
+status = "accepted"
+created = "2026-10-18"
+updated = "2026-10-18"
+tags = []
+
+[facet]                         # every field typed; seeded empty (captured later)
+context = "SL-005 inq-3. A room image carries its users' keys, so it is per room. vm/capsule.nix already holds the tap, sshd with host keys on the volume, and root by adminKeys ++ stopKey (vm/capsule.nix:118-131, 253-296)."
+choice = "vm/room.nix is one generic module, applied per declared room through mkVm with hostName capsule (DEC-032). It holds the declared users, /home on a volume (exec permitted), and nothing else. The parts both guests need (tap interface, sshd with host keys on the volume, root reachable only by access.adminKeys ++ [access.stopKey]) move into one module that vm/capsule.nix and vm/room.nix both import."
+alternatives = ["a module the consumer supplies", "copying the shared parts into vm/room.nix"]
+rationale = "A consumer module could weaken the guest's root-by-key-only rule (POL-001 limb 3). Copying would be two careful constructions of one door (RSK-004)."
+consequences = ["the capsule guest's expression changes; its behaviour must not, and a build comparison is the check", "a room image is rebuilt when its users change"]
+decided_by = "user, on agent proposal"
+decided_on = "2026-10-18"
+
+[evidence]                      # free-text citations (supports / contradicts / notes)
+supports    = []
+contradicts = []
+notes       = []
+
+[relationships]                 # verb-written edges (set by doctrine supersede)
+supersedes    = []   # record ids this one replaces (set by doctrine supersede)
+superseded_by = []   # set on superseded predecessor (verb-written)
+
+[[relation]]
+label = "shapes"
+target = "SL-005"

@@ -1,0 +1,33 @@
+schema = "doctrine.knowledge"
+version = 1
+
+id = 36
+slug = "a-room-is-a-guest-record-with-no-uplink"
+title = "A room is a guest record with no uplink; the per-guest units are built over slots and rooms alike"
+record_kind = "decision"
+status = "accepted"
+created = "2026-10-18"
+updated = "2026-10-18"
+tags = []
+
+[facet]                         # every field typed; seeded empty (captured later)
+context = "SL-005 inq-5. host/services.nix builds every unit from capsules.instances (59, 203). hostModuleUnits checks only units named capsule-* or microvm* (mkfleet.nix:680-682)."
+choice = "A pure rooms.nix turns the rooms declaration into records shaped like slot records: { name; ns = room-<name>; uplink = null; socket = /run/capsule-room/<name>/ssh.sock; }. The module iterates guests = slots and rooms for the netns unit, the tap drop-in, the microvm@ drop-in, the ssh relay and the guard. It iterates slots alone for the proxy, the allowlist, sudo rules and slot tmpfiles. A room's netns unit does not require the aggregator, and its microvm@ wants the relay but not the proxy. Unit names are unchanged (capsule-netns-<n>, capsule-ssh-relay-<n>, microvm@<n>), so the existing module checks cover rooms."
+alternatives = ["a separate set of room-* units", "making rooms slots with a null uplink in fleet.slots"]
+rationale = "One construction per unit (RSK-004), and the module checks reach rooms without widening their filter. Rooms are not slots: they have no profile, assignment record or volume verbs."
+consequences = ["room and slot names share one unit namespace, so they must be disjoint (see the naming DEC)", "docs/contract-assignment.md's noun table gains rooms as a second owner of namespace, socket and units"]
+decided_by = "user, on agent proposal"
+decided_on = "2026-10-18"
+
+[evidence]                      # free-text citations (supports / contradicts / notes)
+supports    = []
+contradicts = []
+notes       = []
+
+[relationships]                 # verb-written edges (set by doctrine supersede)
+supersedes    = []   # record ids this one replaces (set by doctrine supersede)
+superseded_by = []   # set on superseded predecessor (verb-written)
+
+[[relation]]
+label = "shapes"
+target = "SL-005"
