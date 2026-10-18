@@ -45,6 +45,13 @@ Choices made at plan time, where the design left one open:
   in a build. `profileCases` is already the reader's suite, so the claim
   "every splice carries the reader's `jq`" sits beside the claim "the reader's
   text runs without ambient `jq`".
+- **No suite whose programs splice the reader keeps an ambient `jq`.** The
+  reader suites write fixtures with `jq`, and a `nativeBuildInputs` `jq` for
+  that would mask the defect for every case. Fixture writing goes by store
+  path, so the whole suite runs without ambient `jq`.
+- **The splicer check matches the call, not the store path.** `capsule` gets
+  `jq`'s `bin` directory on `PATH` from `record.inputs`, so a store-path
+  match would pass whether or not the reader carried its own.
 - **`fragmentNames` at six appliers.** The design names the argument and its
   binding site. The plan adds the five fixture suites that apply `rooms.nix`,
   each passing a fixture list, as they do `policies`.

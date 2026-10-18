@@ -31,12 +31,21 @@ in `host/room-git.nix`, and `inherit (hostProfile) inputs` for `snapshotCases`,
 against the reader's text that `jq` is its only non-builtin (DEC-053's premise);
 if it is not, `/consult`.
 
-`profileCases` gains two cases. (1) The reader loads a document in a
-`runCommand` with no `jq` on `PATH`: one text, so it covers every splice. (2) It
+`profileCases`, `snapshotCases` and `observeCases` take `jq` off their whole
+`PATH`: each writes fixture documents with `jq`, and a `nativeBuildInputs` `jq`
+for that would sit on the reader's `PATH` too and mask the defect again. Their
+fixture writing calls `jq` by store path instead, so every reader case in the
+three suites runs with no ambient `jq`.
+
+`profileCases` gains two cases. (1) A premise that `command -v jq` finds nothing,
+then the reader loading a document: one text, so it covers every splice. (2) It
 is handed the shipped splicers (`capsule-provision`, `capsule-collect`,
 `capsule-refresh`, `capsule-brief`, `capsule-baseline`, `capsule-room-git`,
 `capsule`), as `mkfleet.nix` binds them and unwrapped, and asserts each one's
-text holds `jq`'s store path. That is design sec-4's "nearest suite holding the
+text holds the reader's call, `<lib.getExe pkgs.jq> -e`. A bare store-path
+match would pass vacuously: `capsule` (via `record.inputs`) and, until this
+phase, `capsule-room-git` put `jq`'s `bin` directory on `PATH` through
+`runtimeInputs`. That is design sec-4's "nearest suite holding the
 programs": `hostModuleUnits` is eval-only and cannot read a built program's
 text. It proves the splice is the shared text, not that the program runs.
 
@@ -51,8 +60,8 @@ entrance_criteria = [
 ]
 exit_criteria = [
   { id = "EX-1", text = "`host/profile.nix` has no bare `jq` in `validator` or `profileShow`, exports no `inputs`, and nothing in the tree reads `profile.inputs` or `hostProfile.inputs`" },
-  { id = "EX-2", text = "`profileCases` reads a document with no `jq` on `PATH`, and asserts `jq`'s store path in each of the seven shipped splicers' text, naming any that lacks it" },
-  { id = "EX-3", text = "No case suite has `pkgs.jq` in `nativeBuildInputs` or `runtimeInputs` to serve the reader; a suite-owned `jq` is by store path and a comment says it writes fixtures" },
+  { id = "EX-2", text = "`profileCases` reads a document with no `jq` on `PATH` (a premise case asserts its absence), and asserts the reader's `<getExe jq> -e` call in each of the seven shipped splicers' text, naming any that lacks it" },
+  { id = "EX-3", text = "`profileCases`, `snapshotCases`, `observeCases`, `gitChannelCases` and `wrapCases` have no `pkgs.jq` in `nativeBuildInputs` or `runtimeInputs`; a suite-owned `jq` is by store path and a comment says it writes fixtures" },
   { id = "EX-4", text = "Mutation: one reader call put back to bare `jq` turns case (1) red; observed and reverted" },
   { id = "EX-5", text = "`just` and `just check` green" },
 ]
