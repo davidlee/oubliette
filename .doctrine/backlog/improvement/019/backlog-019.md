@@ -16,9 +16,9 @@ Two shapes, neither chosen:
   tools. No perimeter change, and nothing generic learns what npm is (POL-002).
   It is malebolge's work, not this repo's.
 - **A room gets an uplink** to the proxy under its policy, whose allowlist is
-  inert today. That is a perimeter change (POL-001) and takes back
-  `DEC-037`-era "a room has no way out", so it needs a decision record, not a
-  value.
+  inert today. That is a perimeter change (POL-001) and takes back the room's
+  defining property, no way out (`vm/room.nix`), so it needs a decision record,
+  not a value.
 
 The first is cheaper and keeps the room sealed. The same gap applies to any
 room repo whose tools come from a language package manager rather than nix.
