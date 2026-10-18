@@ -5,7 +5,7 @@ id = 31
 slug = "room-stops-before-probe"
 title = "A running room is stopped before a probe; the any_vm_running refusal is not narrowed"
 record_kind = "decision"
-status = "proposed"
+status = "accepted"
 created = "2026-10-18"
 updated = "2026-10-18"
 tags = []
@@ -16,8 +16,8 @@ choice = "Stopping a running room is a routine step before any probe run. any_vm
 alternatives = ["narrow the refusal to slot namespaces or to the probe fabric's own namespaces", "exempt declared room namespaces from the refusal"]
 rationale = "The refusal is a safety guard whose whole value is that it does not reason about which VM is safe to ignore. Narrowing it is a separate safety decision and should not ride in on a room slice. The cost is operational, known in advance, and paid only when probes run."
 consequences = ["a room's stop path must be cheap and graceful (bears on vm-stop's non-slot branch)", "the room's persistent state must survive a stop (Plan F §6: /home on a volume)", "narrowing the refusal later needs its own decision record superseding this one"]
-decided_by   = ""
-decided_on   = ""
+decided_by = "user, on agent proposal"
+decided_on = "2026-10-18"
 
 [evidence]                      # free-text citations (supports / contradicts / notes)
 supports    = []
