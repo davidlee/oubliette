@@ -137,7 +137,7 @@
   guestSsh = import ./guest-ssh.nix {inherit lib;};
 
   hostPrograms = import ./programs.nix {
-    inherit pkgs lib net targets capsules policies workBranch injections;
+    inherit pkgs lib net targets capsules rooms policies workBranch injections;
     access = guestSsh.viaSocket {
       socat = "${pkgs.socat}/bin/socat";
       socket = capsules.socketOf ''"$capsule"'';
@@ -782,7 +782,12 @@ in {
           "d ${cfg.stateDir}/slot/${c.name} 0750 ${cfg.owner} users -"
           "L ${allowlistOf c} - - - - ${policyFile c.policy}"
         ])
-        instances;
+        instances
+        # A room's trust store: its one known_hosts, which every door to it
+        # checks (DEC-047). Every room, with repos or not, because the front
+        # end's ssh is a door too (SL-006 design sec-5). The owner's alone.
+        ++ map (r: "d ${rooms.stateDirOf cfg.stateDir r.name} 0700 ${cfg.owner} users -")
+        (lib.attrValues rooms.instances);
 
       # The documents themselves, **installed rather than linked** (NOTES item 52,
       # decision 1). A symlink into the store would keep nix authoritative and
@@ -835,6 +840,11 @@ in {
         (wrap "capsule" cli)
         (wrap "capsule-provision" hostPrograms.provision)
         (wrap "capsule-collect" hostPrograms.collect)
+        # Wrapped for `CAPSULE_STATE` and `CAPSULE_PROFILE_DIR`, like the slot
+        # channel: bare, a room's quarantine and its known_hosts fall back to
+        # `$PWD/.vm/host` and its documents to the store's (SL-006 design sec-4,
+        # RV-015 F-3). Its own socket and trust store, so no slot transport.
+        (wrap "capsule-room-git" hostPrograms.roomGit)
         # Bare, and it is the honest line: `inject` is not a `profileVerb` and
         # reads none of the four — a payload's destination is on the *volume*
         # (host/programs.nix, the injections).

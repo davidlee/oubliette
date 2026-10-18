@@ -68,13 +68,13 @@ build:
     '.#capsule-host' '.#capsule-net' '.#vm-stop' '.#capsule-halt' \
     '.#probe-netns' '.#probe-netns-restart' '.#probe-netns-boot' '.#probe-freshness' \
     '.#probe-two-capsules' '.#probe-netns-egress' \
-    '.#capsule-provision' '.#capsule-collect' '.#capsule-inject' \
+    '.#capsule-provision' '.#capsule-collect' '.#capsule-inject' '.#capsule-room-git' \
     '.#capsule-baseline' '.#capsule-refresh' '.#capsule-adopt' \
     '.#capsule-brief' \
     '.#hostModuleUnits' '.#hostModulePrograms' \
     '.#guardCases' '.#netnsCases' '.#policyCases' '.#briefCases' \
     '.#snapshotCases' '.#refreshCases' '.#observeCases' '.#baselineCases' \
-    '.#profileCases' '.#gitChannelCases' '.#quarantineCases' '.#vmCases' \
+    '.#profileCases' '.#gitChannelCases' '.#roomGitCases' '.#quarantineCases' '.#vmCases' \
     '.#wrapCases' \
     '.#volumeRootCases' '.#resetHomeCases' '.#sessionCases' '.#volumeCases' '.#fleetCases' \
     '.#roomsCases' '.#fabricCases' '.#roomVerbsCases' '.#roomImages'
@@ -103,6 +103,7 @@ cases:
   @cat "$(nix build --no-link --print-out-paths '.#baselineCases')"
   @cat "$(nix build --no-link --print-out-paths '.#profileCases')"
   @cat "$(nix build --no-link --print-out-paths '.#gitChannelCases')"
+  @cat "$(nix build --no-link --print-out-paths '.#roomGitCases')"
   @cat "$(nix build --no-link --print-out-paths '.#quarantineCases')"
   @cat "$(nix build --no-link --print-out-paths '.#vmCases')"
   @cat "$(nix build --no-link --print-out-paths '.#wrapCases')"

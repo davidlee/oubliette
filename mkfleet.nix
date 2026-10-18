@@ -532,6 +532,7 @@
   hostPrograms = import ./host/programs.nix {
     inherit pkgs lib net targets capsules policies workBranch;
     inherit (access) injections;
+    rooms = roomDecision;
     # The same socket expression the units inject, for the opposite purpose:
     # there it is the way in, here its existence is what says this copy is the
     # wrong one (host/guest-ssh.nix).
@@ -695,6 +696,20 @@
     inherit pkgs lib;
     inherit (hostPrograms) provision collect;
     slot = builtins.head declaredSlots;
+  };
+
+  # The second over a program that talks to a guest: the room channel at its
+  # exit statuses — every caller error a 2 decided before the door, a room with
+  # no socket a 75 (host/room-git-cases.nix). The shipped store path, and the
+  # caller's policy vocabulary, from which it picks one that permits and one
+  # that forbids rather than naming either.
+  roomGitCases = import ./host/room-git-cases.nix {
+    inherit pkgs lib policies;
+    roomGit = hostPrograms.roomGit;
+    # The same text with a room's socket under the sandbox, since the shipped
+    # path is fixed under `/run`: a door nobody's, for the branches past the
+    # socket test (`volumeCases`' fixture socket, one program over).
+    fixtureDoor = (hostPrograms.roomGitOf (name: ''"$CASE_RUN/${name}.sock"'')).program;
   };
 
   # The quarantine's ingestion bound, as fragments spliced into the smallest
@@ -1095,6 +1110,33 @@
         && (sc.RuntimeDirectory or null) == "capsule-room/${n}"))
     roomNames;
 
+    # The room channel's two module halves (SL-006 design sec-4, sec-5). Every
+    # declared room gets its trust store's directory, with or without repos,
+    # because every door to a room uses it (DEC-047) — spelled here rather than
+    # read from `rooms.stateDirOf`, so the check cannot agree with itself.
+    # And the one `capsule-room-git` on PATH is the wrapped one, compared by
+    # store path in the condition and never embedded (`installed`'s rule): bare,
+    # its state falls back to `$PWD/.vm/host` (RV-015 F-3, `ISS-004`).
+    cfg = host.config.services.capsule-perimeter;
+    roomStateMissing = lib.filter (n:
+      !(lib.any (d: d.path == "${cfg.stateDir}/room/${n}" && d.mode == "0700" && d.owner == cfg.owner && d.group == "users")
+        dirRules))
+    roomNames;
+    roomGitInstalled =
+      lib.filter (p: (p.pname or p.name or "") == "capsule-room-git")
+      host.config.environment.systemPackages;
+    roomGitWrapped =
+      ((import ./host/wrap.nix {
+          inherit pkgs lib;
+          paths = {inherit (cfg) stateDir policyDir allowlistDir profileDir;};
+        }).wrap "capsule-room-git"
+        hostPrograms.roomGit)
+      .outPath;
+    roomGitIsWrapped =
+      lib.length roomGitInstalled
+      == 1
+      && (lib.head roomGitInstalled).outPath == roomGitWrapped;
+
     # Refused before either derivation is named, so a `nix build` of the
     # programs cannot pass a module whose units are wrong.
     checked = drv:
@@ -1120,6 +1162,10 @@
       then throw "capsule-perimeter: room(s) ${lib.concatStringsSep ", " roomWantsProxy} want or have a capsule-proxy unit — a room has no uplink and no policy, so it gets no egress proxy (SL-005 design sec-4, DEC-036)."
       else if roomRelayElsewhere != []
       then throw "capsule-perimeter: the ssh relay of room(s) ${lib.concatStringsSep ", " roomRelayElsewhere} does not listen on the room's own socket under RuntimeDirectory capsule-room/<name> — a room's door is its record's (SL-005 design sec-4)."
+      else if roomStateMissing != []
+      then throw "capsule-perimeter: room(s) ${lib.concatStringsSep ", " roomStateMissing} have no tmpfiles `d <stateDir>/room/<name> 0700 <owner> users` — that is the room's one known_hosts, which every door to it checks (SL-006 design sec-5, DEC-047)."
+      else if !roomGitIsWrapped
+      then throw "capsule-perimeter: the module does not install exactly one capsule-room-git, wrapped (host/wrap.nix) around the same program `hostPrograms.roomGit` builds — bare, its quarantine and known_hosts fall back to $PWD/.vm/host and its profiles to the store's (RV-015 F-3, ISS-004)."
       else drv;
   in {
     units = checked (pkgs.writeText "capsule-units.txt" ''
@@ -1458,6 +1504,7 @@
   nsPrograms = import ./host/programs.nix {
     inherit pkgs lib net targets capsules policies workBranch;
     inherit (access) injections;
+    rooms = roomDecision;
     access = guestSsh.viaSocket {
       socat = "socat";
       socket = socketOf ''"$capsule"'';
@@ -1683,7 +1730,7 @@ in {
       # The checks that need no root and no host: what the module says, what the
       # guard decides, and which policy a slot resolves to.
       inherit hostModuleUnits hostModulePrograms guardCases netnsCases policyCases observeCases;
-      inherit profileCases gitChannelCases quarantineCases vmCases wrapCases volumeRootCases resetHomeCases sessionCases volumeCases fleetCases roomsCases fabricCases roomVerbsCases;
+      inherit profileCases gitChannelCases roomGitCases quarantineCases vmCases wrapCases volumeRootCases resetHomeCases sessionCases volumeCases fleetCases roomsCases fabricCases roomVerbsCases;
       # Every declared room's image, checked and built (RV-014 F-7).
       inherit roomImages;
       # The rendered run-time half of every target, so a human can read what a
@@ -1698,6 +1745,10 @@ in {
       # is the same gap `ISS-004` was: shipped in the abstract (`IMP-004`).
       capsule-profile-check = hostProfile.check;
       inherit capsule-cli capsule-provision capsule-collect capsule-inject;
+      # A package and not a devshell program: a devshell copy would keep
+      # a room's known_hosts under `$PWD/.vm/host` while the module's doors keep
+      # it under the state directory, two trust stores for one room (DEC-047).
+      capsule-room-git = hostPrograms.roomGit;
       inherit probe-netns probe-netns-restart probe-netns-boot probe-netns-egress;
       inherit probe-freshness probe-two-capsules;
       default = vms.capsule.config.microvm.declaredRunner;

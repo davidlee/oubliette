@@ -32,6 +32,14 @@
 # Each refusal's message is a value in `reasons` (`null` when there is none) and
 # is exactly what `instances` throws, so a suite can assert *why* as well as
 # *that* — a `tryEval` verdict carries no message.
+#
+# Two path conventions live here too, one definition each (POL-003): a room's
+# door, `socketOf` (the record's `socket` is that function at the room's name),
+# and its host-side state directory, `stateDirOf` (where its known_hosts lives,
+# DEC-047). Plain functions of strings, so a caller hands them a nix value or a
+# shell expression alike — `capsule-room-git` calls them with `"$room"`, the
+# module's tmpfiles with a name — and reading them forces neither `reasons` nor
+# `instances` (SL-006 design sec-4, sec-5).
 {lib}: {
   rooms,
   slotNames,
@@ -152,11 +160,14 @@
       );
   };
 
+  socketOf = name: "/run/capsule-room/${name}/ssh.sock";
+  stateDirOf = state: name: "${state}/room/${name}";
+
   recordOf = name: decl: {
     inherit name;
     ns = "room-${name}";
     uplink = null;
-    socket = "/run/capsule-room/${name}/ssh.sock";
+    socket = socketOf name;
     inherit (decl) users sizes;
     # Each repo's path is the target derivation's, read and never re-spelt.
     repos =
@@ -174,7 +185,7 @@
     policy = decl.policy or null;
   };
 in {
-  inherit reasons;
+  inherit reasons socketOf stateDirOf;
   instances =
     if !(isNull reasons.names)
     then throw reasons.names

@@ -68,6 +68,13 @@
   # One argument rather than two because there are three call sites and a second
   # argument is a second thing each of them can omit.
   access,
+  # What `rooms.nix` decided (`{reasons; instances; socketOf; stateDirOf}`), and
+  # only its two path conventions are read: `capsule-room-git` reaches a room by
+  # its socket and keeps its trust store in its state directory, and each has
+  # one definition there (SL-006 design sec-4, sec-5). Neither `reasons` nor
+  # `instances` is forced, so a program here still names no room. Threaded for
+  # `policies`' reason: three call sites build this set.
+  rooms,
 }: let
   inherit (access) transport selectCapsule;
 
@@ -206,6 +213,21 @@
     baselineRecord = baselineRecordFragment;
   };
 
+  # The room channel (host/room-git.nix, SL-006 design sec-4), as a function of
+  # the one thing that ties it to this host: where a room's socket is. The
+  # shipped copy is that function at `rooms.socketOf`; `roomGitCases` applies it
+  # to a socket of its own, since the shipped path is fixed under `/run`
+  # (POL-004). It takes no `access`, unlike every slot program here: a room is
+  # reached by its own socket and checked against its own trust store, never
+  # through a slot's transport (DEC-047, RV-015 F-4).
+  roomGitOf = socketOf:
+    import ./room-git.nix {
+      inherit pkgs lib quarantine profile policies socketOf;
+      inherit (rooms) stateDirOf;
+      guestSsh = import ./guest-ssh.nix {inherit lib;};
+    };
+  roomGitShipped = roomGitOf rooms.socketOf;
+
   gitChannel = import ./git-channel.nix {
     inherit pkgs lib policies workBranch guestHost gitSsh quarantine profileSelect;
     guestRepo = guestRepoFragment;
@@ -255,6 +277,18 @@ in {
   ];
 
   inherit (gitChannel) provision collect;
+
+  # `capsule-room-git`: push a ref into a room's clone, collect one branch back
+  # into its quarantine. Not a `programVerbs` entry — those are slot verbs — and
+  # not a `profileVerbs` one, since a room's front end fills `--profile` from
+  # the room's declared repos rather than a slot's record (DEC-051).
+  roomGit = roomGitShipped.program;
+  # The strict ssh words every door to a room uses (DEC-047), for the front
+  # end's door (PHASE-05) — one spelling, here and in the program.
+  roomDoor = roomGitShipped.door;
+  # The seam itself, for `roomGitCases`' fixture door: `briefRunner`'s export,
+  # for its reason — a suite needs the thing before it is the shipped store path.
+  inherit roomGitOf;
 
   # The second step out of quarantine, and the one with a security control in it:
   # the state half is a guest-authored tree, so what lands on a disk from it is
