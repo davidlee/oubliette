@@ -28,8 +28,11 @@ it.**
 
 The seam is what lets the perimeter be reused by a shape that is not firecracker
 — a seatbelt or VM-based jail (`docs/plan-b-other-jails.md`), or a guest that is
-not a capsule at all (`docs/plan-e-room.md`, the first test of whether the
-machinery underneath is separable from the product).
+not a capsule at all (`docs/plan-e-room.md`). SL-005 ran that test with two
+callers: one `capsule-netns`, one unit set and one guard serve both slots and
+rooms. It did not prove the room module itself separable — the two fixture rooms
+differ only in values, and the room module first meets a second shape at Plan
+E's tailnet ingress or Plan F's repos.
 
 The same seam is what lets **one store path serve N capsules**: the `transport`
 fragment resolves `--capsule <name>` at run time and sets `ssh_cmd`, so a

@@ -11,7 +11,7 @@ names a value implicitly.**
 | slots | **the caller's `fleet` argument** (a consumer's `capsules.nix`) | which slots exist (`a`…`j`), the policy set an assigner may select within, and the profile each slot declares — for resolution a convenience, with no set beside it; for a declared slot also the build binding, since the slot boots that target's image (`DEC-017`) |
 | host controls | **the caller's `policies` argument** (a consumer's `policies.nix`) | an allowlist file, an ingestion bound and `mayCollect` per named policy |
 | the confined repos | **the caller's `targets` argument**, `<name> = {decl; flake}`, listed by hand (a consumer's `targets/`) | per target: path, tools package, caches, sizes; its name is its key. Its file and its tool-set flake are paired, so there is no second map to disagree (`DEC-018`, `DEC-042`; `DEC-019` and `DEC-025` superseded) |
-| rooms | **the caller's `rooms` argument** to `mkFleet` (`DEC-033`) | per room: declared users with their ssh public keys, and declared sizes (`vcpu`, `mem`, `volume`). No kind. Required, with no implicit default: a consumer with no rooms writes `rooms = {}` |
+| rooms | **the caller's `rooms` argument** to `mkFleet` (`DEC-033`) | per room: declared users, each `{ uid; keys; }` — a declared uid in 1000–29999 and their ssh public keys — and declared sizes (`vcpu`, `mem`, `volume`). No kind. Required, with no implicit default: a consumer with no rooms writes `rooms = {}` |
 | a probe's fabric | **the caller's `probe.fabric` argument** | every name, link, address and network a probe's egress fabric is built from |
 
 **And nothing has a default.** The four host programs take `--capsule <name>` or
