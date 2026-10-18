@@ -10,13 +10,19 @@ raiser    = "raiser"
 responder = "responder"
 rounds_base = 0
 contests_base = 0
+concluded = true
+
+[[review.turn]]
+act = "conclude"
+role = "raiser"
+note = "GPT (gpt-6-sol) document-level pass over design.md, DEC-043..051, POL-001..004 and the code sec-11 names; then a GPT verification pass over the amendment 419997b (6 verified, 2 partial closed by a further amendment, 2 new minor defects fixed). Static review only: nothing built or run."
 
 [target]                   # the outbound `reviews` edge: RV-NNN ──reviews──▶ <ref>
 ref   = "SL-006"
 
 [[finding]]
 id = "F-1"
-status = "answered"
+status = "verified"
 severity = "blocker"
 title = "GPT F-1: session's per-room render carries target names and guestPaths, against POL-002's program clause"
 detail = "Source: GPT (gpt-6-sol) document-level pass, 2026-10-18. sec-3/DEC-049 generate session as a writeShellApplication with the repo table rendered per room image. POL-002: 'No program carries a target's values or its name — except a host-declared value threaded into the generated front end'. Remedy proposed: generic launcher reading a room data file, or revise the policy."
@@ -33,9 +39,14 @@ role = "responder"
 disposition = "fix-now"
 response = "Observation sound in letter: the policy's program clause is written about host capsule-<verb> programs, and the guest already bakes target values (vm/capsule.nix seed/motd), but a generic launcher costs almost nothing and removes the question. User chose (2026-10-18) a generic session over a rendered /etc/room/repo/<repo>/{clone,tools} tree: sec-3, sec-1 diagram, sec-11, sec-8 sessionCases (handed a fixture root); DEC-049 choice and rationale amended. Not widened: room-seed still carries guestPath in its unit script, as vm/capsule.nix:278 does — NixOS unit config, not a pinned program."
 
+[[finding.turn]]
+act = "verify"
+role = "raiser"
+note = "GPT (gpt-6-sol) verification pass on 419997b: VERIFIED."
+
 [[finding]]
 id = "F-2"
-status = "answered"
+status = "verified"
 severity = "major"
 title = "GPT F-2: branch is unvalidated (collect '*' fetches every head) and push resolves the branch after pre-flight (a caller error reads as 75)"
 detail = "sec-4 checks only room/repo tokens; +refs/heads/<branch> with branch '*' is a glob refspec (git-channel.nix:539 uses the same glob deliberately for slots). Order of a run puts rev-parse (step 3) after the banner (step 2), so a missing branch with the room down exits 75, and sec-8's 'push of a branch the host checkout lacks -> 2' is unreachable in a sandbox, where there is no socket."
@@ -52,9 +63,14 @@ role = "responder"
 disposition = "fix-now"
 response = "Verified (git-channel.nix:539 uses the glob; step order put rev-parse after the banner, making sec-8's absent-branch case unreachable with no socket). sec-4 step 1 now refuses a branch git check-ref-format --branch refuses (which rejects * ? [) and resolves push's oid before the pre-flight; sec-8 roomGitCases pins both, the absent branch as 2 with no socket. DEC-045 choice amended."
 
+[[finding.turn]]
+act = "verify"
+role = "raiser"
+note = "GPT (gpt-6-sol) verification pass on 419997b: VERIFIED."
+
 [[finding]]
 id = "F-3"
-status = "answered"
+status = "verified"
 severity = "major"
 title = "GPT F-3: capsule-room-git on the module path must be wrapped like provision/collect"
 detail = "sec-11 says services.nix installs capsule-room-git, not that it is wrapped. Bare, quarantine.nix's fragment falls back to $root/.vm/host for state (and the known_hosts store under it) and profileDir() to the store's baked document (services.nix ~828-850, ISS-004). Remedy: wrap it; pin in hostModuleUnits."
@@ -71,9 +87,14 @@ role = "responder"
 disposition = "fix-now"
 response = "Verified (services.nix wraps provision/collect for this reason, ISS-004). sec-4 adds 'On the module path it is wrapped'; sec-11 services.nix installs through wrap; sec-8 hostModuleUnits pins the installed program is the wrapped one."
 
+[[finding.turn]]
+act = "verify"
+role = "raiser"
+note = "GPT (gpt-6-sol) verification pass on 419997b: VERIFIED."
+
 [[finding]]
 id = "F-4"
-status = "answered"
+status = "verified"
 severity = "major"
 title = "GPT F-4: DEC-045 names guest-ssh.nix's viaSocket, which begins with selectCapsule"
 detail = "viaSocket.transport = selectCapsule + ... (guest-ssh.nix:188), requiring --capsule/CAPSULE_NAME, which sec-4 forbids for a room; its refusal also names capsule-ssh-relay-$capsule. sec-4 already specifies a new shared ProxyCommand helper, so the design is right and DEC-045's text is stale."
@@ -90,14 +111,19 @@ role = "responder"
 disposition = "fix-now"
 response = "Verified (guest-ssh.nix:188). The design already specified a new shared ProxyCommand helper; DEC-045's text named viaSocket and is amended. sec-4 now says why viaSocket is not the seam."
 
+[[finding.turn]]
+act = "verify"
+role = "raiser"
+note = "GPT (gpt-6-sol) verification pass on 419997b: VERIFIED."
+
 [[finding]]
 id = "F-5"
-status = "answered"
+status = "verified"
 severity = "major"
 title = "GPT F-5: no suite reaches the bounded fetch fragment extracted from capsule-collect"
 detail = "git-channel-cases.nix header: it reaches only what is upstream of the door. Extracting the fetch (git-channel.nix:603-611) could drop --atomic, --no-tags, fsckObjects or the ulimit with every suite green; sec-8 adds no slot-collect regression."
 disposition = "fix-now"
-response = "Verified (git-channel-cases.nix header). New quarantineCases (host/quarantine-cases.nix): the fetch fragment as a library over file:// bare repos — over-ceiling pack, malformed object, offered tag, --atomic no-move. Live rung adds a slot capsule-collect regression. sec-8, sec-11, sec-9 CLAUDE.md row."
+response = "As before, and the atomic case is now discriminating: two refspecs with one destination's .lock in place, neither ref moves (a single-ref failure moves nothing without --atomic too)."
 
 [[finding.turn]]
 act = "raise"
@@ -109,9 +135,21 @@ role = "responder"
 disposition = "fix-now"
 response = "Verified (git-channel-cases.nix header). New quarantineCases (host/quarantine-cases.nix): the fetch fragment as a library over file:// bare repos — over-ceiling pack, malformed object, offered tag, --atomic no-move. Live rung adds a slot capsule-collect regression. sec-8, sec-11, sec-9 CLAUDE.md row."
 
+[[finding.turn]]
+act = "amend"
+role = "responder"
+note = "GPT verification: PARTIAL — the 'failed fetch moves no ref' case did not pin --atomic."
+disposition = "fix-now"
+response = "As before, and the atomic case is now discriminating: two refspecs with one destination's .lock in place, neither ref moves (a single-ref failure moves nothing without --atomic too)."
+
+[[finding.turn]]
+act = "verify"
+role = "raiser"
+note = "Amendment answers GPT's PARTIAL exactly as prescribed; verified by the orchestrator against design.md (RV-012 precedent)."
+
 [[finding]]
 id = "F-6"
-status = "answered"
+status = "verified"
 severity = "major"
 title = "GPT F-6: a valid target name can be an unusable room repo"
 detail = "profile-name.nix permits any name without / newline tab $ backtick (e.g. foo+bar); checkToken (quarantine.nix:93) permits only [A-Za-z0-9._-]+. sec-2 refuses no mismatch at eval, so the room builds and push/collect refuse at run time."
@@ -128,9 +166,14 @@ role = "responder"
 disposition = "fix-now"
 response = "Verified (profile-name.nix vs quarantine.nix:93). sec-2 gains an eval refusal for a repo target outside [A-Za-z0-9._-]+ or . / ..; session holds the same rule for its argument."
 
+[[finding.turn]]
+act = "verify"
+role = "raiser"
+note = "GPT (gpt-6-sol) verification pass on 419997b: VERIFIED."
+
 [[finding]]
 id = "F-7"
-status = "answered"
+status = "verified"
 severity = "minor"
 title = "GPT F-7: sec-11 misses three rooms.nix callers"
 detail = "fabric-cases.nix:52, host/guard-cases.nix and host/netns-cases.nix apply rooms.nix; the new targets/policies arguments break them unless they pass declared fixture values."
@@ -147,14 +190,19 @@ role = "responder"
 disposition = "fix-now"
 response = "Verified (fabric-cases.nix:52, guard-cases.nix, netns-cases.nix apply rooms.nix). Added to sec-11 with declared fixture values."
 
+[[finding.turn]]
+act = "verify"
+role = "raiser"
+note = "GPT (gpt-6-sol) verification pass on 419997b: VERIFIED."
+
 [[finding]]
 id = "F-8"
-status = "answered"
+status = "verified"
 severity = "minor"
 title = "checkToken exits 1, but sec-4 step 1 promises exit 2 for a bad token"
 detail = "Found by the orchestrator while adjudicating F-6. quarantine.nix's checkToken ends in exit 1; sec-4 reuses it 'as is' and sec-6's typed-error contract reads 1 as ChannelFailed, 2 as a refusal. Reused unchanged, a bad --room/--profile token reads as a channel failure."
 disposition = "fix-now"
-response = "sec-4: checkToken takes its exit status as an argument; slot callers pass today's 1, the room program 2. quarantineCases pins both; sec-11 row."
+response = "Reworked: checkToken's signature is unchanged; quarantine.nix gains refuseToken <status> with checkToken = refuseToken 1, so brief.nix, git-channel.nix, adopt.nix, cli.nix and state-snapshot-cases.nix need no change; the room uses refuseToken 2. sec-4, sec-11, sec-8, DEC-045."
 
 [[finding.turn]]
 act = "raise"
@@ -165,6 +213,66 @@ act = "dispose"
 role = "responder"
 disposition = "fix-now"
 response = "sec-4: checkToken takes its exit status as an argument; slot callers pass today's 1, the room program 2. quarantineCases pins both; sec-11 row."
+
+[[finding.turn]]
+act = "amend"
+role = "responder"
+note = "GPT verification: PARTIAL — a changed signature reaches direct callers sec-11 omitted (brief.nix:269, state-snapshot-cases.nix:58; also git-channel.nix, adopt.nix, cli.nix)."
+disposition = "fix-now"
+response = "Reworked: checkToken's signature is unchanged; quarantine.nix gains refuseToken <status> with checkToken = refuseToken 1, so brief.nix, git-channel.nix, adopt.nix, cli.nix and state-snapshot-cases.nix need no change; the room uses refuseToken 2. sec-4, sec-11, sec-8, DEC-045."
+
+[[finding.turn]]
+act = "verify"
+role = "raiser"
+note = "Amendment answers GPT's PARTIAL exactly as prescribed; verified by the orchestrator against design.md (RV-012 precedent)."
+
+[[finding]]
+id = "F-9"
+status = "verified"
+severity = "minor"
+title = "GPT (verify): notes.md still describes a per-room session repo table and says slot suites suffice"
+detail = "Stale projection after the amendment: notes.md 'What a further pass would probe' paragraph."
+disposition = "fix-now"
+response = "The paragraph is marked superseded by RV-015, kept as written."
+
+[[finding.turn]]
+act = "raise"
+role = "raiser"
+
+[[finding.turn]]
+act = "dispose"
+role = "responder"
+disposition = "fix-now"
+response = "The paragraph is marked superseded by RV-015, kept as written."
+
+[[finding.turn]]
+act = "verify"
+role = "raiser"
+note = "Fix applied as GPT prescribed; verified by the orchestrator."
+
+[[finding]]
+id = "F-10"
+status = "verified"
+severity = "minor"
+title = "GPT (verify): check-ref-format --branch echoes the branch on stdout, against push's oid-only stdout"
+detail = "sec-4 adds the check without discarding its output; sec-8 does not pin stdout."
+disposition = "fix-now"
+response = "sec-4: its stdout discarded; sec-8 roomGitCases: the no-socket 75 case asserts stdout empty."
+
+[[finding.turn]]
+act = "raise"
+role = "raiser"
+
+[[finding.turn]]
+act = "dispose"
+role = "responder"
+disposition = "fix-now"
+response = "sec-4: its stdout discarded; sec-8 roomGitCases: the no-socket 75 case asserts stdout empty."
+
+[[finding.turn]]
+act = "verify"
+role = "raiser"
+note = "Fix applied as GPT prescribed; verified by the orchestrator."
 
 # Findings are append-only `[[finding]]` tables, added by `review raise`.
 # Empty here at creation — a fresh review is Active, awaiting the raiser.

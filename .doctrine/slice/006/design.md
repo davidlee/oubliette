@@ -62,8 +62,8 @@ written and `ISS-021` closes by adding a volume.
 | `vm/room.nix` | `/work` volume, seed per repo, git, the `/etc/room/repo` tree, `session` |
 | `vm/session.nix` (new), `vm/session-cases.nix` (new) | the generic launcher (its root a build argument) and its suite |
 | `host/room-git.nix` (new), `host/room-git-cases.nix` (new) | the program and its suite |
-| `host/quarantine.nix` | the bounded fetch fragment; `checkToken` takes its exit status |
-| `host/quarantine-cases.nix` (new) | the fetch fragment and `checkToken`'s status, as a library suite |
+| `host/quarantine.nix` | the bounded fetch fragment; `refuseToken`, with `checkToken = refuseToken 1` |
+| `host/quarantine-cases.nix` (new) | the fetch fragment and `refuseToken`'s status, as a library suite |
 | `host/git-channel.nix` | uses the policy and fetch fragments instead of inline copies |
 | `host/guest-ssh.nix` | one ProxyCommand helper |
 | `host/programs.nix` | builds `capsule-room-git` beside the channel |
@@ -165,9 +165,9 @@ capsule-room-git --room <r> --profile <repo> --user <u> --policy <p> collect <br
 
 `--profile` is the existing reader (`host/profile.nix` `select`), which yields
 `profile_path` (the host checkout) and `profile_guest_path`. `--room` and
-`--profile` are checked with `checkToken` (a refusal here exits **2**:
-`checkToken` takes its exit status as an argument, and the slot callers pass
-today's 1 — RV-015 F-8). `--room` selects the socket
+`--profile` are checked with `refuseToken 2` (a refusal here exits **2**:
+`quarantine.nix` gains `refuseToken <status>`, and `checkToken` becomes
+`refuseToken 1`, so no existing caller changes — RV-015 F-8). `--room` selects the socket
 (`/run/capsule-room/<r>/ssh.sock`), the known_hosts file and the quarantine
 key. No `--capsule`, no `CAPSULE_NAME`: a room is named on argv only, as
 `DEC-041` already required.
@@ -177,7 +177,7 @@ functions both programs call:
 
 | fragment | today | becomes |
 | --- | --- | --- |
-| quarantine paths | `repoOf`, `codeRefsOf`, `checkToken` (`host/quarantine.nix`) | `repoOf "$room/$repo"`, `codeRefsOf "$room"` as is; `checkToken` gains the exit status |
+| quarantine paths | `repoOf`, `codeRefsOf`, `checkToken` (`host/quarantine.nix`) | `repoOf "$room/$repo"`, `codeRefsOf "$room"` as is; `refuseToken <status>` beneath an unchanged `checkToken` |
 | policy lookup | inline `case` (`host/git-channel.nix` ~451-473) | a fragment yielding `maxBytes`/`may` |
 | bounded fsck fetch | inline subshell (`host/git-channel.nix` ~603-611) | a fragment taking the URL and refspecs |
 
@@ -191,7 +191,8 @@ is strict with its own file (sec-5).
 **Order of a run.**
 
 1. Parse; refuse (exit 2) on usage, bad token, unknown policy, `may != yes`,
-   or a `<branch>` that `git check-ref-format --branch` refuses — which also
+   or a `<branch>` that `git check-ref-format --branch` refuses (its stdout
+   discarded: it echoes the name, and the program's stdout is the oid alone) — which also
    refuses `*`, `?` and `[`, so a branch can never become a glob refspec
    (RV-015 F-2). **push** also resolves `git rev-parse --verify
    <branch>^{commit}` in `profile_path` here (refuse, exit 2, if absent): every
@@ -281,8 +282,8 @@ for the right reason.
 | suite | pins | kind |
 | --- | --- | --- |
 | `roomsCases` (extended) | each new reason by its text; the partial set; the record's `repos`/`policy`; a repo-less room unchanged | library, `tryEval` + `deepSeq` |
-| `roomGitCases` (new, `host/room-git-cases.nix`) | usage and token refusals → 2; unknown policy and `may != yes` → 2; a branch `check-ref-format --branch` refuses (`*`, `a..b`) → 2 for both verbs; no socket → **75**; push of a branch the host checkout lacks → **2 with no socket**, which pins that it is decided before the pre-flight; argv up to the door | program, shipped store path |
-| `quarantineCases` (new, `host/quarantine-cases.nix`) | the bounded fetch fragment against local bare repos over `file://`: a pack over the ceiling fails, a malformed object fails, an offered tag is not taken, a failed fetch moves no ref (`--atomic`); `checkToken`'s status is the caller's (1 for slots, 2 for the room) | library, spliced into the smallest `main` (`host/profile-cases.nix`'s arrangement) |
+| `roomGitCases` (new, `host/room-git-cases.nix`) | usage and token refusals → 2; unknown policy and `may != yes` → 2; a branch `check-ref-format --branch` refuses (`*`, `a..b`) → 2 for both verbs; no socket → **75** with stdout empty (the validation printed nothing); push of a branch the host checkout lacks → **2 with no socket**, which pins that it is decided before the pre-flight; argv up to the door | program, shipped store path |
+| `quarantineCases` (new, `host/quarantine-cases.nix`) | the bounded fetch fragment against local bare repos over `file://`: a pack over the ceiling fails, a malformed object fails, an offered tag is not taken, with two refspecs and one destination's `.lock` already in place, neither ref moves (`--atomic` — a single-ref failure would not discriminate); `checkToken` still exits 1 and `refuseToken 2` exits 2 | library, spliced into the smallest `main` (`host/profile-cases.nix`'s arrangement) |
 | `sessionCases` (new, `vm/session-cases.nix`) | a bad or unknown repo, or no `--` → 2; `PATH` gains `tools/bin` only for a repo with a set; cwd is the clone's physical path; argv passes untouched; stdout empty | program, guest-shipped, handed a fixture tree as its root |
 | `roomVerbsCases` (extended) | `push`/`collect`/`forget-host-key` resolve and refuse; a repo the room lacks → 2; a repo-less room refuses by name | front end over a fixture pool |
 | `hostModuleUnits` | the room's state directory tmpfiles; the installed `capsule-room-git` is the wrapped one | evaluation |

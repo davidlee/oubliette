@@ -52,7 +52,7 @@ What has reviewed this design, and what has not:
   satan's config (ProxyCommand + HostKeyAlias; `net.guest` is the relay's), and
   `session` is at `/run/current-system/sw/bin/session` — sec-6.
 
-What a further pass would probe, if one were wanted: whether sec-4's
+Superseded by RV-015 (the fetch extraction is now `quarantineCases` plus a live slot collect; `session` holds no repo table). Kept as written before it — what a further pass would probe, if one were wanted: whether sec-4's
 extraction of the policy and fetch fragments changes `capsule-collect`'s
 behaviour (its suites should be enough); whether `accept-new` over the room
 socket is ever reachable by anything but this host's VM (DEC-047's premise);
