@@ -1,0 +1,18 @@
+schema = "doctrine.observation"
+schema_version = 1
+uid = "01a14751-daf0-7172-a83f-4c1c8a23fc79"
+recorded_at = "2026-10-17T00:45:09.232678695Z"
+kind = "friction"
+summary = "capsule-worker hand-back arrived as the literal text 'placeholder'"
+detail = "SL-004 post-cutover follow-up A: a sonnet capsule-worker's SubagentHandback carried only 'placeholder' — no model echo, no gate results. Its delta was correct; the orchestrator re-derived every claim (diff vs 1284c5a, just check, just, manifest). TaskStop on its id then said no task found. A hand-back with no content is indistinguishable from a worker that did nothing."
+
+[facets.execution]
+schema_version = 1
+interface = "cli"
+interface_origin = "automatic"
+product_surface = "doctrine"
+product_surface_origin = "automatic"
+command = "observation record"
+command_origin = "automatic"
+repository_context = "primary"
+repository_context_origin = "automatic"

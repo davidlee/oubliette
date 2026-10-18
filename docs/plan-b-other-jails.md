@@ -10,6 +10,13 @@ the same host and the URL is a local path rather than a daemon on loopback. The
 egress and jail reasoning is unaffected. Read the git parts as history until this
 is rewritten.
 
+**Related work outside this repo (2026-10-17).** `~/flakes` already runs a
+same-host sandbox tier: bubblewrap jails (`flakes/agents`), behind a host LLM
+gateway (`flakes:SL-011`). `flakes:IDE-004` asks whether those jails should
+take this git channel (their own clone, host fetch into quarantine) instead of
+brokered git on a shared repo. `flakes:IDE-008` weighs moving the gateway here,
+which Plan F's model door would also use.
+
 The capsule is two things bolted together, and only one of them is portable:
 
 | part | what | portable? |

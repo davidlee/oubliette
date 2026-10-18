@@ -1,11 +1,13 @@
 # Plan F — an assistant: one persistent guest, many repos
 
 Not a plan yet: what a plan has to settle, and what the answers cost. Written
-2026-10-16 from a scoping conversation, and downstream of two records in other
-repos that this file does not own: satan's `IDE-007` (a persistent VM that
-SATAN raises proposals from, replacing the satan-patcher bridge) and
-`~/flakes`' `IDE-003` (a host LiteLLM service that holds every real model key
-and hands clients revocable virtual keys).
+2026-10-16 from a scoping conversation, and downstream of work in other repos
+that this file does not own: `satan:IDE-007` (a persistent VM that SATAN raises
+proposals from, replacing the satan-patcher bridge) and `flakes:SL-011` (the
+LLM gateway: a host LiteLLM service that holds every real model key and issues
+clients revocable keys of its own). Corrected 2026-10-17: `flakes:IDE-003`, the
+idea first cited here, was promoted to `flakes:SL-011`, which is built and
+differs from what this file first assumed (§2).
 
 Scope: *one long-lived microVM on this host holding checkouts of roughly seven
 of the user's repos, driven by a runner that lives outside this repo, reaching
@@ -36,7 +38,7 @@ separable: the namespace, the tap, the image builder, the halt semantics.
   │   ▼               │      socat: TCP-LISTEN ─▶ UNIX-CONNECT │
   │  room netns: no uplink, no proxy, no route anywhere        │
   │  ┌──────────────────────────────────────────────────────┐  │
-  │  │ guest: /home on a volume, N clones, virtual key only │  │
+  │  │ guest: /home on a volume, N clones, gateway key only │  │
   │  │ session <repo> -- <cmd>  →  that repo's tools on PATH│  │
   │  └──────────────────────────────────────────────────────┘  │
   └────────────────────────────────────────────────────────────┘
@@ -45,14 +47,15 @@ separable: the namespace, the tap, the image builder, the halt semantics.
 
 ## What a plan has to settle
 
-### 0. Precondition: `IMP-015` first
+### 0. Precondition: `IMP-015` (met)
 
 Seven repos as literal inputs of oubliette's flake is `IMP-015`'s problem
 times seven — anyone cloning this repo would fetch this host's projects. So the
 repo list, and each repo's tool set, belongs in the operator's consumer flake,
 and oubliette exports a builder that takes them as arguments. A room's repo set
 is then one more declaration on that side of the line, and nothing here learns
-what any repo is (`POL-002`).
+what any repo is (`POL-002`). `IMP-015` is resolved (SL-004): the consumer
+flake and `lib.mkFleet` exist, so the room's declarations have a place to go.
 
 ### 1. The namespace is Plan E's, with no uplink
 
@@ -70,23 +73,35 @@ other. "No git egress" is then that policy's content, not a new mechanism.
 
 ### 2. The model door: a socket, never a route (`POL-001`)
 
-LiteLLM listens on a unix socket on this host (`~/flakes` owns the service and
-the socket's mode). A unit with `NetworkNamespacePath=` the room's runs
+The gateway (`flakes:SL-011`) listens on `/run/llm-gateway/api.sock` on this
+host; `~/flakes` owns the service and the socket's directory. Which repo owns
+it is open: `flakes:IDE-008` proposes moving the gateway's NixOS module here,
+with the room as its second consumer. A unit with `NetworkNamespacePath=` the room's runs
 `socat TCP-LISTEN:<net.host>:<port>,fork UNIX-CONNECT:<socket>` — the mirror
 image of the capsule's ssh relay, which crosses the same boundary the other way
 for the same reason: a socket is a filesystem object and there is no mount
 namespace. Nothing routes from the guest to the host, and the forward drop and
 the guard stay meaningful.
 
-What the guest holds is a LiteLLM **virtual key**: limited to named models,
-with its own budget, revocable on the host without touching the guest. That
-leaves two existing records live, not solved: `CON-004` (a rotated secret does
-not reach a running capsule) and `QUE-003` (does an injected credential survive
-use). Delivery is the existing inject path, unless that turns out to be
-capsule-shaped.
+What the guest holds is a **gateway key**, not a LiteLLM virtual key: the
+gateway has no master key and no Postgres (`flakes:DEC-046`,
+`flakes:DEC-050`). Its own `custom_auth` checks keys against a SQLite key store that only the service user
+can read. `llm-gateway issue <alias> --models … --budget …` (run on the host)
+issues a key limited to named models, with a lifetime budget in USD, and
+`llm-gateway revoke` revokes it without touching the guest. The gateway serves
+only chat completions and the model list. Provider-key rotation never reaches
+the guest. That
+narrows two existing records without solving them: `CON-004` (a rotated secret
+does not reach a running capsule) and `QUE-003` (does an injected credential
+survive use), since the gateway key itself is still injected. Delivery is the
+existing inject path, unless that turns out to be capsule-shaped.
 
-Hardening of the forwarder copies Plan E's: `DynamicUser`, no capabilities. The
-access control is the socket's mode, on the host, where it belongs.
+Hardening of the forwarder copies Plan E's: `DynamicUser`, no capabilities.
+Socket access is controlled on the host, where it belongs: uvicorn makes the
+socket 0666, so the gate is its directory (0750, group `llm-gateway`), and the
+forwarder needs `SupplementaryGroups=llm-gateway`, as `~/flakes`' own
+loopback relay for bubblewrap jails does. That relay is no use to the room,
+because the room's namespace cannot reach the host's loopback.
 
 ### 3. Tools: per repo, baked host-side, activated by the launcher
 
@@ -120,7 +135,7 @@ guest clone and fetches proposals out. **Fetches land in a per-repo quarantine
 repository, not in the real repo**, for the reasons the capsule's channel does
 it (NOTES item 34, `RSK-006`): guest-authored packs are attacker-shaped, and
 the size bound covers one packfile, not the transfer. Promotion into the real
-repo is the human's step. This differs from `IDE-007`'s "fetch straight into
+repo is the human's step. This differs from `satan:IDE-007`'s "fetch straight into
 `refs/remotes/satan/*`, no ref policy needed"; that record should change, not
 this one.
 
@@ -132,7 +147,7 @@ room is, or whether its programs assume a slot behind the transport.
 ### 5. Ingress: the runner ssh's in, and lives elsewhere
 
 Scheduling, the queue, prompt composition and result classification are
-satan's (`IDE-007`). Oubliette's part is a door: a non-root agent user whose
+satan's (`satan:IDE-007`). Oubliette's part is a door: a non-root agent user whose
 key is the runner's, reached through a relay like the capsule's — but not *the*
 capsule relay socket, whose existence selects a transport (Plan E). Whether the
 runner is on this host (a unix-socket relay) or on the tailnet (Plan E's
@@ -158,18 +173,19 @@ room does.
 
 ## Out of scope here
 
-- The LiteLLM service, its Postgres and its master key — `~/flakes` `IDE-003`.
-- The runner, its queue and its approval surface — satan `IDE-007`.
+- The gateway service, its key store and its provider credentials —
+  `flakes:SL-011`, unless `flakes:IDE-008` moves the module here.
+- The runner, its queue and its approval surface — `satan:IDE-007`.
 - Plan E's furniture (shared tmux, chat): an assistant has one occupant.
 
 ## Sequencing, as currently understood
 
 ```
-IMP-015 ──▶ room namespace (shared with Plan E) ──▶ model door
-                                                 ├─▶ per-repo tools + session
-                                                 └─▶ per-repo git channel
+IMP-015 (done) ──▶ room namespace (shared with Plan E) ──▶ model door
+                                                        ├─▶ per-repo tools + session
+                                                        └─▶ per-repo git channel
 ```
 
 The model door and the git channel are independent of each other once the
-namespace exists; per-repo tools needs `IMP-015`'s consumer flake to have a
-place to declare them.
+namespace exists; per-repo tools are declared in the consumer flake that
+`IMP-015` produced.
