@@ -44,6 +44,9 @@
   # $HOME lives on the volume, so ~/.claude, credentials and shell history
   # survive reboots.
   home = "${work}/home";
+  # Where sshd's host keys are parked on the volume: /etc is tmpfs, so the door
+  # (vm/door.nix) is told a path here and the seed makes the directory.
+  hostKeyDir = "${work}/ssh";
 
   # The only code that deletes inside a volume, run by the host's `volume
   # reset-home` over the admin door (vm/reset-home.nix, SL-002 `DEC-001`). What a
@@ -107,6 +110,8 @@
     then "capsule.target=${n}"
     else throw "vm/capsule.nix: target name '${n}' cannot be a kernel-command-line marker; a target name is one token of [A-Za-z0-9._-] (SL-003 DEC-021)";
 in {
+  imports = [(lib.modules.importApply ./door.nix {inherit hostKeyDir;})];
+
   microvm = {
     inherit (target.sizes) vcpu mem;
     # `microvm.kernelParams`, not `boot.kernelParams`: it reaches the runner's
@@ -122,13 +127,6 @@ in {
         size = target.sizes.volume;
       }
     ];
-    interfaces = [
-      {
-        type = "tap";
-        id = net.tap;
-        mac = net.mac;
-      }
-    ];
   };
 
   # Guest ring-0 is the input to KVM's attack surface (NOTES, "Security
@@ -140,28 +138,6 @@ in {
   # later. Turn it off if you ever need one on demand (fuse, loop, nf_tables).
   security.lockKernelModules = true;
   security.protectKernelImage = true;
-
-  # No resolver in the guest, which the boundary claim has always said and this
-  # makes true: networkd pulled in systemd-resolved, leaving a stub on
-  # 127.0.0.53 with no configured upstream and no route to one — it could only
-  # ever SERVFAIL, but it answered, and a client that retries a stub is a client
-  # that hangs. Names are resolved by the host's proxy instead, as the host, so
-  # guest lookups inherit whatever the host resolves through (here: resolved ->
-  # stubby -> ControlD over DoT). Nothing guest-side can bypass that, because
-  # nothing guest-side has a route to a nameserver.
-  services.resolved.enable = false;
-
-  # Point-to-point link only. No gateway, no resolver: everything outbound
-  # goes through the host's allowlist proxy, which does its own DNS.
-  systemd.network = {
-    enable = true;
-    networks."10-capsule" = {
-      matchConfig.MACAddress = net.mac;
-      address = ["${net.guest}/${toString net.prefix}"];
-      networkConfig.DHCP = "no";
-      linkConfig.RequiredForOnline = "carrier";
-    };
-  };
 
   environment.systemPackages =
     [
@@ -259,41 +235,7 @@ in {
     openssh.authorizedKeys.keys = access.adminKeys;
   };
 
-  # A host->guest door, so the console isn't the only session. It widens
-  # nothing outbound: the guest still has no route past the proxy. The tap is
-  # point-to-point, so this is reachable from this host and nowhere else.
-  services.openssh = {
-    enable = true;
-    settings = {
-      PasswordAuthentication = false;
-      PermitRootLogin = "prohibit-password";
-    };
-    # /etc is tmpfs here, so keys kept there would be regenerated every boot
-    # and your known_hosts would fight it. Park them on the volume.
-    hostKeys = [
-      {
-        path = "${work}/ssh/ssh_host_ed25519_key";
-        type = "ed25519";
-      }
-    ];
-  };
   services.getty.autologinUser = lib.mkForce "agent";
-
-  # Root is reachable by key from the host only — no password, no sudo, no su
-  # for the agent. Admin is a thing you do from outside the jail.
-  #
-  # `access.stopKey` is the public half of the host's stop key: what a
-  # `microvm@<name>` unit's `ExecStop` presents to ask this guest to reboot,
-  # which is the only clean stop firecracker leaves available (host/halt.nix,
-  # NOTES item 11). Root's alone — an unprivileged session cannot reboot
-  # anything, so giving it to the agent would only widen what a key on the host
-  # reaches.
-  #
-  # Not the human's key, because the unit has no agent and no way into her home;
-  # not in the store, because the private half is a secret; and required rather
-  # than optional, because a guest that quietly omits it is one whose volume
-  # gets power-cut — and it would say so for the first time at host shutdown.
-  users.users.root.openssh.authorizedKeys.keys = access.adminKeys ++ [access.stopKey];
 
   # First boot: prepare the volume and make an empty repository for the host to
   # push into. No clone, so no network and no host service has to be up — the
@@ -310,7 +252,7 @@ in {
     };
     path = [pkgs.coreutils pkgs.util-linux pkgs.git];
     script = ''
-      mkdir -p ${work}/tmp ${home} ${work}/ssh ${lib.escapeShellArgs target.cachePaths}
+      mkdir -p ${work}/tmp ${home} ${hostKeyDir} ${lib.escapeShellArgs target.cachePaths}
       chmod 1777 ${work}/tmp
       # One-time migration for volumes seeded before the agent user existed.
       # Guarded on /work's owner so a populated target/ isn't walked each boot.
