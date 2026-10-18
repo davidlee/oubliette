@@ -1,0 +1,290 @@
+id    = 17
+slug  = "sl-005-audit-rooms-the-no-uplink-netns-and-the-door"
+title = "SL-005 audit: rooms, the no-uplink netns and the door"
+# no status — a review's status is DERIVED from its findings, so
+# it is never stored (the storage rule forbids derived data in authored files).
+
+[review]
+facet     = "reconciliation"     # scope|design|plan|phase-plan|implementation|code-review|reconciliation
+raiser    = "raiser"
+responder = "responder"
+rounds_base = 0
+contests_base = 0
+concluded = true
+
+[[review.turn]]
+act = "conclude"
+role = "raiser"
+note = "Conformance audit of SL-005 at 6a91942 against its locked design.md (sec-1..12) and POL-001..004. Read the gitignored phase sheets 02/04/05/07/10 for user-directed deviations and mutation logs; their content is carried as F-3..F-7. Ran `just` (rc 0, every suite incl. netnsCases, roomsCases, fabricCases, roomVerbsCases, roomImages), `doctrine check gate` (rc 0), `doctrine slice verify-vt 5` (25/25 PASS) and `doctrine slice conformance 5` (0 undelivered, 11 undeclared code/doc paths → F-8). Read the PHASE-07 front-end refactor against 57e28ad^ (F-2), and the fabric throw's placement against 233a0e3^ (F-1). Observed the module front end live (`capsule status`: rooms block, the status fall-through). Weighed docs/probes.md PHASE-09 evidence under STD-001 (F-9). No code edited (SL-006 shares the tree)."
+
+[target]                   # the outbound `reviews` edge: RV-NNN ──reviews──▶ <ref>
+ref   = "SL-005"
+
+[[finding]]
+id = "F-1"
+status = "verified"
+severity = "major"
+title = "Expected: sec-9 row 3's mkFleet-level verdict that a borrowing fabric throws. Observed: only fabric.nix's reason is pinned, and the throw fires only when a probe is forced"
+detail = """
+Expected (design sec-9 row 3): "a fixture variant whose fabric names `room-lounge` throws, with the reason, from `borrowed`" — an eval verdict over mkFleet.
+
+Observed: `fabricCases` (fabric-cases.nix) pins `fabric.nix`'s `borrowed` and `reason` as values; its header says it does not prove "that mkFleet asserts on `reason` (its wiring line)". The wiring is `fabricPrelude = assert fabricCheck.reason == null || throw fabricCheck.reason;` (mkfleet.nix:1205). Deleting that assert leaves every suite green. The only evidence is PHASE-04's hand eval V5 line 2 and mutation M1 (gitignored phase sheet).
+
+Second half: the throw sits in `fabricPrelude`, so it fires only when a probe derivation is forced (PHASE-04 M5: "the probe prelude forces roomRecords"). POL-003 (lines 47-48, 84) and CLAUDE.md:163 say `borrowed` "throws at eval in every caller's eval, the consumer's included". That holds for a `just build` that lists probes, but not for an eval of `nixosModules` or a runner alone. The wording predates SL-005 (233a0e3^ has the same assert placement); REV-004 reworded the paragraph and kept the claim."""
+disposition = "follow-up"
+response = """User's choice this session: "Defer: backlog item". The finding is code (a missing pin, and an assert placed where only a probe forces it), not governance. The policy's wording is the target the code will be brought to meet, so no REV. It is deferred not because the fix is large (one line moves, one case is added) but because both files are in the tree SL-006 is being implemented in. Captured as ISS-022 with the fix and its mutation. Standing risk until then: a probe fabric borrowing a name breaks only builds that include probes. That is the consumer's `just build`, which is where a probe is used anyway."""
+
+[[finding.turn]]
+act = "raise"
+role = "raiser"
+
+[[finding.turn]]
+act = "dispose"
+role = "responder"
+disposition = "follow-up"
+response = """User's choice this session: "Defer: backlog item". The finding is code (a missing pin, and an assert placed where only a probe forces it), not governance. The policy's wording is the target the code will be brought to meet, so no REV. It is deferred not because the fix is large (one line moves, one case is added) but because both files are in the tree SL-006 is being implemented in. Captured as ISS-022 with the fix and its mutation. Standing risk until then: a probe fabric borrowing a name breaks only builds that include probes. That is the consumer's `just build`, which is where a probe is used anyway."""
+
+[[finding.turn]]
+act = "verify"
+role = "raiser"
+
+[[finding]]
+id = "F-2"
+status = "verified"
+severity = "minor"
+title = "Expected: slot start readiness unchanged and pinned after PHASE-07's doorVia/answers refactor. Observed: it reads as equivalent, but no suite pins it and no slot has been started live since"
+detail = """
+PHASE-07 (57e28ad) split `door` into `doorVia <mode> <alias> <socket>` + `door`/`roomDoor`, and `answers`/`waitAnswers` now take `<door-fn> <name> <user>`. Slot start calls `waitAnswers door "$name" agent` (host/cli.nix:2034); room start calls `waitAnswers roomDoor "$room" root` (1885).
+
+Read against 57e28ad^ (cli.nix:728-765): the old `door` set ssh_argv by mode, appended ProxyCommand and returned 0 when the socket existed, else fell to `doorsOpen; devshellTap`. The new `door` = `doorVia … && return 0; doorsOpen; devshellTap`, with doorVia returning 1 for no socket. `answers` used `agent@` hard-coded; it now takes the user as `$3`. There are no other callers. Equivalent by reading.
+
+Pinned by nothing: `pkgs.openssh` is in the front end's runtimeInputs, so no case can stub ssh (RV-014 F-6). PHASE-09's live run started only the room. `capsule all status` on this host today shows no slot up."""
+disposition = "tolerated"
+response = "Tolerated: the refactor is equivalent by line-by-line reading (detail). The one input that changed, the user, is a literal `agent` at the only slot call site. No case can stub ssh, because the front end's runtimeInputs carry openssh (RV-014 F-6; CLAUDE.md treats it as a boundary, not something to work around). The live room start exercised `doorVia`, `answers` and `waitAnswers` through the shared code, and only `door`'s two-line wrapper is slot-specific. Residual: the first `capsule <slot> start` on this host is the evidence. Named in the synthesis as a check for the user."
+
+[[finding.turn]]
+act = "raise"
+role = "raiser"
+
+[[finding.turn]]
+act = "dispose"
+role = "responder"
+disposition = "tolerated"
+response = "Tolerated: the refactor is equivalent by line-by-line reading (detail). The one input that changed, the user, is a literal `agent` at the only slot call site. No case can stub ssh, because the front end's runtimeInputs carry openssh (RV-014 F-6; CLAUDE.md treats it as a boundary, not something to work around). The live room start exercised `doorVia`, `answers` and `waitAnswers` through the shared code, and only `door`'s two-line wrapper is slot-specific. Residual: the first `capsule <slot> start` on this host is the evidence. Named in the synthesis as a check for the user."
+
+[[finding.turn]]
+act = "verify"
+role = "raiser"
+
+[[finding]]
+id = "F-3"
+status = "verified"
+severity = "major"
+title = "Expected: sec-2's room user is a bare key list with no uid. Observed: users are `{ uid; keys; }` with a declared uid in 1000-29999 (PHASE-10, user-directed)"
+detail = """
+Design sec-2's table and example (`users.agent = ["ssh-ed25519 …"]`) and sec-5's per-user `users.users.<user>` name no uid. PHASE-10 (a22f882) landed option A for RSK-012 on the user's "2. fix it in this slice":
+- `users.<u> = { uid; keys; }`;
+- `reasons.users` gains clauses for the wrong shape (a bare list or an extra field), no uid, no keys, a uid outside 1000-29999 (the NixOS normal-user range; nixbld sits at 30001+), and a uid shared within one room;
+- `roomImages` checks that the image's uid equals the record's;
+- the fixture, template, cases and satan relay item 6 were updated with it.
+
+POL-003 was already amended through REV-006. The locked design is now stale in sec-2 (table, example, the reasons list), sec-5 (the user bullet, roomImages checks) and sec-8 (fixture users). The live room confirms the shape: `uid=1001(agent)` (docs/probes.md, PHASE-09)."""
+disposition = "design-wrong"
+response = """The code is right and was the user's direction (RSK-012, "2. fix it in this slice"). POL-003 is already amended (REV-006). The locked design is stale: reconcile it by direct edit of sec-2 (table row, example, reasons.users clauses), sec-5 (user bullet: declared uid; roomImages uid check) and sec-8 (fixture users carry uids). Reconciliation brief, per-slice entry F-3."""
+
+[[finding.turn]]
+act = "raise"
+role = "raiser"
+
+[[finding.turn]]
+act = "dispose"
+role = "responder"
+disposition = "design-wrong"
+response = """The code is right and was the user's direction (RSK-012, "2. fix it in this slice"). POL-003 is already amended (REV-006). The locked design is stale: reconcile it by direct edit of sec-2 (table row, example, reasons.users clauses), sec-5 (user bullet: declared uid; roomImages uid check) and sec-8 (fixture users carry uids). Reconciliation brief, per-slice entry F-3."""
+
+[[finding.turn]]
+act = "verify"
+role = "raiser"
+
+[[finding]]
+id = "F-4"
+status = "verified"
+severity = "minor"
+title = 'Expected: sec-2 checks the probe fabric "where it is today" in mkfleet.nix. Observed: liveNames/borrowed moved into a pure fabric.nix with its own suite, fabricCases'
+detail = """
+PHASE-04 decision D-P4-1 (planner proposal, orchestrator confirmed; phase sheet only): the reason existed only inside a `throw` in mkfleet.nix's `let`, which no suite can read. So `liveNames`/`borrowed`/`reason` moved into `fabric.nix` (pure, `{lib}: {capsules, rooms, fabric}:`), the shape of fleet.nix/rooms.nix, and `fabric-cases.nix` sits beside it. The check fires at the same moment (the probe prelude) and throws the same message.
+
+Design sec-2 ("checked where it is today", `liveNames (mkfleet.nix:1028-1033)`), sec-9's table and sec-12's touch-set do not name fabric.nix or fabricCases. POL-003 already cites `fabric.nix` (REV-004). CLAUDE.md lists fabricCases."""
+disposition = "design-wrong"
+response = """The move follows the house rule ("a library that throws exposes the string it throws"), keeps the same moment and message, and POL-003 already names fabric.nix. Reconcile design sec-2's probe-fabric paragraph, sec-9's table (a fabricCases row) and sec-12 (fabric.nix, fabric-cases.nix rows). Brief, per-slice entry F-4. The selector half is F-8."""
+
+[[finding.turn]]
+act = "raise"
+role = "raiser"
+
+[[finding.turn]]
+act = "dispose"
+role = "responder"
+disposition = "design-wrong"
+response = """The move follows the house rule ("a library that throws exposes the string it throws"), keeps the same moment and message, and POL-003 already names fabric.nix. Reconcile design sec-2's probe-fabric paragraph, sec-9's table (a fabricCases row) and sec-12 (fabric.nix, fabric-cases.nix rows). Brief, per-slice entry F-4. The selector half is F-8."""
+
+[[finding.turn]]
+act = "verify"
+role = "raiser"
+
+[[finding]]
+id = "F-5"
+status = "verified"
+severity = "minor"
+title = """Expected: sec-3's one test seam, `tools`. Observed: a second build-time argument, `etcNetns ? "/etc/netns"`, because a sandbox's /etc is read-only"""
+detail = """
+PHASE-02 STOP, option A (measured: a build sandbox's /etc is `dr-xr-xr-x nobody`, so `install -d /etc/netns/x` fails, and stubbing ip/nft/sysctl cannot reach a shell redirect). host/netns.nix:40-42 takes `tools` and `etcNetns`, and `resolvConf` is derived from it (line 60). The default is the real path, so the shipped store path is one. netnsCases is therefore "handed a fixture" (a scratch /etc/netns), and CLAUDE.md says so. Option B (unshare + tmpfs) was rejected because it needs unprivileged user namespaces on every consumer's build host.
+
+Design sec-3 says only "`capsule-netns` takes `tools` as an argument with a default". It is stale on the second seam and on netnsCases being handed a fixture."""
+disposition = "design-wrong"
+response = "Forced by the sandbox and measured. It follows the volume-root precedent CLAUDE.md names, and keeps one shipped store path. Reconcile design sec-3's tools paragraph to name `etcNetns` and say netnsCases is handed a scratch /etc/netns. Brief, per-slice entry F-5."
+
+[[finding.turn]]
+act = "raise"
+role = "raiser"
+
+[[finding.turn]]
+act = "dispose"
+role = "responder"
+disposition = "design-wrong"
+response = "Forced by the sandbox and measured. It follows the volume-root precedent CLAUDE.md names, and keeps one shipped store path. Reconcile design sec-3's tools paragraph to name `etcNetns` and say netnsCases is handed a scratch /etc/netns. Brief, per-slice entry F-5."
+
+[[finding.turn]]
+act = "verify"
+role = "raiser"
+
+[[finding]]
+id = "F-6"
+status = "verified"
+severity = "minor"
+title = "Expected: sec-5's room adds only sizes, volume, users, host keys, getty null and seed. Observed: kernel locks, plus roomImages predicates that sec-5/9 do not list"
+detail = """
+PHASE-05 (9a76496), user-directed ("2. agreed"): vm/room.nix:57-58 sets `security.lockKernelModules = true;` and `security.protectKernelImage = true;`, in room.nix and not door.nix so the slot image derivations do not move. Neither appears in design sec-5's list.
+
+The `roomImages` output also gained eval predicates that throw with a reason: the console autologs nobody (M2), a user has no extra groups (M4), and, from PHASE-10, the image's uid equals the record's. Design sec-9's roomImages row says only "linking the fixture rooms' declared runners". These predicates are the in-build pin for POL-001 limb 3 on a room, and the design should say they exist."""
+disposition = "design-wrong"
+response = """User-directed ("2. agreed"). Placing the locks in room.nix keeps the slot derivations still (PHASE-03 manifest equality holds). The predicates strengthen POL-001 limb 3. Reconcile design sec-5 (add the two security options with their reason) and sec-9's roomImages row (the three predicates). Brief, per-slice entry F-6."""
+
+[[finding.turn]]
+act = "raise"
+role = "raiser"
+
+[[finding.turn]]
+act = "dispose"
+role = "responder"
+disposition = "design-wrong"
+response = """User-directed ("2. agreed"). Placing the locks in room.nix keeps the slot derivations still (PHASE-03 manifest equality holds). The predicates strengthen POL-001 limb 3. Reconcile design sec-5 (add the two security options with their reason) and sec-9's roomImages row (the three predicates). Brief, per-slice entry F-6."""
+
+[[finding.turn]]
+act = "verify"
+role = "raiser"
+
+[[finding]]
+id = "F-7"
+status = "verified"
+severity = "minor"
+title = "Expected: sec-7's unnamed verb refuses when no slot is up. Observed: an unnamed `status` with only a room up answers as `all status` (PHASE-10, user-directed)"
+detail = """
+PHASE-07's observation (d0364fc) was that bare `capsule status` with only a room up refused before it reached the rooms block a refused probe needs. PHASE-10 (user's "agree", option S2): in the `0)` branch, `if [ "$verb" = status ] && anyRoomUp; then name=all`, else the old refusal. `isUp <socket> <unit>` is the single up-predicate. roomVerbsCases pins both directions (mutations 3 and 4).
+
+Live today, the module front end (`/run/current-system/sw/bin/capsule status`, with only `assistant` running) prints the slot table, the perimeter and the rooms block, rc 0. The devshell `capsule` on PATH still refuses, because it is a stale store path (mem devshell-binaries-are-store-paths), not a defect.
+
+Design sec-7's `capsule status` row does not describe the fall-through."""
+disposition = "design-wrong"
+response = """User-directed ("agree"), pinned in both directions by roomVerbsCases, and observed live through the module front end this pass. Reconcile design sec-7's `capsule status` row: an unnamed status with no slot up and a room up answers as `all status`. Brief, per-slice entry F-7."""
+
+[[finding.turn]]
+act = "raise"
+role = "raiser"
+
+[[finding.turn]]
+act = "dispose"
+role = "responder"
+disposition = "design-wrong"
+response = """User-directed ("agree"), pinned in both directions by roomVerbsCases, and observed live through the module front end this pass. Reconcile design sec-7's `capsule status` row: an unnamed status with no slot up and a room up answers as `all status`. Brief, per-slice entry F-7."""
+
+[[finding.turn]]
+act = "verify"
+role = "raiser"
+
+[[finding]]
+id = "F-8"
+status = "verified"
+severity = "minor"
+title = "Expected: conformance reports no undeclared code paths. Observed: 11 code/doc paths edited outside every design-target selector, one of them listed in sec-12's own table"
+detail = """
+`doctrine slice conformance 5`: 0 undelivered and 20 conformant. Undeclared, excluding .doctrine records (governance, observations, memory, notes), which are expected:
+- substantive: `fabric.nix`, `fabric-cases.nix` (F-4's move); `host/vm-cases.nix` (sec-12 lists it, but the registry has no selector: the table and the registry disagree); `docs/probes.md` (PHASE-09 evidence); `README.md` (rooms usage, microvm -c for a room); `justfile` (suite wiring);
+- one-line wiring: `host/policy-cases.nix`, `host/volume-cases.nix` (the front end's new `rooms` render argument);
+- comment-only (DEC-020 → DEC-032): `capsules.nix`, `fleet.nix`, `host/own-vms.nix`.
+None is scope creep: each traces to a phase. The registry is what `slice conformance` reads, so it stays red until the selectors are added."""
+disposition = "design-wrong"
+response = "Registry gap, not scope creep. The load-bearing change is `doctrine slice selector add 5 …` (design-target) for each listed path, so conformance reads clean. Design sec-12's table is the human mirror, so add rows for the substantive ones (fabric.nix, fabric-cases.nix, docs/probes.md, README.md, justfile, the two cases files' wiring) and one line for the comment-only DEC-032 citations. Brief, per-slice entry F-8."
+
+[[finding.turn]]
+act = "raise"
+role = "raiser"
+
+[[finding.turn]]
+act = "dispose"
+role = "responder"
+disposition = "design-wrong"
+response = "Registry gap, not scope creep. The load-bearing change is `doctrine slice selector add 5 …` (design-target) for each listed path, so conformance reads clean. Design sec-12's table is the human mirror, so add rows for the substantive ones (fabric.nix, fabric-cases.nix, docs/probes.md, README.md, justfile, the two cases files' wiring) and one line for the comment-only DEC-032 citations. Brief, per-slice entry F-8."
+
+[[finding.turn]]
+act = "verify"
+role = "raiser"
+
+[[finding]]
+id = "F-9"
+status = "verified"
+severity = "minor"
+title = "Expected: sec-9 live step 2 observes the serial console asking for a login. Observed: not observed; only the eval predicate pins it"
+detail = 'docs/probes.md "A room with no way out", Not proven: "the serial console asking for a login rather than handing over root (not observed: the getty prompt is not in the journal)". Pinned at build: roomImages refuses an image whose `services.getty.autologinUser` is not null (PHASE-05 M2 went red on deleting the mkForce). So the configuration is pinned, but the behaviour of the running console is unobserved. Steps 1, 3 and 4, and the rest of 2, were observed, with both directions asserted.'
+disposition = "tolerated"
+response = """Tolerated, and recorded as unproven where it belongs (docs/probes.md "Not proven"). The roomImages predicate means no image whose console autologs anyone can be built, so the residual risk is NixOS's getty misbehaving against its own option, not a configuration this repo can get wrong. The other limb of POL-001 limb 3 (root refused with a client's key) was observed live. Watching the console needs root on the user's terminal. It costs one look the next time the room starts, and nothing here depends on it."""
+
+[[finding.turn]]
+act = "raise"
+role = "raiser"
+
+[[finding.turn]]
+act = "dispose"
+role = "responder"
+disposition = "tolerated"
+response = """Tolerated, and recorded as unproven where it belongs (docs/probes.md "Not proven"). The roomImages predicate means no image whose console autologs anyone can be built, so the residual risk is NixOS's getty misbehaving against its own option, not a configuration this repo can get wrong. The other limb of POL-001 limb 3 (root refused with a client's key) was observed live. Watching the console needs root on the user's terminal. It costs one look the next time the room starts, and nothing here depends on it."""
+
+[[finding.turn]]
+act = "verify"
+role = "raiser"
+
+[[finding]]
+id = "F-10"
+status = "verified"
+severity = "nit"
+title = "Expected: rooms.nix's name check closes every shared-name space. Observed: a room named capsule-<slot> shares that slot's HostKeyAlias (RSK-011, open)"
+detail = "sec-2 refuses a room named for a slot, `hello` or `capsule`, and sec-7's collide refuses verbs and `all`. The known_hosts alias space is a third shared name space that neither covers: a slot's alias is `capsule-<slot>` and a room's is its bare name, so a room named `capsule-one` collides with slot `one`. A reprovision's `ssh-keygen -R` would then drop the room's key. Already captured as RSK-011 (likelihood low, impact medium, open), raised in PHASE-07 review. Neither fixture room nor the live room is so named."
+disposition = "follow-up"
+response = "Owned code work, already captured as RSK-011 (open, low/medium), with the fix named in its body (a rooms.nix clause refusing `capsule-<slot>`, or a room alias with its own prefix). It is not a governance item, so follow-up is the right route. It is deferred because neither the fixture nor the live declaration names one, and a code edit now would land in the tree SL-006 is being implemented in."
+
+[[finding.turn]]
+act = "raise"
+role = "raiser"
+
+[[finding.turn]]
+act = "dispose"
+role = "responder"
+disposition = "follow-up"
+response = "Owned code work, already captured as RSK-011 (open, low/medium), with the fix named in its body (a rooms.nix clause refusing `capsule-<slot>`, or a room alias with its own prefix). It is not a governance item, so follow-up is the right route. It is deferred because neither the fixture nor the live declaration names one, and a code edit now would land in the tree SL-006 is being implemented in."
+
+[[finding.turn]]
+act = "verify"
+role = "raiser"
+
+# Findings are append-only `[[finding]]` tables, added by `review raise`.
+# Empty here at creation — a fresh review is Active, awaiting the raiser.

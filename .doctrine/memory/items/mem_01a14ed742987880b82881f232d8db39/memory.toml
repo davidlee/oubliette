@@ -1,0 +1,46 @@
+memory_uid = "mem_01a14ed742987880b82881f232d8db39"
+memory_key = "mem.fact.oubliette.tryeval-does-not-catch-type-errors"
+schema_version = 1
+memory_type = "fact"
+status = "active"
+title = "tryEval catches throw and assert, not type errors"
+summary = "builtins.tryEval catches throw and assert only; a type error (e.g. 'expected a set but found null') aborts the whole suite's eval, so a tryEval verdict guarding one can never report false"
+created = "2026-10-18"
+updated = "2026-10-18"
+
+[scope]
+paths = []
+globs = ["*-cases.nix", "host/*-cases.nix"]
+commands = []
+tags = ["gotcha"]
+workspace = "default"
+repo = "github.com/davidlee/oubliette"
+repo_id_kind = "remote"
+repo_id_confidence = "high"
+
+[git]
+anchor_kind = "checkout_state"
+commit = ""
+tree = "40daca4385494f1abc3f81b18880a9a3d4049a50"
+ref_name = "refs/heads/main"
+checkout_state_id = "d18514879a0c17bf4fe7aaee979dee4f8cb4e537cc37a05164b69e76192c98a9"
+base_commit = "e626f69eeddb6a685d386efc69b2dd8a52df605f"
+verified_sha = ""
+normalizer = "forget.checkout.v1"
+
+[review]
+verification_state = "unverified"
+reviewed = ""
+review_by = ""
+
+[trust]
+trust_level = "medium"
+
+[ranking]
+severity = "medium"
+weight = 0
+
+[[source]]
+kind = "commit"
+ref = "9d6f69b"
+

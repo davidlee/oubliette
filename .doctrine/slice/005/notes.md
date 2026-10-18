@@ -75,7 +75,7 @@ every caller), DEC-030 (template eval-check), DEC-031, CON-005.
 
 ## Harvest
 <!-- single-copy: updated in place each harvest; ids only, never restated content -->
-fresh-as-of: 2026-10-18 · implementation complete, PHASE-01..10 completed, before /audit · cd78f4c
+fresh-as-of: 2026-10-18 · /audit done (RV-017 concluded), before /reconcile · audited surface 6a91942
 
 ### Produced
 - DEC-031..DEC-041 (design); DEC-042 supersedes DEC-025 (nine arguments; user assent quoted)
@@ -87,21 +87,23 @@ fresh-as-of: 2026-10-18 · implementation complete, PHASE-01..10 completed, befo
 - new files: rooms.nix, fabric.nix, vm/door.nix, vm/room.nix, + cases (rooms, fabric, netns, room-verbs); roomImages in just build
 - consumer /srv/fleet d3bf0a0: rooms.assistant (agent uid 1001), oubliette f2ce48c — live on this host
 - memories: mem_01a00ad6…ea57 corrected (5b42e1b: ~/flakes' override keeps its own lock for fleet inputs); mem.fact.oubliette.probe-built-from-consumer-needs-host-nixpkgs (cd78f4c)
+- RV-017 (audit, reconciliation facet): F-1..F-10, all verified; brief in review-017.md
+- ISS-022 (F-1, deferred by the user: the fabric throw's wiring and placement)
+- memories: mem.fact.oubliette.tmpfs-root-guest-uids-move-with-name-order, mem.fact.oubliette.tryeval-does-not-catch-type-errors
 - observations: committed per charter (35f686e, daffe6c, e3a1c51, c5f8495, d0364fc, 09c6975, 8591ebd)
 
 ### Learned
-- tryEval catches throw/assert only, not type errors (PHASE-04 M4) — candidate memory, not yet recorded
-- room tmpfs uid-map is wiped every boot and /home mounts after activation (PHASE-10 sheet) — candidate memory, not recorded (id reservation)
-- a build sandbox's /etc is read-only, so a program writing /etc/netns needs a path seam (etcNetns)
+- tryEval catches throw/assert only → recorded (mem.fact.oubliette.tryeval-does-not-catch-type-errors)
+- tmpfs-root uid allocation by name order; /home mounts after activation → recorded (mem.fact.oubliette.tmpfs-root-guest-uids-move-with-name-order)
+- a build sandbox's /etc is read-only, so a program writing /etc/netns needs a path seam (etcNetns) — in CLAUDE.md and RV-017 F-5
 
-### Open (audit inputs)
-- design drift for /reconcile, recorded in gitignored phase sheets 02/04/05/10: sec-2 (borrowed in fabric.nix; declaration `{uid; keys;}`), sec-3 (etcNetns seam beside tools), sec-5 (kernel locks; declared uid 1000–29999), sec-7 (unnamed status falls through to rooms)
-- no suite pins that mkFleet throws on fabric.nix's `reason` (only a hand eval + M1)
-- PHASE-07 refactor (doorVia/stopUnit) of slot start readiness is unpinned by any suite
-- RSK-011: a room named capsule-<slot> shares that slot's HostKeyAlias
-- locally allocated ids (reservation remote refuses the ssh key): DEC-042, REV-004..006 — collision risk if the remote returns
-- PHASE-09 not proven: serial console login prompt; satan's runner beyond the door; uid survival over existing files; suspend (ISS-014)
-- slice status still `ready` with 10/10 phases — needs advancing
+### Open (for /reconcile and after)
+- /reconcile: RV-017 `## Reconciliation Brief` — design.md sec-2/3/5/7/8/9/12 (F-3..F-7) and `slice selector add` for 11 paths (F-8); no REV
+- ISS-022 (F-1): move the fabric assert onto mkFleet's result and pin the wiring — after SL-006 leaves mkfleet.nix/flake.nix
+- RSK-011 (F-10): room named capsule-<slot> shares a HostKeyAlias
+- tolerated: F-2 slot start readiness unpinned (first live slot start is the evidence); F-9 serial console login prompt unobserved
+- locally allocated ids DEC-042, REV-004..006 — collision unchecked now that the reservation remote answers
+- PHASE-09 not proven: satan's runner beyond the door; uid survival over existing files; suspend (ISS-014)
 - /srv/fleet flake.lock nixpkgs bump is uncommitted (the user's)
 - RV-014 F-6 follow-up candidate: an ssh/systemctl seam for host/cli.nix
 

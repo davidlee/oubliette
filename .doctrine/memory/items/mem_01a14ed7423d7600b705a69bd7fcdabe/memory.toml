@@ -1,0 +1,50 @@
+memory_uid = "mem_01a14ed7423d7600b705a69bd7fcdabe"
+memory_key = "mem.fact.oubliette.tmpfs-root-guest-uids-move-with-name-order"
+schema_version = 1
+memory_type = "fact"
+status = "active"
+title = "A tmpfs-root guest's undeclared uids move with name order on every boot"
+summary = "A guest on a tmpfs root re-allocates undeclared uids every boot in name order, and a volume cannot hold the uid-map because /home mounts after activation; declare every uid"
+created = "2026-10-18"
+updated = "2026-10-18"
+
+[scope]
+paths = ["vm/room.nix", "rooms.nix", "vm/capsule.nix"]
+globs = []
+commands = []
+tags = ["gotcha"]
+workspace = "default"
+repo = "github.com/davidlee/oubliette"
+repo_id_kind = "remote"
+repo_id_confidence = "high"
+
+[git]
+anchor_kind = "checkout_state"
+commit = ""
+tree = "40daca4385494f1abc3f81b18880a9a3d4049a50"
+ref_name = "refs/heads/main"
+checkout_state_id = "8f9c9e2e3b809d51febba4e82294876bc232f25a146dfe2b366501ab6d44ea67"
+base_commit = "e626f69eeddb6a685d386efc69b2dd8a52df605f"
+verified_sha = ""
+normalizer = "forget.checkout.v1"
+
+[review]
+verification_state = "unverified"
+reviewed = ""
+review_by = ""
+
+[trust]
+trust_level = "medium"
+
+[ranking]
+severity = "high"
+weight = 0
+
+[[source]]
+kind = "commit"
+ref = "a22f882"
+
+[[source]]
+kind = "backlog"
+ref = "RSK-012"
+
