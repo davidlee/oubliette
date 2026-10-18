@@ -172,6 +172,17 @@
       '';
   };
 
+  # The one way through a relay socket, as shell words for an ssh argv:
+  # `-o "ProxyCommand=<socat> - UNIX-CONNECT:<socket>"`. Both doors spell it from
+  # here — `viaSocket` below, and the front end's `doorVia` (host/cli.nix), which
+  # reaches a room as well as a slot and so has no `selectCapsule` to borrow.
+  # `socket` is a shell expression, as `viaSocket`'s is; `socat` a store path or
+  # a bare name, whichever the caller's PATH makes right.
+  proxyThrough = {
+    socat,
+    socket,
+  }: ''-o "ProxyCommand=${socat} - UNIX-CONNECT:${socket}"'';
+
   # And the same again for a capsule in a namespace, where the guest is not
   # routable from the root namespace at all: the way in is the relay socket, and
   # that socket path is the capsule's identity.
@@ -199,7 +210,10 @@
           echo "  systemctl status capsule-ssh-relay-$capsule" >&2
           exit 1
         fi
-        ssh_cmd=(${lib.escapeShellArgs args} -o "ProxyCommand=${socat} - UNIX-CONNECT:$sock")
+        ssh_cmd=(${lib.escapeShellArgs args} ${proxyThrough {
+          inherit socat;
+          socket = "$sock";
+        }})
       '';
   };
 }

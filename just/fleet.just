@@ -74,7 +74,8 @@ build:
     '.#hostModuleUnits' '.#hostModulePrograms' \
     '.#guardCases' '.#netnsCases' '.#policyCases' '.#briefCases' \
     '.#snapshotCases' '.#refreshCases' '.#observeCases' '.#baselineCases' \
-    '.#profileCases' '.#gitChannelCases' '.#vmCases' '.#wrapCases' \
+    '.#profileCases' '.#gitChannelCases' '.#quarantineCases' '.#vmCases' \
+    '.#wrapCases' \
     '.#volumeRootCases' '.#resetHomeCases' '.#volumeCases' '.#fleetCases' \
     '.#roomsCases' '.#fabricCases' '.#roomVerbsCases' '.#roomImages'
 
@@ -102,6 +103,7 @@ cases:
   @cat "$(nix build --no-link --print-out-paths '.#baselineCases')"
   @cat "$(nix build --no-link --print-out-paths '.#profileCases')"
   @cat "$(nix build --no-link --print-out-paths '.#gitChannelCases')"
+  @cat "$(nix build --no-link --print-out-paths '.#quarantineCases')"
   @cat "$(nix build --no-link --print-out-paths '.#vmCases')"
   @cat "$(nix build --no-link --print-out-paths '.#wrapCases')"
   @cat "$(nix build --no-link --print-out-paths '.#volumeRootCases')"

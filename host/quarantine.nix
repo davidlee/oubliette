@@ -90,16 +90,103 @@ rec {
   # two call sites that existed and became false for the third: a unit token is
   # not a chain link and goes into the *middle* of a path. A refusal naming the
   # wrong reason is a different program passing.
-  checkToken = value: shown: ''
+  #
+  # `refuseToken` takes the exit status because the bound is one and its callers
+  # are not: every slot program refuses with 1, and a caller whose 1 already
+  # means something else refuses the same token with its own status (RV-015
+  # F-8). `checkToken` is that function at 1, so no existing caller changed.
+  refuseToken = status: value: shown: ''
     case ${value} in
       "" | "." | ".." | *[!A-Za-z0-9._-]*)
         echo "''${0##*/}: ${shown} — that is an opaque name on its way into a ref" >&2
         echo "  and into a path, so it is [A-Za-z0-9._-]+ and never '.' or '..':" >&2
         echo "  it may identify one thing and may not name a different ref, a" >&2
         echo "  different directory, or a directory above the one it belongs in." >&2
-        exit 1
+        exit ${toString status}
         ;;
     esac
   '';
+  checkToken = refuseToken 1;
   checkStage = checkToken ''"$stage"'' "'--stage $stage'";
+
+  # Defines `boundedFetch <repo> <maxBytes> <url> <refspec>...`: fetch guest-
+  # authored refs into a host-owned bare repository under the ingestion bound.
+  # Prints nothing of its own and only returns non-zero, so the caller keeps its
+  # message and its status — one bound, more than one program refusing by it.
+  #
+  # A function rather than a nix function of shell expressions, because the
+  # refspecs are a run-time array and a suite calls it with run-time arguments
+  # (host/quarantine-cases.nix).
+  #
+  # `ulimit -f` counts 512-byte blocks. RLIMIT_FSIZE, so this bounds the size of
+  # any *one* file the fetch writes — the packfile — and nothing else (RSK-006).
+  # It is a backstop, not a bound on the transfer: a pack of a million small
+  # objects never trips it and still fills the disk, and a delta bomb never trips
+  # it and still eats index-pack's memory. Do not read it as the ceiling the
+  # design needs; NOTES item 18 lists what a real one costs. It is the byte
+  # ceiling only in that no config knob bounds a fetch, so bound the file it
+  # writes.
+  #
+  # **`|| exit 1` on it is load-bearing**: a caller writes `boundedFetch … || {…}`,
+  # which turns errexit off inside the function and its subshell, so without it a
+  # failed `ulimit` runs the fetch unbounded.
+  #
+  # --no-tags is load-bearing, not tidiness: tag auto-following writes
+  # refs/tags/* outside the namespace the refspecs name, which is the one way the
+  # guest could otherwise choose where its refs land. The guest chooses what is
+  # in its refs, never where they land.
+  #
+  # --atomic buys the invariant the sideband exists for — nobody observes a
+  # result commit without the capsule state that goes with it: with two
+  # refspecs, one failing lands neither.
+  #
+  # fsck on the way in, because index-pack parses guest-authored bytes host-side
+  # whatever the transport. It turns out to buy more than object integrity, and
+  # `capsule-adopt` leans on it: `hasDotdot` and `hasDotgit` are fsck errors, so
+  # a tree with a `..` or `.git` path component is refused *here* and a collected
+  # quarantine cannot hold one (verified against hand-built trees, NOTES item
+  # 34). What fsck passes without a murmur is a symlink pointing at `/etc/passwd`
+  # and a gitlink — which is exactly what the extractor has to check, and all it
+  # has to check.
+  boundedFetch = ''
+    boundedFetch() {
+      local repo=$1 maxBytes=$2 url=$3
+      shift 3
+      (
+        ulimit -f "$((maxBytes / 512))" || exit 1
+        git -C "$repo" -c transfer.fsckObjects=true \
+          fetch --no-tags --atomic "$url" "$@"
+      )
+    }
+  '';
+
+  # Defines `policyLimits <name>`: sets `maxBytes` and `may` (`yes`/`no`) from
+  # the declared policy of that name, and returns 1 for a name that is not one.
+  # The vocabulary as a shell case, generated rather than spelled, so adding a
+  # policy is one entry in the fleet's `policies` argument and nothing here.
+  #
+  # A function of `policies` with no default (POL-003): no name is a refusal and
+  # never a fallback, because the value a missing bound would fall back to is the
+  # unbounded ingest the bound exists to prevent. Like `boundedFetch` it prints
+  # nothing, so each caller refuses in its own words and with its own status.
+  policyLimits = policies: ''
+    policyLimits() {
+      case "$1" in
+      ${builtins.concatStringsSep "\n" (map (n: let
+      p = policies.policies.${n};
+    in ''
+      ${n})
+        maxBytes=${toString p.collectMaxPackBytes}
+        may=${
+        if p.mayCollect
+        then "yes"
+        else "no"
+      }
+        ;;'')
+    policies.everything)}
+        *) return 1 ;;
+      esac
+    }
+  '';
+  policyNames = policies: builtins.concatStringsSep " " policies.everything;
 }

@@ -47,7 +47,7 @@ evaluates). `just` (default) runs the build, units, and fmt.
 `just check` parses and formats without evaluating. `hostModuleUnits` *evaluates*
 the NixOS module — what it says, including its programs, since a unit graph does
 not mention them. `guardCases`, `netnsCases`, `briefCases`, `snapshotCases`, `refreshCases`, `observeCases`,
-`baselineCases`, `policyCases`, `profileCases`, `vmCases`, `gitChannelCases`,
+`baselineCases`, `policyCases`, `profileCases`, `vmCases`, `gitChannelCases`, `quarantineCases`,
 `volumeRootCases`, `resetHomeCases`, `volumeCases`, `fleetCases`, `roomsCases`, `fabricCases` and `roomVerbsCases` *run* a
 program's own text with a substitute for the one thing tying it to this host
 (`just cases`), and are the answer whenever the interesting branches are ones a
@@ -62,7 +62,9 @@ in flight before it leaves that state, the front end's by editing the declared
 pool and writing the live record of a slot somebody is using, the front end's rooms by
 declaring one named for a verb, the profile's by
 holding two targets at once and by handing the render a target no host declares,
-the git channel's by confining a second project, and the volume root helper's by
+the git channel's by confining a second project, the quarantine's bounded fetch by
+offering it a pack over the ceiling, a malformed object, a tag and a held ref lock,
+and the volume root helper's by
 deleting and overwriting a real slot's image as root, the guest's reset of
 `$HOME` by deleting one under a real agent, and the volume verb's by typing a
 destructive command at a slot nobody named, racing a start against a clone, and
@@ -94,7 +96,7 @@ written, wired into `just cases`, and left out of `just build` for a session
 (NOTES item 51 step 3). **One suite per file, beside the program it pins** —
 `host/<name>-cases.nix`, or `vm/<name>-cases.nix` for a guest program, a function of `pkgs`, `lib` and **the store path the
 program ships**, with a short `import` in `mkfleet.nix` (NOTES item 51 step 0).
-Twelve of them are handed a fixture instead and say so in their headers: the
+Thirteen of them are handed a fixture instead and say so in their headers: the
 guard's stubbed kernel, the namespace program's stubbed kernel and scratch
 `/etc/netns` (a build sandbox's `/etc` is read-only, and the program's path is
 fixed at build), the front end's pool that is not this host's (three times,
@@ -103,12 +105,13 @@ profile's target that is nobody's, the wrapper's four directories that are
 no host's, the volume root helper's sandbox roots, since a root program's
 paths are fixed at build and its shipped store path cannot be aimed anywhere else,
 the guest reset's fixture home, for the same reason one level down, the
-fleet's targets and slots that are nobody's (`fleet-cases.nix`), and the rooms and
+fleet's targets and slots that are nobody's (`fleet-cases.nix`), the
+quarantine's policy vocabulary that is no host's (`quarantine-cases.nix`), and the rooms and
 probe fabric that are nobody's (`rooms-cases.nix`, `fabric-cases.nix`). A new suite goes in
 its own file and takes its subject as an argument — never a second render of the
 text it claims to pin. **A suite whose subject is a *library* rather than a
 program** takes the fragment its callers get and splices it into the smallest
-`main` that exercises it (`host/profile-cases.nix`); and when what it pins is a
+`main` that exercises it (`host/profile-cases.nix`, `host/quarantine-cases.nix`); and when what it pins is a
 `throw` rather than a program, the verdicts are read at eval with
 `builtins.tryEval` and asserted in the shell, which is `hostModuleUnits`'
 arrangement one level down. **Force what you pin** — `tryEval` stops at the

@@ -831,7 +831,10 @@ in
           probe) ssh_argv=(${lib.escapeShellArgs guestSsh.args} -o BatchMode=yes) ;;
         esac
         [ -S "$3" ] || return 1
-        ssh_argv+=(-o "ProxyCommand=socat - UNIX-CONNECT:$3")
+        ssh_argv+=(${guestSsh.proxyThrough {
+        socat = "socat";
+        socket = "$3";
+      }})
       }
 
       # Does the guest answer? The one per-capsule fact that is not a unit's

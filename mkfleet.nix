@@ -645,7 +645,14 @@
     slot = builtins.head declaredSlots;
   };
 
-  # The one suite whose subject is a *library* rather than a program, and the
+  # The quarantine's ingestion bound, as fragments spliced into the smallest
+  # `main` — a library suite, beside `profileCases`, over the same binding every
+  # caller gets (host/quarantine-cases.nix).
+  quarantineCases = import ./host/quarantine-cases.nix {
+    inherit pkgs lib quarantine;
+  };
+
+  # The first suite whose subject is a *library* rather than a program, and the
   # only thing that builds the rendered document — which is why it is not
   # optional on anything (host/profile-cases.nix).
   profileCases = import ./host/profile-cases.nix {
@@ -1608,7 +1615,7 @@ in {
       # The checks that need no root and no host: what the module says, what the
       # guard decides, and which policy a slot resolves to.
       inherit hostModuleUnits hostModulePrograms guardCases netnsCases policyCases observeCases;
-      inherit profileCases gitChannelCases vmCases wrapCases volumeRootCases resetHomeCases volumeCases fleetCases roomsCases fabricCases roomVerbsCases;
+      inherit profileCases gitChannelCases quarantineCases vmCases wrapCases volumeRootCases resetHomeCases volumeCases fleetCases roomsCases fabricCases roomVerbsCases;
       # Every declared room's image, checked and built (RV-014 F-7).
       inherit roomImages;
       # The rendered run-time half of every target, so a human can read what a

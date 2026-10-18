@@ -87,23 +87,9 @@
 }: let
   inherit (pkgs) lib;
 
-  # The vocabulary as a shell case: a policy name in, its two ingestion limbs
-  # out. Generated rather than spelled, so adding a policy is one entry in
-  # the fleet's `policies` argument and nothing here.
-  policyCase = lib.concatMapStringsSep "\n" (n: let
-    p = policies.policies.${n};
-  in ''
-    ${n})
-      maxBytes=${toString p.collectMaxPackBytes}
-      may=${
-      if p.mayCollect
-      then "yes"
-      else "no"
-    }
-      ;;'')
-  policies.everything;
-
-  policyNames = lib.concatStringsSep " " policies.everything;
+  # The vocabulary, from the one place a quarantine's bound is defined
+  # (host/quarantine.nix): `policyLimits` is the fragment, these its names.
+  policyNames = quarantine.policyNames policies;
 
   provision = pkgs.writeShellApplication {
     name = "capsule-provision";
@@ -376,6 +362,8 @@
       ${guestRepo}
       ${snapshot.argsFragment}
       ${quarantine.fragment}
+      ${quarantine.policyLimits policies}
+      ${quarantine.boundedFetch}
       guestUrl=$(guestRepoUrl)
       # The capsule names its own quarantine, and that used to be a separate
       # positional argument — so `capsule-collect faux` meant a directory while
@@ -456,14 +444,11 @@
         echo "  <name> for this collect alone. Declared: ${policyNames}." >&2
         exit 1
       fi
-      case "$policy" in
-      ${policyCase}
-        *)
-          echo "capsule-collect: no policy named '$policy'." >&2
-          echo "  declared: ${policyNames}" >&2
-          exit 1
-          ;;
-      esac
+      policyLimits "$policy" || {
+        echo "capsule-collect: no policy named '$policy'." >&2
+        echo "  declared: ${policyNames}" >&2
+        exit 1
+      }
       if [ "$may" != yes ]; then
         echo "capsule-collect: policy '$policy' does not permit collecting, so" >&2
         echo "  nothing leaves this capsule. That is the policy holding rather" >&2
@@ -471,13 +456,6 @@
         echo "  from the set the slot declares." >&2
         exit 1
       fi
-      # `ulimit -f` counts 512-byte blocks. RLIMIT_FSIZE, so this bounds the size
-      # of any *one* file the fetch writes — the packfile — and nothing else. It
-      # is a backstop, not a bound on the transfer: a pack of a million small
-      # objects never trips it and still fills the disk, and a delta bomb never
-      # trips it and still eats index-pack's memory. Do not read it as the ceiling
-      # the design needs; NOTES item 18 lists what a real one costs.
-      maxBlocks=$((maxBytes / 512))
       # The scope, and it is the last thing item 51 had to move (step 6). This
       # was **two texts and a build-time choice between them**: `stateNeedsUnit`
       # over `target.nix`'s templates decided which of the pair a host shipped,
@@ -576,35 +554,15 @@
       # that trips means nothing without the bound it tripped against, and a
       # collect that succeeded says which perimeter let it.
       echo "capsule-collect: policy $policy — $guestUrl -> $quarantine"
-      # --no-tags is load-bearing, not tidiness: tag auto-following writes
-      # refs/tags/* outside the namespace this refspec names, which is the one
-      # way the guest could otherwise choose where its refs land. The second
-      # refspec is the state half and obeys the same rule: the guest chooses
-      # what is in its refs, never where they land.
+      # The bounded fetch — ceiling, fsck, --no-tags, --atomic — and why each
+      # is there, is host/quarantine.nix's. The second refspec is the state half
+      # and obeys the same rule as the first: the guest chooses what is in its
+      # refs, never where they land.
       #
       # `heads/` and `state/` are siblings rather than the second nested under
       # the first: a guest branch literally named `state` would otherwise be a
       # directory/file ref-lock collision, which is loud but timed by the guest.
-      #
-      # --atomic buys the invariant the whole sideband exists for — nobody
-      # observes a result commit without the capsule state that goes with it.
-      #
-      # fsck on the way in, because index-pack parses guest-authored bytes
-      # host-side whatever the transport. It turns out to buy more than object
-      # integrity, and `capsule-adopt` leans on it: `hasDotdot` and `hasDotgit`
-      # are fsck errors, so a tree with a `..` or `.git` path component is
-      # refused *here* and a collected quarantine cannot hold one (verified
-      # against hand-built trees, NOTES item 34). What fsck passes without a
-      # murmur is a symlink pointing at `/etc/passwd` and a gitlink — which is
-      # exactly what the extractor has to check, and all it has to check.
-      #
-      # The ulimit is the byte ceiling: no config knob bounds a fetch, so bound
-      # the file it writes.
-      (
-        ulimit -f "$maxBlocks"
-        git -C "$quarantine" -c transfer.fsckObjects=true \
-          fetch --no-tags --atomic "$guestUrl" "''${refspecs[@]}"
-      ) || {
+      boundedFetch "$quarantine" "$maxBytes" "$guestUrl" "''${refspecs[@]}" || {
         echo "capsule-collect: fetch failed — a malformed object, or a packfile" >&2
         echo "  over $maxBytes bytes (policy $policy's collectMaxPackBytes)." >&2
         exit 1
