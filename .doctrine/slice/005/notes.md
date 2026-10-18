@@ -75,10 +75,19 @@ every caller), DEC-030 (template eval-check), DEC-031, CON-005.
 
 ## Harvest
 <!-- single-copy: updated in place each harvest; ids only, never restated content -->
-fresh-as-of: <yyyy-mm-dd> · <PHASE-NN | stage> · <head-commit>
+fresh-as-of: 2026-10-18 · design locked (run rev 35), status plan · 2bbe9f5
 
 ### Produced
+- DEC-031 (probe refusal), DEC-032 (supersedes DEC-020), DEC-033..DEC-041
+- RV-014 (design review, concluded; F-3/F-4/F-6 tolerated)
+- design.md (rev 30 materialised; run locked rev 35); 20 design-target selectors
 
 ### Learned
+- research.md X1: `any_vm_running` is scoped by process name, not namespace (now DEC-032)
+- research.md X6: pi-env reaches a unix-socket relay via `-F` + ProxyCommand (in DEC-037)
 
 ### Open
+- RV-014 F-6 follow-up candidate: an ssh/systemctl seam for `host/cli.nix` (not a backlog item yet)
+- Consumer `/srv/fleet` must pass `rooms` at the input bump (user's change; design sec-8)
+- POL-003 row and DEC-025 successor need the user's assent at implementation (design sec-10)
+- satan:IDE-007 to be told DEC-037/DEC-040 (user's relay)
