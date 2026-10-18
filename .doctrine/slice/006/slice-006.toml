@@ -12,15 +12,15 @@ after = []                      # slice→work soft sequence: { to, rank }
 
 [[selector]]
 selector = "rooms.nix"
-intent = "scope-relevant"
+intent = "design-target"
 
 [[selector]]
 selector = "rooms-cases.nix"
-intent = "scope-relevant"
+intent = "design-target"
 
 [[selector]]
 selector = "vm/room.nix"
-intent = "scope-relevant"
+intent = "design-target"
 
 [[selector]]
 selector = "vm/**"
@@ -32,7 +32,7 @@ intent = "scope-relevant"
 
 [[selector]]
 selector = "host/quarantine.nix"
-intent = "scope-relevant"
+intent = "design-target"
 
 [[selector]]
 selector = "host/profile*.nix"
@@ -40,19 +40,19 @@ intent = "scope-relevant"
 
 [[selector]]
 selector = "host/cli.nix"
-intent = "scope-relevant"
+intent = "design-target"
 
 [[selector]]
 selector = "host/room-verbs-cases.nix"
-intent = "scope-relevant"
+intent = "design-target"
 
 [[selector]]
 selector = "host/services.nix"
-intent = "scope-relevant"
+intent = "design-target"
 
 [[selector]]
 selector = "mkfleet.nix"
-intent = "scope-relevant"
+intent = "design-target"
 
 [[selector]]
 selector = "fixture/**"
@@ -64,7 +64,7 @@ intent = "scope-relevant"
 
 [[selector]]
 selector = "docs/plan-f-assistant.md"
-intent = "scope-relevant"
+intent = "design-target"
 
 [[selector]]
 selector = "docs/contract-*.md"
@@ -72,7 +72,59 @@ intent = "scope-relevant"
 
 [[selector]]
 selector = "CLAUDE.md"
-intent = "scope-relevant"
+intent = "design-target"
+
+[[selector]]
+selector = "vm/session.nix"
+intent = "design-target"
+
+[[selector]]
+selector = "vm/session-cases.nix"
+intent = "design-target"
+
+[[selector]]
+selector = "host/room-git.nix"
+intent = "design-target"
+
+[[selector]]
+selector = "host/room-git-cases.nix"
+intent = "design-target"
+
+[[selector]]
+selector = "host/git-channel.nix"
+intent = "design-target"
+
+[[selector]]
+selector = "host/guest-ssh.nix"
+intent = "design-target"
+
+[[selector]]
+selector = "host/programs.nix"
+intent = "design-target"
+
+[[selector]]
+selector = "fixture/default.nix"
+intent = "design-target"
+
+[[selector]]
+selector = "fixture/stub-flake.nix"
+intent = "design-target"
+
+[[selector]]
+selector = "templates/fleet/flake.nix"
+intent = "design-target"
+
+[[selector]]
+selector = "just/fleet.just"
+intent = "design-target"
+
+[[selector]]
+selector = "docs/contract-assignment.md"
+intent = "design-target"
+
+[[selector]]
+selector = "docs/contract-target.md"
+intent = "design-target"
 
 [[relation]]
 label = "fulfils"
