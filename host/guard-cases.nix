@@ -95,7 +95,10 @@
   roomFixture =
     (rooms {inherit lib;} {
       rooms.lounge = {
-        users.ada = ["ssh-ed25519 AAAA fixture"];
+        users.ada = {
+          uid = 1001;
+          keys = ["ssh-ed25519 AAAA fixture"];
+        };
         sizes = {};
       };
       slotNames = lib.attrNames fixture.instances;

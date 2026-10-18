@@ -12,9 +12,9 @@ updated = "2026-10-18"
 tags = []
 
 [facet]                         # risk only — every field typed; seeded empty
-likelihood = ""                 # low | medium | high | critical
-impact     = ""                 # low | medium | high | critical
-origin     = ""
+likelihood = "low"
+impact = "medium"
+origin = "SL-005 PHASE-07 review"
 controls   = []
 
 # outbound-only. Cross-kind structural edges (e.g. references with a role

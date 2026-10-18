@@ -199,8 +199,10 @@
       [(check present "declared user '${u}' is not a user of the image (sec-5)")]
       ++ lib.optionals present [
         (check user.isNormalUser "user '${u}' is not a normal user (sec-5)")
-        (check (user.openssh.authorizedKeys.keys == room.users.${u})
+        (check (user.openssh.authorizedKeys.keys == room.users.${u}.keys)
           "user '${u}' does not carry exactly its declared keys (sec-5)")
+        (check (user.uid == room.users.${u}.uid)
+          "user '${u}' has uid ${builtins.toJSON user.uid}, not the record's uid ${toString room.users.${u}.uid}; an allocated one moves with name order (RSK-012)")
         (check (user.extraGroups == [])
           "user '${u}' has extra groups ${builtins.toJSON user.extraGroups}; a room grants none (POL-001 limb 3)")
       ];

@@ -83,13 +83,22 @@ in {
   in {
     lounge = {
       users = {
-        ada = ["ssh-ed25519 AAAA fixture-ada"];
-        bob = ["ssh-ed25519 AAAA fixture-bob"];
+        ada = {
+          uid = 1001;
+          keys = ["ssh-ed25519 AAAA fixture-ada"];
+        };
+        bob = {
+          uid = 1002;
+          keys = ["ssh-ed25519 AAAA fixture-bob"];
+        };
       };
       inherit sizes;
     };
     assistant = {
-      users.agent = ["ssh-ed25519 AAAA fixture-agent"];
+      users.agent = {
+        uid = 1001;
+        keys = ["ssh-ed25519 AAAA fixture-agent"];
+      };
       inherit sizes;
     };
   };

@@ -32,16 +32,19 @@ in {
     ];
   };
 
-  # One login per declared user, by key only. `createHome = false` because
-  # `/home` is a volume systemd mounts after activation, so activation would
-  # make the home on the root fs underneath it; the seed makes it instead. No
-  # groups and no uid: nothing here is sudo, and the design names no uid scheme.
+  # One login per declared user, by key only, under the uid the record carries
+  # (RSK-012): the root fs is tmpfs, so an undeclared uid is allocated afresh
+  # every boot in name order, and `/home` keeps the old numbers. Persisting
+  # NixOS's uid map would not help — it lives on the root fs, and `/home` is
+  # mounted after activation. `createHome = false` for the same reason: the
+  # seed makes the home instead. No groups: nothing here is sudo.
   users.users =
-    lib.mapAttrs (user: keys: {
+    lib.mapAttrs (user: decl: {
+      inherit (decl) uid;
       isNormalUser = true;
       home = "/home/${user}";
       createHome = false;
-      openssh.authorizedKeys.keys = keys;
+      openssh.authorizedKeys.keys = decl.keys;
     })
     room.users;
 

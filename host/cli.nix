@@ -605,6 +605,20 @@ in
         fi
       }
 
+      # Whether a guest is up — `isUp <socket> <unit>`: a way in or a running
+      # VMM, the same test for a slot and a room. A predicate, so call it in an
+      # `if` and never inside `$( … )`, where errexit would not stop it.
+      isUp() {
+        [ -S "$1" ] || [ "$(unitState "$2")" = running ]
+      }
+      anyRoomUp() {
+        local r
+        for r in "''${rooms[@]}"; do
+          if isUp "''${roomSocket[$r]}" "$(unitOf "$r")"; then return 0; fi
+        done
+        return 1
+      }
+
       # What a unit said *about the thing just asked of it* — `unitTail <unit>
       # <epoch> <lines>`, printing to stderr and saying so when there is nothing.
       #
@@ -1888,11 +1902,15 @@ in
       # does: a program that guesses has the guess in its store path (NOTES item
       # 20). Up means a way in or a running VMM — the devshell shape has
       # neither, so there it is a refusal and `CAPSULE_NAME` is the answer.
+      #
+      # One exception, and it is a question: an unnamed `status` with no slot
+      # up but a room up is every guest's status, since the rooms block is
+      # what a probe refused by a running room needs to see (design sec-7,
+      # PHASE-10). It never resolves *to* a room — a room is named or nothing.
       if [ -z "$name" ]; then
         up=()
         for d in "''${declared[@]}"; do
-          if [ -S "$(sockOf "$d")" ] \
-            || [ "$(unitState "$(unitOf "$d")")" = running ]; then
+          if isUp "$(sockOf "$d")" "$(unitOf "$d")"; then
             up+=("$d")
           fi
         done
@@ -1902,10 +1920,14 @@ in
             nameFrom="resolved"
             ;;
           0)
-            echo "capsule: no capsule is up, so an unnamed '$verb' means nothing here." >&2
-            echo "  Name one — ''${declared[*]} — or set CAPSULE_NAME." >&2
-            nameFirstHint ''${1+"$@"}
-            exit 1
+            if [ "$verb" = status ] && anyRoomUp; then
+              name=all
+            else
+              echo "capsule: no capsule is up, so an unnamed '$verb' means nothing here." >&2
+              echo "  Name one — ''${declared[*]} — or set CAPSULE_NAME." >&2
+              nameFirstHint ''${1+"$@"}
+              exit 1
+            fi
             ;;
           *)
             echo "capsule: ''${up[*]} are up, so an unnamed '$verb' is ambiguous." >&2

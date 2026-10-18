@@ -46,12 +46,20 @@
         two = {index = 1;};
       };
     };
-  # A room's keys are strings nobody holds; only the user names are read here.
+  # A room's keys are strings nobody holds and its uids are numbers in order;
+  # only the user names are read here.
   roomsOf = decl:
     (rooms {inherit lib;} {
       rooms =
         lib.mapAttrs (_: users: {
-          users = lib.genAttrs users (u: ["ssh-ed25519 AAAA fixture-${u}"]);
+          users = builtins.listToAttrs (lib.imap1 (i: u: {
+              name = u;
+              value = {
+                uid = 1000 + i;
+                keys = ["ssh-ed25519 AAAA fixture-${u}"];
+              };
+            })
+            users);
           sizes = {
             vcpu = 1;
             mem = 1024;
@@ -61,24 +69,33 @@
         decl;
       slotNames = builtins.attrNames fixture.instances;
     }).instances;
-  render = roomDecl:
+  renderRecords = records:
     import ./cli.nix {
       inherit pkgs lib net policies guestSsh;
       inherit observe observeFragment programVerbs profileVerbs stateRefPrefix volumeRootHelper;
       capsules = fixture;
       moduleState = ''"$CASE_STATE"'';
-      rooms = roomsOf roomDecl;
+      rooms = records;
     };
+  render = roomDecl: renderRecords (roomsOf roomDecl);
   cli = render {
     solo = ["ann"];
     pair = ["ada" "bob"];
   };
+  # The same rooms, with `solo`'s socket somewhere a build can bind one: a
+  # relative path, read against the directory the suite runs in, since the
+  # front end quotes it and a variable would not expand. Only here — the main
+  # render pins the record's real path.
+  withRoomUp = renderRecords (lib.recursiveUpdate (roomsOf {
+    solo = ["ann"];
+    pair = ["ada" "bob"];
+  }) {solo.socket = "room-up/solo/ssh.sock";});
   # A room named for a verb: `capsule ssh …` could no longer be read either way.
   colliding = render {ssh = ["ann"];};
   collides = builtins.tryEval (builtins.deepSeq colliding.drvPath colliding.drvPath);
   quote = s: lib.escapeShellArg (toString s);
 in
-  pkgs.runCommand "capsule-room-verbs-cases" {} ''
+  pkgs.runCommand "capsule-room-verbs-cases" {nativeBuildInputs = [pkgs.python3];} ''
     export CASE_STATE=$PWD/state
     mkdir -p "$CASE_STATE"
     capsule=${lib.getExe cli}
@@ -163,6 +180,27 @@ in
 
     run --help
     ckt "usage names the rooms" saw "rooms:     pair solo"
+
+    # An unnamed status is the one unnamed verb a room can answer (design
+    # sec-7, PHASE-10): with no slot up it falls through to every guest's
+    # status, so a refused probe's reader sees which room holds the host. A
+    # bound socket outlives its process, which is all `-S` asks.
+    run status
+    ck "an unnamed status with nothing up still refuses" 1 "$rc"
+    ckt "  as an unnamed verb with no capsule up" saw "no capsule is up, so an unnamed 'status'"
+
+    mkdir -p room-up/solo
+    python3 -c 'import socket,sys; socket.socket(socket.AF_UNIX).bind(sys.argv[1])' room-up/solo/ssh.sock
+    capsule=${lib.getExe withRoomUp} run status
+    ck "an unnamed status with only a room up lists it" 0 "$rc"
+    ckt "  without refusing" unsaw "no capsule is up"
+    ckt "  after every slot, all down" test "$(grep -cE '^(one|two) ' out)" = 2
+    ckt "  with the room that is up" grep -qE '^  solo +[^ ]+ +yes$' out
+    ckt "  and the one that is not" grep -qE '^  pair +[^ ]+ +no$' out
+
+    capsule=${lib.getExe withRoomUp} run ssh
+    ck "  while an unnamed ssh still means a slot" 1 "$rc"
+    ckt "  and refuses as one" saw "no capsule is up, so an unnamed 'ssh'"
 
     # ------------------------------------------------------------ collide
     # A verdict carries no message, so the reason is read off the render.

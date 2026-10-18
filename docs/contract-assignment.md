@@ -60,7 +60,7 @@ this repo has already had to undo once.
 | noun | what it decides | owner | when it changes | who may change it |
 | --- | --- | --- | --- | --- |
 | **slot** | identity, namespace, uplink /30, socket, units | host declaration (`capsules.nix`) | host rebuild | host operator |
-| **room** | identity, namespace, socket, units, users, sizes (vcpu, mem, volume) — no uplink, no proxy, no assignment | host declaration (`mkFleet`'s `rooms`, decided by `rooms.nix`) | host rebuild | host operator |
+| **room** | identity, namespace, socket, units, users (each `{ uid; keys; }`, the uid declared because it owns the user's files on the volume — `RSK-012`), sizes (vcpu, mem, volume) — no uplink, no proxy, no assignment | host declaration (`mkFleet`'s `rooms`, decided by `rooms.nix`) | host rebuild | host operator |
 | **flavour** | the guest's capability and tool closure | **not declared — composed** from the profile's floor and the assignment's extras ([contract-flavour.md](./contract-flavour.md)) | stop, build, start — a symlink re-point, not a rebuild of the fleet | both owners, within a fragment vocabulary the host declares |
 | **class** | machine config: `mem`, `vcpu` | the runner's JSON | stop / start | host operator declares; an assigner selects within the slot's set |
 | **policy** | egress allowlist, ingestion bounds, whether this slot may collect | host declaration, *selected* by the assignment | live — see the refresh rule | host operator declares the set; an assigner selects within it, or is refused |

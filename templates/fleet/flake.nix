@@ -62,10 +62,15 @@
       fleet = import ./capsules.nix {inherit policies;};
 
       # Rooms: guests that are not slots, each reached only through its
-      # host-local door. `{}` declares none. For example:
+      # host-local door. `{}` declares none. Each user declares its uid, which
+      # owns its files on the room's volume and so must never change. For
+      # example:
       #
       #   rooms.assistant = {
-      #     users.agent = ["ssh-ed25519 AAAA... you@host"];
+      #     users.agent = {
+      #       uid = 1001;
+      #       keys = ["ssh-ed25519 AAAA... you@host"];
+      #     };
       #     sizes = {
       #       vcpu = 2;
       #       mem = 4096;

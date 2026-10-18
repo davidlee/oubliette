@@ -42,15 +42,34 @@
   };
   # A room whose only variable is its users.
   withUsers = users: {inherit users sizes;};
+  # A user with one key and the uid given, which is all a user declares.
+  as = uid: {
+    inherit uid;
+    keys = [key];
+  };
   # A room that is fine in every way but its name.
-  named = name: with' {${name} = withUsers {ada = [key];};};
+  named = name: with' {${name} = withUsers {ada = as 1001;};};
 
   good = with' {
     lounge = withUsers {
-      ada = [key];
-      bob = [key key];
+      ada = as 1001;
+      bob = {
+        uid = 1002;
+        keys = [key key];
+      };
     };
-    assistant = withUsers {agent = [key];};
+    assistant = withUsers {agent = as 1001;};
+  };
+
+  # One user, and then one whose name sorts before it (RSK-012): NixOS
+  # allocates undeclared uids in name order on every boot, so this is the
+  # change that would move `bob` off his files.
+  bobAlone = with' {lounge = withUsers {bob = as 1002;};};
+  bobAfterAaron = with' {
+    lounge = withUsers {
+      aaron = as 1001;
+      bob = as 1002;
+    };
   };
 
   # Does forcing this attribute throw? `deepSeq` is load-bearing (see header).
@@ -94,10 +113,38 @@ in
     ${refused "a room name that starts with a dash throws" (named "-x") "names" ["-x" "unit-safe"]}
 
     # 5-7. A user that may not log in, or that has no way to.
-    ${refused "a user named root throws" (with' {lounge = withUsers {root = [key];};}) "users" ["lounge" "root"]}
-    ${refused "a user with no keys throws" (with' {lounge = withUsers {ada = [];};}) "users" ["lounge" "ada" "no keys"]}
-    ${refused "a user name that is not user-safe throws" (with' {lounge = withUsers {Ada = [key];};}) "users" ["lounge" "Ada" "user-safe"]}
-    ${refused "a user name over 31 characters throws" (with' {lounge = withUsers {${lib.concatStrings (lib.replicate 32 "a")} = [key];};}) "users" ["lounge" "user-safe"]}
+    ${refused "a user named root throws" (with' {lounge = withUsers {root = as 1001;};}) "users" ["lounge" "root"]}
+    ${refused "a user with no keys throws" (with' {lounge = withUsers {ada = (as 1001) // {keys = [];};};}) "users" ["lounge/ada" "no keys"]}
+    ${refused "a user name that is not user-safe throws" (with' {lounge = withUsers {Ada = as 1001;};}) "users" ["lounge" "Ada" "user-safe"]}
+    ${refused "a user name over 31 characters throws" (with' {lounge = withUsers {${lib.concatStrings (lib.replicate 32 "a")} = as 1001;};}) "users" ["lounge" "user-safe"]}
+
+    # 7a-7e. A user's uid is declared, in range, and its own (RSK-012): the
+    # volume outlives the image, so the number that owns a home's files must
+    # be the same on every boot, and nothing here picks one.
+    ${refused "a user declared as a bare key list throws" (with' {lounge = withUsers {ada = [key];};}) "users" ["lounge/ada" "{ uid; keys; }"]}
+    ${refused "a user with a field beyond uid and keys throws" (with' {lounge = withUsers {ada = (as 1001) // {uids = 1001;};};}) "users" ["lounge/ada" "{ uid; keys; }"]}
+    ${refused "a user with no uid throws" (with' {lounge = withUsers {ada = {keys = [key];};};}) "users" ["lounge/ada" "no uid"]}
+    ${refused "a uid below the normal-user range throws" (with' {lounge = withUsers {ada = as 999;};}) "users" ["lounge/ada (999)" "1000-29999"]}
+    ${refused "a uid above it, where NixOS keeps nixbld, throws" (with' {lounge = withUsers {ada = as 30000;};}) "users" ["lounge/ada (30000)" "1000-29999"]}
+    ${refused "a uid that is not a number throws" (with' {lounge = withUsers {ada = as "1001";};}) "users" ["lounge/ada (\"1001\")" "1000-29999"]}
+    ${refused "two users of one room on one uid throw" (with' {
+      lounge = withUsers {
+        ada = as 1001;
+        bob = as 1001;
+      };
+    }) "users" ["lounge/ada (1001)" "lounge/bob (1001)" "shared"]}
+    ck "one uid in two rooms is two guests' business, and evaluates" false \
+      ${verdict
+      (with' {
+        lounge = withUsers {ada = as 1001;};
+        den = withUsers {bob = as 1001;};
+      }).instances}
+
+    # 7f. The case RSK-012 is: a uid is the declaration's, not the name order's.
+    ck "a user's uid alone is the declared one" 1002 ${toString bobAlone.instances.lounge.users.bob.uid}
+    ck "a user's uid is unchanged when a user whose name sorts earlier is added" 1002 \
+      ${toString bobAfterAaron.instances.lounge.users.bob.uid}
+    ck "  and the earlier user has its own" 1001 ${toString bobAfterAaron.instances.lounge.users.aaron.uid}
 
     # 8. A well-formed declaration throws nowhere and has nothing to say.
     ck "a well-formed declaration's instances evaluate" false ${verdict good.instances}
@@ -111,8 +158,11 @@ in
         uplink = null;
         socket = "/run/capsule-room/lounge/ssh.sock";
         users = {
-          ada = [key];
-          bob = [key key];
+          ada = as 1001;
+          bob = {
+            uid = 1002;
+            keys = [key key];
+          };
         };
         inherit sizes;
       })}
@@ -124,7 +174,7 @@ in
     ck "empty sizes stay empty (nothing defaults)" true \
       ${lib.boolToString ((with' {
         lounge = {
-          users.ada = [key];
+          users.ada = as 1001;
           sizes = {};
         };
       }).instances.lounge.sizes
@@ -132,11 +182,17 @@ in
 
     # 10. The two clauses are independent: fixing one does not hide the other.
     ${let
-      d = with' {"x.y" = withUsers {root = [key];};};
+      d = with' {
+        "x.y" = withUsers {
+          root = as 1001;
+          ada = as 70000;
+        };
+      };
     in ''
       ck "a bad name and a bad user both throw" true ${verdict d.instances}
       has "  the name is still reported" x.y ${lib.escapeShellArg (reason d.reasons.names)}
       has "  and so is the user" root ${lib.escapeShellArg (reason d.reasons.users)}
+      has "  and so is the uid" "x.y/ada (70000)" ${lib.escapeShellArg (reason d.reasons.users)}
     ''}
 
     cat "$log"

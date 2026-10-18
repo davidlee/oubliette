@@ -52,8 +52,14 @@
     (rooms {inherit lib;} {
       rooms.lounge = {
         users = {
-          ada = [key];
-          bob = [key];
+          ada = {
+            uid = 1001;
+            keys = [key];
+          };
+          bob = {
+            uid = 1002;
+            keys = [key];
+          };
         };
         sizes = {};
       };

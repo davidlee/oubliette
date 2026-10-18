@@ -5,17 +5,17 @@ id = 12
 slug = "room-user-uids-are-reassigned-in-name-order-on-every-boot"
 title = "Room user uids are reassigned in name order on every boot"
 kind = "risk"
-status = "open"
-resolution = ""                 # seeded empty so `backlog edit` sets it in place
+status = "resolved"
+resolution = "fixed"
 created = "2026-10-18"
 updated = "2026-10-18"
 tags = []
 
 [facet]                         # risk only — every field typed; seeded empty
-likelihood = ""                 # low | medium | high | critical
-impact     = ""                 # low | medium | high | critical
-origin     = ""
-controls   = []
+likelihood = "high"
+impact = "high"
+origin = "SL-005 PHASE-07 review"
+controls = ["rooms.nix refuses an undeclared, out-of-range or shared uid", "roomImages refuses an image whose user's uid is not the record's"]
 
 # outbound-only. Cross-kind structural edges (e.g. references with a role
 # — `originates_from` for backlog→slice provenance — governed_by, related, drift) are
