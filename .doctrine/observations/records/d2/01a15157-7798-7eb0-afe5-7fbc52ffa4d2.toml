@@ -1,0 +1,18 @@
+schema = "doctrine.observation"
+schema_version = 1
+uid = "01a15157-7798-7eb0-afe5-7fbc52ffa4d2"
+recorded_at = "2026-10-18T23:27:29.176101656Z"
+kind = "friction"
+summary = "SL-007 plan.toml: PHASE-01's [[phase]] header was inside a comment"
+detail = "plan.toml line 21 read '# One [[phase]]' since ec09eff; 'slice phases' reported 'Phases up to date' without materialising PHASE-01, and 'slice status' showed '?1'. Nothing at plan/ready time flagged a phase-less id key at top level. Found by the PHASE-01 planner; fixed in a bookkeeping commit."
+
+[facets.execution]
+schema_version = 1
+interface = "cli"
+interface_origin = "automatic"
+product_surface = "doctrine"
+product_surface_origin = "automatic"
+command = "observation record"
+command_origin = "automatic"
+repository_context = "primary"
+repository_context_origin = "automatic"

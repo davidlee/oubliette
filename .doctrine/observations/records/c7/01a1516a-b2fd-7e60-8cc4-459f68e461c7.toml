@@ -1,0 +1,18 @@
+schema = "doctrine.observation"
+schema_version = 1
+uid = "01a1516a-b2fd-7e60-8cc4-459f68e461c7"
+recorded_at = "2026-10-18T23:48:29.56514764Z"
+kind = "friction"
+summary = "PHASE-01 planner: free-text memory retrieve returns only the top hit"
+detail = "doctrine memory retrieve with a free-text query returned one result each time; memory search with --path-scope/--glob/--command gave the useful list. Reported by the SL-007 PHASE-03 planner."
+
+[facets.execution]
+schema_version = 1
+interface = "cli"
+interface_origin = "automatic"
+product_surface = "doctrine"
+product_surface_origin = "automatic"
+command = "observation record"
+command_origin = "automatic"
+repository_context = "primary"
+repository_context_origin = "automatic"

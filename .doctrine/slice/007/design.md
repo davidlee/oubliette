@@ -7,7 +7,7 @@ carry its own (`IMP-017`, `ISS-013`).
 ```
 room declaration                      vm/room.nix (image)
 rooms.<r>.extras = [ <fragment> ]  →  base = buildEnv (floor ++ compose extras)
-                                        floor = git bash coreutils which
+                                        floor = git bash coreutils-full which
                                         → /etc/room/base          (tree link)
                                         → environment.systemPackages (logins)
 
@@ -42,7 +42,7 @@ message:
 `attrNames fragments.vocabulary`. The record gains `extras` (a list, `[]` when
 absent). `instances` throws `reasons.extras` after `reasons.policy`.
 
-**The floor.** `git`, `bash`, `coreutils`, `which`: what pi-env needs from a
+**The floor.** `git`, `bash`, `coreutils-full`, `which`: what pi-env needs from a
 room (`sh` is `bash`'s, `uname` is coreutils') plus `DEC-043`'s `git`. It is
 `vm/room.nix`'s, a fixed list, and a room adds to it and never removes from it.
 
@@ -53,7 +53,7 @@ does, and builds:
 ```nix
 base = pkgs.buildEnv {
   name = "room-base";
-  paths = fragments.compose { floor = [git bash coreutils which]; extras = room.extras; };
+  paths = fragments.compose { floor = [git bash coreutils-full which]; extras = room.extras; };
 };
 ```
 
@@ -78,8 +78,12 @@ base only. `system-path` around it ignores collisions, so against the rest of
 the system packages an interactive login gets whichever NixOS picks (`ISS-025`'s
 mechanism). `session` does not depend on that: it reads `/etc/room/base`
 directly, so the checked set is what a job runs. The floor's `bash` and
-`coreutils` are the same `pkgs` attributes NixOS's required packages use, so
-in this image they are the same store paths.
+`coreutils-full` are the attributes NixOS's required packages use
+(`system-path.nix`), so in this image they are the same store paths. Amended
+at PHASE-03 (the user, 2026-10-19): the floor first named `coreutils`, which
+is a different store path, and the base's default priority (5) beats the
+required packages' (8), so it would have shadowed the system's
+`coreutils-full` for a login and inside `session`.
 
 **`session` (`vm/session.nix`).** One generic program, one store path
 (`DEC-049`), still reading only build-time paths. `root` stays its build
@@ -113,8 +117,8 @@ they are for slots.
 <!-- doctrine:section sec-3 -->
 ## The profile reader carries its `jq` (`DEC-053`)
 
-`host/profile.nix`'s `validator` (and `profileShow`) call `jq` about fifteen
-times. Each call becomes the store path, by Nix interpolation:
+`host/profile.nix`'s `validator` calls `jq` seven times (`profileShow`
+none; corrected at PHASE-01). Each call becomes the store path, by Nix interpolation:
 
 ```nix
 jq = lib.getExe pkgs.jq;

@@ -1,0 +1,18 @@
+schema = "doctrine.observation"
+schema_version = 1
+uid = "01a1516a-b2f9-7543-86d7-2b48c979e6b0"
+recorded_at = "2026-10-18T23:48:29.561670196Z"
+kind = "friction"
+summary = "SL-007 design sec-2's coreutils premise is false at the nixpkgs pin"
+detail = "Design sec-2 says the floor's bash and coreutils are the same store paths NixOS's required packages use. bash holds (bash == bashInteractive). coreutils does not: system-path.nix:16 uses coreutils-full (si964wm...-coreutils-full-9.11) while the floor names coreutils (xjl7p8d...-coreutils-9.11), and buildEnv's default priority 5 beats requiredPackages' 8, so minimal coreutils would win in system-path. Found by the PHASE-03 planner, confirmed by the orchestrator at nixpkgs f45c6f04. PHASE-03 halted before in_progress pending the human's ruling."
+
+[facets.execution]
+schema_version = 1
+interface = "cli"
+interface_origin = "automatic"
+product_surface = "doctrine"
+product_surface_origin = "automatic"
+command = "observation record"
+command_origin = "automatic"
+repository_context = "primary"
+repository_context_origin = "automatic"
