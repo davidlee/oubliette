@@ -1,0 +1,33 @@
+schema = "doctrine.knowledge"
+version = 1
+
+id = 50
+slug = "room-channel-exit-status"
+title = "The room channel exits 75 only when the room's transport is down, 2 for a refusal and 1 for anything else"
+record_kind = "decision"
+status = "accepted"
+created = "2026-10-18"
+updated = "2026-10-18"
+tags = []
+
+[facet]                         # every field typed; seeded empty (captured later)
+context = "SL-006 inq-12. Every slot-channel failure is exit 1 (host/guest-ssh.nix:192-200). satan SL-023 maps unavailable to wait-and-retry. A GPT review found that classifying any ssh failure as down would park a job on a healthy room with a bad key."
+choice = "Before git runs, a pre-flight reads an SSH-2.0 banner through the room socket with socat and a timeout. A missing socket or no banner exits 75. A refusal (usage, unknown room or repo, policy) exits 2. Anything after a banner, including authentication and host-key refusal, exits 1; a room that dies mid-transfer exits 1 and the caller re-probes."
+alternatives = ["75 whenever ssh true fails", "parsing ssh's error text"]
+rationale = "A banner proves the room answers without trusting it, so trust failures stay failures; no text is parsed."
+consequences = ["cases pin no socket => 75; the banner and auth branches are proven live, since ssh cannot be stubbed"]
+decided_by = "user, on agent proposal (amended after a GPT review)"
+decided_on = "2026-10-18"
+
+[evidence]                      # free-text citations (supports / contradicts / notes)
+supports    = []
+contradicts = []
+notes       = []
+
+[relationships]                 # verb-written edges (set by doctrine supersede)
+supersedes    = []   # record ids this one replaces (set by doctrine supersede)
+superseded_by = []   # set on superseded predecessor (verb-written)
+
+[[relation]]
+label = "shapes"
+target = "SL-006"

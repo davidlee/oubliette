@@ -1,0 +1,33 @@
+schema = "doctrine.knowledge"
+version = 1
+
+id = 51
+slug = "front-end-room-verbs-with-repos"
+title = "The front end drives a room with ssh, start, stop, push, collect and forget-host-key; every other verb refuses by name"
+record_kind = "decision"
+status = "accepted"
+created = "2026-10-18"
+updated = "2026-10-18"
+tags = []
+
+[facet]                         # every field typed; seeded empty (captured later)
+context = "SL-006 inq-13, DEC-041 (ssh, start, stop; everything else refused), DEC-045 (capsule-room-git), DEC-047 (per-room known_hosts)."
+choice = "capsule <room> push <repo> <branch> and capsule <room> collect <repo> <branch> resolve repo against the room's declared repos (exit 2 otherwise) and exec capsule-room-git --room <room> --profile <repo> with the room's policy. capsule <room> forget-host-key empties the room's known_hosts. ssh uses the room's known_hosts and alias room-<room>. start, stop and status are unchanged; every other verb refuses, naming the room."
+alternatives = ["a room-scoped front end of its own", "calling capsule-room-git directly with no resolution"]
+rationale = "Resolution is the front end's act (POL-003), so the program stays generic and one store path."
+consequences = ["succeeds DEC-041", "roomVerbsCases covers each new verb and a repo the room does not declare"]
+decided_by = "user, on agent proposal (amended after a GPT review)"
+decided_on = "2026-10-18"
+
+[evidence]                      # free-text citations (supports / contradicts / notes)
+supports    = []
+contradicts = []
+notes       = []
+
+[relationships]                 # verb-written edges (set by doctrine supersede)
+supersedes    = ["DEC-041"]   # record ids this one replaces (set by doctrine supersede)
+superseded_by = []   # set on superseded predecessor (verb-written)
+
+[[relation]]
+label = "shapes"
+target = "SL-006"

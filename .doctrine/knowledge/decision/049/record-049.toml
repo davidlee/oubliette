@@ -1,0 +1,33 @@
+schema = "doctrine.knowledge"
+version = 1
+
+id = 49
+slug = "room-session-launcher"
+title = "session <repo> -- <cmd> runs a command with one repo's tools and in its clone, and nothing else"
+record_kind = "decision"
+status = "accepted"
+created = "2026-10-18"
+updated = "2026-10-18"
+tags = []
+
+[facet]                         # every field typed; seeded empty (captured later)
+context = "SL-006 inq-8, Plan F section 3, research thread 3. pi-env's daemon inherits the environment it is started with (pi env daemon/src/sys/unix.rs:250-265) and its launch command is caller-supplied (src/connection.ts:66-72); it speaks a binary protocol on stdio."
+choice = "A guest program generated from the room record: session <repo> -- <argv…> puts that repo's tool set ahead of the base PATH, cds into its guestPath and execs argv unchanged. It writes nothing to stdout, needs no login shell and exits 2 for an unknown repo. Each set is also linked at /etc/room/tools/<repo>. One session is one repo."
+alternatives = ["wrap each command (pi-durable prepare)", "ssh SetEnv or ForceCommand", "a user per repo"]
+rationale = "Setting the environment before the harness's daemon starts is Plan F's shape, and inheritance carries it to every command; the others need login-shell scope, proxy pi-env's probe or multiply users."
+consequences = ["satan starts pi-env's daemon under session <repo> -- via a custom Connection command and tests a reconnect", "the repo comes from each job, not from the door config"]
+decided_by = "user, on agent proposal (amended after a GPT review)"
+decided_on = "2026-10-18"
+
+[evidence]                      # free-text citations (supports / contradicts / notes)
+supports    = []
+contradicts = []
+notes       = []
+
+[relationships]                 # verb-written edges (set by doctrine supersede)
+supersedes    = []   # record ids this one replaces (set by doctrine supersede)
+superseded_by = []   # set on superseded predecessor (verb-written)
+
+[[relation]]
+label = "shapes"
+target = "SL-006"

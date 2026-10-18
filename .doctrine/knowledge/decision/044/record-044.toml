@@ -1,0 +1,33 @@
+schema = "doctrine.knowledge"
+version = 1
+
+id = 44
+slug = "room-repo-tools-are-the-floor"
+title = "A room repo's tool set is its target's toolsPackage alone; the room's base is git and the NixOS defaults"
+record_kind = "decision"
+status = "accepted"
+created = "2026-10-18"
+updated = "2026-10-18"
+tags = []
+
+[facet]                         # every field typed; seeded empty (captured later)
+context = "SL-006 inq-2, CON-001. A slot composes floor and fleet extras; the extras are agent CLIs and editors. Under satan SL-023 option D the harness runs on the host and only tools run in the room. pi-env needs sh, coreutils, a sha256sum and bash (found by which) on the base PATH."
+choice = "Each repo's set is its target's toolsPackage, kept as its own store path and never unioned. No fleet extras in a room. The base PATH is git plus the NixOS required packages (bash, coreutils, which), so pi-env's bash fallback works with no /bin/bash and no shellPath. A target with toolsPackage = null gets the base only."
+alternatives = ["floor plus the fleet extras", "a /bin/bash link in the image"]
+rationale = "The extras serve an in-guest agent, which a room under option D does not have; they would cost closure for nothing."
+consequences = ["provisional by the user's word: revisit if a repo's work needs an extra", "an EVD records the image's closure size"]
+decided_by = "user, on agent proposal (amended after a GPT review)"
+decided_on = "2026-10-18"
+
+[evidence]                      # free-text citations (supports / contradicts / notes)
+supports    = []
+contradicts = []
+notes       = []
+
+[relationships]                 # verb-written edges (set by doctrine supersede)
+supersedes    = []   # record ids this one replaces (set by doctrine supersede)
+superseded_by = []   # set on superseded predecessor (verb-written)
+
+[[relation]]
+label = "shapes"
+target = "SL-006"

@@ -1,0 +1,38 @@
+schema = "doctrine.knowledge"
+version = 1
+
+id = 47
+slug = "room-repo-owner-and-host-keys"
+title = "A room's repos have one declared owner, and every door to a room checks host keys against one oubliette-owned known_hosts per room"
+record_kind = "decision"
+status = "accepted"
+created = "2026-10-18"
+updated = "2026-10-18"
+tags = []
+
+[facet]                         # every field typed; seeded empty (captured later)
+context = "SL-006 inq-5, RSK-011, DEC-037. pi-env checks host keys strictly against its own file and disables the global one (pi env src/ssh.ts:104); a GPT review found the channel and the runner would otherwise hold two stores. A room's alias is its bare name (host/cli.nix:823), which collides with capsule-<slot>."
+choice = "repos = { user; targets; }: the declared user owns every clone; the channel logs in as that user, the user pi-env runs as. One known_hosts per room at $stateDir/room/<room>/known_hosts, used by the front end's ssh, push and collect with StrictHostKeyChecking=accept-new under HostKeyAlias room-<room>; satan's door config points at the same file. capsule <room> forget-host-key empties it after a volume delete."
+alternatives = ["root through the admin key", "the human's ~/.ssh/known_hosts", "refusing a room named capsule-<slot>"]
+rationale = "One store means every door agrees. Accept-new over a host-local socket to a VM the host booted is first contact on a host-created path; a changed key is refused. room-<n> is disjoint from capsule-<n> by construction."
+consequences = ["RSK-011 closes by the alias", "SL-005's HostKeyAlias=<room> changes before SL-005's live rung records it"]
+decided_by = "user, on agent proposal (amended after a GPT review)"
+decided_on = "2026-10-18"
+
+[evidence]                      # free-text citations (supports / contradicts / notes)
+supports    = []
+contradicts = []
+notes       = []
+
+[relationships]                 # verb-written edges (set by doctrine supersede)
+supersedes    = []   # record ids this one replaces (set by doctrine supersede)
+superseded_by = []   # set on superseded predecessor (verb-written)
+
+[[relation]]
+label = "references"
+role = "concerns"
+target = "RSK-011"
+
+[[relation]]
+label = "shapes"
+target = "SL-006"

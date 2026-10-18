@@ -25,9 +25,9 @@ consumer: rooms.assistant.repos = [ "satan" "doctrine" … ]   (names in targets
    │
    ├─▶ room image: one tool set per repo, never unioned       (Plan F §3)
    │      session <repo> -- <cmd>  → that repo's PATH, cwd = its clone
-   ├─▶ clones on a room volume                                (ISS-021 → amend DEC-040)
+   ├─▶ clones on a room volume                                (ISS-021: a /work volume, DEC-043)
    │
-host ──refresh <room> <repo> <ref>──▶ guest clone             ┐ one git channel,
+host ──push <room> <repo> <branch>──▶ guest clone            ┐ one git channel,
 host ◀─collect <room> <repo> <branch>── /var/lib/capsule/      │ room transport,
                     collect/<room>/<repo>.git (fsckObjects)    ┘ quarantine keyed by repo
    ▲
@@ -53,26 +53,41 @@ host ◀─collect <room> <repo> <branch>── /var/lib/capsule/      │ room 
    Whether a repo's set includes the fleet extras (`CON-001`) is decided, not
    inherited. The fixture gains a second target with a real tool package so
    two sets can be told apart.
-4. **The per-repo git channel** (`DEC-040`, Plan F §4): `host/git-channel.nix`
-   gains a room transport fragment over the room's socket, with the quarantine
-   key separate from the transport name, so N repos in one room do not collide
-   on one bare repo (NOTES item 50). Host-initiated in both directions:
-   - **refresh**: push a real-repo ref into the room's clone of that repo
-     (seeding the clone on first use).
-   - **collect**: fetch a named branch from the room's clone into
-     `/var/lib/capsule/collect/<room>/<repo>.git`, `transfer.fsckObjects` on.
-   Both reachable through the front end (`capsule <room> refresh | collect
-   <repo> …`, widening `DEC-041`'s verb set), with outcomes a caller can tell
-   apart: room unreachable vs anything else (SL-023's `ChannelUnavailable` /
-   `ChannelFailed`).
+4. **The per-repo git channel** (`DEC-040`, Plan F §4): one generic program,
+   `capsule-room-git` (`DEC-045`), host-initiated in both directions:
+   - **push**: resolve a branch in the target's host checkout and push its oid
+     to a ref the guest never checks out (`refs/host/<branch>`); the clone is
+     seeded empty by the guest (`DEC-043`).
+   - **collect**: fetch one named branch into
+     `/var/lib/capsule/collect/<room>/<repo>.git`, `transfer.fsckObjects` on,
+     bounded by the policy the room names (`DEC-046`).
+   Reached as `capsule <room> push | collect <repo> <branch>` (`DEC-051`,
+   succeeding `DEC-041`), with exit 75 only when the room's transport is down
+   (`DEC-050`), so SL-023 can tell `ChannelUnavailable` from `ChannelFailed`.
 5. **Stable room uids** (`RSK-012`): resolved by SL-005 PHASE-10 (room users
    declare `{uid; keys;}`). SL-006 keeps only the rule that any user it adds
    carries a declared uid.
-6. **No HostKeyAlias collision** (`RSK-011`): a room's alias cannot equal a
-   slot's, since the runner pins room host keys strictly (`DEC-037`).
+6. **One host-key store per room, and no alias collision** (`DEC-047`,
+   `RSK-011`): the front end, the channel and satan's runner check one
+   oubliette-owned `known_hosts` per room under alias `room-<room>`;
+   `capsule <room> forget-host-key` clears it.
 7. **Relay the pinned interface to satan**: what SL-023's room adapter and door
    config read (verb argv, exit-status contract, quarantine path and ref
    names, clone paths, the `session` shape), so `ASM-005` can be validated.
+
+**Settled by the design run (inquiring stage):**
+
+| question | decision |
+| --- | --- |
+| clone location and seeding | `DEC-043` |
+| tool composition | `DEC-044` (provisional by the user's word) |
+| channel program, push, collect | `DEC-045` |
+| ingestion bound | `DEC-046` |
+| repo owner, host keys, alias | `DEC-047` |
+| declaration shape | `DEC-048` |
+| `session` launcher | `DEC-049` |
+| exit status | `DEC-050` |
+| front-end verbs | `DEC-051` (succeeds `DEC-041`) |
 
 ## Non-Goals
 
@@ -94,7 +109,7 @@ host ◀─collect <room> <repo> <branch>── /var/lib/capsule/      │ room 
   fixed uids.
 - `host/git-channel.nix`, `host/git-channel-cases.nix`, `host/quarantine.nix`,
   `host/profile.nix`: room transport, quarantine key split from transport.
-- `host/cli.nix`, `host/room-verbs-cases.nix`: `refresh` / `collect` for rooms;
+- `host/cli.nix`, `host/room-verbs-cases.nix`: `push` / `collect` / `forget-host-key` for rooms;
   HostKeyAlias.
 - `host/services.nix`, `mkfleet.nix`: volumes, quarantine tmpfiles, suite wiring.
 - `fixture/`, `templates/`: the fixture assistant declares repos.
@@ -119,7 +134,7 @@ host ◀─collect <room> <repo> <branch>── /var/lib/capsule/      │ room 
   (`mem.fact.oubliette.a-provision-resets-tracked-files-only`); a room clone is
   long-lived and must not inherit that surprise silently.
 - **`base_ref`**: SL-023 validates a real-repo branch name (satan `DEC-059`,
-  `ISS-041`); refresh takes a ref, not `HEAD`.
+  `ISS-041`); push takes a branch, not `HEAD`.
 - **Assumption**: the runner runs on this host as the module owner (satan
   `DEC-050`; `DEC-037`'s socket is 0600).
 
@@ -127,7 +142,7 @@ host ◀─collect <room> <repo> <branch>── /var/lib/capsule/      │ room 
 
 - Case suites (red first) for: unknown-repo refusal at eval; clone and
   quarantine paths per repo with no collision across two repos in one room;
-  refresh and collect through the shipped channel against a fixture room;
+  push and collect through the shipped channel against a fixture room;
   distinct exit statuses for room-down vs failure; uid stability across a
   reordered user set; alias disjointness.
 - `just build` builds the fixture assistant image with two repos' tool sets,

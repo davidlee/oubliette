@@ -1,0 +1,38 @@
+schema = "doctrine.knowledge"
+version = 1
+
+id = 48
+slug = "room-declares-repos"
+title = "A room may declare repos, policy and a work size together, resolved against targets at eval"
+record_kind = "decision"
+status = "accepted"
+created = "2026-10-18"
+updated = "2026-10-18"
+tags = []
+
+[facet]                         # every field typed; seeded empty (captured later)
+context = "SL-006 inq-7, DEC-033 (rooms are users and sizes, no kind), DEC-018/DEC-026 (resolution against the targets argument), DEC-038 (refusals as reasons in rooms.nix). SL-005 PHASE-10 makes users { uid; keys; }."
+choice = "rooms.<n> may carry repos = { user; targets = [<target name>]; }, policy and sizes.work, all present or all absent. rooms.nix takes targets and policies and refuses at eval, with each reason a pinned value: an unknown target, a user not declared in the room, an unknown policy, a missing work size, and the partial set. The record carries repos and policy."
+alternatives = ["a kind = assistant", "a second per-repo declaration of tools"]
+rationale = "The repo list is consumer data and its resolution oubliette machinery (DEC-026); a repo's tools come from its target (POL-003). Optional-together keeps the absent path working (POL-002)."
+consequences = ["succeeds DEC-033's shape", "POL-003's rooms row gains repos, policy and sizes.work by REV", "the fixture, the template and /srv/fleet follow"]
+decided_by = "user, on agent proposal (amended after a GPT review)"
+decided_on = "2026-10-18"
+
+[evidence]                      # free-text citations (supports / contradicts / notes)
+supports    = []
+contradicts = []
+notes       = []
+
+[relationships]                 # verb-written edges (set by doctrine supersede)
+supersedes    = []   # record ids this one replaces (set by doctrine supersede)
+superseded_by = []   # set on superseded predecessor (verb-written)
+
+[[relation]]
+label = "references"
+role = "concerns"
+target = "DEC-033"
+
+[[relation]]
+label = "shapes"
+target = "SL-006"

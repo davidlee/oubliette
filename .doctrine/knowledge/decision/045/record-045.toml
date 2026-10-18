@@ -1,0 +1,33 @@
+schema = "doctrine.knowledge"
+version = 1
+
+id = 45
+slug = "room-git-channel-program"
+title = "The room git channel is one generic program, capsule-room-git, composed from the slot channel's fragments, with push and collect verbs"
+record_kind = "decision"
+status = "accepted"
+created = "2026-10-18"
+updated = "2026-10-18"
+tags = []
+
+[facet]                         # every field typed; seeded empty (captured later)
+context = "SL-006 inq-3, inq-10, inq-11, research X2. capsule-provision and capsule-collect assume a slot in thirteen places (brief state, unit scope, slot policy, +refs/heads/*, agent@ login). A GPT review found that baking a room's repo table into a program makes it target-aware (POL-002)."
+choice = """capsule-room-git takes --room <r> (selects the room socket and the quarantine key) and --profile <repo> (the existing reader gives path and guestPath); one store path serves every room, and the front end resolves and checks repo against the room's repos. It composes quarantine.nix (repoOf "<room>/<repo>", codeRefsOf "<room>", checkToken per token), guest-ssh.nix's viaSocket on /run/capsule-room/<room>/ssh.sock, and the bounded fsck fetch factored out of capsule-collect into a fragment both use. push <branch>: resolve branch in the target's host checkout, push +<oid>:refs/host/<branch> (never HEAD, so the worktree is untouched), print the oid. collect <branch>: fetch only +refs/heads/<branch> into /var/lib/capsule/collect/<room>/<repo>.git as refs/capsule/<room>/heads/<branch>, fsck, --no-tags, ulimit -f, print ref and oid. No brief, refresh, snapshot, stage or unit."""
+alternatives = ["widen capsule-provision and capsule-collect with flags", "bake each room's repo table into the program", "a positional quarantine name (deleted by NOTES item 20)"]
+rationale = "Run-time arguments keep one program for any number of rooms (NOTES item 51); resolution is the front end's act (POL-003). A non-HEAD ref avoids updateInstead's tracked-files-only reset (ISS-009); the runner creates job/<id> itself."
+consequences = ["the fetch fragment is extracted from capsule-collect, so slot collect changes text", "the push verb is not named refresh, which already means derived state"]
+decided_by = "user, on agent proposal (amended after a GPT review)"
+decided_on = "2026-10-18"
+
+[evidence]                      # free-text citations (supports / contradicts / notes)
+supports    = []
+contradicts = []
+notes       = []
+
+[relationships]                 # verb-written edges (set by doctrine supersede)
+supersedes    = []   # record ids this one replaces (set by doctrine supersede)
+superseded_by = []   # set on superseded predecessor (verb-written)
+
+[[relation]]
+label = "shapes"
+target = "SL-006"

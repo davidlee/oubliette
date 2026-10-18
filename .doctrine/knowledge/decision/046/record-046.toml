@@ -1,0 +1,33 @@
+schema = "doctrine.knowledge"
+version = 1
+
+id = 46
+slug = "room-collect-names-a-policy"
+title = "A room that collects names one of the declared policies for its ingestion bound"
+record_kind = "decision"
+status = "accepted"
+created = "2026-10-18"
+updated = "2026-10-18"
+tags = []
+
+[facet]                         # every field typed; seeded empty (captured later)
+context = "SL-006 inq-4, NOTES item 36: a collect with no bound is refused. Rooms have no policy noun (DEC-036). Policies carry allowlist, collectMaxPackBytes and mayCollect."
+choice = "A room that declares repos names policy = <one of policies.everything>; its collectMaxPackBytes and mayCollect bound and permit room collects. Its allowlist half is inert for a room, which has no uplink."
+alternatives = ["a per-room collectMaxPackBytes", "a fixed host bound"]
+rationale = "Keeps the ingestion axis in its one home (POL-003); mayCollect = false still refuses."
+consequences = ["the room record gains policy", "an unknown policy name is an eval refusal"]
+decided_by = "user, on agent proposal (amended after a GPT review)"
+decided_on = "2026-10-18"
+
+[evidence]                      # free-text citations (supports / contradicts / notes)
+supports    = []
+contradicts = []
+notes       = []
+
+[relationships]                 # verb-written edges (set by doctrine supersede)
+supersedes    = []   # record ids this one replaces (set by doctrine supersede)
+superseded_by = []   # set on superseded predecessor (verb-written)
+
+[[relation]]
+label = "shapes"
+target = "SL-006"

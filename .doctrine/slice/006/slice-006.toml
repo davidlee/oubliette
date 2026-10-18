@@ -1,7 +1,7 @@
 id = 6
 slug = "assistant-repos"
 title = "Assistant room over many repos: clones, tools and a per-repo git channel"
-status = "proposed"
+status = "design"
 created = "2026-10-18"
 updated = "2026-10-18"
 tags = []
