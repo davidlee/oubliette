@@ -75,7 +75,7 @@ every caller), DEC-030 (template eval-check), DEC-031, CON-005.
 
 ## Harvest
 <!-- single-copy: updated in place each harvest; ids only, never restated content -->
-fresh-as-of: 2026-10-18 · reconciled (RV-017 outcome), before /close · audited surface 6a91942
+fresh-as-of: 2026-10-18 · closed (done), RV-017 reconciled · audited surface 6a91942
 
 ### Produced
 - DEC-031..DEC-041 (design); DEC-042 supersedes DEC-025 (nine arguments; user assent quoted)
@@ -98,7 +98,7 @@ fresh-as-of: 2026-10-18 · reconciled (RV-017 outcome), before /close · audited
 - a build sandbox's /etc is read-only, so a program writing /etc/netns needs a path seam (etcNetns) — in CLAUDE.md and RV-017 F-5
 
 ### Open (for /reconcile and after)
-- reconciled: RV-017 `## Reconciliation Outcome` (design.md sec-2/3/5/7/8/9/12, 11 selectors); next /close
+- closed: done at 6e389f9+; IDE-002 left open (fulfilled partially, SL-006 continues it)
 - ISS-022 (F-1): move the fabric assert onto mkFleet's result and pin the wiring — after SL-006 leaves mkfleet.nix/flake.nix
 - RSK-011 (F-10): room named capsule-<slot> shares a HostKeyAlias
 - tolerated: F-2 slot start readiness unpinned (first live slot start is the evidence); F-9 serial console login prompt unobserved
