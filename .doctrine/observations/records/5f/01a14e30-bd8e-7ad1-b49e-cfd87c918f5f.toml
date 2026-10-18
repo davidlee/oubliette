@@ -1,0 +1,18 @@
+schema = "doctrine.observation"
+schema_version = 1
+uid = "01a14e30-bd8e-7ad1-b49e-cfd87c918f5f"
+recorded_at = "2026-10-18T08:46:19.534058783Z"
+kind = "friction"
+summary = "dropping an outer assert reindents a whole file under alejandra"
+detail = "SL-005 PHASE-07: moving cli.nix's collide throw from an outer assert into text (to expose passthru.reasons) made alejandra reindent the writeShellApplication body; 4.8k-line raw diff, ~210 with -w. The next 'expose a reasons' move will hit it; consider .git-blame-ignore-revs. Memory candidate."
+
+[facets.execution]
+schema_version = 1
+interface = "cli"
+interface_origin = "automatic"
+product_surface = "doctrine"
+product_surface_origin = "automatic"
+command = "observation record"
+command_origin = "automatic"
+repository_context = "primary"
+repository_context_origin = "automatic"

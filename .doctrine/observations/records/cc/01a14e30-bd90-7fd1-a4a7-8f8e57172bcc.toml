@@ -1,0 +1,18 @@
+schema = "doctrine.observation"
+schema_version = 1
+uid = "01a14e30-bd90-7fd1-a4a7-8f8e57172bcc"
+recorded_at = "2026-10-18T08:46:19.536496248Z"
+kind = "friction"
+summary = "room stop argv could be pinned cheaply"
+detail = "SL-005 PHASE-07 worker: sudo is not in cli.nix runtimeInputs and volumeCases already stubs it, so room stop's argv could be pinned with a sudo stub; left to PHASE-09 per RV-014 F-6. Room start would cost a 60 s readiness wait."
+
+[facets.execution]
+schema_version = 1
+interface = "cli"
+interface_origin = "automatic"
+product_surface = "doctrine"
+product_surface_origin = "automatic"
+command = "observation record"
+command_origin = "automatic"
+repository_context = "primary"
+repository_context_origin = "automatic"

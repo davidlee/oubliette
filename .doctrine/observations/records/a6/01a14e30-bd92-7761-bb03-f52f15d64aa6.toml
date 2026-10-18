@@ -1,0 +1,18 @@
+schema = "doctrine.observation"
+schema_version = 1
+uid = "01a14e30-bd92-7761-bb03-f52f15d64aa6"
+recorded_at = "2026-10-18T08:46:19.538856491Z"
+kind = "friction"
+summary = "bare capsule status with only a room up refuses before the rooms block"
+detail = "SL-005 PHASE-07 planner: on a host where only a room runs, unnamed 'capsule status' exits 'no capsule is up' before reaching the rooms block, which design sec-7 says is what a refused probe needs to see. Kept as designed; design gap for /reconcile."
+
+[facets.execution]
+schema_version = 1
+interface = "cli"
+interface_origin = "automatic"
+product_surface = "doctrine"
+product_surface_origin = "automatic"
+command = "observation record"
+command_origin = "automatic"
+repository_context = "primary"
+repository_context_origin = "automatic"
