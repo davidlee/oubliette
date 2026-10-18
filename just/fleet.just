@@ -76,7 +76,7 @@ build:
     '.#snapshotCases' '.#refreshCases' '.#observeCases' '.#baselineCases' \
     '.#profileCases' '.#gitChannelCases' '.#quarantineCases' '.#vmCases' \
     '.#wrapCases' \
-    '.#volumeRootCases' '.#resetHomeCases' '.#volumeCases' '.#fleetCases' \
+    '.#volumeRootCases' '.#resetHomeCases' '.#sessionCases' '.#volumeCases' '.#fleetCases' \
     '.#roomsCases' '.#fabricCases' '.#roomVerbsCases' '.#roomImages'
 
 # which units the host module generates, without rebuilding a host — the only
@@ -108,6 +108,7 @@ cases:
   @cat "$(nix build --no-link --print-out-paths '.#wrapCases')"
   @cat "$(nix build --no-link --print-out-paths '.#volumeRootCases')"
   @cat "$(nix build --no-link --print-out-paths '.#resetHomeCases')"
+  @cat "$(nix build --no-link --print-out-paths '.#sessionCases')"
   @cat "$(nix build --no-link --print-out-paths '.#volumeCases')"
   @cat "$(nix build --no-link --print-out-paths '.#fleetCases')"
   @cat "$(nix build --no-link --print-out-paths '.#roomsCases')"

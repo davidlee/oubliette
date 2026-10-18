@@ -48,7 +48,7 @@ evaluates). `just` (default) runs the build, units, and fmt.
 the NixOS module — what it says, including its programs, since a unit graph does
 not mention them. `guardCases`, `netnsCases`, `briefCases`, `snapshotCases`, `refreshCases`, `observeCases`,
 `baselineCases`, `policyCases`, `profileCases`, `vmCases`, `gitChannelCases`, `quarantineCases`,
-`volumeRootCases`, `resetHomeCases`, `volumeCases`, `fleetCases`, `roomsCases`, `fabricCases` and `roomVerbsCases` *run* a
+`volumeRootCases`, `resetHomeCases`, `sessionCases`, `volumeCases`, `fleetCases`, `roomsCases`, `fabricCases` and `roomVerbsCases` *run* a
 program's own text with a substitute for the one thing tying it to this host
 (`just cases`), and are the answer whenever the interesting branches are ones a
 live host can only reach destructively or expensively — the guard's by unnaming a
@@ -66,11 +66,13 @@ the git channel's by confining a second project, the quarantine's bounded fetch 
 offering it a pack over the ceiling, a malformed object, a tag and a held ref lock,
 and the volume root helper's by
 deleting and overwriting a real slot's image as root, the guest's reset of
-`$HOME` by deleting one under a real agent, and the volume verb's by typing a
+`$HOME` by deleting one under a real agent, the room's session by running a
+command in a repo whose tree only a booted room has, and the volume verb's by typing a
 destructive command at a slot nobody named, racing a start against a clone, and
-injecting into a clone whose scrub failed. `resetHomeCases` is the one whose
-subject ships in the *guest* (`vm/`), and it also reads the scrub list off the
-evaluated capsule, so `just build` evaluates the guest. **The git channel is the only one
+injecting into a clone whose scrub failed. `resetHomeCases` and `sessionCases`
+are the two whose subject ships in the *guest* (`vm/`); the first reads the scrub
+list off the evaluated capsule and the second finds its program in an evaluated
+room, so `just build` evaluates the guest. **The git channel is the only one
 over a program that talks to a guest, and what it can reach is everything
 upstream of the door** — `pkgs.openssh` is in its subjects' `runtimeInputs`, so
 nothing in a sandbox can stub `ssh`, and that is a boundary to respect rather
@@ -96,7 +98,7 @@ written, wired into `just cases`, and left out of `just build` for a session
 (NOTES item 51 step 3). **One suite per file, beside the program it pins** —
 `host/<name>-cases.nix`, or `vm/<name>-cases.nix` for a guest program, a function of `pkgs`, `lib` and **the store path the
 program ships**, with a short `import` in `mkfleet.nix` (NOTES item 51 step 0).
-Thirteen of them are handed a fixture instead and say so in their headers: the
+Fourteen of them are handed a fixture instead and say so in their headers: the
 guard's stubbed kernel, the namespace program's stubbed kernel and scratch
 `/etc/netns` (a build sandbox's `/etc` is read-only, and the program's path is
 fixed at build), the front end's pool that is not this host's (three times,
@@ -105,6 +107,7 @@ profile's target that is nobody's, the wrapper's four directories that are
 no host's, the volume root helper's sandbox roots, since a root program's
 paths are fixed at build and its shipped store path cannot be aimed anywhere else,
 the guest reset's fixture home, for the same reason one level down, the
+session's repo tree, since its root is fixed at build, the
 fleet's targets and slots that are nobody's (`fleet-cases.nix`), the
 quarantine's policy vocabulary that is no host's (`quarantine-cases.nix`), and the rooms and
 probe fabric that are nobody's (`rooms-cases.nix`, `fabric-cases.nix`). A new suite goes in

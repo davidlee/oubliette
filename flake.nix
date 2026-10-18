@@ -50,7 +50,7 @@
       targets = import ./targets;
     };
 
-    fleet = mkFleet (import ./fixture {inherit (inputs) llm-agents;});
+    fleet = mkFleet (import ./fixture {inherit (inputs) llm-agents nixpkgs;});
 
     # The template's own flake.nix, evaluated against stub inputs and nothing
     # fetched (templates/template-cases.nix). Oubliette's own check, so here

@@ -3,15 +3,40 @@
 # not any target's. A real host's declarations live in its own consumer flake,
 # which calls the same `lib.mkFleet` (SL-004 design sec-3).
 #
-# Every optional target field is absent, spelled as its absent value
-# (docs/contract-target.md, "Configuration"), so the build exercises each
-# absent path. Two slots, because two is what makes "one image per target, N
-# slots" something a build can show. Every address is off the live fabric
+# `fixture`'s optional target fields are all absent, spelled as their absent
+# values (docs/contract-target.md, "Configuration"), so the build exercises
+# each absent path; `tooled` is the same target with a tool set, read only by
+# the assistant room, so a room's image shows a repo with a set beside one
+# without (SL-006 design sec-7). Two slots, because two is what makes "one
+# image per target, N slots" something a build can show. Every address is off the live fabric
 # (10.100/10.101) and off the probe fabric (10.110/10.111).
 #
-# `llm-agents` is the one flake input the fixture needs: the source of the
-# `agents` fragment it composes, so the composition path is exercised too.
-{llm-agents}: let
+# Two flake inputs: `llm-agents`, the source of the `agents` fragment it
+# composes, so the composition path is exercised too; and `nixpkgs`, which
+# builds the stub tool set (stub-flake.nix).
+{
+  llm-agents,
+  nixpkgs,
+}: let
+  stub = import ./stub-flake.nix {pkgs = nixpkgs.legacyPackages.x86_64-linux;};
+
+  # Each required field at its minimum, each optional one absent.
+  decl = {
+    path = "/nonexistent/fixture";
+    toolsPackage = null;
+    extraTools = [];
+    caches = {};
+    guestConfig = {};
+    commands = "";
+    baseline = null;
+    refresh = null;
+    sizes = {
+      vcpu = 1;
+      mem = 1024;
+      volume = 1024;
+    };
+  };
+
   # Two policies, named `build` and `sealed`: mkfleet.nix's probe prelude reads
   # both by name (SL-004 PHASE-07 F-1). `dir` is relative to CAPSULE_ROOT.
   policies = rec {
@@ -37,24 +62,20 @@
     policies = policies.everything;
   };
 in {
-  targets.fixture = {
-    # Each required field at its minimum, each optional one absent.
-    decl = {
-      path = "/nonexistent/fixture";
-      toolsPackage = null;
-      extraTools = [];
-      caches = {};
-      guestConfig = {};
-      commands = "";
-      baseline = null;
-      refresh = null;
-      sizes = {
-        vcpu = 1;
-        mem = 1024;
-        volume = 1024;
-      };
+  targets = {
+    fixture = {
+      inherit decl;
+      flake = stub;
     };
-    flake = import ./stub-flake.nix;
+    tooled = {
+      decl =
+        decl
+        // {
+          path = "/nonexistent/tooled";
+          toolsPackage = "tools";
+        };
+      flake = stub;
+    };
   };
 
   fleet = {
@@ -71,8 +92,10 @@ in {
   };
 
   # Two rooms, nobody's: `lounge` is Plan E's shape (several people on one
-  # box) and `assistant` Plan F's door (one agent). No addressing — a room has
-  # no uplink — and off the probe fabric by its `room-` prefix. The keys are
+  # box) and the absent path of repos, policy and a work volume; `assistant` is
+  # Plan F's door (one agent) and the case with all three, over both targets.
+  # No addressing — a room has no uplink — and off the probe fabric by its
+  # `room-` prefix. The keys are
   # strings nobody holds.
   rooms = let
     sizes = {
@@ -99,7 +122,12 @@ in {
         uid = 1001;
         keys = ["ssh-ed25519 AAAA fixture-agent"];
       };
-      inherit sizes;
+      repos = {
+        user = "agent";
+        targets = ["fixture" "tooled"];
+      };
+      policy = "build";
+      sizes = sizes // {work = 1024;};
     };
   };
 

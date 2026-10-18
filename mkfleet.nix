@@ -174,7 +174,13 @@
   # (DEC-032). A room's name is its `nixosConfigurations` attribute, which is
   # what `microvm -c <room>` resolves — and the only way one is created, since
   # it is not in `devshellVms`.
-  roomVms = lib.mapAttrs (_: room: mkVm "capsule" ./vm/room.nix {inherit room;}) roomRecords;
+  # Every room is handed the targets, their flakes and `session`, as a slot is
+  # handed its target and flake (fleet.nix); a room without repos reads none.
+  roomVms = lib.mapAttrs (_: room: mkVm "capsule" ./vm/room.nix {inherit room targets targetFlakes session;}) roomRecords;
+
+  # The room's one per-repo launcher, built once at its default root: every room
+  # with repos ships this store path, and `sessionCases` runs the same value.
+  session = import ./vm/session.nix {inherit pkgs;};
 
   # Every `nixosConfigurations` attribute: `hello`, `capsule`, each slot and
   # each room (DEC-032). A target's image is never one of its own: it builds as
@@ -206,6 +212,51 @@
         (check (user.extraGroups == [])
           "user '${u}' has extra groups ${builtins.toJSON user.extraGroups}; a room grants none (POL-001 limb 3)")
       ];
+
+    # The work volume and the tree `session` reads (sec-3). A repo-less room is
+    # asserted to have neither, so its image stays what it was.
+    work = lib.filter (v: v.mountPoint == targets.volumePath) c.microvm.volumes;
+    etc = c.environment.etc;
+    tree = lib.filter (lib.hasPrefix "room/repo/") (lib.attrNames etc);
+    onPath = map toString c.environment.systemPackages;
+    repoChecks = r: let
+      key = leaf: "room/repo/${r.name}/${leaf}";
+      clone = etc.${key "clone"} or null;
+      tools = etc.${key "tools"} or null;
+      hasSet = targets.byName.${r.name}.toolsPackage != null;
+    in
+      [
+        # A string, never a path: a path would copy into the store (sec-3).
+        (check (clone != null && clone.source == r.guestPath)
+          "repo '${r.name}': /etc/${key "clone"} is not a link to its guestPath ${r.guestPath} (DEC-049)")
+        (check ((tools != null) == hasSet)
+          "repo '${r.name}': /etc/${key "tools"} is ${
+            if tools == null
+            then "absent"
+            else "present"
+          }, but its target's toolsPackage is ${
+            if hasSet
+            then "set"
+            else "null"
+          } (DEC-044)")
+      ]
+      ++ lib.optional (tools != null)
+      (check (!builtins.elem (toString tools.source) onPath)
+        "repo '${r.name}': its tool set is in environment.systemPackages, where two repos' tools would meet on one PATH (DEC-044)");
+    repoRules =
+      if room.repos == null
+      then [
+        (check (work == [])
+          "a volume is mounted at ${targets.volumePath}, but the room declares no repos (DEC-043)")
+        (check (tree == [])
+          "/etc carries ${builtins.toJSON tree}, but the room declares no repos (DEC-049)")
+      ]
+      else
+        [
+          (check (lib.any (v: v.image == "room-work.img" && v.size == room.sizes.work) work)
+            "no volume 'room-work.img' of sizes.work at ${targets.volumePath} (DEC-043)")
+        ]
+        ++ lib.concatMap repoChecks room.repos.targets;
   in
     [
       (check (c.networking.hostName == "capsule")
@@ -222,7 +273,8 @@
       (check (c.security.lockKernelModules && c.security.protectKernelImage)
         "kernel modules or the kernel image are not locked (vm/room.nix)")
     ]
-    ++ lib.concatMap userChecks (lib.attrNames room.users);
+    ++ lib.concatMap userChecks (lib.attrNames room.users)
+    ++ repoRules;
 
   # Every room's runner, built — the first gate in `just build` that builds a VM
   # image at all (RV-014 F-7). Forcing a link's `path` forces every check above
@@ -761,6 +813,21 @@
     fabric = import ./fabric.nix;
     capsules = import ./capsules.nix;
     rooms = import ./rooms.nix;
+  };
+
+  # The room's launcher, over a fixture tree, and the shipped copy found in the
+  # first declared room with repos — `null` when there is none, which the suite
+  # reports as skipped (vm/session-cases.nix).
+  sessionCases = import ./vm/session-cases.nix {
+    inherit pkgs lib;
+    session = import ./vm/session.nix;
+    shipped = session;
+    image = let
+      withRepos = lib.filter (n: roomRecords.${n}.repos != null) (lib.attrNames roomRecords);
+    in
+      if withRepos == []
+      then null
+      else roomVms.${builtins.head withRepos}.config;
   };
 
   resetHomeCases = import ./vm/reset-home-cases.nix {
@@ -1616,7 +1683,7 @@ in {
       # The checks that need no root and no host: what the module says, what the
       # guard decides, and which policy a slot resolves to.
       inherit hostModuleUnits hostModulePrograms guardCases netnsCases policyCases observeCases;
-      inherit profileCases gitChannelCases quarantineCases vmCases wrapCases volumeRootCases resetHomeCases volumeCases fleetCases roomsCases fabricCases roomVerbsCases;
+      inherit profileCases gitChannelCases quarantineCases vmCases wrapCases volumeRootCases resetHomeCases sessionCases volumeCases fleetCases roomsCases fabricCases roomVerbsCases;
       # Every declared room's image, checked and built (RV-014 F-7).
       inherit roomImages;
       # The rendered run-time half of every target, so a human can read what a

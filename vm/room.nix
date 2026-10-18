@@ -4,17 +4,44 @@
 # same one a capsule has; what this adds is sizes, the volume at `/home`, one
 # normal user per declared user, and a first-boot seed that makes their homes.
 #
+# A room that declares repos (SL-006 design sec-3) also gets a second volume at
+# `/work` (`targets.volumePath`), one `git init`ed clone per repo at its
+# target's `guestPath`, `git`, and `session`, which runs a command in one repo
+# over the tree rendered under `/etc/room/repo`: per repo a `clone` link and,
+# for a target with a tool set, a `tools` link. A repo-less room renders none of
+# it, and its image is what it was before repos existed.
+#
 # What it deliberately lacks, against `vm/capsule.nix`: no egress (a room has
-# no uplink), so no proxy; no target, so no tool floor, no checkout, no marker
-# on the kernel command line; and no `reset-home`. Nothing here learns what a
-# room is for — `room.users` and `room.sizes` are values (POL-002).
+# no uplink), so no proxy; no tool set on the base `PATH` — a repo's is reached
+# only through `session` (DEC-044); no marker on the kernel command line; and
+# no `reset-home`. Nothing here learns what a room is for — `room.users`,
+# `room.sizes` and `room.repos` are values (POL-002).
 {
   lib,
   pkgs,
   room,
+  # The derived targets (targets/default.nix), their flakes, the one `session`
+  # construction (mkfleet.nix) and the work branch: read only for a room with
+  # repos.
+  targets,
+  targetFlakes,
+  session,
+  workBranch,
   ...
 }: let
   users = lib.attrNames room.users;
+  repos =
+    if room.repos == null
+    then []
+    else room.repos.targets;
+  # A repo's tool set, by `vm/capsule.nix`'s lookup, or `null` for a target
+  # with none.
+  toolsOf = r: let
+    target = targets.byName.${r.name};
+  in
+    if target.toolsPackage == null
+    then null
+    else targetFlakes.${r.name}.packages.${pkgs.stdenv.hostPlatform.system}.${target.toolsPackage};
 in {
   # Host keys on the volume, beside the homes, for the reason the door gives.
   imports = [(lib.modules.importApply ./door.nix {hostKeyDir = "/home/.ssh-host-keys";})];
@@ -23,13 +50,20 @@ in {
   # (SL-005 PHASE-01 EX-5). Exec on `/home` stays permitted (DEC-037).
   microvm = {
     inherit (room.sizes) vcpu mem;
-    volumes = [
-      {
-        image = "room-home.img";
-        mountPoint = "/home";
-        size = room.sizes.volume;
-      }
-    ];
+    volumes =
+      [
+        {
+          image = "room-home.img";
+          mountPoint = "/home";
+          size = room.sizes.volume;
+        }
+      ]
+      # The clones' volume, at `/work` (DEC-043).
+      ++ lib.optional (room.repos != null) {
+        image = "room-work.img";
+        mountPoint = targets.volumePath;
+        size = room.sizes.work;
+      };
   };
 
   # One login per declared user, by key only, under the uid the record carries
@@ -57,8 +91,25 @@ in {
   security.lockKernelModules = true;
   security.protectKernelImage = true;
 
+  # `git` for the clones, and `session` for running in one (DEC-044, DEC-049).
+  # No repo's tool set: those are reached only through the tree below.
+  environment.systemPackages = lib.optionals (room.repos != null) [pkgs.git session];
+
+  # The tree `session` reads, links and nothing else: a `clone` per repo, its
+  # `guestPath` as a string so the link points out of the store rather than at
+  # a copy, and a `tools` for a repo whose target has a set.
+  environment.etc = lib.listToAttrs (lib.concatMap (r: let
+    tools = toolsOf r;
+  in
+    [(lib.nameValuePair "room/repo/${r.name}/clone" {source = r.guestPath;})]
+    ++ lib.optional (tools != null)
+    (lib.nameValuePair "room/repo/${r.name}/tools" {source = tools;}))
+  repos);
+
   # First boot, and every boot after: the host-key directory and one home per
-  # declared user, on the volume. `capsule-seed`'s shape, without a repository.
+  # declared user, on the volume. `capsule-seed`'s shape. With repos, then one
+  # clone per repo on `/work`, made by the repos' user and `git init`ed only
+  # when it has no `.git`, so nothing here touches a clone again (DEC-043).
   systemd.services.room-seed = {
     description = "Seed /home with each declared user's home";
     wantedBy = ["multi-user.target"];
@@ -68,7 +119,7 @@ in {
       Type = "oneshot";
       RemainAfterExit = true;
     };
-    path = [pkgs.coreutils];
+    path = [pkgs.coreutils] ++ lib.optionals (room.repos != null) [pkgs.git pkgs.util-linux];
     script =
       ''
         install -d -m 0700 /home/.ssh-host-keys
@@ -78,6 +129,18 @@ in {
       in ''
         install -d -m 0700 -o ${q} -g users /home/${q}
       '')
-      users;
+      users
+      # `HOME` explicitly: `runuser` keeps root's, and git reading
+      # `/root/.gitconfig` as the user is a fatal EACCES.
+      + lib.concatMapStrings (r: let
+        u = lib.escapeShellArg room.repos.user;
+        dir = lib.escapeShellArg r.guestPath;
+      in ''
+        install -d -m 0700 -o ${u} -g users ${dir}
+        [ -e ${dir}/.git ] ||
+          runuser -u ${u} -- env HOME=${lib.escapeShellArg "/home/${room.repos.user}"} \
+            git init -q --initial-branch=${lib.escapeShellArg workBranch} ${dir}
+      '')
+      repos;
   };
 }
