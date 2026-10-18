@@ -1,0 +1,280 @@
+id    = 18
+slug  = "reconciliation-review-of-sl-006"
+title = "reconciliation review of SL-006"
+# no status — a review's status is DERIVED from its findings, so
+# it is never stored (the storage rule forbids derived data in authored files).
+
+[review]
+facet     = "reconciliation"     # scope|design|plan|phase-plan|implementation|code-review|reconciliation
+raiser    = "raiser"
+responder = "responder"
+rounds_base = 0
+contests_base = 0
+concluded = true
+
+[[review.turn]]
+act = "conclude"
+role = "raiser"
+note = """
+Conformance audit of SL-006 on the primary checkout at e16fe32 (range 3a52d2e..e16fe32). Examined: slice conformance (PHASE-07 row bootstrapped cc72b97..4c1d210); the shipped code of host/room-git.nix, vm/session.nix, host/quarantine.nix, host/git-channel.nix, host/guest-ssh.nix, rooms.nix, vm/room.nix, host/cli.nix, host/services.nix, host/programs.nix against design sec-2..sec-6 and DEC-043/045/047/050/051; roomGitCases' fixture-door cases; `just` (rc 0) and `doctrine check gate` (rc 0) at HEAD; plan EX/VT/VA against phase sheets 01-07 Findings, PHASE-07's live record A0-A17; REV-007 in POL-003; ISS-021/RSK-011/ISS-024 status; IMP-017's binding-source contradiction. Not re-run: the live rung itself (its record was read, not reproduced); the per-phase mutations (taken from the phase sheets).
+"""
+
+[target]                   # the outbound `reviews` edge: RV-NNN ──reviews──▶ <ref>
+ref   = "SL-006"
+
+[[finding]]
+id = "F-1"
+status = "verified"
+severity = "major"
+title = "Expected one answer on whether a room's base PATH carries git; observed DEC-043 and the contract promise it while design sec-6 says a non-login PATH is not promised"
+detail = """
+Binding-source contradiction (IMP-017).
+
+- DEC-043 choice: "git joins the room's base tools"; docs/contract-target.md's room tools row says git is on the base PATH.
+- design sec-6 (execution env row): call `session` by absolute path "(absolute: a non-login ssh command's `PATH` is not promised)".
+- vm/session.nix prepends `tools/bin` to the *inherited* PATH and `exec`s by name, so `git` (and `bash`, `which`, design sec-3) is reached through exactly the PATH sec-6 says nobody promises.
+- Live (phase-07 A7): inside `session`, `git` is `/run/current-system/sw/bin/git` — it held because NixOS's sshd gives a non-login command the system profile. Nothing in oubliette pins it; satan's interface relies on it.
+
+The two sources must end up saying one thing. Which one (promise the non-login PATH and pin it, or make `session` independent of it) is a design choice, not the auditor's."""
+disposition = "design-wrong"
+response = "The code is what the live rung proved; the defect is that two binding sources disagree about the promise behind it. Reconcile brief: design sec-6 (execution env row) and sec-3 (base tools) must say the same as DEC-043 and docs/contract-target.md's room tools row. The choice of which way — promise the non-login PATH and pin it, or make `session` independent of the caller's PATH — is the user's, asked at /reconcile; the code half of the second option is IMP-017's (open, follow-up outside this slice). Until the user chooses, nothing is silently picked."
+
+[[finding.turn]]
+act = "raise"
+role = "raiser"
+
+[[finding.turn]]
+act = "dispose"
+role = "responder"
+disposition = "design-wrong"
+response = "The code is what the live rung proved; the defect is that two binding sources disagree about the promise behind it. Reconcile brief: design sec-6 (execution env row) and sec-3 (base tools) must say the same as DEC-043 and docs/contract-target.md's room tools row. The choice of which way — promise the non-login PATH and pin it, or make `session` independent of the caller's PATH — is the user's, asked at /reconcile; the code half of the second option is IMP-017's (open, follow-up outside this slice). Until the user chooses, nothing is silently picked."
+
+[[finding.turn]]
+act = "verify"
+role = "raiser"
+note = "Disposition checked against the evidence; brief entry present in review-018.md § Reconciliation Brief (or fix applied, F-7)."
+
+[[finding]]
+id = "F-2"
+status = "verified"
+severity = "minor"
+title = "Expected sec-8 and DEC-050 to say which branches a case reaches; observed both say the banner and post-banner branches are live-only, while roomGitCases reaches them"
+detail = """
+design sec-8: "Not reachable by a case (ssh cannot be stubbed): the banner branch, an auth or host-key failure → 1". DEC-050 consequences: "the banner and auth branches are proven live, since ssh cannot be stubbed".
+
+host/room-git-cases.nix:268-295 serves a fixture door on a socket: a silent door → 75 "no ssh banner"; an HTTP reply → 75; an `SSH-2.0-fixture` banner then nothing → 1 for push and for collect, plus a timing case that the pre-flight stops at the banner (readbytes=8, < 3000 ms) and a check that nothing is written to state before the banner.
+
+ssh itself is still unstubbable (it is a runtimeInput); what changed is that the *door* is. What stays live-only is narrower: authentication and host-key failure through a real sshd (phase-07 A11 observed the host-key half; auth was not exercised). The design and DEC-050 overstate what only the live rung can prove."""
+disposition = "design-wrong"
+response = """The suite is better than the design predicted, so the design and DEC-050 under-claim what a case can reach. Reconcile brief: design sec-8's "Not reachable by a case" paragraph and its roomGitCases row (the door is fakeable; ssh is not), and DEC-050's consequences ("cases pin no socket => 75, no banner => 75 and a post-banner failure => 1 with a fixture door; authentication and host-key refusal through a real sshd are proven live")."""
+
+[[finding.turn]]
+act = "raise"
+role = "raiser"
+
+[[finding.turn]]
+act = "dispose"
+role = "responder"
+disposition = "design-wrong"
+response = """The suite is better than the design predicted, so the design and DEC-050 under-claim what a case can reach. Reconcile brief: design sec-8's "Not reachable by a case" paragraph and its roomGitCases row (the door is fakeable; ssh is not), and DEC-050's consequences ("cases pin no socket => 75, no banner => 75 and a post-banner failure => 1 with a fixture door; authentication and host-key refusal through a real sshd are proven live")."""
+
+[[finding.turn]]
+act = "verify"
+role = "raiser"
+note = "Disposition checked against the evidence; brief entry present in review-018.md § Reconciliation Brief (or fix applied, F-7)."
+
+[[finding]]
+id = "F-3"
+status = "verified"
+severity = "minor"
+title = "Expected sec-4 step 1 and sec-6 to describe the channel that shipped; observed the profile reader, the extra refusals and the stdout shapes differ"
+detail = '''
+Departures recorded in the phase sheets (phase-04 D2/OQ-4, phase-06's departure table), none yet in design.md:
+
+1. sec-4: "`--profile` is the existing reader (`host/profile.nix` `select`)". Shipped: `profileLoad` behind `refuseToken 2` (host/room-git.nix:42-44, :186) — `select` exits 1 and falls back to `CAPSULE_PROFILE`, both against the 2-before-the-door rule and DEC-041's argv-only naming. DEC-045 says "the existing reader" and is not wrong.
+2. sec-4 step 1 lists usage, token, policy, `may`, branch, push rev-parse. Shipped also refuses (2): `--user` not a login name (room-git.nix:167), a state root holding whitespace or `%` (`refuseOddState`, :93-100); the branch passes `check-ref-format --branch` *and* `refs/heads/<branch>` (inside a repo `--branch` expands `@{-1}`); push resolves `refs/heads/<branch>` exactly (so a same-named tag is never sent); `--` ends the options.
+3. stdout: sec-4 step 4 says collect prints "the ref and its oid"; shipped prints `<oid>\t<ref>` (ls-remote order, room-git.nix:24-27, :256), and the code's header says the line is outward-facing to satan SL-023. sec-6's `GitChannel.collect` row names the ref but not the line's shape — the relay is what satan parses.'''
+disposition = "design-wrong"
+response = '''Each departure is a tightening that keeps the design's own rules (2 before the door, argv only); the code is right. Reconcile brief: design sec-4 — `profileLoad` behind `refuseToken 2` in place of `select`, with why; step 1's full refusal list (`--user` login name, odd state root, both ref-format checks, `refs/heads/<branch>` exactly, `--` ends options); step 3/4's stdout lines, push `<oid>`, collect `<oid>\t<ref>`. Design sec-6's `GitChannel.refresh`/`collect` rows state those two stdout shapes, since satan parses them.'''
+
+[[finding.turn]]
+act = "raise"
+role = "raiser"
+
+[[finding.turn]]
+act = "dispose"
+role = "responder"
+disposition = "design-wrong"
+response = '''Each departure is a tightening that keeps the design's own rules (2 before the door, argv only); the code is right. Reconcile brief: design sec-4 — `profileLoad` behind `refuseToken 2` in place of `select`, with why; step 1's full refusal list (`--user` login name, odd state root, both ref-format checks, `refs/heads/<branch>` exactly, `--` ends options); step 3/4's stdout lines, push `<oid>`, collect `<oid>\t<ref>`. Design sec-6's `GitChannel.refresh`/`collect` rows state those two stdout shapes, since satan parses them.'''
+
+[[finding.turn]]
+act = "verify"
+role = "raiser"
+note = "Disposition checked against the evidence; brief entry present in review-018.md § Reconciliation Brief (or fix applied, F-7)."
+
+[[finding]]
+id = "F-4"
+status = "verified"
+severity = "minor"
+title = "Expected sec-6's reachability probe to keep DEC-050's split between down and distrusted; observed `capsule <room> ssh <user> true` collapses them"
+detail = """
+design sec-6, `GitChannel.reachable`: "exit 75 from either verb, or `capsule <room> ssh <user> true`".
+
+The ssh door does not speak DEC-050's statuses: no socket exits 1 (host/cli.nix:1939-1943, phase-07 A13 `13-ssh` rc 1), a changed host key exits 255 (A11 `11-ssh`), and the human door carries no `BatchMode` (cli.nix roomDoor's comment: "No `BatchMode`, since a human is at it"), so a runner without an agent-held key can block on a prompt. A runner that treats "ssh true failed" as unreachable reads a trust failure as downtime — the conflation DEC-050 exists to prevent. The 75 half of the row is sound; the "or" alternative is not an equivalent."""
+disposition = "design-wrong"
+response = """The front end's human door is right to be interactive (no BatchMode) and to say "not up" as 1, as every slot door does; it is the interface row that offers it as an equivalent probe. Reconcile brief: design sec-6's `GitChannel.reachable` row — 75 from either channel verb is the reachability answer; drop the `ssh <user> true` alternative, or state that it does not distinguish down (1) from distrusted (255) and may prompt. The relay to satan SL-023 is the user's act; reconcile notes the correction for it."""
+
+[[finding.turn]]
+act = "raise"
+role = "raiser"
+
+[[finding.turn]]
+act = "dispose"
+role = "responder"
+disposition = "design-wrong"
+response = """The front end's human door is right to be interactive (no BatchMode) and to say "not up" as 1, as every slot door does; it is the interface row that offers it as an equivalent probe. Reconcile brief: design sec-6's `GitChannel.reachable` row — 75 from either channel verb is the reachability answer; drop the `ssh <user> true` alternative, or state that it does not distinguish down (1) from distrusted (255) and may prompt. The relay to satan SL-023 is the user's act; reconcile notes the correction for it."""
+
+[[finding.turn]]
+act = "verify"
+role = "raiser"
+note = "Disposition checked against the evidence; brief entry present in review-018.md § Reconciliation Brief (or fix applied, F-7)."
+
+[[finding]]
+id = "F-5"
+status = "verified"
+severity = "minor"
+title = "Expected the selector registry and sec-11 to cover every path the slice edited; observed four code paths undeclared"
+detail = """
+`doctrine slice conformance 6` (after bootstrapping PHASE-07's row): undelivered 0, conformant 27, undeclared 26. Of the undeclared, the governance records (backlog, EVD-010, REV-007) are the slice's expected by-products. The non-governance ones:
+
+- `flake.nix` (abacbab): the fixture import gains `nixpkgs` for the second target's stub package.
+- `host/policy-cases.nix`, `host/volume-cases.nix` (0b35905): both build `host/cli.nix` and so pass its new `roomTrust` argument.
+- `README.md` (bd0bc8e): the Rooms section gains repos, the three verbs, the trust store and the exit statuses.
+- `.doctrine/slice/005/design.md`, `notes.md` (bd0bc8e): sec-9's "noted, not rewritten" supersession note.
+
+All mechanical consequences of declared changes; none is scope creep. But sec-11's code-impact table and the registry omit them, so conformance stays non-clean."""
+disposition = "design-wrong"
+response = "Mechanical consequences, not creep. Reconcile brief (load-bearing): `doctrine slice selector add` for `flake.nix`, `host/policy-cases.nix`, `host/volume-cases.nix`, `README.md` (design-target) and `.doctrine/slice/005/design.md` (design-target, sec-9's note); mirror: sec-11's code-impact table gains those rows. Then `slice conformance 6` should show only governance records undeclared."
+
+[[finding.turn]]
+act = "raise"
+role = "raiser"
+
+[[finding.turn]]
+act = "dispose"
+role = "responder"
+disposition = "design-wrong"
+response = "Mechanical consequences, not creep. Reconcile brief (load-bearing): `doctrine slice selector add` for `flake.nix`, `host/policy-cases.nix`, `host/volume-cases.nix`, `README.md` (design-target) and `.doctrine/slice/005/design.md` (design-target, sec-9's note); mirror: sec-11's code-impact table gains those rows. Then `slice conformance 6` should show only governance records undeclared."
+
+[[finding.turn]]
+act = "verify"
+role = "raiser"
+note = "Disposition checked against the evidence; brief entry present in review-018.md § Reconciliation Brief (or fix applied, F-7)."
+
+[[finding]]
+id = "F-6"
+status = "verified"
+severity = "minor"
+title = """Expected DEC-040's title to describe its present state; observed "pinned and not built" for a layout this slice built"""
+detail = """DEC-040 — "A room's per-repo quarantine layout is pinned and not built". SL-006 built it: `collect/<room>/<repo>.git`, `refs/capsule/<room>/heads/<branch>` (host/room-git.nix:242-247; phase-07 A9 observed `/var/lib/capsule/collect/assistant/doctrine.git` holding one ref). Its choice text also predicts "host/git-channel.nix given a room transport fragment", whereas a separate program shipped (DEC-045). The consequence "the channel build-out is a follow-on slice" is now SL-006. A decision's title is read in every listing, so it now asserts something false."""
+disposition = "design-wrong"
+response = "Governance prose, so reconcile's. Reconcile brief: DEC-040 — retitle to what it decides (the per-repo quarantine layout), and note in its consequences that SL-006 built it as a separate program (DEC-045) rather than a room transport fragment in host/git-channel.nix. Through the knowledge edit verb, or supersede if the decision record forbids an in-place edit of an accepted decision."
+
+[[finding.turn]]
+act = "raise"
+role = "raiser"
+
+[[finding.turn]]
+act = "dispose"
+role = "responder"
+disposition = "design-wrong"
+response = "Governance prose, so reconcile's. Reconcile brief: DEC-040 — retitle to what it decides (the per-repo quarantine layout), and note in its consequences that SL-006 built it as a separate program (DEC-045) rather than a room transport fragment in host/git-channel.nix. Through the knowledge edit verb, or supersede if the decision record forbids an in-place edit of an accepted decision."
+
+[[finding.turn]]
+act = "verify"
+role = "raiser"
+note = "Disposition checked against the evidence; brief entry present in review-018.md § Reconciliation Brief (or fix applied, F-7)."
+
+[[finding]]
+id = "F-7"
+status = "verified"
+severity = "minor"
+title = "Expected docs/contract-target.md's intro to match its siblings; observed it says contract-flavour and contract-assignment are unbuilt and the file is single-target"
+detail = """
+docs/contract-target.md:18-25: "Two sibling contracts cover what happens once there is more than one of anything, and neither is built … This file describes today's single-target shape".
+
+docs/contract-flavour.md opens "Composition is built; selection is not"; docs/contract-assignment.md opens "Part of this is built now" and "The policy noun is built now". And SL-006 itself made the file describe a target as a room's repo, one of several in one guest. Phase-06 noticed and left it ("Left stale: intro :19-25"). The file was edited by this slice (bd0bc8e), so its intro is in scope."""
+disposition = "fix-now"
+response = """Fixed in the audit commit: docs/contract-target.md:19-26 no longer claims either sibling is unbuilt (each says so at its own head, which is the one place it is maintained), names a room's repos as a second shape this file serves, and keeps contract-assignment's "no assignment" for a room true. `just check` green after the edit."""
+
+[[finding.turn]]
+act = "raise"
+role = "raiser"
+
+[[finding.turn]]
+act = "dispose"
+role = "responder"
+disposition = "fix-now"
+response = """Fixed in the audit commit: docs/contract-target.md:19-26 no longer claims either sibling is unbuilt (each says so at its own head, which is the one place it is maintained), names a room's repos as a second shape this file serves, and keeps contract-assignment's "no assignment" for a room true. `just check` green after the edit."""
+
+[[finding.turn]]
+act = "verify"
+role = "raiser"
+note = "Disposition checked against the evidence; brief entry present in review-018.md § Reconciliation Brief (or fix applied, F-7)."
+
+[[finding]]
+id = "F-8"
+status = "verified"
+severity = "minor"
+title = "Expected sec-5 to say what makes the room's state directory; observed the parent rule ISS-024 needed is not in the design, and the fix is evaluated, not yet live"
+detail = """
+design sec-5: "the directory made by the module's tmpfiles (`0700 owner users`)". Live (phase-07 U1), it was not: no rule declared `${stateDir}/room`, so tmpfiles made it root:root and refused the unsafe transition from the david-owned stateDir, while the switch reported success (ISS-024; mem.fact.oubliette.tmpfiles-needs-every-parent-declared). The live directory was hand-fixed (chown david:users, 0750).
+
+4c1d210 adds `d ${rooms.stateRootOf …} 0750` (and `slotRoot` for the same latent slot gap) and an `unparented` check in hostModuleUnits. `just` is green at HEAD, so the module now declares every parent. What the evidence covers (STD-001): the declaration, at eval. What it does not: tmpfiles accepting it on this host, which waits on the user's next rebuild. ISS-024 is already `resolved · fixed`. sec-5 and sec-11 do not mention `stateRootOf` or the parent rule."""
+disposition = "design-wrong"
+response = "The code fix is right and pinned at eval (`unparented` in hostModuleUnits, green). Two parts. Design: reconcile brief — sec-5 names `stateRootOf`'s `0750` parent rule beside the room's `0700` directory, with ISS-024 as why; sec-11's `host/services.nix` and `mkfleet.nix` rows gain the parent rule and the `unparented` check. Live acceptance: tolerated rather than a blocker — the cause (an undeclared parent) is what the eval check pins, the declared-parent shape is the one every slot directory already runs under on this host, and the live directory already matches the rule by hand (david:users 0750). Reconcile adds to ISS-024 that tmpfiles' acceptance on this host is unobserved until the user's next rebuild."
+
+[[finding.turn]]
+act = "raise"
+role = "raiser"
+
+[[finding.turn]]
+act = "dispose"
+role = "responder"
+disposition = "design-wrong"
+response = "The code fix is right and pinned at eval (`unparented` in hostModuleUnits, green). Two parts. Design: reconcile brief — sec-5 names `stateRootOf`'s `0750` parent rule beside the room's `0700` directory, with ISS-024 as why; sec-11's `host/services.nix` and `mkfleet.nix` rows gain the parent rule and the `unparented` check. Live acceptance: tolerated rather than a blocker — the cause (an undeclared parent) is what the eval check pins, the declared-parent shape is the one every slot directory already runs under on this host, and the live directory already matches the rule by hand (david:users 0750). Reconcile adds to ISS-024 that tmpfiles' acceptance on this host is unobserved until the user's next rebuild."
+
+[[finding.turn]]
+act = "verify"
+role = "raiser"
+note = "Disposition checked against the evidence; brief entry present in review-018.md § Reconciliation Brief (or fix applied, F-7)."
+
+[[finding]]
+id = "F-9"
+status = "verified"
+severity = "nit"
+title = """Expected the live rung to exercise a post-banner authentication failure; observed only the host-key half of DEC-050's "1 after the banner""""
+detail = """
+Plan PHASE-07 VA-1 lists push, a session commit, collect into the right quarantine, 75 with the room stopped, host-key refusal and recovery, stop/start persistence and a slot collect: each is observed in phase-07's Findings (A4-A15). Not exercised live, as the harvest says: a wrong-repo collect (`09-wrong` skipped), socket-present-no-banner (suite only), an authentication failure, an oversize pack (quarantineCases only), a build through `session`.
+
+Of those, only the authentication failure is covered by neither the live rung nor a suite with a real sshd: roomGitCases' talker door proves a post-banner failure is 1, not that sshd's refusal of a key is. It is not a plan criterion; recorded so it is not mistaken for proven."""
+disposition = "tolerated"
+response = """Not a plan criterion, and the gap is narrow: the program's branch for it is the same `|| { …; exit 1; }` after the banner that A11's host-key failure took live and the talker case takes in the suite, so what remains unproven is sshd's behaviour, not this program's. Producing it live needs a key the room refuses, which is the user's act on the live host for little discrimination. Recorded in the synthesis's "not exercised" list so nothing reads it as proven."""
+
+[[finding.turn]]
+act = "raise"
+role = "raiser"
+
+[[finding.turn]]
+act = "dispose"
+role = "responder"
+disposition = "tolerated"
+response = """Not a plan criterion, and the gap is narrow: the program's branch for it is the same `|| { …; exit 1; }` after the banner that A11's host-key failure took live and the talker case takes in the suite, so what remains unproven is sshd's behaviour, not this program's. Producing it live needs a key the room refuses, which is the user's act on the live host for little discrimination. Recorded in the synthesis's "not exercised" list so nothing reads it as proven."""
+
+[[finding.turn]]
+act = "verify"
+role = "raiser"
+note = "Disposition checked against the evidence; brief entry present in review-018.md § Reconciliation Brief (or fix applied, F-7)."
+
+# Findings are append-only `[[finding]]` tables, added by `review raise`.
+# Empty here at creation — a fresh review is Active, awaiting the raiser.

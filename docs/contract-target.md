@@ -17,12 +17,13 @@ doctrine is one instance of this contract, and the other half of *its*
 relationship with this repo is [contract-doctrine.md](./contract-doctrine.md).
 
 Two sibling contracts cover what happens once there is more than one of
-anything, and neither is built:
+anything, and each says at its head how much of it is built:
 [contract-flavour.md](./contract-flavour.md) is where a guest's capabilities and
 tool closure come from, and
-[contract-assignment.md](./contract-assignment.md) is what a slot is assigned
-and who may say so. This file describes today's single-target shape; where each
-of its fields is headed is the `owner` column below.
+[contract-assignment.md](./contract-assignment.md) is what a slot is assigned,
+who may say so, and what a room is declared with instead. This file is one target's side of either — a slot
+confines one, a room may hold several as repos — and where each of its fields
+is headed is the `owner` column below.
 
 ## The floor
 

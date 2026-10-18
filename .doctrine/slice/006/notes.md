@@ -6,7 +6,7 @@ disposable phase sheet (`.doctrine/state/.../phase-NN.md`) that must survive
 
 ## Harvest
 <!-- single-copy: updated in place each harvest; ids only, never restated content -->
-fresh-as-of: 2026-10-19 · implementation complete (PHASE-07), before audit · 4c1d210
+fresh-as-of: 2026-10-19 · audited (RV-018 done), before reconcile · e16fe32 + audit commit
 
 ### Produced
 - PHASE-01..07 done (commits 6f103c7..4c1d210 on 3a52d2e); `doctrine check gate` rc 0 at 4c1d210
@@ -20,6 +20,9 @@ fresh-as-of: 2026-10-19 · implementation complete (PHASE-07), before audit · 4
 - for reconcile: PHASE-07 was never flipped in_progress, so no code-start boundary is recorded; PHASE-02's range was tightened by `record-delta`
 - `.doctrine` changes committed with each piece; this harvest commits ISS-025 and one memory separately
 
+- RV-018 — the audit: 9 findings, all verified; its `## Reconciliation Brief` is reconcile's input and supersedes the two "for reconcile" lines above. F-7 (contract-target intro) fixed in the audit commit
+- PHASE-07 source-delta bootstrapped (`record-delta --start cc72b97 --end 4c1d210`)
+
 ### Learned
 - mem.fact.oubliette.tmpfiles-needs-every-parent-declared — an undeclared parent is made root:root, refused, and a switch reports success
 - EVD-010 — what two tool sets cost a room, against the repo-less room (figures in docs/probes.md)
@@ -27,6 +30,8 @@ fresh-as-of: 2026-10-19 · implementation complete (PHASE-07), before audit · 4
 - friction: `doctrine design apply` processes a batch in lexical subject order, so declare nodes before edges
 
 ### Open
+- RV-018 F-1 — the user chooses: promise a room's non-login PATH, or `session` supplies base tools (IMP-017); reconcile asks before editing
+- RV-018 F-4 — design sec-6's `ssh <user> true` reachability row needs correcting in the satan SL-023 relay too (the user's act)
 - DEC-044 — held provisional by the user's word (no fleet extras in a room)
 - ISS-023, ISS-025, IMP-017, IMP-018, CHR-018 — follow-up work, outside this slice
 - satan SL-023 relay — the user's act; relay text delivered in session, satan side not done
