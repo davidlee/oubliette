@@ -29,7 +29,7 @@ What a room has, and what it does not:
 | front end | every verb | `ssh`, `start`, `stop`, `status` (`DEC-041`) |
 | devshell path | yes | **no**: rooms are module-path only |
 
-Rooms run only on the module path. `capsule-netns` exists only there (`host/netns.nix:8-11`), and a room booted from the devshell would put its tap in the root namespace, which is the direct transport's signal (NOTES item 40). Devshell programs refuse room names.
+Rooms run only on the module path. `capsule-netns` exists only there (`host/netns.nix:8-11`), and a room booted from the devshell would put its tap in the root namespace, which is the direct transport's signal (NOTES item 40). Devshell programs refuse room names: `vm` and `vm-stop` bake the declared room list and refuse a room by name before any state is made, and rooms are left out of `packages`' per-name map (`mkfleet.nix:1428`), so no devshell attribute boots one. A room's build output is `roomImages` (sec-9).
 
 <!-- doctrine:section sec-10 -->
 ## Governance and docs footprint
@@ -96,7 +96,8 @@ The design-target selectors. Each path is one this design commits to changing or
 | `vm/door.nix` | new: tap, sshd, root keys | sec-5 |
 | `vm/room.nix` | new | sec-5 |
 | `vm/capsule.nix` | imports `vm/door.nix` | sec-5 |
-| `mkfleet.nix` | ninth argument, `rooms.nix` applied, room `vms`, `liveNames`, `hostModuleUnits` assertions, `roomImages`, suite wiring | sec-2, sec-4, sec-9 |
+| `mkfleet.nix` | ninth argument, `rooms.nix` applied, room `vms`, `liveNames`, `hostModuleUnits` assertions, `roomImages`, rooms out of `packages`' per-name map, the room list baked into `vm`/`vm-stop`, suite wiring | sec-1, sec-2, sec-4, sec-9 |
+| `host/vm-cases.nix` | a room name refused by `vm` and `vm-stop`, with its reason | sec-1, sec-9 |
 | `fixture/default.nix` | `lounge`, `assistant` | sec-8 |
 | `templates/fleet/flake.nix` | `rooms = {}` and a commented example | sec-8 |
 | `just/fleet.just` | new suites and `roomImages` in `build` | sec-9 |
@@ -314,6 +315,7 @@ Every check here is in `just build` (`just/fleet.just:64-76` lists them by hand,
 | a room's netns unit does not require the aggregator, and its `microvm@` does not want a proxy | module evaluation | new assertions in `hostModuleUnits` over the room units' fields |
 | the guard audits rooms | program cases | `guardCases` gains a room, and a room VMM outside its namespace failing limb two |
 | front-end room resolution and refusals, and the verb collision | program cases, eval verdict | `roomVerbsCases` (sec-7); argv of `ssh`/`start`/`stop` is live-only |
+| the devshell refuses rooms | program cases | `vmCases` gains a fixture room: `vm <room>` and `vm-stop <room>` exit 2 with the reason and create no `.vm/<room>/` (sec-1) |
 | room images build | build | a `roomImages` output linking the fixture rooms' declared runners, added to `just build`'s list. That recipe lists no VM images today (`just/fleet.just:64-76`), so this is a new gate, not an existing one (RV-014 F-7) |
 | the template's wiring of the ninth argument | eval | `templateCases` with `rooms = {}`. It exercises the argument, not a room. Room evaluation and builds are the fixture's (RV-014 F-8) |
 | the capsule guest is unchanged by the door module | build comparison | `nix-store --query` the fixture slot image's toplevel before and after: equal, or a diff confined to option order, recorded in the commit |

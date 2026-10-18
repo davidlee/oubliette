@@ -33,9 +33,10 @@ entrance_criteria = [
 ]
 exit_criteria = [
   { id = "EX-1", text = "`rooms.nix` returns `instances` and `reasons` as design sec-2 specifies; no host value and no derivation in it" },
-  { id = "EX-2", text = "`roomsCases` pins, each with its reason: a room named as a slot, `hello`, `capsule`, or a unit-unsafe name; a user named `root`; a user with an empty key list; a sizes set missing any of `vcpu`/`mem`/`volume`; and a well-formed declaration yielding the expected record" },
+  { id = "EX-2", text = "`roomsCases` pins, each with its reason: a room named as a slot, `hello`, `capsule`, or a unit-unsafe name; a user named `root`; a user with an empty key list; a user name that is not user-safe; and a well-formed declaration yielding the expected record" },
   { id = "EX-3", text = "`roomsCases` is a package in `mkfleet.nix` and a line in `just/fleet.just`'s `build` (NOTES item 51 step 3), and `just` is green" },
   { id = "EX-4", text = "mutation: dropping the slot-name collision check turns its case red; observed and reverted" },
+  { id = "EX-5", text = "`sizes` carries no default and no reason: a room missing `vcpu`, `mem` or `volume` fails at eval where `vm/room.nix` reads it (PHASE-05), since design sec-2 gives `reasons` only `names` and `users`" },
 ]
 verification = [
   { id = "VT-1", expects = "the refusal reasons are exposed and each refusal is cased", test_file = "rooms-cases.nix", keywords = ["tryEval", "deepSeq", "reasons", "root", "capsule", "hello"], waived = false },
@@ -52,10 +53,10 @@ objective = """
 `host/netns.nix` (design sec-3): the uplink group is all set, all absent, or
 refused naming the mixed variables, before the trap is armed. With it absent,
 `up` builds only the namespace, `lo`, forwarding off and the tap guard rule,
-and `undo_up`/`down` delete no peer. `capsule-netns` takes `tools` as an argument,
-injected by `host/services.nix` as `host/guard.nix`'s is (`host/services.nix:196`;
-design sec-3 says "with a default", but guard has none and one caller needs
-none). `capsuleEnv` becomes a function of a guest record and emits only
+and `undo_up`/`down` delete no peer. `capsule-netns` takes `tools` with the real
+set as its default, so its three importers (`host/services.nix:57`,
+`host/guard-cases.nix:91`, `mkfleet.nix:1077`) stay unedited and the shipped
+copy stays one store path; only `netnsCases` passes stubs. `capsuleEnv` becomes a function of a guest record and emits only
 `NS TAP TAP_ADDR PREFIX` for `uplink = null`. `netnsCases`
 (`host/netns-cases.nix`) runs the shipped program with logging stubs for `ip`,
 `nft` and `sysctl`: the five cases of sec-3."""
@@ -127,7 +128,7 @@ entrance_criteria = [
   { id = "EN-1", text = "PHASE-03 complete" },
 ]
 exit_criteria = [
-  { id = "EX-1", text = "`mkFleet` without `rooms` fails at eval naming it; with `rooms = {}` every existing output is unchanged (SL-004 manifest equal to PHASE-03's end)" },
+  { id = "EX-1", text = "`mkFleet` without `rooms` fails at eval naming it; with the fixture's two rooms declared, every output is unchanged (SL-004 manifest equal to PHASE-03's end), since nothing but `liveNames` reads a room record yet" },
   { id = "EX-2", text = "the fixture's two rooms evaluate to records; `liveNames` contains `room-lounge` and `room-assistant`" },
   { id = "EX-3", text = "an eval verdict: a probe fabric naming `room-lounge` throws from `borrowed`, reason asserted; mutating `liveNames` to drop rooms turns it red" },
   { id = "EX-4", text = "`templateCases` green with `rooms = {}`" },
@@ -153,20 +154,26 @@ objective = """
 a first-boot seed. `mkfleet.nix`'s `vms` gains `mkVm "capsule" ./vm/room.nix
 {room = …;}` per room, hostName `capsule` (`DEC-032`). A `roomImages` output
 links the fixture rooms' declared runners and joins `just build`, which builds
-no VM image today (RV-014 F-7, route control)."""
+no VM image today (RV-014 F-7, route control). In the same commit, rooms stay
+out of `packages`' per-name map (`mkfleet.nix:1428`) and `vm`/`vm-stop` bake
+the room list and refuse a room before any state is made (design sec-1, rev
+38), so no devshell path ever boots a room with its tap in the root
+namespace."""
 entrance_criteria = [
   { id = "EN-1", text = "PHASE-04 complete" },
 ]
 exit_criteria = [
   { id = "EX-1", text = "`nixosConfigurations.lounge` and `.assistant` exist, hostName `capsule`; slot runner drvPaths equal PHASE-04's end" },
   { id = "EX-2", text = "control, RV-014 F-7: `roomImages` is in `just build`'s list and builds both fixture runners; breaking `vm/room.nix` (an undefined option) fails `just build`, observed and reverted" },
-  { id = "EX-3", text = "the room image's evaluated config shows no root autologin, no DHCP, `/home` on the volume, and each declared user with its keys and no extra groups (an eval assertion or a `vmCases`-style check)" },
+  { id = "EX-3", text = "`roomImages` asserts over each room's evaluated config before linking its runner, each assertion with its reason: `autologinUser` null, DHCP off, `/home` on `room-home.img`, each declared user `isNormalUser` with its keys and no `extraGroups`, root's keys exactly `adminKeys ++ [stopKey]`; mutating the `mkForce null` away turns it red" },
   { id = "EX-4", text = "`CLAUDE.md`'s `DEC-020` reference becomes `DEC-032` (sec-10)" },
+  { id = "EX-5", text = "`packages` has no `lounge` or `assistant` attr; `vmCases` gains a fixture room: `vm <room>` and `vm-stop <room>` exit 2 with the reason and leave no `.vm/<room>/`; dropping the refusal turns the case red, observed and reverted (design sec-1, sec-9)" },
 ]
 verification = [
   { id = "VT-1", expects = "the room module overrides root autologin and mounts /home", test_file = "vm/room.nix", keywords = ["door.nix", "autologinUser", "mkForce null", "/home", "isNormalUser"], waived = false },
   { id = "VT-2", expects = "control, RV-014 F-7: room images are a just build gate", test_file = "just/fleet.just", keywords = ["roomImages"], waived = false },
-  { id = "VA-1", expects = "the EX-2 break was observed to fail the build, then reverted" },
+  { id = "VT-3", expects = "the devshell verbs refuse a room", test_file = "host/vm-cases.nix", keywords = ["room", "lounge"], waived = false },
+  { id = "VA-1", expects = "the EX-2 and EX-5 mutations were observed red, then reverted" },
 ]
 specs        = []
 requirements = []

@@ -79,6 +79,14 @@ Reading satan's SL-023 against this design found that `DEC-040`'s clone path
 here builds a clone, so it is recorded as `ISS-021` for the follow-on channel
 slice and named in the relay (PHASE-08/EX-3).
 
+Planning also found that sec-1's "devshell programs refuse room names" was
+built by nothing: `packages` maps every `vms` entry by name
+(`mkfleet.nix:1428`), and `host/vm-name.nix` checks only that a name is a
+bare token. The design was amended (run rev 38, the user's choice): rooms
+stay out of `packages`' per-name map, and `vm`/`vm-stop` refuse a baked room
+list before any state. It lands in PHASE-05, the phase in which a room's
+image would first become a package.
+
 ## Not in this plan
 
 Design sec-11's out-of-scope list holds: no model door, no per-repo tools or
