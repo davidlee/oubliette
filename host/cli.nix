@@ -39,11 +39,12 @@
   # store paths.
   policies,
   # This host's room records (rooms.nix's `instances`): guests that are not
-  # slots, which this front end names for four verbs and refuses for the rest
-  # (SL-005 design sec-7). Only a room's name, socket and user names are read,
-  # and the socket is the record's own path, so the slot convention's glob
-  # (`everySock`) can never count one. Both copies get the same records, so this
-  # adds no reason for them to be two store paths.
+  # slots, which this front end names for six verbs and refuses for the rest
+  # (SL-005 design sec-7, `DEC-051`). A room's name, socket, user names, repo
+  # names, repo user and policy are read, and nothing else; the socket is the
+  # record's own path, so the slot convention's glob (`everySock`) can never
+  # count one. Both copies get the same records, so this adds no reason for them
+  # to be two store paths.
   rooms,
   # The host->guest ssh relaxation, for the *reachability probe* only
   # (host/guest-ssh.nix). The human's own door keeps the strict default, because a
@@ -104,6 +105,12 @@
   # The root helper's store path (host/volume-root.nix, built once in
   # host/programs.nix). Only `volumeControl`'s default reads it.
   volumeRootHelper,
+  # A room's trust store (host/room-git.nix, through host/programs.nix'
+  # `roomTrust`, DEC-047): the strict door words, `knownHostsOf` (the room's
+  # `known_hosts` under a state root) and the refusal of a root ssh would
+  # misread. The channel's own spellings, so this door, `forget-host-key` and
+  # `capsule-room-git` check one file. No default: every call site passes it.
+  roomTrust,
   # What the volume verbs need from outside this program (SL-002 design sec-7):
   # the root step, and the state of the slot's VMM unit that gates it. An
   # argument for `proxyControl`'s reason — `sudo` prompts and `pkgs.systemd` is
@@ -301,6 +308,10 @@
 
   verbs = ownVerbs ++ programVerbs;
 
+  # The verbs a room takes (`DEC-051`), each implemented in the room branch
+  # below; every other word after a room's name is refused there.
+  roomVerbs = ["ssh" "start" "stop" "push" "collect" "forget-host-key"];
+
   names = builtins.attrNames capsules.instances;
   roomNames = builtins.attrNames rooms;
   roomList = builtins.attrValues rooms;
@@ -344,6 +355,12 @@
   # read back and substituted into a path there, so checking it in one place and
   # not the other would make the record the way round the check.
   quarantine = import ./quarantine.nix;
+
+  # One associative array per field of a room's record, keyed by its name.
+  roomArray = var: field: ''declare -A ${var}=(${lib.concatMapStringsSep " " (r: "[${lib.escapeShellArg r.name}]=${lib.escapeShellArg (field r)}") roomList})'';
+  # `""` for a room with no repos (`repos` and `policy` are `null` together,
+  # rooms.nix), which is how the room branch tells it has none.
+  repoField = f: r: lib.optionalString (r.repos != null) (f r.repos);
 in
   pkgs.writeShellApplication {
     name = "capsule";
@@ -356,8 +373,13 @@ in
       # Rooms, and each one's socket and users: names on argv only, never
       # resolved implicitly or from `CAPSULE_NAME` (SL-005 design sec-7).
       rooms=(${lib.concatMapStringsSep " " lib.escapeShellArg roomNames})
-      declare -A roomSocket=(${lib.concatMapStringsSep " " (r: "[${lib.escapeShellArg r.name}]=${lib.escapeShellArg r.socket}") roomList})
-      declare -A roomUsers=(${lib.concatMapStringsSep " " (r: "[${lib.escapeShellArg r.name}]=${lib.escapeShellArg (lib.concatStringsSep " " (builtins.attrNames r.users))}") roomList})
+      ${roomArray "roomSocket" (r: r.socket)}
+      ${roomArray "roomUsers" (r: lib.concatStringsSep " " (builtins.attrNames r.users))}
+      # And what a room's push and collect resolve (DEC-051): its repos' names,
+      # the user they are cloned as, and its policy.
+      ${roomArray "roomRepos" (repoField (repos: lib.concatMapStringsSep " " (t: t.name) repos.targets))}
+      ${roomArray "roomRepoUser" (repoField (repos: repos.user))}
+      ${roomArray "roomPolicy" (r: lib.optionalString (r.policy != null) r.policy)}
       # The devshell path's root, spelled once (perimeter/root.nix): where a
       # devshell capsule's collected work lands, and the link its runner was
       # started from.
@@ -368,7 +390,7 @@ in
         echo
         echo "  capsules:  ''${declared[*]}   (omitted: the one that is up)"
         if [ "''${#rooms[@]}" -gt 0 ]; then
-          echo "  rooms:     ''${rooms[*]}   <room> ssh [user] [-- cmd] | start | stop   (name required)"
+          echo "  rooms:     ''${rooms[*]}   <room> ssh [user] [-- cmd] | start | stop | push <repo> <branch> | collect <repo> <branch> | forget-host-key   (name required)"
         fi
         echo "  lifecycle: start | stop | created       (start injects too)"
         echo "  volume:    <slot> volume reset | reset-home | clone-from <src> [--identity]   (name required)"
@@ -459,19 +481,21 @@ in
       verb="$1"
       shift
 
-      # A room takes three verbs and refuses the rest here, before the verb is
+      # A room takes six verbs and refuses the rest here, before the verb is
       # looked up, so a word after a room is answered as a room's.
       if [ -n "$room" ]; then
         case "$verb" in
-          ssh | start | stop) ;;
+          ${lib.concatStringsSep " | " roomVerbs}) ;;
           *)
-            echo "capsule: '$room' is a room; rooms take ssh, start, stop (status lists them)" >&2
+            echo "capsule: '$room' is a room; rooms take ${lib.concatStringsSep ", " roomVerbs} (status lists them)" >&2
             exit 2
             ;;
         esac
       fi
 
+      # A room's verb was decided by its gate above, and `push` is no slot's.
       known=no
+      [ -z "$room" ] || known=yes
       for v in ${lib.concatMapStringsSep " " lib.escapeShellArg verbs}; do
         [ "$verb" = "$v" ] && known=yes
       done
@@ -818,9 +842,30 @@ in
       }
 
       # A room's door: its record's socket or nothing, since a room is a
-      # module-path guest and has no devshell shape to fall back to. Its key is
-      # filed under the room's own name (SL-005 design sec-7).
-      roomDoor() { doorVia "$2" "$1" "''${roomSocket[$1]}"; }
+      # module-path guest and has no devshell shape to fall back to. A human's
+      # is the channel's strict door (`DEC-047`): accept-new, the alias
+      # `room-<r>` and the room's own known_hosts under `$roomState`, which the
+      # room branch sets before any door is asked for — in the channel's words
+      # (host/room-git.nix), so the two check one file. No `BatchMode`, since a
+      # human is at it. The probe is the slot's, relaxed (`DEC-050`): it carries
+      # no trust, and a key refused there would read as a room that is down.
+      #
+      # Nothing here makes the room's directory: on the module path tmpfiles
+      # did, and elsewhere ssh learns the key, warns it cannot record it, and
+      # connects — so every connection is a first contact, never a skipped check.
+      roomDoor() {
+        case "$2" in
+          human)
+            [ -S "''${roomSocket[$1]}" ] || return 1
+            ssh_argv=(ssh ${roomTrust.door {
+        room = "$1";
+        socket = "\${roomSocket[$1]}";
+        knownHosts = roomTrust.knownHostsOf "$roomState" "$1";
+      }})
+            ;;
+          probe) doorVia probe "$1" "''${roomSocket[$1]}" ;;
+        esac
+      }
 
       # The half of a door both kinds share — `doorVia <mode> <alias> <socket>`:
       # fills `ssh_argv` for the mode, and through the socket when there is one,
@@ -1848,11 +1893,27 @@ in
         done
       }
 
-      # A room's three verbs, each its own act and none of a slot's: no
-      # profile, record, injection or volume lock (SL-005 design sec-7). Here,
-      # ahead of the resolution below, because a room has no name in `name`
-      # and an empty one there means *the slot that is up*.
+      # A room's six verbs, each its own act and none of a slot's: no
+      # profile, record, injection or volume lock (SL-005 design sec-7,
+      # `DEC-051`). Here, ahead of the resolution below, because a room has no
+      # name in `name` and an empty one there means *the slot that is up*.
       if [ -n "$room" ]; then
+        # The room's state, resolved once and the way its channel resolves it,
+        # so its door, `forget-host-key` and `capsule-room-git` hold one
+        # known_hosts (DEC-047): `CAPSULE_STATE`, which the module's wrapper
+        # sets, else the module's root — never the devshell's `.vm/host`, since a
+        # room is a module-path guest, and never searched for, since a trust
+        # store is not an artefact to be found.
+        roomState="''${CAPSULE_STATE:-${moduleState}}"
+        refuseRoom() {
+          for line in "$@"; do echo "capsule: $line" >&2; done
+          exit 2
+        }
+        # Before a door or `forget-host-key` reads the file, as the channel does
+        # before its own (host/room-git.nix).
+        trustedState() {
+          ${roomTrust.refuseOddState "$roomState" "refuseRoom"}
+        }
         case "$verb" in
           ssh)
             # The declaration is the default, not a guess: a room's only user,
@@ -1872,6 +1933,7 @@ in
               fi
               user="''${users[0]}"
             fi
+            trustedState
             stty sane 2>/dev/null || true
             ssh_argv=()
             roomDoor "$room" human || {
@@ -1892,6 +1954,48 @@ in
             fi
             ;;
           stop) stopUnit "$(unitOf "$room")" ;;
+          # The front end resolves the repo, its user and the room's policy off
+          # the record, and the channel takes each on argv and holds no table
+          # (DEC-051, POL-003). A room with no repos has nothing to resolve, so
+          # it refuses rather than guess one. The branch is the channel's to
+          # check, since a second check would be a second definition of a branch.
+          push | collect)
+            read -ra repos <<< "''${roomRepos[$room]}"
+            [ "''${#repos[@]}" -gt 0 ] ||
+              refuseRoom "room '$room' declares no repos, so it has nothing to push or collect."
+            [ "$#" -eq 2 ] ||
+              refuseRoom "$verb takes a repo and a branch, and nothing else:" \
+                "  capsule $room $verb <repo> <branch>"
+            member=no
+            for repo in "''${repos[@]}"; do
+              [ "$1" = "$repo" ] && member=yes
+            done
+            [ "$member" = yes ] ||
+              refuseRoom "room '$room' declares no repo '$1'; its repos: ''${repos[*]}"
+            # By its bare name and off the inherited PATH, deliberately not a
+            # `runtimeInputs` entry nor `program()`: a room's channel has one
+            # copy, the module's wrapper, which sets its profile directory (a
+            # store path here would bypass it), and a suite fakes it there. The
+            # state is passed explicitly so the wrapper's default cannot pick a
+            # second trust store. An exec, so its 75/2/1 is this verb's (DEC-050).
+            CAPSULE_STATE="$roomState" exec capsule-room-git --room "$room" --profile "$1" \
+              --user "''${roomRepoUser[$room]}" --policy "''${roomPolicy[$room]}" "$verb" "$2"
+            ;;
+          # The room's own known_hosts, emptied rather than removed so the file
+          # tmpfiles' directory holds keeps its owner and mode; whether the room
+          # is up is not asked, since a fresh volume's key is forgotten before
+          # the start (mem.fact.oubliette.fresh-capsule-fresh-host-keys).
+          forget-host-key)
+            [ "$#" -eq 0 ] || refuseRoom "room '$room': forget-host-key takes no arguments."
+            trustedState
+            knownHosts=${roomTrust.knownHostsOf "$roomState" "$room"}
+            if [ ! -e "$knownHosts" ]; then
+              echo "capsule $room: no $knownHosts, so nothing to forget."
+              exit 0
+            fi
+            : > "$knownHosts"
+            echo "capsule $room: forgot the room's host key ($knownHosts)."
+            ;;
         esac
         exit
       fi

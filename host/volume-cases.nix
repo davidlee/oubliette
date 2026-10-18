@@ -40,6 +40,7 @@
   profileVerbs,
   stateRefPrefix,
   volumeRootHelper,
+  roomTrust,
   # The front end every real call site builds, for the `volumeControl` default.
   shipped,
 }: let
@@ -59,7 +60,7 @@
     };
   cli = import ./cli.nix {
     inherit pkgs lib net policies guestSsh;
-    inherit observe observeFragment programVerbs profileVerbs stateRefPrefix volumeRootHelper;
+    inherit observe observeFragment programVerbs profileVerbs stateRefPrefix volumeRootHelper roomTrust;
     capsules = fixture;
     microvms = ''"$CASE_ROOT/microvms"'';
     rooms = {};

@@ -34,6 +34,7 @@
   profileVerbs,
   stateRefPrefix,
   volumeRootHelper,
+  roomTrust,
 }: let
   # Three slots, none of them this host's, each one a shape `capsules.nix`
   # itself would refuse: a set of one, a slot with no set at all, and a slot
@@ -95,7 +96,7 @@
   # reader and points it at a fixture runner tree instead.
   cliArgs = {
     inherit pkgs lib net policies guestSsh;
-    inherit observe observeFragment programVerbs profileVerbs stateRefPrefix volumeRootHelper;
+    inherit observe observeFragment programVerbs profileVerbs stateRefPrefix volumeRootHelper roomTrust;
     capsules = fixture;
     moduleState = ''"$CASE_STATE"'';
     rooms = {};

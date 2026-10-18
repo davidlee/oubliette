@@ -283,9 +283,10 @@ in {
   # not a `profileVerbs` one, since a room's front end fills `--profile` from
   # the room's declared repos rather than a slot's record (DEC-051).
   roomGit = roomGitShipped.program;
-  # The strict ssh words every door to a room uses (DEC-047), for the front
-  # end's door (PHASE-05) — one spelling, here and in the program.
-  roomDoor = roomGitShipped.door;
+  # A room's trust store as the front end needs it (DEC-047): the strict ssh
+  # words every door to a room uses, the file they name, and the refusal of a
+  # state root ssh would misread — one spelling each, here and in the program.
+  roomTrust = {inherit (roomGitShipped) door knownHostsOf refuseOddState;};
   # The seam itself, for `roomGitCases`' fixture door: `briefRunner`'s export,
   # for its reason — a suite needs the thing before it is the shipped store path.
   inherit roomGitOf;

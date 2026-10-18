@@ -610,7 +610,7 @@
   capsule-cli = import ./host/cli.nix {
     inherit pkgs lib net capsules policies guestSsh;
     rooms = roomRecords;
-    inherit (hostPrograms) observe observeFragment programVerbs profileVerbs stateRefPrefix volumeRootHelper;
+    inherit (hostPrograms) observe observeFragment programVerbs profileVerbs stateRefPrefix volumeRootHelper roomTrust;
   };
 
   # The third kind of check (CLAUDE.md): a host-side program's own text, run
@@ -762,16 +762,16 @@
   policyCases = import ./host/policy-cases.nix {
     inherit pkgs lib net policies guestSsh;
     capsules = casesCapsules;
-    inherit (hostPrograms) observe observeFragment programVerbs profileVerbs stateRefPrefix volumeRootHelper;
+    inherit (hostPrograms) observe observeFragment programVerbs profileVerbs stateRefPrefix volumeRootHelper roomTrust;
   };
 
-  # The front end's four room verbs and the refusal of the rest (SL-005
-  # sec-7): a fixture pool and rooms built by the real constructor, and its own
-  # render, for `policyCases`' reason (host/room-verbs-cases.nix).
+  # The front end's six room verbs and the refusal of the rest (SL-005
+  # sec-7, DEC-051): a fixture pool and rooms built by the real constructor,
+  # and its own render, for `policyCases`' reason (host/room-verbs-cases.nix).
   roomVerbsCases = import ./host/room-verbs-cases.nix {
     inherit pkgs lib net policies guestSsh;
     capsules = casesCapsules;
-    inherit (hostPrograms) observe observeFragment programVerbs profileVerbs stateRefPrefix volumeRootHelper;
+    inherit (hostPrograms) observe observeFragment programVerbs profileVerbs stateRefPrefix volumeRootHelper roomTrust;
     rooms = import ./rooms.nix;
   };
 
@@ -794,7 +794,7 @@
   volumeCases = import ./host/volume-cases.nix {
     inherit pkgs lib net policies guestSsh;
     capsules = casesCapsules;
-    inherit (hostPrograms) observe observeFragment programVerbs profileVerbs stateRefPrefix volumeRootHelper;
+    inherit (hostPrograms) observe observeFragment programVerbs profileVerbs stateRefPrefix volumeRootHelper roomTrust;
     shipped = capsule-cli;
   };
 

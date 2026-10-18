@@ -78,6 +78,27 @@
     knownHosts,
   }: ''-o StrictHostKeyChecking=accept-new -o "HostKeyAlias=room-${room}" -o "UserKnownHostsFile=${knownHosts}" ${guestSsh.proxyThrough {inherit socat socket;}}'';
 
+  # The room's trust store, the file `door` names (DEC-047): the one spelling
+  # of its name, for this program, the front end's door and its
+  # `forget-host-key`. `knownHostsIn` takes the room's directory, which this
+  # program makes; `knownHostsOf` the state root and the room, for a caller
+  # that makes nothing. Shell expressions, as `stateDirOf`'s are.
+  knownHostsIn = roomDir: "${roomDir}/known_hosts";
+  knownHostsOf = state: room: knownHostsIn (stateDirOf state room);
+
+  # ssh reads `UserKnownHostsFile` as a whitespace-separated list and expands
+  # `%` tokens in it, so a state root holding either would name a different
+  # trust store: refused, by every reader of the file. `state` is a shell
+  # expression, `refuse` the caller's function that prints its lines and exits 2.
+  refuseOddState = state: refuse: ''
+    case "${state}" in
+      *[[:space:]%]*)
+        ${refuse} "this host's state directory '${state}' holds whitespace or '%'," \
+          "  which ssh would read as a list or a token in UserKnownHostsFile, so it" \
+          "  would check a different trust store. CAPSULE_STATE chooses it."
+        ;;
+    esac'';
+
   program = pkgs.writeShellApplication {
     name = "capsule-room-git";
     runtimeInputs = [pkgs.git pkgs.openssh pkgs.coreutils pkgs.socat] ++ profile.inputs;
@@ -136,13 +157,7 @@
       verb=''${positional[0]} branch=''${positional[1]}
       case "$verb" in push | collect) ;; *) usage "no verb '$verb'" ;; esac
 
-      case "$state" in
-        *[[:space:]%]*)
-          refuse "this host's state directory '$state' holds whitespace or '%'," \
-            "  which ssh would read as a list or a token in UserKnownHostsFile, so it" \
-            "  would check a different trust store. CAPSULE_STATE chooses it."
-          ;;
-      esac
+      ${refuseOddState "$state" "refuse"}
 
       ${quarantine.refuseToken 2 ''"$room"'' "'--room $room'"}
       ${quarantine.refuseToken 2 ''"$profile"'' "'--profile $profile'"}
@@ -202,7 +217,7 @@
       # After the banner, every failure is 1, and each act says so itself: under
       # plain errexit a failed `git init` would exit 128.
       roomDir=${stateDirOf "$state" "$room"}
-      knownHosts=$roomDir/known_hosts
+      knownHosts=${knownHostsIn "$roomDir"}
       # Every directory it makes is the owner's alone; one that is there (the
       # module's tmpfiles made it) is left as it is.
       (umask 077 && mkdir -p "$roomDir") || exit 1
@@ -244,5 +259,5 @@
     '';
   };
 in {
-  inherit program door;
+  inherit program door knownHostsOf refuseOddState;
 }
