@@ -244,10 +244,13 @@ by the module's tmpfiles (`0700 owner users`), under a parent `$stateDir/room`
 (`rooms.nix` `stateRootOf`) declared `0750 owner users` by its own rule: an
 undeclared parent is made `root:root`, and tmpfiles then refuses the step into
 it while the switch reports success (`ISS-024`). Every door to a room uses it with
-`StrictHostKeyChecking=accept-new` and `HostKeyAlias=room-<room>`: the front
-end's `ssh`, both channel verbs, and satan's runner (its `known_hosts` setting
-points here). First contact learns the key over a host-local socket into a VM
-this host booted; a changed key is refused everywhere at once. `room-<room>`
+`HostKeyAlias=room-<room>`: the front end's `ssh` and both channel verbs with
+`StrictHostKeyChecking=accept-new`, and satan's runner's own ssh with `yes`
+(its `known_hosts` setting points here; satan SL-023). Strict is sound there
+because the runner always pushes first, and the push learns the key; after
+`forget-host-key` its ssh refuses (255, a trust failure) until the next push.
+First contact learns the key over a host-local socket into a VM this host
+booted; a changed key is refused everywhere at once. `room-<room>`
 cannot equal any slot's `capsule-<slot>`, which closes `RSK-011`.
 
 **Verbs.** The room branch of `host/cli.nix` grows from three to six:

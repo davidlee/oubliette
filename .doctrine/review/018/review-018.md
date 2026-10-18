@@ -180,6 +180,10 @@ agreed in session ("agreed").
 ### Outside this repo
 - The F-4 correction (and F-3's stdout shapes) for satan SL-023: relay text
   given to the user in session; delivering it is the user's act.
+- satan's answer (relayed by the user after close): its runner's own ssh
+  checks the room's store with `StrictHostKeyChecking=yes`, sound because a push
+  always runs first and learns the key; it pins collect's `<oid>\t<ref>`.
+  design.md sec-5 updated to say so.
 
 ### Hazard
 - `doctrine design show 6` reports design.md "behind its run (revision 38)".
