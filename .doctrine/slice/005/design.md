@@ -91,15 +91,15 @@ The design-target selectors. Each path is one this design commits to changing or
 | `host/services.nix` | `rooms` argument, `guests`, `perGuest`, conditional aggregator and proxy edges | sec-4 |
 | `host/guard.nix` | `guests` in place of `capsules.instances` | sec-4 |
 | `host/guard-cases.nix` | room cases | sec-4 |
-| `host/cli.nix` | room list, resolution, four verbs, refusal | sec-7 |
+| `host/cli.nix` | room list, resolution, four verbs, refusal, `collide` over rooms | sec-7 |
 | `host/room-verbs-cases.nix` | new: the front end rendered against a fixture pool with rooms, as `host/policy-cases.nix` does | sec-7 |
 | `vm/door.nix` | new: tap, sshd, root keys | sec-5 |
 | `vm/room.nix` | new | sec-5 |
 | `vm/capsule.nix` | imports `vm/door.nix` | sec-5 |
-| `mkfleet.nix` | ninth argument, `rooms.nix` applied, room `vms`, `liveNames`, `hostModuleUnits` assertions, suite wiring | sec-2, sec-4, sec-9 |
+| `mkfleet.nix` | ninth argument, `rooms.nix` applied, room `vms`, `liveNames`, `hostModuleUnits` assertions, `roomImages`, suite wiring | sec-2, sec-4, sec-9 |
 | `fixture/default.nix` | `lounge`, `assistant` | sec-8 |
 | `templates/fleet/flake.nix` | `rooms = {}` and a commented example | sec-8 |
-| `just/fleet.just` | new suites in `build` | sec-9 |
+| `just/fleet.just` | new suites and `roomImages` in `build` | sec-9 |
 | `docs/plan-e-room.md`, `docs/plan-f-assistant.md`, `docs/contract-assignment.md`, `CLAUDE.md` | footprint | sec-10 |
 
 The front end's existing suites (`policyCases`, `volumeCases`) are per concern, so room verbs get their own suite file rather than growing one of them.
@@ -139,7 +139,7 @@ Each refusal is a value in `reasons` and is exactly what `instances` throws, as 
 - **names**: a room name that is a slot name, `hello` or `capsule`, or not unit-safe. Rooms and slots share one unit-name space (`capsule-netns-<n>`, `microvm@<n>`) and one `nixosConfigurations` space, which is what makes the first three collisions real.
 - **users**: a user named `root`, or a user with no keys.
 
-**The probe fabric** is checked where it is today. `liveNames` (`mkfleet.nix:1028-1033`) gains every room's `ns`, so `borrowed` throws if a probe fabric value equals one. That makes the check three declarations wide: slots, rooms and the probe fabric (NOTES item 38's "one declaration wide" gap closed for rooms). Socket paths are disjoint by prefix and need no check.
+**The probe fabric** is checked where it is today. `liveNames` (`mkfleet.nix:1028-1033`) gains every room's `ns`, so `borrowed` throws if a probe fabric value equals one. That makes the check three declarations wide: slots, rooms and the probe fabric (NOTES item 38's "one declaration wide" gap closed for rooms). Socket paths are disjoint by prefix and need no check. A room name that is a front-end verb or `all` is refused by the front end's own `collide`, where the verbs are known (sec-7).
 
 <!-- doctrine:section sec-3 -->
 ## `capsule-netns` with no uplink
@@ -206,7 +206,7 @@ The aggregator checks are unchanged and remain unconditional. A room failing a c
 
 **The door module** (`vm/door.nix`, new) holds what every confined guest needs and today lives only in `vm/capsule.nix` (`DEC-034`):
 
-- the tap interface, from `net` (`vm/capsule.nix:125-131`);
+- the tap interface, from `net` (`vm/capsule.nix:125-131`), **and the guest's side of the link**: the static `net.guest/net.prefix` address on the tap's MAC, no DHCP, no gateway, `services.resolved` off (`vm/capsule.nix:150-163`). Without this a room never answers at `net.guest`, since `vm/common.nix:34` turns DHCP off (RV-014 F-1);
 - sshd with no passwords, root by key only, host keys at a path the importer names on its volume (265-279);
 - `users.users.root.openssh.authorizedKeys.keys = access.adminKeys ++ [access.stopKey]` (296), so root is reachable only by the host's keys (POL-001 limb 3) and the stop key works.
 
@@ -217,6 +217,7 @@ The aggregator checks are unchanged and remain unconditional. A room failing a c
 - `microvm.{vcpu, mem}` and one volume, `room-home.img` mounted at `/home` with `size = sizes.volume`. Exec is permitted, since a client may upload a tool daemon (`DEC-037`);
 - one `users.users.<user>` per declared user: `isNormalUser`, home `/home/<user>`, the declared keys, no extra groups;
 - host keys under `/home/.ssh-host-keys/`, so they live on the volume and survive reboots;
+- `services.getty.autologinUser = lib.mkForce null`: `vm/common.nix:13` autologs root on the console, the capsule overrides it to `agent` (`vm/capsule.nix:280`), and a room overrides it to nobody, so root stays key-only (POL-001 limb 3; RV-014 F-2);
 - a first-boot seed that makes each home and the host-key directory with the right owners, the shape of `capsule-seed` (`vm/capsule.nix:302-340`) without the repository.
 
 No egress, proxy, target tools, `reset-home` or kernel-command-line target marker (`DEC-021` is a slot's). The profile verbs never see a room (`DEC-023`), because the front end refuses them (sec-7).
@@ -246,7 +247,7 @@ runner (as the module owner)                       room-<n> namespace
 | root | only the host's `access.adminKeys` and `access.stopKey`; never a client's key |
 | host keys | on the room volume, stable until the volume is deleted. A client may pin them (`HostKeyAlias`, strict checking), and pi-env's strict mode works |
 | home | `/home/<user>` on the volume, persistent, exec permitted |
-| egress | none: no route, no resolver. The model door (Plan F §2) is not part of this slice, and satan's option D does not need it (research X6) |
+| egress | none: no route, no resolver, and no link but `lo` and the tap. The guest can address only `net.host`, which is the room namespace's own end of the tap and not this host's root namespace. Its kernel answers ICMP there and **no service listens** (the relay connects outward to `net.guest:22`). The tap guard rule keeps it to that one address (`host/netns.nix:217-224`). The model door (Plan F §2), a future listener at `net.host`, is not part of this slice, and satan's option D does not need it (research X6; RV-014 F-3) |
 | lifecycle | `capsule <room> start | stop` (sec-7). A stop is a reboot through the stop key, so an in-flight command is cut, and any probe run stops the room first (`DEC-031`) |
 
 pi-env reaches this door unchanged: it passes `-F <configFile>` and disables only `RemoteCommand` and `PermitLocalCommand` (pi-env `src/ssh.ts:90, 100-101`), so a `ProxyCommand` in its config file works. The client must run as the module owner to open the socket. The tailnet ingress (Plan E's `.socket` forwarder) is a different door and is not built here.
@@ -270,16 +271,18 @@ The build-out is a follow-on slice. Until then a client can read and write the r
 | verb | for a room |
 |---|---|
 | `capsule <room> ssh [user] [-- cmd]` | `door`'s `human` mode (`host/cli.nix:728-740`) with the room's socket and `HostKeyAlias=<room>`, as `<user>@<net.guest>`. `user` defaults to the room's only user if it has exactly one, and is required otherwise: the declaration is the default, not a guess |
-| `capsule <room> start` | `systemctl start microvm@<room>`, the same path a slot's start takes, minus the assignment record and injection |
+| `capsule <room> start` | its own branch, not the slot path: `systemctl start microvm@<room>`, then the readiness check asks **`root@<net.guest>`**, since the host's admin key is root's in every guest (`vm/door.nix`). No profile resolution, record or injection. The slot path's readiness is hardcoded to `agent` (`host/cli.nix:748`) and then injects (1858+), so a room with users `ada` and `bob` would read as failed (RV-014 F-4) |
 | `capsule <room> stop` | `systemctl stop microvm@<room>`: the drop-in's `ExecStop` reboots the guest through the stop key, then `microvm-shutdown` (`host/services.nix:434-438`) |
 | `capsule status` | a rooms block after the slot table: name, running or not, and socket present. That is what a refused probe needs to see. It is a separate block so `IMP-009`'s width problem does not grow |
 | any other verb | refuses: `capsule: '<room>' is a room; rooms take ssh, start, stop (status lists them)`, exit 2 |
+
+**A room name may not be a verb or `all`.** The front end already throws at eval when a slot name is one (`host/cli.nix:296-302`, `collide`). `collide` widens to slot and room names, because verbs are known only there, and its message names which kind collided: `'<n>' is both a room and a verb (or all)` (RV-014 F-5, F-9).
 
 `sockOf` returns the record's socket, so `doorsOpen`'s glob over `/run/capsule/*/ssh.sock` (698-705) never counts a room, and transport selection for slot programs is untouched (NOTES items 20, 40).
 
 **Stopping** is the slot path exactly: the `microvm@` drop-in's stop-key check before start, and the reboot-then-shutdown stop (C22, NOTES item 11). A room's root trusts `access.stopKey` through `vm/door.nix`, so the check passes. The devshell `vm-stop` never meets a room, because devshell programs refuse room names, so its non-slot branch does not change.
 
-`roomVerbsCases` (`host/room-verbs-cases.nix`, the front end rendered against a fixture pool with rooms, as `policyCases` does) pins: each room verb's argv (stubbed `systemctl`, `ssh`), the refusal of a slot verb on a room with its reason, a two-user room's `ssh` with no user refusing, and `status` with a room up and one down.
+`roomVerbsCases` (`host/room-verbs-cases.nix`, the front end rendered against a fixture pool with rooms, as `policyCases` does) pins only what it can observe. `pkgs.systemd` and `pkgs.openssh` are in the front end's `runtimeInputs` (`host/cli.nix:326`), so no case can stub `systemctl` or `ssh` (`host/policy-cases.nix:104`; RV-014 F-6). It pins: a room name consumed as a name rather than a verb, a slot verb on a room refusing with its reason, a two-user room's `ssh` with no user refusing before any `ssh` runs, and, as an eval verdict, a fixture room named `ssh` throwing from `collide` with its reason. What `ssh`, `start` and `stop` actually invoke is proven by the live run (sec-9).
 
 <!-- doctrine:section sec-8 -->
 ## Fixture, template and the consumer
@@ -291,7 +294,7 @@ The build-out is a follow-on slice. Until then a client can read and write the r
 
 Both use the fixture's `net` and sizes off the live fabric. Its probe fabric stays disjoint from `room-lounge` and `room-assistant`. The two rooms differ only in values, and that is stated rather than oversold: the seam proved here is slot versus room through one `capsule-netns`, one unit set and one guard. Plan E's tailnet ingress and Plan F's repos are where the room module itself meets a second shape (inq-11).
 
-**The template** (`templates/fleet/`) passes `rooms = {};` plus a commented example. `templateCases` forces every `nixosConfigurations.*` runner (`templates/template-cases.nix:60-70`), so a room declared there is built by that check without a new one (`DEC-030`).
+**The template** (`templates/fleet/`) passes `rooms = {};` plus a commented example. `templateCases` evaluates the template's wiring of the ninth argument and no room. Room evaluation and builds are the fixture's (sec-9; RV-014 F-8).
 
 **The consumer** at `/srv/fleet` must pass `rooms` the moment this lands, because the argument is required. That is the user's change, made in the same sitting as bumping the oubliette input: `rooms = {};` to change nothing, or `rooms.assistant = …` to bring the assistant up. Nothing on the host changes until then: a room's units are not `wantedBy` anything, as a slot's are not.
 
@@ -310,15 +313,16 @@ Every check here is in `just build` (`just/fleet.just:64-76` lists them by hand,
 | room units evaluate, carry no newline, pair binds with users, programs shellcheck | module evaluation | `hostModuleUnits`/`hostModulePrograms` over the fixture with rooms, no check edited (sec-4) |
 | a room's netns unit does not require the aggregator, and its `microvm@` does not want a proxy | module evaluation | new assertions in `hostModuleUnits` over the room units' fields |
 | the guard audits rooms | program cases | `guardCases` gains a room, and a room VMM outside its namespace failing limb two |
-| front-end room verbs and refusals | program cases | `roomVerbsCases` (sec-7) |
-| room images build, the template still evaluates | build and eval | `just build` builds the fixture's `nixosConfigurations.{lounge,assistant}`; `templateCases` |
+| front-end room resolution and refusals, and the verb collision | program cases, eval verdict | `roomVerbsCases` (sec-7); argv of `ssh`/`start`/`stop` is live-only |
+| room images build | build | a `roomImages` output linking the fixture rooms' declared runners, added to `just build`'s list. That recipe lists no VM images today (`just/fleet.just:64-76`), so this is a new gate, not an existing one (RV-014 F-7) |
+| the template's wiring of the ninth argument | eval | `templateCases` with `rooms = {}`. It exercises the argument, not a room. Room evaluation and builds are the fixture's (RV-014 F-8) |
 | the capsule guest is unchanged by the door module | build comparison | `nix-store --query` the fixture slot image's toplevel before and after: equal, or a diff confined to option order, recorded in the commit |
 
 **Live** (root, the user's to run; evidence per `STD-001`, recorded in `docs/probes.md` with what it does not prove):
 
 1. With `rooms.assistant` declared in the consumer: `capsule assistant start`. `ip netns exec room-assistant ip route` shows no default route and `ip link` shows only `lo` and the tap. The guard reports N+1 namespaces verified.
-2. `capsule assistant ssh` reaches `agent`, and `ssh -F` with the `ProxyCommand` line reaches it as a client would.
-3. From inside: `getent hosts example.com` and a TCP connect to any host address fail. Assert both directions: the door works and nothing else does.
+2. `capsule assistant ssh` reaches `agent`, `ssh -F` with the `ProxyCommand` line reaches it as a client would, and the serial console asks for a login rather than handing over root.
+3. From inside: `ip route` is empty past the `/30`, `getent hosts example.com` fails, and a TCP connect to `net.host` on any port is refused. A TCP connect to an address outside the `/30` gets *no route*. Assert both directions: the door works and nothing else does. ICMP to `net.host` is answered by the room namespace's own kernel and is not a breach (sec-6).
 4. Any probe refuses while the room runs. `capsule assistant stop` exits cleanly through the stop key, and the probe then runs.
 
 **Not proven by any of this**: anything about pi-env or satan's runner beyond reaching the door; the unit-level teardown after a failed `ExecStart` (`RSK-003`, unchanged for rooms); a room's behaviour across a host suspend (`ISS-014`).

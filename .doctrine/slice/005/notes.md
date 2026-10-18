@@ -59,6 +59,20 @@ POL-001..004, STD-001, ADR-002 (the ledger stays closed), DEC-020 (being
 amended), DEC-025/026 (consumer arguments), DEC-029 (the throw runs in
 every caller), DEC-030 (template eval-check), DEC-031, CON-005.
 
+## Review passes (design run, reviewing stage)
+
+- **RV-014**, adversarial, gpt-6-sol, 2026-10-18. Two rounds: 8 findings
+  (1 blocker), fixed in design rev 24. A verification round verified 5,
+  contested 3 (F-3, F-4, F-6) and raised F-9, a minor. F-9 fixed (rev 30).
+  F-3/F-4/F-6 answered `tolerated` with reasons, so they await the user's
+  disposition.
+- **A further pass would probe**: the door module's refactor of
+  `vm/capsule.nix` (does anything else read the moved options?), and
+  `host/services.nix`'s per-guest split against the live unit graph. Both
+  are cheaper to check at build time (sec-9's toplevel comparison and
+  `hostModuleUnits`) than by another design read, so **no further design
+  pass is proposed**.
+
 ## Harvest
 <!-- single-copy: updated in place each harvest; ids only, never restated content -->
 fresh-as-of: <yyyy-mm-dd> · <PHASE-NN | stage> · <head-commit>
