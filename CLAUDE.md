@@ -202,7 +202,7 @@ in a namespace and ask the guest to get out.
 
 **A VMM is identified by its namespace, never by its name.** There is one image
 per target, and every slot bound to a target runs that image's runner from one
-store path (`fleet.nix`). Every image is hostName `capsule` (`DEC-020`), so every
+store path (`fleet.nix`). Every image is hostName `capsule` (`DEC-032`), so every
 VMM, whichever target, is `microvm@capsule` in the process table: `pkill -f` on that name is a
 power cut for the siblings, and it reads as a clean teardown while doing it.
 `vm_running`, `wait_vm` and `halt_guest` all take a namespace and scope

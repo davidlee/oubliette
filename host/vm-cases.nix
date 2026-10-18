@@ -30,6 +30,11 @@
   # — `c` was this host's once, and outlived its declaration as a case that
   # passed for the wrong reason.
   slots,
+  # The rooms the caller declares, which both programs have baked in. In
+  # oubliette's own build these are the fixture's `lounge` and `assistant`.
+  # Unlike `slots`, none is required: a fleet with `rooms = {}` builds this
+  # suite too, and its room cases are skipped and say so.
+  rooms,
 }: let
   # Not a prefix of `capsule`, the process name every capsule VMM carries: a
   # slot that is one finds the VMM by the accident ISS-016 was, so the cases
@@ -160,6 +165,34 @@ in
     ck "  and nix was never asked" no "$([ -e $NIX_LOG ] && echo yes || echo no)"
     ck "  and nothing was created" no "$(litter)"
     kill "$vmm" 2>/dev/null || true; wait "$vmm" 2>/dev/null || true
+
+    # ------------------------------------------------------------ a room's name
+    #
+    # A room runs only on the module path (design sec-1): a devshell boot puts its
+    # tap in the root namespace, and a room is a namespace's guest. So `vm` refuses
+    # a declared room before any state is made or nix is asked, and `vm-stop`
+    # refuses it rather than reporting a room it never ran as down.
+    ${
+      if rooms == []
+      then ''echo "skip: no declared room" >>"$log"''
+      else
+        lib.concatMapStrings (r: let
+          q = lib.escapeShellArg r;
+        in ''
+          rm -f "$NIX_LOG"
+          rc=0; ${vm}/bin/vm ${q} >out 2>err || rc=$?
+          ck "vm refuses room "${q} 2 "$rc"
+          ckt "  saying it is a room" grep -q "is a room" err
+          ck "  and nothing was created" no "$(litter)"
+          ckt "  least of all its state directory" test ! -e "$CAPSULE_ROOT/.vm/"${q}
+          ck "  and nix was never asked" no "$([ -e "$NIX_LOG" ] && echo yes || echo no)"
+
+          rc=0; ${vm-stop}/bin/vm-stop ${q} >out 2>err || rc=$?
+          ck "vm-stop refuses room "${q} 2 "$rc"
+          ckt "  saying it is a room" grep -q "is a room" err
+        '')
+        rooms
+    }
 
     # ------------------------------------------------------------- a real name
     #

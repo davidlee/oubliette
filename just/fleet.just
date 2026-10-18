@@ -61,6 +61,8 @@ _proxy-log name:
 # skipping it.
 # `guardCases` is here rather than in its own recipe on purpose: a case that
 # fails fails the build, which is the only way a check gets run every time.
+# `roomImages` is the first VM-image gate here: it builds every declared room's
+# runner, checked against the room rules (RV-014 F-7).
 build:
   nix build --no-link '.#capsule-cli' \
     '.#capsule-host' '.#capsule-net' '.#vm-stop' '.#capsule-halt' \
@@ -74,7 +76,7 @@ build:
     '.#snapshotCases' '.#refreshCases' '.#observeCases' '.#baselineCases' \
     '.#profileCases' '.#gitChannelCases' '.#vmCases' '.#wrapCases' \
     '.#volumeRootCases' '.#resetHomeCases' '.#volumeCases' '.#fleetCases' \
-    '.#roomsCases' '.#fabricCases'
+    '.#roomsCases' '.#fabricCases' '.#roomImages'
 
 # which units the host module generates, without rebuilding a host — the only
 # mechanical check the NixOS half has

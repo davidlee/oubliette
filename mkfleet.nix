@@ -150,7 +150,10 @@
     inherit targets targetFlakes capsules probeTarget;
   };
 
-  vms =
+  # What `vm <name>` can boot, and so what `packages` carries by name: the
+  # smoke test and the slots' images. Not the rooms — a room runs only on the
+  # module path (design sec-1), so it gets no devshell runner to be booted from.
+  devshellVms =
     {
       # Smoke test: does firecracker boot at all on this host. No network.
       hello = mkVm "hello" ./vm/hello.nix {};
@@ -161,10 +164,75 @@
     # table: every probe matches on that string and builds `.#capsule` to get
     # it. And an attribute per declared slot, because `microvm -c <name> -f .`
     # resolves `nixosConfigurations.<name>` (the CLI appends that itself and
-    # takes no fragment). An image is never a `nixosConfigurations` attribute
-    # of its own (DEC-020): it builds as `packages.image-<target>`, so
-    # `microvm -c` cannot create one outside a slot.
+    # takes no fragment).
     // bound.vms;
+
+  # One image per declared room, under hostName `capsule` like every image, so
+  # a running room is `microvm@capsule` and every probe's refusal sees it
+  # (DEC-032). A room's name is its `nixosConfigurations` attribute, which is
+  # what `microvm -c <room>` resolves — and the only way one is created, since
+  # it is not in `devshellVms`.
+  roomVms = lib.mapAttrs (_: room: mkVm "capsule" ./vm/room.nix {inherit room;}) roomRecords;
+
+  # Every `nixosConfigurations` attribute: `hello`, `capsule`, each slot and
+  # each room (DEC-032). A target's image is never one of its own: it builds as
+  # `packages.image-<target>`, so `microvm -c` cannot create one outside a slot.
+  vms = devshellVms // roomVms;
+
+  # What a room's evaluated image must say, as `{ok; reason;}` per rule. Each
+  # predicate reads an option the pinned nixpkgs defines, and a user's are
+  # guarded on presence first, so a missing user is its reason and not a
+  # missing-attribute abort. None is defaulted to its passing value.
+  roomChecks = name: cfg: let
+    c = cfg.config;
+    room = roomRecords.${name};
+    check = ok: rule: {
+      inherit ok;
+      reason = "roomImages: room '${name}': ${rule}";
+    };
+    userChecks = u: let
+      present = c.users.users ? ${u};
+      user = c.users.users.${u};
+    in
+      [(check present "declared user '${u}' is not a user of the image (sec-5)")]
+      ++ lib.optionals present [
+        (check user.isNormalUser "user '${u}' is not a normal user (sec-5)")
+        (check (user.openssh.authorizedKeys.keys == room.users.${u})
+          "user '${u}' does not carry exactly its declared keys (sec-5)")
+        (check (user.extraGroups == [])
+          "user '${u}' has extra groups ${builtins.toJSON user.extraGroups}; a room grants none (POL-001 limb 3)")
+      ];
+  in
+    [
+      (check (c.networking.hostName == "capsule")
+        "hostName is '${c.networking.hostName}', not 'capsule' (DEC-032)")
+      (check (c.services.getty.autologinUser == null)
+        "the console autologs '${toString c.services.getty.autologinUser}'; a room autologs nobody (POL-001 limb 3, RV-014 F-2)")
+      (check (!c.networking.useDHCP
+        && (c.systemd.network.networks."10-capsule".networkConfig.DHCP or null) == "no")
+      "DHCP is on, or the door's static link is missing (RV-014 F-1)")
+      (check (lib.any (v: v.image == "room-home.img" && v.mountPoint == "/home") c.microvm.volumes)
+        "no volume 'room-home.img' at /home (sec-5)")
+      (check (c.users.users.root.openssh.authorizedKeys.keys == access.adminKeys ++ [access.stopKey])
+        "root's keys are not exactly the admin keys and the stop key (POL-001 limb 3)")
+      (check (c.security.lockKernelModules && c.security.protectKernelImage)
+        "kernel modules or the kernel image are not locked (vm/room.nix)")
+    ]
+    ++ lib.concatMap userChecks (lib.attrNames room.users);
+
+  # Every room's runner, built — the first gate in `just build` that builds a VM
+  # image at all (RV-014 F-7). Forcing a link's `path` forces every check above
+  # first, so a room that breaks a rule fails here with the rule, and one whose
+  # module does not evaluate fails here with that. Proves the image evaluates,
+  # meets the rules and builds; not that it boots. Empty for `rooms = {}`.
+  roomImages = pkgs.linkFarm "capsule-room-images" (lib.mapAttrsToList (name: cfg: {
+      inherit name;
+      path =
+        builtins.foldl' (acc: c: assert c.ok || throw c.reason; acc)
+        cfg.config.microvm.declaredRunner
+        (roomChecks name cfg);
+    })
+    roomVms);
 
   # Is the host-side half of the perimeter loaded? Injected into the
   # jail-agnostic perimeter as `preflight` + `watch` and shared verbatim with
@@ -593,6 +661,7 @@
   vmCases = import ./host/vm-cases.nix {
     inherit pkgs lib vm vm-stop;
     slots = declaredSlots;
+    rooms = lib.attrNames roomRecords;
   };
 
   # The eleventh, and a *fourth* kind of check: its subject is the
@@ -966,6 +1035,25 @@
   # of a human. One text, spliced ahead of both (host/vm-name.nix, `ISS-002`).
   vmName = import ./host/vm-name.nix;
 
+  # A declared room, refused by both: a room runs only on the module path
+  # (design sec-1), because a devshell boot puts its tap in the root namespace
+  # and a room is a namespace's guest. Here and not in `host/vm-name.nix`, whose
+  # test is a bare token on purpose — which names exist is the declaration's to
+  # answer, and this is the one place both programs are handed it (POL-003).
+  # Spliced after the argv is read and before anything is made or probed. Room
+  # names are unit-safe (`rooms.nix`), so they are literal `case` patterns.
+  roomRefusal = {prog}: let
+    names = lib.attrNames roomRecords;
+  in
+    lib.optionalString (names != []) ''
+      case "$name" in
+        ${lib.concatStringsSep " | " names})
+          echo "${prog}: '$name' is a room; rooms run only on the module path (capsule $name start)" >&2
+          exit 2
+          ;;
+      esac
+    '';
+
   # The devshell path's root (perimeter/root.nix), for the two programs here
   # that spell it; the rest import the file themselves.
   rootFragment = import ./perimeter/root.nix;
@@ -996,6 +1084,7 @@
     # refusal in it lands ahead of the `mkdir` below, which is `ISS-002`.
     text =
       vmName {prog = "vm";}
+      + roomRefusal {prog = "vm";}
       + ownVms
       + ''
         ${rootFragment}
@@ -1362,6 +1451,7 @@
     runtimeInputs = [capsule-halt pkgs.procps pkgs.coreutils];
     text =
       vmName {prog = "vm-stop";}
+      + roomRefusal {prog = "vm-stop";}
       + ownVms
       + ''
           # `capsule-halt` is namespace-relative and takes no transport, by design:
@@ -1448,7 +1538,7 @@ in {
   nixosModules.capsule-perimeter = capsulePerimeter;
 
   packages.${system} =
-    lib.mapAttrs (_: cfg: cfg.config.microvm.declaredRunner) vms
+    lib.mapAttrs (_: cfg: cfg.config.microvm.declaredRunner) devshellVms
     # Every target's image, by the target's name, for `just build-vm`.
     // lib.mapAttrs' (name: cfg:
       lib.nameValuePair "image-${name}" cfg.config.microvm.declaredRunner)
@@ -1465,6 +1555,8 @@ in {
       # guard decides, and which policy a slot resolves to.
       inherit hostModuleUnits hostModulePrograms guardCases netnsCases policyCases observeCases;
       inherit profileCases gitChannelCases vmCases wrapCases volumeRootCases resetHomeCases volumeCases fleetCases roomsCases fabricCases;
+      # Every declared room's image, checked and built (RV-014 F-7).
+      inherit roomImages;
       # The rendered run-time half of every target, so a human can read what a
       # program will resolve (host/profile.nix). `nix build .#capsule-profiles`.
       capsule-profiles = hostProfile.dir;
