@@ -21,6 +21,10 @@
   lib,
   net,
   capsules,
+  # rooms.nix, unapplied: the room in the fixture below is built by the same
+  # constructor a host's are, so its namespace and socket are a room's rather
+  # than a spelling of one.
+  rooms,
 }: let
   guardStubs = let
     # The kernel and systemd, as far as the guard can tell. Each reads the
@@ -68,7 +72,7 @@
     '';
   in [ip systemctl sleep pkgs.gnugrep pkgs.coreutils];
 
-  # Two slots, and not this host's two. The cases below assert a property
+  # Two slots and a room, and not this host's. The cases below assert a property
   # that holds at any fleet size — one absent slot is a smaller fleet, one
   # present-and-wrong slot is a breach — so following `capsules.nix` would
   # make widening the pool an edit to eleven expected strings and would test
@@ -85,9 +89,21 @@
         b = {index = 1;};
       };
     };
+  # One room, `room-lounge`: a guest with a namespace and no uplink, which the
+  # guard holds exactly as it holds a slot (`DEC-039`). So every count below is
+  # out of three, the guests, and not out of the two slots.
+  roomFixture =
+    (rooms {inherit lib;} {
+      rooms.lounge = {
+        users.ada = ["ssh-ed25519 AAAA fixture"];
+        sizes = {};
+      };
+      slotNames = lib.attrNames fixture.instances;
+    }).instances;
   stubbed = import ./guard.nix {
     inherit pkgs lib net;
     capsules = fixture;
+    guests = lib.attrValues fixture.instances ++ lib.attrValues roomFixture;
     netns = import ./netns.nix {
       inherit pkgs lib net;
       capsules = fixture;
@@ -106,7 +122,7 @@
       name = "both present, nothing running";
       ns = "cap-egress cap-a cap-b";
       want = 0;
-      expect = "2 of 2 declared";
+      expect = "2 of 3 declared";
     }
     {
       # The whole point of item 30: one slot short is a smaller fleet, not a
@@ -114,13 +130,13 @@
       name = "a slot that never came up degrades";
       ns = "cap-egress cap-a";
       want = 0;
-      expect = "1 of 2 declared";
+      expect = "1 of 3 declared";
     }
     {
       name = "no slot present at all";
       ns = "cap-egress";
       want = 0;
-      expect = "0 of 2 declared";
+      expect = "0 of 3 declared";
     }
     {
       # One per host, and every capsule leaves through it.
@@ -146,7 +162,7 @@
         PIDS_IN = "cap-a:4242";
       };
       want = 0;
-      expect = "1 of 2 declared";
+      expect = "1 of 3 declared";
     }
     {
       # The hole limb one would open on its own: `ip netns del` unnames a
@@ -179,6 +195,33 @@
       want = 1;
       expect = "no MainPID";
     }
+    # --- a room is a guest: both limbs, and the count ---
+    {
+      name = "a declared room's namespace is audited";
+      ns = "cap-egress room-lounge";
+      want = 0;
+      expect = "1 of 3 declared";
+    }
+    {
+      # The stub's forwarding switch is every namespace's, and no slot's is
+      # present here, so only the room's can be the one refused.
+      name = "a room namespace that forwards";
+      ns = "cap-egress room-lounge";
+      env = {FORWARD = "1";};
+      want = 1;
+      expect = "the guest's confinement is gone";
+    }
+    {
+      # Limb two over a room: its VMM is running in a slot's namespace.
+      name = "a running room VMM outside its namespace";
+      ns = "cap-egress cap-a room-lounge";
+      env = {
+        VMS = "lounge:4242";
+        PIDS_IN = "cap-a:4242";
+      };
+      want = 1;
+      expect = "is not in room-lounge";
+    }
     # --- the count is part of the safety property, so it has to move ---
     {
       name = "a slot arriving during the hold is reported";
@@ -188,7 +231,7 @@
         NS_THEN = "cap-egress cap-a cap-b";
       };
       want = 0;
-      expect = "2 of 2 declared";
+      expect = "2 of 3 declared";
     }
     {
       name = "a slot leaving during the hold is reported";
@@ -198,10 +241,13 @@
         NS_THEN = "cap-egress cap-a";
       };
       want = 0;
-      expect = "1 of 2 declared";
+      expect = "1 of 3 declared";
     }
   ];
 
+  # Every case runs, and a red one is recorded rather than ending the suite: a
+  # mutation is only legible if it shows *which* cases it turned red, and
+  # stopping at the first shows one of them.
   runCase = i: c: ''
     mkdir -p case-${toString i} && cd case-${toString i}
     printf '%s\n' ${lib.escapeShellArg c.ns} >ns
@@ -211,22 +257,24 @@
         (k: v: "${k}=${lib.escapeShellArg v}") (c.env or {}))} \
       ${lib.getExe stubbed} >out 2>&1 || rc=$?
     if [ "$rc" != ${toString c.want} ]; then
-      echo "FAIL ${c.name}: exit $rc, wanted ${toString c.want}" >&2
-      sed 's/^/    /' out >&2
-      exit 1
+      fail ${lib.escapeShellArg c.name} "exit $rc, wanted ${toString c.want}"
+    elif ! grep -qF -- ${lib.escapeShellArg c.expect} out; then
+      fail ${lib.escapeShellArg c.name} ${lib.escapeShellArg "nothing matching ${c.expect}"}
+    else
+      echo "ok (${toString c.want}) ${c.name}" >>"$log"
     fi
-    if ! grep -qF -- ${lib.escapeShellArg c.expect} out; then
-      echo "FAIL ${c.name}: nothing matching ${c.expect}" >&2
-      sed 's/^/    /' out >&2
-      exit 1
-    fi
-    echo "ok (${toString c.want}) ${c.name}" >>"$log"
     cd ..
   '';
 in
   pkgs.runCommand "capsule-guard-cases" {} ''
     log=$PWD/log
     : >"$log"
+    failed=0
+    fail() {
+      echo "FAIL $1: $2" >&2
+      sed 's/^/    /' out >&2
+      failed=1
+    }
     # nft's rendering, as the guard's `ns_rule` greps it. Every case has an
     # intact ruleset: a missing rule is `ns_rule`'s own test and not this
     # program's.
@@ -234,6 +282,7 @@ in
     ip saddr ${capsules.uplinkNet}
     iifname "${net.tap}" ip daddr != ${net.host} drop'
     ${lib.concatStrings (lib.imap0 runCase cases)}
+    [ "$failed" = 0 ] || exit 1
     cp "$log" $out
     cat $out
   ''

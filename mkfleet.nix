@@ -51,6 +51,7 @@
   capsulePerimeter = import ./host/services.nix {
     inherit net targets capsules policies workBranch fleetPath;
     inherit (access) injections;
+    rooms = roomDecision;
   };
 
   # The target-shaped settings that follow from each declared target
@@ -75,12 +76,13 @@
   # Each declared room's guest record — name, namespace, socket, no uplink —
   # the function (rooms.nix) applied to the caller's `rooms` and the declared
   # slot names, which a room may not take. Not called `rooms`: that is the
-  # declaration, and this is what it decides.
-  roomRecords =
-    (import ./rooms.nix {inherit lib;} {
-      inherit rooms;
-      slotNames = lib.attrNames fleet.slots;
-    }).instances;
+  # declaration, and this is what it decides — bound whole for the host module,
+  # which takes it as rooms.nix returns it, and its records once for the rest.
+  roomDecision = import ./rooms.nix {inherit lib;} {
+    inherit rooms;
+    slotNames = lib.attrNames fleet.slots;
+  };
+  roomRecords = roomDecision.instances;
 
   # The fabric the case suites run on (guardCases, netnsCases, policyCases,
   # volumeCases, volumeRootCases): the same function, applied to a declaration
@@ -571,6 +573,7 @@
   guardCases = import ./host/guard-cases.nix {
     inherit pkgs lib net;
     capsules = casesCapsules;
+    rooms = import ./rooms.nix;
   };
 
   # The namespace program against a stubbed kernel and a scratch `/etc/netns`
@@ -974,6 +977,36 @@
       (a: !a.assertion && lib.hasInfix "profile document's `path`" a.message)
       withRepo.config.assertions);
 
+    # A room is a guest and not a slot (SL-005 design sec-4, `DEC-036`): it gets
+    # the per-guest units — namespace, tap and VMM drop-ins, relay — and none of
+    # the per-slot ones, and nothing of its own may lean on the egress fabric it
+    # has no link to. Read off the module this fixture declares rooms for, so
+    # the first check is what keeps the next ones from passing over nothing.
+    roomNames = lib.attrNames roomRecords;
+    service = n: host.config.systemd.services.${n} or {};
+    roomUnitsMissing = lib.filter (n:
+      !(lib.all (u: lib.elem u units)
+        ["capsule-netns-${n}" "capsule-ssh-relay-${n}" "microvm@${n}" "microvm-tap-interfaces@${n}"]))
+    roomNames;
+    # The aggregator is matched by prefix rather than by an exported name: the
+    # module spells `capsule-egress-ns.service` once (host/services.nix), and a
+    # rename there should not make this check vacuous.
+    roomOnAggregator = lib.filter (n: let
+      u = service "capsule-netns-${n}";
+    in
+      lib.any (lib.hasPrefix "capsule-egress") ((u.requires or []) ++ (u.after or [])))
+    roomNames;
+    roomWantsProxy = lib.filter (n:
+      lib.any (lib.hasPrefix "capsule-proxy-") ((service "microvm@${n}").wants or [])
+      || lib.elem "capsule-proxy-${n}" units)
+    roomNames;
+    roomRelayElsewhere = lib.filter (n: let
+      sc = (service "capsule-ssh-relay-${n}").serviceConfig or {};
+    in
+      !(lib.hasInfix "UNIX-LISTEN:${roomRecords.${n}.socket}," (sc.ExecStart or "")
+        && (sc.RuntimeDirectory or null) == "capsule-room/${n}"))
+    roomNames;
+
     # Refused before either derivation is named, so a `nix build` of the
     # programs cannot pass a module whose units are wrong.
     checked = drv:
@@ -991,6 +1024,14 @@
       then throw "capsule-perimeter: with services.capsule-perimeter.repo set, the module's options are unreadable — the removed-option shim for `repo` is gone or misnamed, so a host that still sets it fails on an unknown option instead of being told source is the profile document's `path` (SL-001)."
       else if !(repoRedirected.success && repoRedirected.value)
       then throw "capsule-perimeter: with services.capsule-perimeter.repo set, no assertion names the profile document's `path` — the removed-option shim for `repo` no longer says what replaced it (SL-001)."
+      else if roomUnitsMissing != []
+      then throw "capsule-perimeter: room(s) ${lib.concatStringsSep ", " roomUnitsMissing} have no capsule-netns, capsule-ssh-relay, microvm@ or microvm-tap-interfaces@ unit — a room is a guest, and those units are built over guests (SL-005 design sec-4, DEC-036)."
+      else if roomOnAggregator != []
+      then throw "capsule-perimeter: the namespace unit of room(s) ${lib.concatStringsSep ", " roomOnAggregator} requires or is ordered after the egress aggregator — a room has no uplink, so it must neither pull the aggregator in nor wait on it (SL-005 design sec-4, DEC-036)."
+      else if roomWantsProxy != []
+      then throw "capsule-perimeter: room(s) ${lib.concatStringsSep ", " roomWantsProxy} want or have a capsule-proxy unit — a room has no uplink and no policy, so it gets no egress proxy (SL-005 design sec-4, DEC-036)."
+      else if roomRelayElsewhere != []
+      then throw "capsule-perimeter: the ssh relay of room(s) ${lib.concatStringsSep ", " roomRelayElsewhere} does not listen on the room's own socket under RuntimeDirectory capsule-room/<name> — a room's door is its record's (SL-005 design sec-4)."
       else drv;
   in {
     units = checked (pkgs.writeText "capsule-units.txt" ''

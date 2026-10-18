@@ -34,6 +34,10 @@
   # the activation installs (host/programs.nix).
   targets,
   capsules,
+  # What `rooms.nix` decided from the caller's `rooms` (`{reasons; instances}`):
+  # guests that are not slots, so they get the per-guest units and none of the
+  # per-slot ones (SL-005 design sec-4, `DEC-036`).
+  rooms,
   policies,
   # The guest's branch, threaded through to the git channel exactly as the
   # devshell path does it (mkfleet.nix): the installed programs and the guest image
@@ -57,6 +61,10 @@
   netns = import ./netns.nix {inherit pkgs lib net capsules;};
 
   instances = lib.attrValues capsules.instances;
+  # Every guest with a namespace on this host: the slots, then the rooms. A
+  # unit over guests is built once for either; one over `instances` is a slot's
+  # alone (the proxy, its allowlist, its sudo rule, its state).
+  guests = instances ++ lib.attrValues rooms.instances;
   inherit (capsules) egress;
 
   # Every capsule runs the same VM closure from the same store path, so a unit
@@ -194,13 +202,17 @@
   # because its tools are an argument: the same text is built against stubs by
   # `mkfleet.nix`'s `guardCases` (host/guard.nix).
   guard = import ./guard.nix {
-    inherit pkgs lib net capsules netns;
+    inherit pkgs lib net capsules guests netns;
     tools = [pkgs.iproute2 pkgs.procps pkgs.gnugrep pkgs.coreutils pkgs.systemd];
   };
 
   # ------------------------------------------------------------------- units
 
   perInstance = f: lib.listToAttrs (map f instances);
+  # A unit every guest has, slot or room (SL-005 design sec-4, `DEC-036`). Where
+  # a room differs it is by having no uplink, so the difference is asked of
+  # `c.uplink` and never of which list `c` came from.
+  perGuest = f: lib.listToAttrs (map f guests);
 
   proxyServices = perInstance (c: {
     name = "capsule-proxy-${c.name}";
@@ -299,7 +311,7 @@
   # inside the namespace is reachable from the human's shell. The socket path is
   # also the capsule's identity, which is what keeps N guests at one address out
   # of `known_hosts` (NOTES item 17).
-  relayServices = perInstance (c: {
+  relayServices = perGuest (c: {
     name = "capsule-ssh-relay-${c.name}";
     value = {
       description = "ssh into capsule ${c.name}, over a unix socket";
@@ -327,7 +339,10 @@
         # the guest. It carries no privilege of its own: one socket, one
         # destination, and nothing else reachable.
         User = cfg.owner;
-        RuntimeDirectory = "capsule/${c.name}";
+        # The socket's own directory, so the record's `socket` is the one
+        # declaration of where the door is: `capsule/<n>` for a slot,
+        # `capsule-room/<n>` for a room.
+        RuntimeDirectory = lib.removePrefix "/run/" (dirOf c.socket);
         RuntimeDirectoryMode = "0700";
         NetworkNamespacePath = netns.nsPath c.ns;
         UMask = "0077";
@@ -359,12 +374,16 @@
     };
   });
 
-  netnsServices = perInstance (c: {
+  netnsServices = perGuest (c: let
+    # A guest with no uplink has no link into the aggregator, so it neither
+    # pulls the aggregator in nor waits on it (host/netns.nix's `capsuleEnv`).
+    aggregator = lib.optional (c.uplink != null) egressUnit;
+  in {
     name = "capsule-netns-${c.name}";
     value = {
       description = "network namespace for capsule ${c.name}";
-      requires = [egressUnit];
-      after = [egressUnit];
+      requires = aggregator;
+      after = aggregator;
       # The tap is created *inside* here, so nothing ever moves a tap under a
       # running VM.
       before = [(tapUnit c)];
@@ -388,7 +407,7 @@
   # this repo — a declared VM's `current` is re-pointed at the declaration on
   # every rebuild, silently. Asserted above; NOTES item 49.
   vmDropins =
-    perInstance (c: {
+    perGuest (c: {
       name = "microvm-tap-interfaces@${c.name}";
       value = {
         overrideStrategy = "asDropin";
@@ -404,7 +423,7 @@
         environment = netns.capsuleEnv c;
       };
     })
-    // perInstance (c: {
+    // perGuest (c: {
       name = "microvm@${c.name}";
       value = {
         overrideStrategy = "asDropin";
@@ -413,8 +432,8 @@
         # Boot a capsule and its perimeter comes with it. Not `requires`: a
         # guest with no proxy reaches nothing, which is safe, and a capsule that
         # will not start because its proxy will not is worse than one with no
-        # egress.
-        wants = [(proxyUnit c) (relayUnit c)];
+        # egress. A guest with no uplink has no proxy to want.
+        wants = lib.optional (c.uplink != null) (proxyUnit c) ++ [(relayUnit c)];
         serviceConfig = {
           NetworkNamespacePath = netns.nsPath c.ns;
           # Refusing to start what it cannot stop cleanly. Runs as the unit's
@@ -904,7 +923,7 @@ in {
             # ordered against it and observes its absence instead of inheriting
             # its failure (NOTES item 30).
             requires = [egressUnit];
-            after = [egressUnit] ++ map netnsUnit instances;
+            after = [egressUnit] ++ map netnsUnit guests;
             serviceConfig = {
               Type = "simple";
               ExecStart = lib.getExe guard;

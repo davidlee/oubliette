@@ -44,7 +44,14 @@
   pkgs,
   lib,
   net,
+  # The aggregator's checks read `capsules` (its namespace, its rules, the uplink
+  # net); the per-guest limbs read `guests`.
   capsules,
+  # Every guest whose namespace this host declares — the slots' records and the
+  # rooms' (host/services.nix, SL-005 `DEC-039`). Each is `{name, ns, …}`, and
+  # both limbs are asked of each one alike: a room's namespace is held exactly
+  # as a slot's is, and a room failing is the whole host's problem.
+  guests,
   # host/netns.nix, for `check` — the helpers that ask a namespace the questions.
   netns,
   # What the program finds on `PATH`. The real set is iproute2, procps (for the
@@ -53,7 +60,6 @@
   # answer, and the guard is already a unit.
   tools,
 }: let
-  instances = lib.attrValues capsules.instances;
   inherit (capsules) egress;
 in
   pkgs.writeShellApplication {
@@ -63,15 +69,15 @@ in
       ${netns.check}
 
       # `name:namespace` pairs, because both limbs of the invariant are asked per
-      # slot and index-aligned arrays are a bug waiting for a deleted line.
-      declared=(${lib.concatMapStringsSep " " (c: ''"${c.name}:${c.ns}"'') instances})
-      # Set by every `audit`, read by the report: the slots that existed to be
+      # guest and index-aligned arrays are a bug waiting for a deleted line.
+      declared=(${lib.concatMapStringsSep " " (c: ''"${c.name}:${c.ns}"'') guests})
+      # Set by every `audit`, read by the report: the guests that existed to be
       # audited this cycle, which is the number a human needs to see a pool
       # running degraded.
       audited=()
 
       audit() {
-        local slot name ns bad=0
+        local guest name ns bad=0
 
         audited=()
 
@@ -85,9 +91,9 @@ in
         ns_rule "${egress.ns}" capsule-egress \
           'ip saddr ${capsules.uplinkNet}' || bad=1
 
-        for slot in "''${declared[@]}"; do
-          name=''${slot%%:*}
-          ns=''${slot#*:}
+        for guest in "''${declared[@]}"; do
+          name=''${guest%%:*}
+          ns=''${guest#*:}
 
           # Limb two first, because it is what licenses the skip below: a slot
           # whose unit is running must be *in* its namespace, so an unnamed
@@ -111,7 +117,7 @@ in
       }
 
       report() {
-        echo "capsule-perimeter-guard: ''${#audited[@]} of ${toString (builtins.length instances)} declared capsule namespace(s) verified"
+        echo "capsule-perimeter-guard: ''${#audited[@]} of ${toString (builtins.length guests)} declared guest namespace(s) verified"
       }
 
       if ! audit; then
