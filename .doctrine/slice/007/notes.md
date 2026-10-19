@@ -6,7 +6,7 @@ disposable phase sheet (`.doctrine/state/.../phase-NN.md`) that must survive
 
 ## Harvest
 <!-- single-copy: updated in place each harvest; ids only, never restated content -->
-fresh-as-of: 2026-10-19 · plan authored (5 phases), slice ready · PHASE-01 next
+fresh-as-of: 2026-10-19 · PHASE-01..05 completed, live checks pass · audit next
 
 ### Produced
 - DEC-052 (room base = floor + declared extras; supersedes DEC-044)
@@ -322,3 +322,45 @@ the ledger.
 `just check` rc 0 (alejandra clean); `just` rc 0, zero FAIL lines.
 Not exercised: nothing evaluates the template's commented `extras`; PHASE-03's
 rendered fixture room proves the field. IMP-017/ISS-013/ISS-023 left for /close.
+
+## PHASE-05 — live (2026-10-19)
+
+Consumer `/srv/fleet` `f5fcecc` (oubliette `34160e8`, assistant
+`extras = ["search" "dev-facilities" "emacs"]`); host switched by the user.
+The switch alone did **not** move the room: `/var/lib/microvms/assistant/current`
+changes only through `microvm -u` (ISS-026). `just refresh-build assistant`
+updated it (runner `2viwd…`, holds `room-base` `asicd5i…`) then failed at
+`up`'s slot-only `created` (exit 2, ISS-026); `capsule assistant start` by
+the user finished it.
+
+EX-1, from this host (payload quoted as one string: unquoted, ssh joins the
+argv and everything after the first `;` runs in the remote login shell, which
+reads as a false pass — it did, once):
+
+    capsule assistant ssh agent -- "env -i /run/current-system/sw/bin/session doctrine -- sh -c 'echo PATH=\$PATH; command -v git; command -v rg; readlink -f \$(command -v git)'"
+    PATH=/etc/room/repo/doctrine/tools/bin:/etc/room/base/bin:/no-such-path
+    /etc/room/base/bin/git
+    /etc/room/base/bin/rg
+    /nix/store/lg46w7hrjx7kylsh6645c9l975i8h43b-git-2.55.0/bin/git
+
+Before the refresh the same command gave `PATH=…/tools/bin:/no-such-path` and
+no `git` at all: the defect IMP-017 names, live. `git` resolves to the same
+store path the system's was (design sec-6: no behaviour change expected).
+
+EX-2, an interactive login (`bash -lc`): `rg`, `fd`, `emacs`, `git` on `PATH`
+from `/run/current-system/sw/bin`, and `ls` is `coreutils-full-9.11` (the
+amended floor; nothing shadows the system's).
+
+Observed: the base's `bin` also carries mailutils' programs (`mail`,
+`movemail`, `pop3d`, …) and `ebrowse`/`etags`, from the `emacs` fragment.
+Harmless; noted for whoever weighs image size.
+
+Not exercised: two extras colliding; `capsule-refresh`/`brief`/`baseline`
+live with no system `jq` (profileCases runs the reader's text).
+
+EX-3, the satan relay (for the user to deliver):
+
+> `session` now supplies the room's base tools itself (`git bash coreutils
+> which` plus the room's declared extras, at `/etc/room/base/bin`), behind the
+> repo's `tools/bin` and ahead of the caller's `PATH` — so your runner's `PATH`
+> no longer matters inside `session`. Keep calling it by absolute path.
