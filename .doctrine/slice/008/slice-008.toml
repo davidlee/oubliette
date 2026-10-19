@@ -1,0 +1,76 @@
+id = 8
+slug = "room-client-bundle"
+title = "A room-client bundle: one export of a room's door for host clients and their jails"
+status = "design"
+created = "2026-10-19"
+updated = "2026-10-19"
+tags = []
+
+[relationships]
+needs = []                      # slice→work hard prerequisite
+after = []                      # slice→work soft sequence: { to, rank }
+
+[[selector]]
+selector = "host/room-git.nix"
+intent = "scope-relevant"
+
+[[selector]]
+selector = "host/guest-ssh.nix"
+intent = "scope-relevant"
+
+[[selector]]
+selector = "rooms.nix"
+intent = "scope-relevant"
+
+[[selector]]
+selector = "mkfleet.nix"
+intent = "scope-relevant"
+
+[[selector]]
+selector = "host/services.nix"
+intent = "scope-relevant"
+
+[[selector]]
+selector = "host/room-client*.nix"
+intent = "scope-relevant"
+
+[[selector]]
+selector = "docs/**"
+intent = "scope-relevant"
+
+[[selector]]
+selector = "README.md"
+intent = "scope-relevant"
+
+[[relation]]
+label = "governed_by"
+target = "ADR-001"
+
+[[relation]]
+label = "governed_by"
+target = "POL-003"
+
+[[relation]]
+label = "governed_by"
+target = "POL-004"
+
+[[relation]]
+label = "references"
+role = "concerns"
+descriptor = "the room door the bundle exports"
+target = "DEC-037"
+
+[[relation]]
+label = "references"
+role = "concerns"
+descriptor = "the one known_hosts per room the bundle names"
+target = "DEC-047"
+
+# STRUCTURAL relations are uniform `[[relation]]` rows, never a typed
+# `[relationships]` axis. Slices carry no typed STRUCTURAL
+# relation axes — the `[relationships]` table above holds only the dep/seq payload
+# (`needs`/`after`). Author a structural edge with the `doctrine link` verb
+# — it validates the (source, label) pair and resolves the target:
+#   doctrine link SL-NNN specs SPEC-NNN
+#   doctrine link SL-NNN governed_by ADR-NNN
+# `doctrine inspect SL-NNN` renders the inbound + outbound edges.
