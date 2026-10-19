@@ -1,0 +1,46 @@
+memory_uid = "mem_01a1548ca65978c192b600c722780ce6"
+memory_key = "mem.fact.oubliette.ssh-reads-global-known-hosts"
+schema_version = 1
+memory_type = "fact"
+status = "active"
+title = "ssh consults /etc/ssh/ssh_known_hosts* beside UserKnownHostsFile unless GlobalKnownHostsFile none"
+summary = "A door that names its own known_hosts still trusts the host's global files; set GlobalKnownHostsFile none for a one-store door"
+created = "2026-10-19"
+updated = "2026-10-19"
+
+[scope]
+paths = ["host/room-door.nix", "host/room-git.nix"]
+globs = []
+commands = []
+tags = ["gotcha"]
+workspace = "default"
+repo = "github.com/davidlee/oubliette"
+repo_id_kind = "remote"
+repo_id_confidence = "high"
+
+[git]
+anchor_kind = "checkout_state"
+commit = ""
+tree = "7cc83727d8210d5faa68a594eaddf25509de39b3"
+ref_name = "refs/heads/main"
+checkout_state_id = "e808287219486fbbe022eff2af8af5270d34fdc5e68dc58cde66b6fa31975df8"
+base_commit = "d6cb4835e41afd7ff256bcae5434ee91b7b0fbf2"
+verified_sha = ""
+normalizer = "forget.checkout.v1"
+
+[review]
+verification_state = "unverified"
+reviewed = ""
+review_by = ""
+
+[trust]
+trust_level = "medium"
+
+[ranking]
+severity = "none"
+weight = 0
+
+[[source]]
+kind = "review"
+ref = "RV-023"
+

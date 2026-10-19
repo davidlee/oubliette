@@ -1,0 +1,46 @@
+memory_uid = "mem_01a1548ca67573f3882c3b7ce52a677d"
+memory_key = "mem.fact.oubliette.runtime-directory-goes-on-every-stop"
+schema_version = 1
+memory_type = "fact"
+status = "active"
+title = "A relay's RuntimeDirectory is deleted on every stop, restarts included, so a bind of it goes stale"
+summary = "systemd removes RuntimeDirectory= on each stop unless RuntimeDirectoryPreserve; a jail must bind the parent (/run/capsule-room), not /run/capsule-room/<r>, and the parent needs its own tmpfiles rule"
+created = "2026-10-19"
+updated = "2026-10-19"
+
+[scope]
+paths = ["host/services.nix", "host/room-client.nix"]
+globs = []
+commands = []
+tags = ["gotcha"]
+workspace = "default"
+repo = "github.com/davidlee/oubliette"
+repo_id_kind = "remote"
+repo_id_confidence = "high"
+
+[git]
+anchor_kind = "checkout_state"
+commit = ""
+tree = "7cc83727d8210d5faa68a594eaddf25509de39b3"
+ref_name = "refs/heads/main"
+checkout_state_id = "6c743bae5a6ec730bb8925dd09cd2e3738c02b733cf6d05f15f278058ff3c931"
+base_commit = "d6cb4835e41afd7ff256bcae5434ee91b7b0fbf2"
+verified_sha = ""
+normalizer = "forget.checkout.v1"
+
+[review]
+verification_state = "unverified"
+reviewed = ""
+review_by = ""
+
+[trust]
+trust_level = "medium"
+
+[ranking]
+severity = "none"
+weight = 0
+
+[[source]]
+kind = "slice"
+ref = "SL-008"
+

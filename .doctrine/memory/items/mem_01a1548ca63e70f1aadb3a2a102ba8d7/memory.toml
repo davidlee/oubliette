@@ -1,0 +1,46 @@
+memory_uid = "mem_01a1548ca63e70f1aadb3a2a102ba8d7"
+memory_key = "mem.pattern.oubliette.fixture-sshd-in-the-build-sandbox"
+schema_version = 1
+memory_type = "pattern"
+status = "active"
+title = "A case can reach ssh past the banner: an unprivileged sshd -i behind socat runs in the nix build sandbox"
+summary = "socat UNIX-LISTEN:<sock>,fork EXEC:'sshd -i -f <cfg> -e' works unprivileged inside a nix build; accept-new writes known_hosts, auth then fails, so host-key behaviour is testable"
+created = "2026-10-19"
+updated = "2026-10-19"
+
+[scope]
+paths = ["host/room-git-cases.nix"]
+globs = ["host/*-cases.nix"]
+commands = []
+tags = ["gotcha", "testing"]
+workspace = "default"
+repo = "github.com/davidlee/oubliette"
+repo_id_kind = "remote"
+repo_id_confidence = "high"
+
+[git]
+anchor_kind = "commit"
+commit = "d6cb4835e41afd7ff256bcae5434ee91b7b0fbf2"
+tree = "7cc83727d8210d5faa68a594eaddf25509de39b3"
+ref_name = "refs/heads/main"
+checkout_state_id = ""
+base_commit = "d6cb4835e41afd7ff256bcae5434ee91b7b0fbf2"
+verified_sha = ""
+normalizer = ""
+
+[review]
+verification_state = "unverified"
+reviewed = ""
+review_by = ""
+
+[trust]
+trust_level = "medium"
+
+[ranking]
+severity = "none"
+weight = 0
+
+[[source]]
+kind = "slice"
+ref = "SL-008"
+

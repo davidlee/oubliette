@@ -6,13 +6,24 @@ disposable phase sheet (`.doctrine/state/.../phase-NN.md`) that must survive
 
 ## Harvest
 <!-- single-copy: updated in place each harvest; ids only, never restated content -->
-fresh-as-of: <yyyy-mm-dd> · <PHASE-NN | stage> · <head-commit>
+fresh-as-of: 2026-10-20 · ready (pre-PHASE-01) · 99a9f09
 
 ### Produced
+- scope, research, locked design, plan; no code yet (commits 10f05c1..99a9f09)
+- minted: DEC-054 — state root as mkFleet's declaration; DEC-055 — one door option list; DEC-056 — client binds and strictness; DEC-057 — bundle shape
+- reviews: RV-023 — gpt-6-sol design pass, findings disposed; RV-022 — the run's ledger, concluded onto RV-023
+- IMP-022 — related; resolves at close
 
 ### Learned
+- mem.pattern.oubliette.fixture-sshd-in-the-build-sandbox — a case can pin host-key behaviour past the banner
+- mem.fact.oubliette.ssh-reads-global-known-hosts — GlobalKnownHostsFile none for a one-store door
+- mem.fact.oubliette.runtime-directory-goes-on-every-stop — bind the parent, not the RuntimeDirectory
+- mem.fact.oubliette.flakes-home-manager-is-standalone — why DEC-054 is a flake output, not a module option
 
 ### Open
+- ASM-004 — /run/capsule-room survives a relay stop; consumer's reach rung
+- RV-023 F-5, F-8 — answered in design, settled by PHASE-02 and PHASE-03 cases
+- DEC-042 successor and POL-003 revision — PHASE-04, need the user's assent
 
 ## Design review passes
 
