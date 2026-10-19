@@ -6,23 +6,32 @@ disposable phase sheet (`.doctrine/state/.../phase-NN.md`) that must survive
 
 ## Harvest
 <!-- single-copy: updated in place each harvest; ids only, never restated content -->
-fresh-as-of: 2026-10-19 · PHASE-01..05 completed, live checks pass · audit next
+fresh-as-of: 2026-10-19 · PHASE-01..05 completed, live pass · audit next · head 71f141b+
 
 ### Produced
-- DEC-052 (room base = floor + declared extras; supersedes DEC-044)
+- DEC-052 (room base = floor + declared extras; supersedes DEC-044); amended: floor coreutils-full (bb52b4a)
 - DEC-053 (profile reader carries its jq)
-- design.md sec-1..sec-7; research/research.md (gitignored)
+- DEC-043 choice re-pointed to DEC-052 (PHASE-04)
+- design.md sec-1..sec-7 (sec-2/sec-3 amended 54b9838); plan.toml/plan.md
+- commits 7ce98a2 (P01) · 8672b2d (P02) · 3728bf1 (P03) · a4a7808 (P04) · 71f141b (P05)
 - ISS-023 resolved · duplicate of ISS-013
+- ISS-026 (refresh-build/up assume a slot; switch does not move a room runner)
 
 ### Learned
 - No suite runs capsule-refresh/brief/baseline host programs (research.md Thread 2).
 - NixOS bash defaults an unset PATH to /no-such-path (GPT, review/019/gpt-second-opinion.md).
 - buildEnv checks collisions inside itself only; system-path ignores them (ISS-025).
+- NixOS required packages use coreutils-full, not coreutils (notes § PHASE-03 premise).
+- A host switch does not move /var/lib/microvms/<n>/current; only microvm -u (ISS-026).
+- `capsule <room> ssh -- a; b` runs b in the remote login shell: quote the payload (notes § PHASE-05).
 
 ### Open
 - IMP-017, ISS-013 (resolve at close)
+- DEC-044 still `accepted` though DEC-052 supersedes it (reconcile)
+- CON-001 "extras are fleet-wide" now holds for slots only (reconcile)
+- Memory candidates for /close harvest: switch-vs-microvm -u for rooms; ssh payload quoting
 - Follow-up: a room user's login shell (slice-007.md § Follow-Ups)
-- satan relay line at close (design sec-6)
+- satan relay line drafted (notes § PHASE-05 EX-3); the user delivers
 
 ## Design review passes
 
