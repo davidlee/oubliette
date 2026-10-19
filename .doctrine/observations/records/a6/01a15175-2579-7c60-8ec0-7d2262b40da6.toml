@@ -1,0 +1,18 @@
+schema = "doctrine.observation"
+schema_version = 1
+uid = "01a15175-2579-7c60-8ec0-7d2262b40da6"
+recorded_at = "2026-10-18T23:59:54.233760372Z"
+kind = "friction"
+summary = "A vacuous-pass guard written as an eval-time throw blocks red-first TDD of its suite"
+detail = """SL-007 PHASE-03: sessionCases' image block throws when etc."room/base" is absent. Once session accepted base, that throw fired at eval and hid every run case, so the worker had to temporarily replace it to observe the red. A ck on presence would report alongside the other cases. Also: buildEnv reports the first conflicting subpath (libexec/git-core here), so an EX-style expectation naming bin/git was wrong in detail."""
+
+[facets.execution]
+schema_version = 1
+interface = "cli"
+interface_origin = "automatic"
+product_surface = "doctrine"
+product_surface_origin = "automatic"
+command = "observation record"
+command_origin = "automatic"
+repository_context = "primary"
+repository_context_origin = "automatic"

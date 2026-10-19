@@ -247,11 +247,11 @@
             if hasSet
             then "set"
             else "null"
-          } (DEC-044)")
+          } (DEC-049)")
       ]
       ++ lib.optional (tools != null)
       (check (!builtins.elem (toString tools.source) onPath)
-        "repo '${r.name}': its tool set is in environment.systemPackages, where two repos' tools would meet on one PATH (DEC-044)");
+        "repo '${r.name}': its tool set is in environment.systemPackages, where two repos' tools would meet on one PATH (DEC-052)");
     repoRules =
       if room.repos == null
       then [

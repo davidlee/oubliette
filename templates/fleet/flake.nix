@@ -71,7 +71,10 @@
       # at `/work` (`sizes.work` MiB, sparse), `git init`ed on the unborn `work`
       # branch and owned by `repos.user`, one of the room's declared users. A
       # repo's tool set is its target's `toolsPackage`, reached only through
-      # `session <repo> -- <cmd>` in the room, never on its base PATH. `policy`
+      # `session <repo> -- <cmd>` in the room, never on its base PATH. Every
+      # room has a base: the floor `git bash coreutils-full which` plus its
+      # `extras` (names from the fragment vocabulary), on a login's PATH and
+      # behind a repo's tools in `session` (DEC-052). `policy`
       # names one in policies.nix; it bounds and permits what
       # `capsule assistant collect <repo> <branch>` fetches back, into
       # /var/lib/capsule/collect/assistant/<repo>.git, and its allowlist is
@@ -89,6 +92,7 @@
       #       targets = ["doctrine"];
       #     };
       #     policy = "build";
+      #     extras = ["search"];
       #     sizes = {
       #       vcpu = 2;
       #       mem = 4096;

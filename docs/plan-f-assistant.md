@@ -130,8 +130,8 @@ room's `repos.targets`; its clone is the target's `guestPath` on a second
 volume at `/work` (`DEC-043`), and its tool set is the target's `toolsPackage`,
 rendered as `/etc/room/repo/<repo>/tools` and kept out of `systemPackages`.
 `session` is one generic program at `/run/current-system/sw/bin/session` that
-holds no repo table: the rendered tree is the table (`DEC-049`). No fleet
-extras reach a room (`DEC-044`, provisional).
+holds no repo table: the rendered tree is the table (`DEC-049`). A room's
+base is its floor plus its declared extras (`DEC-052`, superseding `DEC-044`).
 
 Costs to measure, not assume: the closure of seven tool sets (they share most
 of nixpkgs, and `EVD-007` priced one composition at about half a gigabyte), and

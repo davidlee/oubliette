@@ -7,7 +7,7 @@ title = "A room repo's tool set is its target's toolsPackage alone; the room's b
 record_kind = "decision"
 status = "accepted"
 created = "2026-10-18"
-updated = "2026-10-18"
+updated = "2026-10-19"
 tags = []
 
 [facet]                         # every field typed; seeded empty (captured later)

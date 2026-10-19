@@ -1,5 +1,5 @@
 # `session`: run a command in one repo of a room, with that repo's tools over
-# the room's base (SL-006 design sec-3, `DEC-044`; SL-007 `DEC-052`).
+# the room's base (SL-006 design sec-3, `DEC-049`; SL-007 `DEC-052`).
 #
 #   session <repo> -- <argv...>
 #

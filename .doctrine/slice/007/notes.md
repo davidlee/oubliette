@@ -284,3 +284,41 @@ git ls sh which`. VT-1..VT-5 greps all hit.
 - `unset PATH`: the child received `<tree>/base/bin:/no-such-path` (bash's build
   default exported by `writeShellApplication`'s preamble); only the prefix is
   asserted.
+
+## PHASE-04
+
+Docs, comments and decision records only; no behaviour change. Worker model
+sonnet; rulings OQ-1 yes, OQ-2 yes, OQ-3 no, plan-f one sentence yes.
+
+### VA-1 grep (widened; ledger excluded), before / after
+Before: 10 hits (probes.md:1580; contract-target.md:95, :359;
+contract-assignment.md:80; plan-f-assistant.md:134; vm/room.nix:23, :119;
+vm/session.nix:2; mkfleet.nix:250, :254). After: 2 hits.
+- `docs/probes.md:1580`: kept, historical measurement from SL-006's live rung
+  citing `IMP-017` as the then-open gap (ADR-003, STD-001).
+- `docs/plan-f-assistant.md:134`: "superseding `DEC-044`", intended.
+The secondary grep (`PATH it inherits`, `fleet extras`) returns nothing outside
+the ledger.
+
+### Changed
+- `docs/contract-target.md` :95, :359; `docs/contract-flavour.md` header;
+  `docs/contract-assignment.md` room row and paragraph; `CLAUDE.md` two-owners
+  paragraph; `docs/plan-f-assistant.md`; `templates/fleet/flake.nix` (comment
+  plus `extras = ["search"];` in the commented example only).
+- `vm/session.nix:2` and `vm/room.nix:23,119` re-pointed (DEC-049/DEC-052);
+  `mkfleet.nix:250` -> DEC-049, `:254` -> DEC-052 (refusal strings; no suite
+  pins their text).
+- `DEC-043` choice: only the last sentence changed, now "git joins the room's
+  base tools: it is in the floor of the room's base (DEC-052)."; other fields
+  unchanged (verified with `doctrine show`).
+- `doctrine supersede DEC-052 DEC-044` (OQ-2): rc 0. `inspect` shows no edge on
+  either; only DEC-044's `updated` date changed on disk. DEC-044 status is still
+  `accepted` per `show`. Worth checking at /reconcile.
+- CON-001 ("Extras are fleet-wide") now holds for slots only; untouched, deferred
+  to /reconcile (OQ-3).
+- README.md:495-499 not touched (optional, not taken).
+
+### Verify
+`just check` rc 0 (alejandra clean); `just` rc 0, zero FAIL lines.
+Not exercised: nothing evaluates the template's commented `extras`; PHASE-03's
+rendered fixture room proves the field. IMP-017/ISS-013/ISS-023 left for /close.

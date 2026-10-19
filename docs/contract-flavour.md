@@ -6,7 +6,10 @@ was built and why. In short: `fragments.nix` is the host's vocabulary, `extras`
 is the caller's `flavour.extras`, one selection for the whole fleet, and fragment sources are the
 caller's `flavour.sources`, pinned in the caller's lock (oubliette pins `llm-agents` only for its fixture). `vm/capsule.nix`
 composes it onto the target's floor — so the two owners below are two files
-rather than a paragraph. **Unbuilt:** per-assignment extras, the store-path
+rather than a paragraph. A **room** selects its own, `rooms.<r>.extras`, from
+the same vocabulary, and `vm/room.nix` composes them onto a floor that is the
+**room's**, not a target's (`git bash coreutils-full which`, `DEC-052`); a
+repo's tool set is never unioned with it. Slots are unchanged. **Unbuilt:** per-assignment extras, the store-path
 identity and the gcroot that retains it, the refusal to change a composition
 under a dirty volume, and capability fragments. Read the rest as design with
 that line drawn through it.

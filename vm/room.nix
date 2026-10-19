@@ -20,7 +20,7 @@
 #
 # What it deliberately lacks, against `vm/capsule.nix`: no egress (a room has
 # no uplink), so no proxy; no repo's tool set on the login `PATH` — one is
-# reached only through `session` (DEC-044), and only the base is everyone's
+# reached only through `session` (DEC-049), and only the base is everyone's
 # (DEC-052); no marker on the kernel command line; and no `reset-home`. Nothing
 # here learns what a room is for — `room.users`, `room.sizes`, `room.repos` and
 # `room.extras` are values (POL-002).
@@ -116,8 +116,8 @@ in {
   security.lockKernelModules = true;
   security.protectKernelImage = true;
 
-  # The base for every room, and `session` for running in a repo (DEC-044,
-  # DEC-049, DEC-052). No repo's tool set: those are reached only through the
+  # The base for every room, and `session` for running in a repo (DEC-049,
+  # DEC-052). No repo's tool set: those are reached only through the
   # tree below.
   environment.systemPackages = [base] ++ lib.optional (room.repos != null) session;
 

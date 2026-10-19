@@ -12,7 +12,7 @@ tags = []
 
 [facet]                         # every field typed; seeded empty (captured later)
 context = "SL-006 inq-1 and inq-9, ISS-021. A room's only volume is /home (vm/room.nix); guestPath is /work/<name> (targets/default.nix:26) and the profile render refuses any other (host/profile.nix:160). DEC-031 makes a room stop routine. The room image has no git (vm/room.nix)."
-choice = "A room that declares repos gets room-work.img at /work, sized sizes.work; a room without repos has no /work. Each clone is at its target's guestPath. room-seed, per repo: creates /work/<name> owned by the declared repo user and runs git init on the unborn workBranch when no repo is there. git joins the room's base tools."
+choice = "A room that declares repos gets room-work.img at /work, sized sizes.work; a room without repos has no /work. Each clone is at its target's guestPath. room-seed, per repo: creates /work/<name> owned by the declared repo user and runs git init on the unborn workBranch when no repo is there. git joins the room's base tools: it is in the floor of the room's base (DEC-052)."
 alternatives = ["a room-relative clone path under /home", "a provision-like host step that creates the clone"]
 rationale = "Keeps guestPath the one path both sides share (POL-003) and the profile render's rule intact, so DEC-040's clone clause stands. capsule-seed already inits on the volume (vm/capsule.nix:268-280); NOTES item 33 rejects guest derivation of state, not an empty init."
 consequences = ["ISS-021 closes by the volume, not by superseding DEC-040", "rooms' sizes gain work", "RSK-007's sparse-image pressure grows by one image per room"]

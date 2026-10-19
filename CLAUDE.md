@@ -358,6 +358,6 @@ behind it is the ratchet starting again in a new file.
   docs/contract-flavour.md). A fragment's source is a flake input of the *caller*
   (`flavour.sources`), pinned in the caller's lock, and convenience is **declared** — never scraped from a
   human's `$HOME`, which would describe a machine the capsule is not. One list
-  for the fleet today, so one image per target; per-slot selection is Plan D D7. The jailed
+  for the fleet today, so one image per target; per-slot selection is Plan D D7. A room is its own image and selects its own: `rooms.<r>.extras`, from the same vocabulary, onto a floor that is the room's (`git bash coreutils-full which`), not a target's (`DEC-052`); a repo's tool set stays apart, through `session`. The jailed
   `claude`/`codex` bwrap wrappers are still excluded — they bind host paths that
   do not exist in the VM.
