@@ -12,11 +12,11 @@ after = []                      # slice→work soft sequence: { to, rank }
 
 [[selector]]
 selector = "host/room-git.nix"
-intent = "scope-relevant"
+intent = "design-target"
 
 [[selector]]
 selector = "host/guest-ssh.nix"
-intent = "scope-relevant"
+intent = "design-target"
 
 [[selector]]
 selector = "rooms.nix"
@@ -24,11 +24,11 @@ intent = "scope-relevant"
 
 [[selector]]
 selector = "mkfleet.nix"
-intent = "scope-relevant"
+intent = "design-target"
 
 [[selector]]
 selector = "host/services.nix"
-intent = "scope-relevant"
+intent = "design-target"
 
 [[selector]]
 selector = "host/room-client*.nix"
@@ -40,7 +40,91 @@ intent = "scope-relevant"
 
 [[selector]]
 selector = "README.md"
+intent = "design-target"
+
+[[selector]]
+selector = "host/room-door.nix"
+intent = "design-target"
+
+[[selector]]
+selector = "host/cli.nix"
+intent = "design-target"
+
+[[selector]]
+selector = "host/volume-root.nix"
+intent = "design-target"
+
+[[selector]]
+selector = "host/programs.nix"
+intent = "design-target"
+
+[[selector]]
+selector = "fixture/**"
 intent = "scope-relevant"
+
+[[selector]]
+selector = "templates/**"
+intent = "scope-relevant"
+
+[[selector]]
+selector = "flake.nix"
+intent = "scope-relevant"
+
+[[selector]]
+selector = "just/**"
+intent = "scope-relevant"
+
+[[selector]]
+selector = "host/room-client.nix"
+intent = "design-target"
+
+[[selector]]
+selector = "host/room-client-cases.nix"
+intent = "design-target"
+
+[[selector]]
+selector = "fleet.nix"
+intent = "design-target"
+
+[[selector]]
+selector = "host/fleet-cases.nix"
+intent = "design-target"
+
+[[selector]]
+selector = "host/room-verbs-cases.nix"
+intent = "design-target"
+
+[[selector]]
+selector = "host/room-git-cases.nix"
+intent = "design-target"
+
+[[selector]]
+selector = "host/wrap-cases.nix"
+intent = "design-target"
+
+[[selector]]
+selector = "fixture/default.nix"
+intent = "design-target"
+
+[[selector]]
+selector = "templates/fleet/flake.nix"
+intent = "design-target"
+
+[[selector]]
+selector = "just/fleet.just"
+intent = "design-target"
+
+[[selector]]
+selector = "docs/contract-room-client.md"
+intent = "design-target"
+
+[[selector]]
+selector = "docs/index.md"
+intent = "design-target"
+
+[[selector]]
+selector = "docs/contract-assignment.md"
+intent = "design-target"
 
 [[relation]]
 label = "governed_by"

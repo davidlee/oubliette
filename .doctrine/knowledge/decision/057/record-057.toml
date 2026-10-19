@@ -1,0 +1,33 @@
+schema = "doctrine.knowledge"
+version = 1
+
+id = 57
+slug = "room-client-bundle-shape"
+title = "A room-client bundle is packages.room-client-<r>: an ssh_config and ssh in one closure, with the door's values as attributes"
+record_kind = "decision"
+status = "accepted"
+created = "2026-10-19"
+updated = "2026-10-19"
+tags = []
+
+[facet]                         # every field typed; seeded empty (captured later)
+context = "SL-008 inq-5. Three clients address a room by three names (room-<r>, net.guest, the bare name); socat ignores HostName. pi-env passes its own -F and every door option but ProxyCommand on its command line (pi-env dist/ssh.js:43-82). Consumers write door data files (satan DEC-077: room, user, known_hosts, host_key_alias) by hand today."
+choice = "mkFleet outputs packages.<system>.room-client-<r> per declared room: a derivation named capsule-room-client-<r> holding etc/ssh_config (one Host * block, the door with StrictHostKeyChecking=yes, socat by store path) and bin/ssh (openssh's, linked, not wrapped), with passthru room, socket, knownHosts, hostKeyAlias, config (the store path of the file) and binds (DEC-056). No user and no identity."
+alternatives = ["Host room-<r>: does not match the bare-name or net.guest destinations", "bin/ssh as a wrapper passing -F: a second -F against a caller that passes its own, and a shadowed ssh on PATH", "a JSON data file instead of passthru: a second render a nix consumer has to parse"]
+rationale = "Host * is right for a file dedicated to one room and read through -F. Linking ssh puts the client in the closure without changing its behaviour. passthru lets a consumer's door file take known_hosts and the alias from oubliette rather than retyping them."
+consequences = ["satan's runner.nix and its jail stop spelling the socket, known_hosts path and alias (handback, not this slice)", "the bundle's attribute names are a contract (docs), reviewed as a coupling surface"]
+decided_by = "user, on agent proposal (2026-10-20, reply: 'agreed.')"
+decided_on = "2026-10-20"
+
+[evidence]                      # free-text citations (supports / contradicts / notes)
+supports    = []
+contradicts = []
+notes       = []
+
+[relationships]                 # verb-written edges (set by doctrine supersede)
+supersedes    = []   # record ids this one replaces (set by doctrine supersede)
+superseded_by = []   # set on superseded predecessor (verb-written)
+
+[[relation]]
+label = "shapes"
+target = "SL-008"

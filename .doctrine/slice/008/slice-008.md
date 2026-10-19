@@ -46,7 +46,11 @@ Facts the design must hold (evidence, read 2026-10-20):
    alias, trust store or ProxyCommand.
 3. **Exported** where a consumer flake (e.g. `/srv/fleet`) and the home-manager
    that reads it can reach it, without an implicit default for the state root
-   (`POL-003`).
+   (`POL-003`). Settled by `DEC-054`: the state root becomes `mkFleet`'s tenth
+   argument, `stateDir`. The module's `stateDir` option is removed, and the
+   module, `capsule-cli` and `capsule-volume-root` read the declared value.
+   This is in scope, together with the fixture and template edits, a `DEC-042`
+   successor and a `POL-003` revision. The `/srv/fleet` edit stays the user's.
 4. **A case suite** that reads the shipped config with `ssh -G` and pins it
    against the door the programs use, so the two cannot drift.
 5. **Contract**: the bundle's fields documented as what a room client may rely on
@@ -59,9 +63,16 @@ Facts the design must hold (evidence, read 2026-10-20):
 - Identity (the client's key) and the room user: the consumer's (`IMP-022`).
 - Room repo data for home-manager (satan's `IMP-044`).
 - Slot (capsule) doors, the tailnet ingress (Plan E), the model door (`IDE-003`).
-- Changing the door itself: socket path, mode, alias, trust policy.
+- Changing the door itself: socket path, mode, alias, or oubliette's own
+  `accept-new` doors (`DEC-056` sets strict checking for *clients* only).
+- Moving the module's other path options (`policyDir`, `allowlistDir`,
+  `profileDir`) into the fleet declaration.
 
 ## Open questions (for `/design`)
+
+Settled in the design run: `DEC-054` (export site and state root), `DEC-055`
+(one door option list), `DEC-056` (binds and client strictness), `DEC-057`
+(bundle shape). The original questions follow, kept for the record.
 
 - **Where the export lives.** A `mkFleet` output needs the state root it cannot
   see; a read-only module option sees `stateDir` but reaches home-manager only

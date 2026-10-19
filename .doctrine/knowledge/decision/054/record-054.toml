@@ -1,0 +1,33 @@
+schema = "doctrine.knowledge"
+version = 1
+
+id = 54
+slug = "state-root-is-a-fleet-declaration"
+title = "The host's state root is a fleet declaration: mkFleet's tenth argument, and the module reads it"
+record_kind = "decision"
+status = "accepted"
+created = "2026-10-19"
+updated = "2026-10-19"
+tags = []
+
+[facet]                         # every field typed; seeded empty (captured later)
+context = "SL-008 inq-1. A room-client bundle names the room's known_hosts, which lives under the state root. Today that root is the module option services.capsule-perimeter.stateDir (host/services.nix:571, default /var/lib/capsule), repeated as a default in host/cli.nix:94 and host/volume-root.nix:46 (the root helper, which ignores a module override), and as a literal in satan's runner.nix:134. ~/flakes runs home-manager standalone (hosts.nix:112), so a module option cannot reach it; satan's own flake cannot see the host config at all."
+choice = "mkFleet takes a tenth argument, stateDir: required, no default (POL-003). The module's stateDir option is removed (mkRemovedOptionModule naming the argument); the module, capsule-cli's moduleState and capsule-volume-root's moduleState all read the declared value. Room-client bundles are flake outputs built from it. The fixture and the template declare /var/lib/capsule; the /srv/fleet edit is the user's at the input bump."
+alternatives = ["the module option stays the home and exposes roomClients.<r>: unreachable from standalone home-manager and from satan's flake", "mkFleet exports roomClientOf {stateDir} and each consumer applies it: every consumer writes the root again"]
+rationale = "One home for a value three files spell today, and the only form a flake without the host's NixOS config can read. It also closes the root helper's silent disagreement with an overridden stateDir."
+consequences = ["DEC-042 needs a successor (ten arguments)", "POL-003 needs a row for the state root (revision)", "every mkFleet caller breaks until it declares stateDir; a consumer setting the old option gets a removal message", "the other module path options (policyDir, allowlistDir, profileDir) stay options: not moved by this record"]
+decided_by = "user, on agent proposal (2026-10-20, chose 'Fleet declares the root')"
+decided_on = "2026-10-20"
+
+[evidence]                      # free-text citations (supports / contradicts / notes)
+supports    = []
+contradicts = []
+notes       = []
+
+[relationships]                 # verb-written edges (set by doctrine supersede)
+supersedes    = []   # record ids this one replaces (set by doctrine supersede)
+superseded_by = []   # set on superseded predecessor (verb-written)
+
+[[relation]]
+label = "shapes"
+target = "SL-008"

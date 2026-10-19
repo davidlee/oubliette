@@ -1,0 +1,33 @@
+schema = "doctrine.knowledge"
+version = 1
+
+id = 55
+slug = "room-door-is-one-option-list"
+title = "A room's door is one ordered list of ssh options, rendered as argv words for oubliette's doors and as an ssh_config for clients"
+record_kind = "decision"
+status = "accepted"
+created = "2026-10-19"
+updated = "2026-10-19"
+tags = []
+
+[facet]                         # every field typed; seeded empty (captured later)
+context = "SL-008 inq-2. The door exists once, as shell words (host/room-git.nix:75-79 door, reused by the front end through roomTrust, host/programs.nix:289). A client config written beside it would be a second construction (RSK-004, DEC-034)."
+choice = """A new host/room-door.nix owns the door: optionsOf {checking, room, socket, knownHosts} is an ordered list of {name; value} — StrictHostKeyChecking, HostKeyAlias room-<r>, UserKnownHostsFile, ProxyCommand — and two renders: words (-o "K=V" each, for an argv array; values may be shell expressions) and config (an ssh_config Host * block; values are nix strings). The ProxyCommand value comes from host/guest-ssh.nix, which gains proxyCommand {socat, socket} and keeps proxyThrough as its -o rendering, so slot callers are unchanged. knownHostsIn/knownHostsOf move with it; room-git.nix and cli.nix consume it. checking is the one parameter: accept-new for oubliette's doors, yes for clients (DEC on inq-3/4)."""
+alternatives = ["render the config by parsing door's words", "keep door in room-git.nix and write the config by hand beside it"]
+rationale = "One list, two renders: neither form is a spelling of the other, and the alias, trust store and ProxyCommand have one home. A file of its own because the door now has three consumers (the channel, the front end, the bundle) and room-git.nix is one of them."
+consequences = ["roomTrust's door words change only in quoting (every value double-quoted)", "RSK-004 narrows for rooms: one construction, three consumers", "refuseOddState stays a run-time check for programs whose state root can be overridden by CAPSULE_STATE; the declared root is checked at eval"]
+decided_by = "user, on agent proposal (2026-10-20, reply: 'agreed.')"
+decided_on = "2026-10-20"
+
+[evidence]                      # free-text citations (supports / contradicts / notes)
+supports    = []
+contradicts = []
+notes       = []
+
+[relationships]                 # verb-written edges (set by doctrine supersede)
+supersedes    = []   # record ids this one replaces (set by doctrine supersede)
+superseded_by = []   # set on superseded predecessor (verb-written)
+
+[[relation]]
+label = "shapes"
+target = "SL-008"

@@ -1,0 +1,33 @@
+schema = "doctrine.knowledge"
+version = 1
+
+id = 56
+slug = "room-clients-bind-parents-and-read-strictly"
+title = "Room clients bind the door's parent directory and the room's state directory, check host keys strictly, and never write known_hosts"
+record_kind = "decision"
+status = "accepted"
+created = "2026-10-19"
+updated = "2026-10-19"
+tags = []
+
+[facet]                         # every field typed; seeded empty (captured later)
+context = "SL-008 inq-3 and inq-4. systemd deletes a relay's RuntimeDirectory (/run/capsule-room/<r>, host/services.nix:348) on every stop, restarts included (man systemd.exec RuntimeDirectoryPreserve), so a jail binding it loses the door when the room stops. known_hosts is created by ssh at first contact, not by tmpfiles (host/services.nix:796-797), so a bind of the file fails before the first push. bwrap connect() works through a read-only directory bind (satan memory jail.unix-socket-ro-bind). DEC-047 names one trust store but not its writers; SL-006 design sec-5 says oubliette's doors learn the key and satan's runner reads strictly."
+choice = "A bundle's binds are the parent of the door directory (dirOf (dirOf socket), /run/capsule-room: root 0755, made by systemd and not removed with a room's directory) and the room's state directory (rooms.stateDirOf stateDir r, 0700 owner by tmpfiles). Both read-only is sufficient. A client's config says StrictHostKeyChecking=yes. A room's known_hosts has exactly the writers DEC-047's doors are — the front end's ssh and capsule-room-git push/collect, under accept-new — and forget-host-key empties it; a client refuses until the first push and after a forget until the next."
+alternatives = ["RuntimeDirectoryPreserve=yes on room relays and bind /run/capsule-room/<r>: changes the door, still lost at reboot", "bind the known_hosts file: absent before the first push", "clients accept-new like door: a read-only client before first contact trusts on every connection, since ssh cannot record the key (host/cli.nix:851-854)"]
+rationale = "Bind what outlives the thing that changes: the parent outlives a room's restarts, the state directory outlives the file. The parent exposes other rooms' directories only to the uid that already owns them (0700 owner, DEC-037), so it adds no authority. Strict reading keeps one writer class for one store."
+consequences = ["the bundle's precondition, stated in its contract: run as the module owner (DEC-037)", "a client before any push fails closed (ssh 255), which is the behaviour satan's runner already relies on", "that /run/capsule-room survives a room stop is systemd's documented behaviour, not yet observed here: a reach-rung check for the consumer's live run"]
+decided_by = "user, on agent proposal (2026-10-20, chose 'As proposed')"
+decided_on = "2026-10-20"
+
+[evidence]                      # free-text citations (supports / contradicts / notes)
+supports    = []
+contradicts = []
+notes       = []
+
+[relationships]                 # verb-written edges (set by doctrine supersede)
+supersedes    = []   # record ids this one replaces (set by doctrine supersede)
+superseded_by = []   # set on superseded predecessor (verb-written)
+
+[[relation]]
+label = "shapes"
+target = "SL-008"
