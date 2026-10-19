@@ -34,3 +34,31 @@ target = "CHR-018"
 label = "related"
 target = "POL-005"
 
+[[relation]]
+label = "related"
+target = "DEC-035"
+
+[[relation]]
+label = "related"
+target = "DEC-046"
+
+[[relation]]
+label = "related"
+target = "DEC-049"
+
+[[relation]]
+label = "related"
+target = "POL-001"
+
+[[relation]]
+label = "related"
+target = "POL-002"
+
+[[relation]]
+label = "related"
+target = "POL-003"
+
+[[relation]]
+label = "related"
+target = "POL-004"
+
