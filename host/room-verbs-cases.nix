@@ -358,6 +358,7 @@ in
     ckt "  in the room's own file" saw "userknownhostsfile $CASE_STATE/room/solo/known_hosts"
     ckt "  through the record's socket" grep -qE '^proxycommand .*room-up/solo/ssh\.sock' out
     ckt "  and never the slot relaxation" unsaw "userknownhostsfile /dev/null"
+    ckt "  and no global known_hosts beside the room's" saw "globalknownhostsfile none"
     ckt "  nor a batch probe's" unsaw "batchmode yes"
 
     # The probe's door, by text and only by text — the weakest kind of pin —

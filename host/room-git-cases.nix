@@ -15,19 +15,28 @@
 # shipped copy can only ever stop at the pre-flight with 75, and a caller error
 # decided too late reads as 75 here (EX-4).
 #
-# **Not reachable by any case**: ssh past an identification string, so an
-# authentication or host-key failure, an actual push landing `refs/host/<b>`, an
-# actual collect landing in `collect/<r>/<repo>.git`, accept-new writing the
-# room's `known_hosts`. Those are the live rung's (design sec-8, `STD-001`).
+# **Past the key, as far as authentication**: a fixture `sshd -i` behind a
+# socket nobody's, which has a host key and accepts nobody. That pins the
+# channel's own call site (RV-023 F-5) and not only the words it renders: a
+# first push files the room's key under `room-<r>`, in
+# `$CAPSULE_STATE/room/<r>/known_hosts`, and in no other known_hosts, and then
+# fails at authentication with 1.
+#
+# **Not reachable by any case**: authentication itself, so an actual push
+# landing `refs/host/<b>` or an actual collect landing in
+# `collect/<r>/<repo>.git`; a changed host key refused; a key in a host's global
+# known_hosts left unread, since a sandbox has none (`roomVerbsCases` pins the
+# option that ignores it). Those are the live rung's (design sec-8, `STD-001`).
 #
 # **Handed a fixture door** as well as the shipped program, and it is the
 # fixture this suite says it has: the same text built against a socket path
 # under the sandbox (`roomGitOf`, host/programs.nix), since the shipped path is
 # fixed at build under `/run`. A socket nobody's, a listener this suite runs,
-# and nothing of this host's. That reaches the two branches the pre-flight
-# exists for — a relay that accepts and says nothing, or says something that is
-# not ssh, is **75**; a banner that is ssh's and then a failed key exchange is
-# **1** — and the pre-flight's own speed (`readbytes`).
+# a host key and an sshd config this suite makes, and nothing of this host's.
+# That reaches the two branches the pre-flight exists for — a relay that accepts
+# and says nothing, or says something that is not ssh, is **75**; a banner that
+# is ssh's and then a failed key exchange is **1** — the pre-flight's own speed
+# (`readbytes`), and the first contact above.
 #
 # **No `jq` on this suite's `PATH`**, on purpose: the profile reader needs it,
 # and calls it by store path (`DEC-053`), so a program that splices the reader
@@ -51,8 +60,9 @@
   forbids = firstWhere (n: !policies.policies.${n}.mayCollect);
 in
   pkgs.runCommand "capsule-room-git-cases" {
-    # socat for the fixture door's listeners only; the program carries its own.
-    nativeBuildInputs = [pkgs.git pkgs.socat];
+    # socat for the fixture door's listeners, and openssh for the fixture sshd
+    # and its host key; the program carries its own of both.
+    nativeBuildInputs = [pkgs.git pkgs.socat pkgs.openssh];
   } ''
     export HOME=$PWD
     git config --global user.email c@example.invalid
@@ -297,6 +307,27 @@ in
       saw "collect of main"
       ck "  and made the room's quarantine, bare" true \
         "$(git -C "$here/state/collect/talker/alpha.git" rev-parse --is-bare-repository 2>/dev/null)"
+
+      # ----------------------------------------- a fixture sshd, 1, past the key
+      # The room's first contact, through the shipped channel's own call site
+      # (RV-023 F-5): an unprivileged `sshd -i` behind the room's socket. It has
+      # a host key and accepts nobody, so accept-new files the key and
+      # authentication refuses.
+      ssh-keygen -q -t ed25519 -N "" -f "$CASE_RUN/hostkey"
+      printf '%s\n' "HostKey $CASE_RUN/hostkey" "UsePAM no" "StrictModes no" \
+        "PidFile none" "AuthorizedKeysFile none" >"$CASE_RUN/sshd_config"
+      listen keyed "exec $(command -v sshd) -i -f $CASE_RUN/sshd_config -e"
+      at keyed push main
+      ck "a push to a room whose sshd accepts nobody fails at auth, 1" 1 "$rc"
+      quiet
+      never "not answering"
+      saw "Permission denied"
+      never "Host key verification failed"
+      kh=$here/state/room/keyed/known_hosts
+      ck "  and filed one key in the room's known_hosts" 1 "$(grep -c . "$kh" 2>/dev/null)"
+      ck "  under the room's alias, and it is the fixture's key" \
+        "room-keyed $(cut -d' ' -f1,2 "$CASE_RUN/hostkey.pub")" "$(cat "$kh" 2>/dev/null)"
+      ck "  and wrote no other known_hosts" "$kh" "$(find "$here" -name 'known_hosts*' -type f)"
     fi
 
     [ "$fail" = 0 ] || exit 1

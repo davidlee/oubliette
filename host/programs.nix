@@ -220,6 +220,16 @@
     baselineRecord = baselineRecordFragment;
   };
 
+  # A room's door (host/room-door.nix, DEC-055): the one option list every door
+  # to a room renders, built once here so its three readers — the channel, the
+  # front end's human door and its `forget-host-key` — check one file.
+  roomDoor = import ./room-door.nix {
+    inherit lib;
+    inherit (rooms) stateDirOf;
+    guestSsh = import ./guest-ssh.nix {inherit lib;};
+    socat = lib.getExe pkgs.socat;
+  };
+
   # The room channel (host/room-git.nix, SL-006 design sec-4), as a function of
   # the one thing that ties it to this host: where a room's socket is. The
   # shipped copy is that function at `rooms.socketOf`; `roomGitCases` applies it
@@ -229,9 +239,8 @@
   # through a slot's transport (DEC-047, RV-015 F-4).
   roomGitOf = socketOf:
     import ./room-git.nix {
-      inherit pkgs lib quarantine profile policies socketOf;
+      inherit pkgs quarantine profile policies socketOf roomDoor;
       inherit (rooms) stateDirOf;
-      guestSsh = import ./guest-ssh.nix {inherit lib;};
     };
   roomGitShipped = roomGitOf rooms.socketOf;
 
@@ -295,10 +304,15 @@ in {
   # not a `profileVerbs` one, since a room's front end fills `--profile` from
   # the room's declared repos rather than a slot's record (DEC-051).
   roomGit = roomGitShipped.program;
-  # A room's trust store as the front end needs it (DEC-047): the strict ssh
-  # words every door to a room uses, the file they name, and the refusal of a
-  # state root ssh would misread — one spelling each, here and in the program.
-  roomTrust = {inherit (roomGitShipped) door knownHostsOf refuseOddState;};
+  # A room's trust store as the front end needs it (DEC-047): the door's words
+  # and the file they name, which are room-door.nix's (DEC-055), and the refusal
+  # of a state root ssh would misread, which is the channel's — one spelling
+  # each, shared with the program.
+  roomTrust = {
+    door = roomDoor.words;
+    inherit (roomDoor) knownHostsOf;
+    inherit (roomGitShipped) refuseOddState;
+  };
   # The seam itself, for `roomGitCases`' fixture door: `briefRunner`'s export,
   # for its reason — a suite needs the thing before it is the shipped store path.
   inherit roomGitOf;

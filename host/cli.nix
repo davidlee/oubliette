@@ -108,10 +108,10 @@
   # The root helper's store path (host/volume-root.nix, built once in
   # host/programs.nix). Only `volumeControl`'s default reads it.
   volumeRootHelper,
-  # A room's trust store (host/room-git.nix, through host/programs.nix'
-  # `roomTrust`, DEC-047): the strict door words, `knownHostsOf` (the room's
-  # `known_hosts` under a state root) and the refusal of a root ssh would
-  # misread. The channel's own spellings, so this door, `forget-host-key` and
+  # A room's trust store (host/programs.nix' `roomTrust`, DEC-047): the door's
+  # words and `knownHostsOf` (the room's `known_hosts` under a state root), both
+  # host/room-door.nix's (DEC-055), and the channel's refusal of a root ssh would
+  # misread. One spelling each, so this door, `forget-host-key` and
   # `capsule-room-git` check one file. No default: every call site passes it.
   roomTrust,
   # What the volume verbs need from outside this program (SL-002 design sec-7):
@@ -848,8 +848,8 @@ in
       # module-path guest and has no devshell shape to fall back to. A human's
       # is the channel's strict door (`DEC-047`): accept-new, the alias
       # `room-<r>` and the room's own known_hosts under `$roomState`, which the
-      # room branch sets before any door is asked for — in the channel's words
-      # (host/room-git.nix), so the two check one file. No `BatchMode`, since a
+      # room branch sets before any door is asked for, and no global one — in
+      # room-door.nix's words (DEC-055), so it and the channel check one file. No `BatchMode`, since a
       # human is at it. The probe is the slot's, relaxed (`DEC-050`): it carries
       # no trust, and a key refused there would read as a room that is down.
       #
@@ -861,6 +861,7 @@ in
           human)
             [ -S "''${roomSocket[$1]}" ] || return 1
             ssh_argv=(ssh ${roomTrust.door {
+        checking = "accept-new";
         room = "$1";
         socket = "\${roomSocket[$1]}";
         knownHosts = roomTrust.knownHostsOf "$roomState" "$1";

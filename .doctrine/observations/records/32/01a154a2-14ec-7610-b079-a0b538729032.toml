@@ -1,0 +1,18 @@
+schema = "doctrine.observation"
+schema_version = 1
+uid = "01a154a2-14ec-7610-b079-a0b538729032"
+recorded_at = "2026-10-19T14:47:50.764860952Z"
+kind = "friction"
+summary = "hostModuleUnits' checked reports only its first failing branch, so neighbouring checks mask a mutation"
+detail = "SL-008 PHASE-01: a mutation of the tmpfiles root went red at unparented rather than stateRootMissing, and a wrapper mutation at room-git's wrapped check rather than capsule's. The worker had to design extra mutations (mode 0755; message-only shim change) to reach each check. Consider reporting every failing check, or document the order."
+
+[facets.execution]
+schema_version = 1
+interface = "cli"
+interface_origin = "automatic"
+product_surface = "doctrine"
+product_surface_origin = "automatic"
+command = "observation record"
+command_origin = "automatic"
+repository_context = "primary"
+repository_context_origin = "automatic"

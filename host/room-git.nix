@@ -27,11 +27,9 @@
 # is outward-facing (satan's runner reads it, SL-023), so change it there too.
 #
 # **Its trust store is per room and strict** (`DEC-047`): `$state/room/<r>/known_hosts`,
-# `HostKeyAlias=room-<r>`, `StrictHostKeyChecking=accept-new`. Accept-new is sound
-# because the path is a socket this host created into a VM this host booted;
-# it learns an unknown key and refuses a changed one. Never the slot
-# relaxation (`guestSsh.args`), which checks nothing (POL-001). `door` below is
-# those words, so the front end's door (PHASE-05) checks the same file.
+# `HostKeyAlias=room-<r>`, `GlobalKnownHostsFile none`, `StrictHostKeyChecking=accept-new`.
+# The words are host/room-door.nix's (`DEC-055`), which says why accept-new is
+# sound here, so the front end's door checks the same file and no other.
 #
 # **Wrapped on the module path** (host/services.nix), like `capsule-collect`:
 # bare, `$state` falls back to `$root/.vm/host` and `profileDir()` to the store's
@@ -56,36 +54,18 @@
 # it, so such a path would name a different trust store.
 {
   pkgs,
-  lib,
   quarantine,
   profile,
   policies,
-  guestSsh,
+  # host/room-door.nix, built once in host/programs.nix: the door's words and
+  # the name of the room's known_hosts.
+  roomDoor,
   # Where room `<name>`'s socket is, given a shell expression — `rooms.socketOf`
   # for the shipped copy, a sandbox path for `roomGitCases` (POL-004).
   socketOf,
   # `rooms.stateDirOf`: the room's host-side state directory (DEC-047).
   stateDirOf,
 }: let
-  socat = lib.getExe pkgs.socat;
-
-  # The strict ssh words every door to a room uses (`DEC-047`), as shell words
-  # for an argv array. Each argument is a shell expression that expands inside
-  # double quotes (`$room`, `$sock`), as `proxyThrough`'s `socket` is.
-  door = {
-    room,
-    socket,
-    knownHosts,
-  }: ''-o StrictHostKeyChecking=accept-new -o "HostKeyAlias=room-${room}" -o "UserKnownHostsFile=${knownHosts}" ${guestSsh.proxyThrough {inherit socat socket;}}'';
-
-  # The room's trust store, the file `door` names (DEC-047): the one spelling
-  # of its name, for this program, the front end's door and its
-  # `forget-host-key`. `knownHostsIn` takes the room's directory, which this
-  # program makes; `knownHostsOf` the state root and the room, for a caller
-  # that makes nothing. Shell expressions, as `stateDirOf`'s are.
-  knownHostsIn = roomDir: "${roomDir}/known_hosts";
-  knownHostsOf = state: room: knownHostsIn (stateDirOf state room);
-
   # ssh reads `UserKnownHostsFile` as a whitespace-separated list and expands
   # `%` tokens in it, so a state root holding either would name a different
   # trust store: refused, by every reader of the file. `state` is a shell
@@ -217,11 +197,12 @@
       # After the banner, every failure is 1, and each act says so itself: under
       # plain errexit a failed `git init` would exit 128.
       roomDir=${stateDirOf "$state" "$room"}
-      knownHosts=${knownHostsIn "$roomDir"}
+      knownHosts=${roomDoor.knownHostsIn "$roomDir"}
       # Every directory it makes is the owner's alone; one that is there (the
       # module's tmpfiles made it) is left as it is.
       (umask 077 && mkdir -p "$roomDir") || exit 1
-      ssh_cmd=(ssh ${door {
+      ssh_cmd=(ssh ${roomDoor.words {
+        checking = "accept-new";
         room = "$room";
         socket = "$sock";
         knownHosts = "$knownHosts";
@@ -259,5 +240,5 @@
     '';
   };
 in {
-  inherit program door knownHostsOf refuseOddState;
+  inherit program refuseOddState;
 }

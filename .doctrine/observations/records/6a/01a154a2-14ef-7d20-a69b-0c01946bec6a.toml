@@ -1,0 +1,18 @@
+schema = "doctrine.observation"
+schema_version = 1
+uid = "01a154a2-14ef-7d20-a69b-0c01946bec6a"
+recorded_at = "2026-10-19T14:47:50.767047143Z"
+kind = "friction"
+summary = "git add of a stub before its real body leaves the index holding the stub"
+detail = "SL-008 PHASE-01: new files must be staged for nix to see them; staging a TDD stub then editing shows AM, and committing the index would ship the stub. Re-add before commit."
+
+[facets.execution]
+schema_version = 1
+interface = "cli"
+interface_origin = "automatic"
+product_surface = "doctrine"
+product_surface_origin = "automatic"
+command = "observation record"
+command_origin = "automatic"
+repository_context = "primary"
+repository_context_origin = "automatic"
