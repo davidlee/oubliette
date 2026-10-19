@@ -31,6 +31,11 @@
     # cache against their own pin, and re-pointing nixpkgs rebuilds them here
     # for no gain.
     llm-agents.url = "github:numtide/llm-agents.nix";
+
+    # The host-side bwrap jails a human runs agents in while working on this
+    # repo (`jailed-*`, below). Nothing to do with a capsule: these confine an
+    # agent on this host, and no consumer gets them.
+    agents.url = "github:davidlee/nix-config?dir=flakes/agents";
   };
 
   # Oubliette's own fleet: its builder (mkfleet.nix) applied to the fixture,
@@ -39,6 +44,7 @@
   # once, so the fleet below and `lib.mkFleet` are the same function.
   outputs = inputs: let
     system = "x86_64-linux";
+    pkgs = inputs.nixpkgs.legacyPackages.${system};
     mkFleet = import ./mkfleet.nix {inherit (inputs) nixpkgs microvm doctrine;};
 
     # The builder and the two functions it applies, unapplied, for a flake that
@@ -57,12 +63,54 @@
     # rather than in mkFleet: every consumer builds mkFleet's outputs, and none
     # of them has this template.
     templateCases = import ./templates/template-cases.nix {
-      pkgs = inputs.nixpkgs.legacyPackages.${system};
+      inherit pkgs;
       inherit (inputs.nixpkgs) lib;
       template = ./templates/fleet;
       inputs = {
         inherit (inputs) nixpkgs llm-agents;
         oubliette.lib = oublietteLib;
+      };
+    };
+
+    # `dev-tools` is this repo's tool set as a room repo (CHR-018): what
+    # `just check` runs, the guest supplying `nix`. Here and not in mkFleet,
+    # since it is this repo's and no consumer's.
+    dev-tools = pkgs.buildEnv {
+      name = "oubliette-dev-tools";
+      paths = with pkgs; [just alejandra shellcheck jq];
+    };
+
+    # Every jail shares one posture; only the agent differs. A jail supplies
+    # its own `nix`, as the room guest does. No provider key enters a jail:
+    # each reaches models through the LLM gateway on the shared `pi` key, and
+    # the agents flake binds the host's doctrine install itself.
+    jailLib = inputs.agents.lib.${system}.mkJailedAgents {};
+    mkJail = maker: args:
+      maker ({
+          profile = "specDev";
+          extraPkgs = [dev-tools pkgs.nix];
+          gateway = jailLib.gatewayClient "pi";
+        }
+        // args);
+    jailPkgs = {
+      jailed-pi = mkJail jailLib.makeJailedPi {
+        allowSelfAsSubagent = true;
+        maxSubagentDepth = 2;
+      };
+      jailed-pi-research = mkJail jailLib.makeJailedPi {
+        name = "pi-research";
+        profile = "research";
+        allowSelfAsSubagent = true;
+      };
+      jailed-claude = mkJail jailLib.makeJailedClaude {
+        allowSelfAsSubagent = true;
+        subagents = ["pi"];
+        maxSubagentDepth = 2;
+      };
+      jailed-shell = mkJail jailLib.makeJailedAgent {
+        name = "shell";
+        agent = pkgs.zsh;
+        subagents = ["pi" "claude"];
       };
     };
   in
@@ -72,20 +120,16 @@
 
       # Merged into mkFleet's set rather than beside it: a top-level `//` would
       # replace the whole `packages` attribute.
-      #
-      # `dev-tools` is this repo's tool set as a room repo (CHR-018): what
-      # `just check` runs, the guest supplying `nix`. Here and not in mkFleet,
-      # since it is this repo's and no consumer's.
       packages.${system} =
         fleet.packages.${system}
-        // {
-          inherit templateCases;
-          dev-tools = with inputs.nixpkgs.legacyPackages.${system};
-            buildEnv {
-              name = "oubliette-dev-tools";
-              paths = [just alejandra shellcheck jq];
-            };
-        };
+        // jailPkgs
+        // {inherit templateCases dev-tools;};
+
+      # mkFleet's devshell, which every consumer gets, plus this repo's jails.
+      devShells.${system}.default = pkgs.mkShellNoCC {
+        inputsFrom = [fleet.devShells.${system}.default];
+        packages = builtins.attrValues jailPkgs;
+      };
 
       # `nix flake init -t github:davidlee/oubliette`: a consumer confining
       # doctrine, every file commented as the reference for its field (DEC-030).
