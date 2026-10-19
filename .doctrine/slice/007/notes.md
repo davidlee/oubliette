@@ -6,7 +6,7 @@ disposable phase sheet (`.doctrine/state/.../phase-NN.md`) that must survive
 
 ## Harvest
 <!-- single-copy: updated in place each harvest; ids only, never restated content -->
-fresh-as-of: 2026-10-19 · PHASE-01..05 completed, live pass · audit next · head 71f141b+
+fresh-as-of: 2026-10-19 · audit RV-020 open on F-6 (VH-1, the user's word) · reconcile next · head 495b43c+
 
 ### Produced
 - DEC-052 (room base = floor + declared extras; supersedes DEC-044); amended: floor coreutils-full (bb52b4a)
@@ -16,6 +16,8 @@ fresh-as-of: 2026-10-19 · PHASE-01..05 completed, live pass · audit next · he
 - commits 7ce98a2 (P01) · 8672b2d (P02) · 3728bf1 (P03) · a4a7808 (P04) · 71f141b (P05)
 - ISS-023 resolved · duplicate of ISS-013
 - ISS-026 (refresh-build/up assume a slot; switch does not move a room runner)
+- RV-020 (audit): F-1..F-5 terminal, F-6 awaits the user; brief in review-020.md
+- PHASE-05 source-delta row (71f141b); README.md § Rooms names the base (RV-020 F-4, F-5)
 
 ### Learned
 - No suite runs capsule-refresh/brief/baseline host programs (research.md Thread 2).
@@ -27,8 +29,7 @@ fresh-as-of: 2026-10-19 · PHASE-01..05 completed, live pass · audit next · he
 
 ### Open
 - IMP-017, ISS-013 (resolve at close)
-- DEC-044 still `accepted` though DEC-052 supersedes it (reconcile)
-- CON-001 "extras are fleet-wide" now holds for slots only (reconcile)
+- RV-020 brief for /reconcile: F-1 DEC-044 supersession, F-2 CON-001, F-3 selectors + sec-7
 - Memory candidates for /close harvest: switch-vs-microvm -u for rooms; ssh payload quoting
 - Follow-up: a room user's login shell (slice-007.md § Follow-Ups)
 - satan relay line drafted (notes § PHASE-05 EX-3); the user delivers
@@ -373,3 +374,12 @@ EX-3, the satan relay (for the user to deliver):
 > which` plus the room's declared extras, at `/etc/room/base/bin`), behind the
 > repo's `tools/bin` and ahead of the caller's `PATH` — so your runner's `PATH`
 > no longer matters inside `session`. Keep calling it by absolute path.
+
+## Audit (RV-020, 2026-10-19)
+
+Self-audit at `495b43c`. Gate green (`just check` + full `just build`);
+verify-vt 14/14. No code finding. Harvested from the phase sheets: `search`
+overlaps `agents` (`ripgrep`, `fd`) — same store paths, so `buildEnv` accepts
+both in one room; docs must not claim the collision check covers a login's
+`PATH` against `system-path` (`ISS-025`). Everything else in the sheets is
+already in the phase sections above.

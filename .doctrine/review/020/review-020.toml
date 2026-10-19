@@ -1,0 +1,189 @@
+id    = 20
+slug  = "sl-007-audit-a-rooms-base-and-the-profile-readers-own-jq"
+title = "SL-007 audit: a room's base, and the profile reader's own jq"
+# no status — a review's status is DERIVED from its findings, so
+# it is never stored (the storage rule forbids derived data in authored files).
+
+[review]
+facet     = "reconciliation"     # scope|design|plan|phase-plan|implementation|code-review|reconciliation
+raiser    = "raiser"
+responder = "responder"
+rounds_base = 0
+contests_base = 0
+
+[target]                   # the outbound `reviews` edge: RV-NNN ──reviews──▶ <ref>
+ref   = "SL-007"
+
+[[finding]]
+id = "F-1"
+status = "verified"
+severity = "major"
+title = "DEC-052 supersedes DEC-044 (expected); DEC-044 is still accepted with no supersede edge (observed)"
+detail = """
+Expected (design sec-1, DEC-052, slice scope 1): DEC-044 superseded by DEC-052, so the corpus has one accepted answer to "what is a room's base".
+Observed: `doctrine show DEC-044` reads `accepted`, choice still "No fleet extras in a room. The base PATH is git plus the NixOS required packages". `doctrine inspect DEC-052` shows only `shapes: SL-007` — no supersedes edge. PHASE-04 ran `doctrine supersede DEC-052 DEC-044` (rc 0); it changed only DEC-044's `updated` date (notes § PHASE-04; friction observation committed in 34160e8).
+Two accepted decisions contradict on tier 2: drift, not history.
+"""
+disposition = "design-wrong"
+response = """
+Governance, not code: the implementation is DEC-052's. Reconcile records the supersession so it holds: DEC-044 → superseded by DEC-052 (status + edge) through the knowledge verb, not by hand; the PHASE-04 `supersede` no-op is already an observation. Brief: § Governance/spec, F-1.
+"""
+
+[[finding.turn]]
+act = "raise"
+role = "raiser"
+
+[[finding.turn]]
+act = "dispose"
+role = "responder"
+disposition = "design-wrong"
+response = """
+Governance, not code: the implementation is DEC-052's. Reconcile records the supersession so it holds: DEC-044 → superseded by DEC-052 (status + edge) through the knowledge verb, not by hand; the PHASE-04 `supersede` no-op is already an observation. Brief: § Governance/spec, F-1.
+"""
+
+[[finding.turn]]
+act = "verify"
+role = "raiser"
+note = "reconciliation brief entry exists"
+
+[[finding]]
+id = "F-2"
+status = "verified"
+severity = "minor"
+title = "CON-001 holds for the fleet's extras (expected); since DEC-052 it holds for slots only (observed)"
+detail = """
+Expected (scope 4: binding sources say one thing): CON-001's statement is true.
+Observed: CON-001 "One extras list for the fleet, so one composition: one guest image per target". A room now selects its own `rooms.<r>.extras` (rooms.nix, vm/room.nix; DEC-052). The constraint's applies_to (fragments.nix, mkFleet flavour, assignment record) is still right for slots; its statement overreaches. Deferred at PHASE-04 (OQ-3) to reconcile.
+"""
+disposition = "design-wrong"
+response = """
+Governance: CON-001's statement is narrowed to slots (a room selects its own extras, DEC-052), and gains a relation to DEC-052. Brief: § Governance/spec, F-2.
+"""
+
+[[finding.turn]]
+act = "raise"
+role = "raiser"
+
+[[finding.turn]]
+act = "dispose"
+role = "responder"
+disposition = "design-wrong"
+response = """
+Governance: CON-001's statement is narrowed to slots (a room selects its own extras, DEC-052), and gains a relation to DEC-052. Brief: § Governance/spec, F-2.
+"""
+
+[[finding.turn]]
+act = "verify"
+role = "raiser"
+note = "reconciliation brief entry exists"
+
+[[finding]]
+id = "F-3"
+status = "verified"
+severity = "minor"
+title = "design sec-7 and the selectors name every path touched (expected); five touched paths are undeclared (observed)"
+detail = """
+Expected: `doctrine slice conformance 7 --against 8f55b0b..HEAD` shows no undeclared non-.doctrine paths.
+Observed undeclared: `fabric-cases.nix`, `host/guard-cases.nix`, `host/netns-cases.nix`, `host/room-verbs-cases.nix` (PHASE-02: the fixture appliers pass `fragmentNames = []`; named in plan PHASE-02's objective, absent from design sec-7 and from design-target selectors — `host/*-cases.nix` is only scope-relevant), and `docs/plan-f-assistant.md` (PHASE-04's DEC-044 re-point, within plan PHASE-04's "any other DEC-044 citation"). All edits are in scope; the registry and sec-7 lag them.
+Undelivered: none.
+"""
+disposition = "design-wrong"
+response = """
+The registry and design sec-7 lag in-scope edits. Reconcile: `doctrine slice selector add` design-target rows for fabric-cases.nix, host/guard-cases.nix, host/netns-cases.nix, host/room-verbs-cases.nix, docs/plan-f-assistant.md (and README.md, F-5's fix); design sec-7 gains the matching rows as the mirror. Brief: § Per-slice, F-3.
+"""
+
+[[finding.turn]]
+act = "raise"
+role = "raiser"
+
+[[finding.turn]]
+act = "dispose"
+role = "responder"
+disposition = "design-wrong"
+response = """
+The registry and design sec-7 lag in-scope edits. Reconcile: `doctrine slice selector add` design-target rows for fabric-cases.nix, host/guard-cases.nix, host/netns-cases.nix, host/room-verbs-cases.nix, docs/plan-f-assistant.md (and README.md, F-5's fix); design sec-7 gains the matching rows as the mirror. Brief: § Per-slice, F-3.
+"""
+
+[[finding.turn]]
+act = "verify"
+role = "raiser"
+note = "reconciliation brief entry exists"
+
+[[finding]]
+id = "F-4"
+status = "verified"
+severity = "minor"
+title = "every completed phase has a source-delta row (expected); PHASE-05 has none, so conformance reads incomplete (observed)"
+detail = """
+Expected: `doctrine slice conformance 7` reports a full registry.
+Observed: "conformance incomplete — partial coverage: completed phase PHASE-05 has no recorded source-delta row". PHASE-05 was live verification; its commit 71f141b touched only .doctrine/ (notes, ISS-026). The `--against` run covered the whole range instead (finding above).
+"""
+disposition = "fix-now"
+response = """
+Fixed in the audit: `doctrine slice record-delta 7 PHASE-05 --commit 71f141b`. `doctrine slice conformance 7` now reports a full registry (undeclared = F-3's five paths plus .doctrine records; undelivered 0; conformant 21).
+"""
+
+[[finding.turn]]
+act = "raise"
+role = "raiser"
+
+[[finding.turn]]
+act = "dispose"
+role = "responder"
+disposition = "fix-now"
+response = """
+Fixed in the audit: `doctrine slice record-delta 7 PHASE-05 --commit 71f141b`. `doctrine slice conformance 7` now reports a full registry (undeclared = F-3's five paths plus .doctrine records; undelivered 0; conformant 21).
+"""
+
+[[finding.turn]]
+act = "verify"
+role = "raiser"
+note = "conformance re-run: registry complete"
+
+[[finding]]
+id = "F-5"
+status = "verified"
+severity = "nit"
+title = "README's Rooms section names every room field a caller declares (expected); it omits extras and the base (observed)"
+detail = """
+Expected: README.md (usage) § Rooms lists the declarable fields, as it does users, sizes, repos, policy, sizes.work.
+Observed: README.md:485-499 says nothing of `extras` or the base; `session` is described as giving "that target's tool set" only. The template comments the field, and the README points there, so not wrong — incomplete. PHASE-04 left README.md:495-499 optional, not taken.
+"""
+disposition = "fix-now"
+response = """
+Fixed in the audit: README.md § Rooms gains one paragraph — the base (floor plus declared `extras`), on a login's PATH and behind a repo's tools in `session` (DEC-052). README.md joins F-3's selector additions.
+"""
+
+[[finding.turn]]
+act = "raise"
+role = "raiser"
+
+[[finding.turn]]
+act = "dispose"
+role = "responder"
+disposition = "fix-now"
+response = """
+Fixed in the audit: README.md § Rooms gains one paragraph — the base (floor plus declared `extras`), on a login's PATH and behind a repo's tools in `session` (DEC-052). README.md joins F-3's selector additions.
+"""
+
+[[finding.turn]]
+act = "verify"
+role = "raiser"
+note = "README.md § Rooms read after the edit"
+
+[[finding]]
+id = "F-6"
+status = "open"
+severity = "minor"
+title = "VH-1: the user accepts the live outputs (expected); notes record the outputs but not the user's acceptance (observed)"
+detail = """
+Expected: plan PHASE-05 VH-1 "the user runs the rebuild and accepts the live outputs".
+Observed: notes § PHASE-05 record the user's switch and `capsule assistant start`, and the EX-1/EX-2 outputs; VA-1 is met (outputs match design sec-4's live claims: PATH=…/tools/bin:/etc/room/base/bin:/no-such-path, `git` and `rg` under /etc/room/base/bin). No line records the user accepting them.
+"""
+
+[[finding.turn]]
+act = "raise"
+role = "raiser"
+
+# Findings are append-only `[[finding]]` tables, added by `review raise`.
+# Empty here at creation — a fresh review is Active, awaiting the raiser.

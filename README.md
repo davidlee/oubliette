@@ -498,6 +498,11 @@ clone at its target's `guestPath` on a `/work` volume, owned by `repos.user`;
 in the room, `session <repo> -- <cmd>` runs a command there with that target's
 tool set (the template's `flake.nix` comments the fields).
 
+Every room has a base, `git bash coreutils-full which` plus the `extras` it
+declares (names from `fragments.nix`'s vocabulary, `extras = [...]`, optional on
+any room). It is on a login's `PATH`, and `session` puts it behind a repo's tool
+set and ahead of the caller's `PATH` (`DEC-052`).
+
 ```
 capsule <room> ssh [user] [-- cmd]
 capsule <room> start
