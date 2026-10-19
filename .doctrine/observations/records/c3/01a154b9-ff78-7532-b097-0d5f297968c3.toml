@@ -1,0 +1,18 @@
+schema = "doctrine.observation"
+schema_version = 1
+uid = "01a154b9-ff78-7532-b097-0d5f297968c3"
+recorded_at = "2026-10-19T15:13:58.136706187Z"
+kind = "friction"
+summary = "worker contract forbids writing runtime sheet Findings, so recorded FAIL signatures are lost between phases"
+detail = "SL-008: PHASE-01/02 workers left sheet Findings empty (runtime state is the orchestrator's); the PHASE-03 planner had no mutation signatures to reuse. The orchestrator holds no Write either, so nobody fills them."
+
+[facets.execution]
+schema_version = 1
+interface = "cli"
+interface_origin = "automatic"
+product_surface = "doctrine"
+product_surface_origin = "automatic"
+command = "observation record"
+command_origin = "automatic"
+repository_context = "primary"
+repository_context_origin = "automatic"

@@ -193,6 +193,12 @@
   };
 
   socketOf = name: "/run/capsule-room/${name}/ssh.sock";
+  # The parent of every room's door (RV-023 F-3, DEC-056): the relay's own
+  # directory, the socket's parent, is a RuntimeDirectory and goes on every stop,
+  # so this is what the module makes at boot and what a room client's jail binds.
+  # Of a socket rather than a name, so a record whose socket moved takes its
+  # door root with it.
+  doorRootOf = socket: dirOf (dirOf socket);
   stateRootOf = state: "${state}/room";
   stateDirOf = state: name: "${stateRootOf state}/${name}";
 
@@ -229,7 +235,7 @@
     extras = decl.extras or [];
   };
 in {
-  inherit reasons socketOf stateRootOf stateDirOf readersGroup;
+  inherit reasons socketOf doorRootOf stateRootOf stateDirOf readersGroup;
   instances =
     if !(isNull reasons.names)
     then throw reasons.names

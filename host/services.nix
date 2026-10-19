@@ -803,7 +803,14 @@ in {
         # end's ssh is a door too (SL-006 design sec-5). The owner's alone.
         ++ lib.optional (rooms.instances != {}) "d ${rooms.stateRootOf stateDir} 0750 ${cfg.owner} users -"
         ++ map (r: "d ${rooms.stateDirOf stateDir r.name} 0700 ${cfg.owner} users -")
-        (lib.attrValues rooms.instances);
+        (lib.attrValues rooms.instances)
+        # The parent of every room's door (RV-023 F-3, DEC-056): made at boot, so
+        # a room client's jail that binds it (host/room-client.nix) can start
+        # before any relay. Root's and traversable, as systemd makes it for a
+        # RuntimeDirectory; derived from the records, so one rule while every
+        # socket is socketOf's, and none for `rooms = {}`.
+        ++ lib.unique (map (r: "d ${rooms.doorRootOf r.socket} 0755 root root -")
+          (lib.attrValues rooms.instances));
 
       # The documents themselves, **installed rather than linked** (NOTES item 52,
       # decision 1). A symlink into the store would keep nix authoritative and

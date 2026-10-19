@@ -216,6 +216,7 @@ in
     ck "  with a namespace of its own" room-assistant ${good.instances.assistant.ns}
     ck "  no uplink" true ${lib.boolToString (good.instances.assistant.uplink == null)}
     ck "  and a socket under the room's directory" /run/capsule-room/assistant/ssh.sock ${good.instances.assistant.socket}
+    ck "  whose door root is the parent of every room's directory" /run/capsule-room ${good.doorRootOf good.instances.assistant.socket}
 
     # 9. Sizes pass through: nothing is filled in for a room that gives none.
     ck "empty sizes stay empty (nothing defaults)" true \

@@ -61,11 +61,15 @@
   stateDir = (import ./state-dir.nix {inherit lib;} declared.stateDir).value;
 
   # The host module, bound once: `hostModule` imports it and `nixosModules` exports it.
-  capsulePerimeter = import ./host/services.nix {
-    inherit net targets capsules policies workBranch fleetPath stateDir;
-    inherit (access) injections;
-    rooms = roomDecision;
-  };
+  # A function of what rooms.nix decided, so `hostModule` can also evaluate the
+  # same module with no rooms, which no option can take away from it.
+  perimeterOf = decision:
+    import ./host/services.nix {
+      inherit net targets capsules policies workBranch fleetPath stateDir;
+      inherit (access) injections;
+      rooms = decision;
+    };
+  capsulePerimeter = perimeterOf roomDecision;
 
   # The target-shaped settings that follow from each declared target
   # (targets/default.nix), and each target's flake, for its tool set — both
@@ -744,6 +748,39 @@
     fixtureDoor = (hostPrograms.roomGitOf (name: ''"$CASE_RUN/${name}.sock"'')).program;
   };
 
+  # A room's door for host clients and their jails (DEC-057), at any state root:
+  # the declared one ships, one per room record and none for `rooms = {}`, and
+  # `roomClientCases` builds one under the sandbox (RV-023 F-8).
+  roomClientOf = root:
+    import ./host/room-client.nix {
+      inherit pkgs lib;
+      inherit (hostPrograms) roomDoor;
+      rooms = roomDecision;
+      stateDir = root;
+    };
+  roomClients = lib.mapAttrs (_: roomClientOf stateDir) roomRecords;
+  # The suite's room is the first declared, as `volumeCases`' slot is, so no
+  # room is named here; `null` with no rooms, which the suite skips.
+  clientRoom = lib.findFirst (_: true) null (lib.attrNames roomRecords);
+  # The bundle at its shipped values for cases 1-5, and the same builder at a
+  # root the sandbox can write, with the record's socket moved under it, for the
+  # fixture sshd of case 6 (host/room-client-cases.nix).
+  roomClientCases = import ./host/room-client-cases.nix {
+    inherit pkgs lib stateDir;
+    inherit (hostPrograms) roomDoor;
+    guest = net.guest;
+    room = clientRoom;
+    record = roomRecords.${clientRoom} or null;
+    bundle = roomClients.${clientRoom} or null;
+    fixture =
+      if clientRoom == null
+      then null
+      else
+        roomClientOf "/build/state"
+        (lib.recursiveUpdate roomRecords.${clientRoom}
+          {socket = "/build/state/run/${clientRoom}/ssh.sock";});
+  };
+
   # The quarantine's ingestion bound, as fragments spliced into the smallest
   # `main` — a library suite, beside `profileCases`, over the same binding every
   # caller gets (host/quarantine-cases.nix).
@@ -912,33 +949,39 @@
   # (`hostModuleUnits`, seconds, no build) and what it *runs*
   # (`hostModulePrograms`, a build, because shellcheck is a build).
   hostModule = let
+    stub = {
+      system.stateVersion = "25.05";
+      # Only the unit graph is being read, so nothing here boots — but the
+      # base assertions about a root filesystem and a bootloader fire
+      # first and bury whatever the module itself has to say. Stubbed
+      # rather than answered with `boot.isContainer`, which mutes them by
+      # changing what kind of machine this is: that also turns on
+      # `useHostResolvConf`, which resolved then refuses, and would go on
+      # quietly moving defaults the units are read against.
+      boot.loader.grub.enable = false;
+      fileSystems."/" = {
+        device = "none";
+        fsType = "tmpfs";
+      };
+      # The module asserts on this: a capsule's only resolver is the stub
+      # resolved puts on the aggregator's host end.
+      services.resolved.enable = true;
+      services.capsule-perimeter = {
+        enable = true;
+        owner = "nobody";
+      };
+    };
     host = lib.nixosSystem {
       inherit system;
-      modules = [
-        capsulePerimeter
-        {
-          system.stateVersion = "25.05";
-          # Only the unit graph is being read, so nothing here boots — but the
-          # base assertions about a root filesystem and a bootloader fire
-          # first and bury whatever the module itself has to say. Stubbed
-          # rather than answered with `boot.isContainer`, which mutes them by
-          # changing what kind of machine this is: that also turns on
-          # `useHostResolvConf`, which resolved then refuses, and would go on
-          # quietly moving defaults the units are read against.
-          boot.loader.grub.enable = false;
-          fileSystems."/" = {
-            device = "none";
-            fsType = "tmpfs";
-          };
-          # The module asserts on this: a capsule's only resolver is the stub
-          # resolved puts on the aggregator's host end.
-          services.resolved.enable = true;
-          services.capsule-perimeter = {
-            enable = true;
-            owner = "nobody";
-          };
-        }
-      ];
+      modules = [capsulePerimeter stub];
+    };
+    # The same module with no rooms: it closes over rooms.nix's decision rather
+    # than reading an option, so `extendModules` cannot remove them, and a
+    # second evaluation is the only way to ask what it does without. Lazy: only
+    # what a check below reads of it is forced.
+    roomless = lib.nixosSystem {
+      inherit system;
+      modules = [(perimeterOf (roomDecision // {instances = {};})) stub];
     };
     failed = lib.filter (a: !a.assertion) host.config.assertions;
     units =
@@ -1034,7 +1077,7 @@
     # `borrowed` in the probe fabric — the alternative is a comment that is true
     # on the day it is written. It cannot see directories the module did not
     # declare, which is the honest limit: it pairs what this repo controls.
-    dirRules =
+    dirRulesOf = h:
       lib.filter (d: d != null)
       (map (
           rule: let
@@ -1061,7 +1104,8 @@
             }
             else null
         )
-        host.config.systemd.tmpfiles.rules);
+        h.config.systemd.tmpfiles.rules);
+    dirRules = dirRulesOf host;
 
     # Traversal is the `x` bit, and for a user who is neither the owner nor in
     # the group that is the *others* digit. Group membership is a declaration
@@ -1214,6 +1258,19 @@
       !(lib.any (d: d.path == "${stateDir}/room/${n}" && d.mode == "0700" && d.owner == cfg.owner && d.group == "users")
         dirRules))
     roomNames;
+    # The parent of every room's door, made at boot rather than by the first
+    # relay start, so a client's jail started before any room has a directory to
+    # bind and sees each door appear under it (RV-023 F-3, DEC-056). Spelled
+    # here, beside `roomRelayElsewhere`'s `capsule-room/<n>`, so the check
+    # cannot agree with itself; and absent from the same module with no rooms.
+    doorRoot = "/run/capsule-room";
+    doorRootRules = h: lib.filter (d: d.path == doorRoot) (dirRulesOf h);
+    rootOwnedTraversable = d: d.mode == "0755" && d.owner == "root" && d.group == "root";
+    doorRootMissing = let
+      found = doorRootRules host;
+    in
+      roomNames != [] && !(lib.length found == 1 && lib.all rootOwnedTraversable found);
+    doorRootWithoutRooms = doorRootRules roomless != [];
     inherit
       (import ./host/wrap.nix {
         inherit pkgs lib;
@@ -1266,6 +1323,10 @@
       then throw "capsule-perimeter: the ssh relay of room(s) ${lib.concatStringsSep ", " roomRelayElsewhere} does not listen on the room's own socket under RuntimeDirectory capsule-room/<name> — a room's door is its record's (SL-005 design sec-4)."
       else if roomStateMissing != []
       then throw "capsule-perimeter: room(s) ${lib.concatStringsSep ", " roomStateMissing} have no tmpfiles `d <stateDir>/room/<name> 0700 <owner> users` — that is the room's one known_hosts, which every door to it checks (SL-006 design sec-5, DEC-047)."
+      else if doorRootMissing
+      then throw "capsule-perimeter: no single tmpfiles `d ${doorRoot} 0755 root root` — only a relay start would make the parent of a room's door, so a client's jail started before any room has nothing to bind (RV-023 F-3, DEC-056)."
+      else if doorRootWithoutRooms
+      then throw "capsule-perimeter: with rooms = {} the module still makes ${doorRoot} — the rule is for rooms and must follow them (RV-023 F-3)."
       else if !(isWrapped "capsule-room-git" hostPrograms.roomGit)
       then throw "capsule-perimeter: the module does not install exactly one capsule-room-git, wrapped (host/wrap.nix) around the same program `hostPrograms.roomGit` builds — bare, its quarantine and known_hosts fall back to $PWD/.vm/host and its profiles to the store's (RV-015 F-3, ISS-004)."
       else if !(isWrapped "capsule" capsule-cli)
@@ -1823,6 +1884,9 @@ in {
     // lib.mapAttrs' (name: cfg:
       lib.nameValuePair "image-${name}" cfg.config.microvm.declaredRunner)
     bound.images
+    # Every room's client bundle, by the room's name (DEC-057); none for
+    # `rooms = {}`.
+    // lib.mapAttrs' (name: lib.nameValuePair "room-client-${name}") roomClients
     // {
       # Four programs and four suites that were conditional on `target.nix`
       # until step 6 (NOTES item 51). They are outputs like any other now,
@@ -1834,7 +1898,7 @@ in {
       # The checks that need no root and no host: what the module says, what the
       # guard decides, and which policy a slot resolves to.
       inherit hostModuleUnits hostModulePrograms guardCases netnsCases policyCases observeCases;
-      inherit profileCases gitChannelCases roomGitCases quarantineCases vmCases wrapCases volumeRootCases resetHomeCases sessionCases volumeCases fleetCases stateDirCases roomsCases fabricCases roomVerbsCases;
+      inherit profileCases gitChannelCases roomGitCases quarantineCases vmCases wrapCases volumeRootCases resetHomeCases sessionCases volumeCases fleetCases stateDirCases roomsCases fabricCases roomVerbsCases roomClientCases;
       # Every declared room's image, checked and built (RV-014 F-7).
       inherit roomImages;
       # The rendered run-time half of every target, so a human can read what a

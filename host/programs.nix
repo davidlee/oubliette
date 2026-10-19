@@ -316,6 +316,10 @@ in {
   # The seam itself, for `roomGitCases`' fixture door: `briefRunner`'s export,
   # for its reason — a suite needs the thing before it is the shipped store path.
   inherit roomGitOf;
+  # The door itself, for a room client's bundle (host/room-client.nix, DEC-057)
+  # and `roomClientCases`, which render the same option list. It takes no
+  # `access`, so every instantiation of this file builds the same value.
+  inherit roomDoor;
 
   # The second step out of quarantine, and the one with a security control in it:
   # the state half is a guest-authored tree, so what lands on a disk from it is

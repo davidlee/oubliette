@@ -32,7 +32,8 @@
 # fixture this suite says it has: the same text built against a socket path
 # under the sandbox (`roomGitOf`, host/programs.nix), since the shipped path is
 # fixed at build under `/run`. A socket nobody's, a listener this suite runs,
-# a host key and an sshd config this suite makes, and nothing of this host's.
+# a host key and an sshd config this suite makes (host/fixture-sshd.nix, which
+# `roomClientCases` shares), and nothing of this host's.
 # That reaches the two branches the pre-flight exists for — a relay that accepts
 # and says nothing, or says something that is not ssh, is **75**; a banner that
 # is ssh's and then a failed key exchange is **1** — the pre-flight's own speed
@@ -58,6 +59,7 @@
   firstWhere = p: lib.findFirst p "" policies.everything;
   permits = firstWhere (n: policies.policies.${n}.mayCollect);
   forbids = firstWhere (n: !policies.policies.${n}.mayCollect);
+  fixtureSshd = import ./fixture-sshd.nix {inherit pkgs;};
 in
   pkgs.runCommand "capsule-room-git-cases" {
     # socat for the fixture door's listeners, and openssh for the fixture sshd
@@ -253,23 +255,9 @@ in
       export CASE_RUN=$here/run
       mkdir -p "$CASE_RUN"
       door=${lib.getExe fixtureDoor}
-      listeners=()
-      # Killed by pid and waited by pid, so a failing case cannot hang the build
-      # on one.
-      stopListeners() {
-        for p in "''${listeners[@]}"; do kill "$p" 2>/dev/null || true; done
-        for p in "''${listeners[@]}"; do wait "$p" 2>/dev/null || true; done
-      }
+      ${fixtureSshd}
       trap stopListeners EXIT
-      listen() {
-        printf '#!${pkgs.runtimeShell}\n%s\n' "$2" >"$CASE_RUN/$1.sh"
-        chmod +x "$CASE_RUN/$1.sh"
-        socat UNIX-LISTEN:"$CASE_RUN/$1.sock",fork EXEC:"$CASE_RUN/$1.sh" &
-        listeners+=("$!")
-        for _ in $(seq 50); do [ -S "$CASE_RUN/$1.sock" ] && return 0; sleep 0.1; done
-        echo "FAIL listener $1 never made its socket" >&2
-        exit 1
-      }
+      listen() { serve "$CASE_RUN/$1.sock" "$2"; }
       at() { run "$door" --room "$1" "''${base[@]:2}" "''${@:2}"; }
 
       # A relay that accepts and says nothing: the room stopped, the relay up
@@ -313,10 +301,8 @@ in
       # (RV-023 F-5): an unprivileged `sshd -i` behind the room's socket. It has
       # a host key and accepts nobody, so accept-new files the key and
       # authentication refuses.
-      ssh-keygen -q -t ed25519 -N "" -f "$CASE_RUN/hostkey"
-      printf '%s\n' "HostKey $CASE_RUN/hostkey" "UsePAM no" "StrictModes no" \
-        "PidFile none" "AuthorizedKeysFile none" >"$CASE_RUN/sshd_config"
-      listen keyed "exec $(command -v sshd) -i -f $CASE_RUN/sshd_config -e"
+      sshd_fixture "$CASE_RUN"
+      listen keyed "$sshd_exec"
       at keyed push main
       ck "a push to a room whose sshd accepts nobody fails at auth, 1" 1 "$rc"
       quiet
