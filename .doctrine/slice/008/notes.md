@@ -6,14 +6,14 @@ disposable phase sheet (`.doctrine/state/.../phase-NN.md`) that must survive
 
 ## Harvest
 <!-- single-copy: updated in place each harvest; ids only, never restated content -->
-fresh-as-of: 2026-10-20 · audited (RV-024 concluded) · reconcile next
+fresh-as-of: 2026-10-20 · done (RV-024 reconciled, REV-009 done)
 
 ### Produced
 - scope, research, locked design, plan (10f05c1..99a9f09); code PHASE-01 b4698aa, PHASE-02 923e3e3, PHASE-03 8cf3ea8, PHASE-04 10a7cf6; governance 789c102
 - minted: DEC-054, DEC-055, DEC-056, DEC-057; DEC-058 accepted, supersedes DEC-042; REV-008 applied to POL-003
 - new suites: stateDirCases, roomClientCases; shared host/fixture-sshd.nix; rooms.nix doorRootOf
 - reviews: RV-022 (run ledger), RV-023 (design pass), RV-024 (audit: 13 findings, 0 blockers)
-- backlog: IMP-024 (pin UpdateHostKeys off), IMP-025 (one home for case-harness helpers); IMP-022 resolves at close
+- backlog: IMP-024 (pin UpdateHostKeys off), IMP-025 (one home for case-harness helpers); IMP-022 resolved at close
 
 ### Learned
 - mem.pattern.oubliette.fixture-sshd-in-the-build-sandbox — a case can pin host-key behaviour past the banner
@@ -24,7 +24,6 @@ fresh-as-of: 2026-10-20 · audited (RV-024 concluded) · reconcile next
 - from the phase sheets: the module evaluates with rooms = {} (pinned by hostModuleUnits' second eval); a fixture value equal to an old default makes a green build prove nothing about wiring; nsPrograms is the easy-to-miss third programs.nix call site
 
 ### Open
-- RV-024 reconciliation brief — F-2, F-3, F-4 (design.md + selector registry), F-5 (POL-003 errata REV, DEC-058 amendment line)
 - ASM-004 — /run/capsule-room survives a relay stop; consumer's reach rung
 - unexercised: live host, push/collect past auth, changed host key refused, the bwrap sketch (satan:SL-027)
 - outside: push oubliette; /srv/fleet lock bump from 10f05c1 (user's)
