@@ -1,0 +1,18 @@
+schema = "doctrine.observation"
+schema_version = 1
+uid = "01a154c5-e817-7532-a802-fb3556090e35"
+recorded_at = "2026-10-19T15:26:58.58318683Z"
+kind = "friction"
+summary = "case-harness helpers (ck/saw/never/run) copied into each new suite"
+detail = "SL-008 PHASE-03: room-client-cases.nix copied them again; a shared fragment like host/fixture-sshd.nix is a backlog candidate. Also: suites that log ok lines only on success hide 'stays ok' evidence from mutants."
+
+[facets.execution]
+schema_version = 1
+interface = "cli"
+interface_origin = "automatic"
+product_surface = "doctrine"
+product_surface_origin = "automatic"
+command = "observation record"
+command_origin = "automatic"
+repository_context = "primary"
+repository_context_origin = "automatic"
