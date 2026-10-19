@@ -1,7 +1,7 @@
 id = 8
 slug = "room-client-bundle"
 title = "A room-client bundle: one export of a room's door for host clients and their jails"
-status = "ready"
+status = "reconcile"
 created = "2026-10-19"
 updated = "2026-10-19"
 tags = []
