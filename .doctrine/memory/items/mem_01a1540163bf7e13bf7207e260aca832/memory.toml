@@ -1,0 +1,58 @@
+memory_uid = "mem_01a1540163bf7e13bf7207e260aca832"
+memory_key = "mem.pattern.oubliette.shared-volume-is-a-return-channel"
+schema_version = 1
+memory_type = "pattern"
+status = "active"
+title = "A volume shared between a sealed guest and a networked boot is a return channel"
+summary = "A volume a sealed guest can write and a guest with egress can later read is an exfiltration channel; give each networked boot a fresh host-made volume and discard it after"
+created = "2026-10-19"
+updated = "2026-10-19"
+
+[scope]
+paths = ["vm/room.nix", "rooms.nix", ".doctrine/rfc/001"]
+globs = []
+commands = []
+tags = ["gotcha", "perimeter"]
+workspace = "default"
+repo = "github.com/davidlee/oubliette"
+repo_id_kind = "remote"
+repo_id_confidence = "high"
+
+[git]
+anchor_kind = "commit"
+commit = "921d6e3b1278c2bcc46431db0f01efba50deb4cb"
+tree = "568a69d34245f9c9f90f6c73d824e12c93d57b8a"
+ref_name = "refs/heads/main"
+checkout_state_id = ""
+base_commit = "921d6e3b1278c2bcc46431db0f01efba50deb4cb"
+verified_sha = ""
+normalizer = ""
+
+[review]
+verification_state = "unverified"
+reviewed = ""
+review_by = ""
+
+[trust]
+trust_level = "medium"
+
+[ranking]
+severity = "none"
+weight = 0
+
+[[source]]
+kind = "review"
+ref = "RV-021"
+
+[[source]]
+kind = "rfc"
+ref = "RFC-001"
+
+[[relation]]
+label = "related"
+target = "RFC-001"
+
+[[relation]]
+label = "related"
+target = "mem_01a00ad62daf7b838488484f7ba2884b"
+
