@@ -1,0 +1,22 @@
+schema = "doctrine.backlog"
+version = 1
+
+id = 26
+slug = "just-refresh-build-and-just-up-assume-a-slot-on-a-room-ups-created-exits-2-after-the-update"
+title = "just refresh-build and just up assume a slot: on a room, up's 'created' exits 2 after the update"
+kind = "issue"
+status = "open"
+resolution = ""                 # seeded empty so `backlog edit` sets it in place
+created = "2026-10-19"
+updated = "2026-10-19"
+tags = []
+
+# outbound-only. Cross-kind structural edges (e.g. references with a role
+# — `originates_from` for backlog→slice provenance — governed_by, related, drift) are
+# uniform `[[relation]]` rows — author them with
+# `doctrine link ITEM-NNN <label> <target>`; `doctrine inspect ITEM-NNN` renders
+# them. The dep/seq axes below stay typed (they carry per-edge payloads).
+[relationships]
+needs    = []                   # item→item hard prerequisite
+after    = []                   # item→item soft sequence: { to, rank? }
+triggers = []                   # watched source globs: { globs, note? }
