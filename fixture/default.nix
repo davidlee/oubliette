@@ -94,7 +94,8 @@ in {
   # Two rooms, nobody's: `lounge` is Plan E's shape (several people on one
   # box) and the absent path of repos, policy, a work volume and extras;
   # `assistant` is Plan F's door (one agent) and the case with all four, over
-  # both targets, selecting `search` into its base (DEC-052).
+  # both targets, selecting `search` into its base (DEC-052), with `eve` a
+  # reader of its repos who may not write them (IMP-023).
   # No addressing — a room has no uplink — and off the probe fabric by its
   # `room-` prefix. The keys are
   # strings nobody holds.
@@ -119,13 +120,20 @@ in {
       inherit sizes;
     };
     assistant = {
-      users.agent = {
-        uid = 1001;
-        keys = ["ssh-ed25519 AAAA fixture-agent"];
+      users = {
+        agent = {
+          uid = 1001;
+          keys = ["ssh-ed25519 AAAA fixture-agent"];
+        };
+        eve = {
+          uid = 1002;
+          keys = ["ssh-ed25519 AAAA fixture-eve"];
+        };
       };
       repos = {
         user = "agent";
         targets = ["fixture" "tooled"];
+        readers = ["eve"];
       };
       policy = "build";
       extras = ["search"];

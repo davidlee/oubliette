@@ -32,25 +32,52 @@ As `satan`, `git clone /work/<repo>` fails with EACCES.
     `0700` / `users`. Inside it, git writes under `agent`'s umask (022), so
     files are readable and not writable by the group; the directory mode is
     the only gate needed;
-  - git `safe.directory` for the readers covering `/work/*` (system gitconfig),
-    since git refuses a repo owned by another user ("dubious ownership"),
-    including as the source of a local clone. Verify on the room's git
-    (2.55 on the host) rather than assume.
+  - **no** git `safe.directory` from the room (decided 2026-10-20, see
+    *Git trust* below).
 - With `readers = []`, the seed is unchanged (`0700`), so existing rooms keep
   their modes.
 - `/srv/fleet/flake.nix`: `rooms.assistant.users.satan` (uid, key) and
   `repos.readers = ["satan"]`. The key is issued by `~/flakes` with the
   daemon's door file (flakes:SL-015).
 
+## Git trust (decided 2026-10-20)
+
+The first shape had the room set `safe.directory = /work/*` system-wide. It
+does not: that setting is git's opt-out from refusing repos another user owns,
+and with it off, git run by a reader in `/work` runs the **owner's** repo
+config as the reader. Evidence, host git 2.55.0 with the owner faked by
+`GIT_TEST_ASSUME_DIFFERENT_OWNER=1`:
+
+- no `safe.directory`: `git -C <repo> log` and a plain local `git clone` are
+  refused ("dubious ownership"); `git clone --no-local <repo>` succeeds and
+  runs none of the repo's config;
+- with it: `git status` ran the repo's `core.fsmonitor`, and a filter driver
+  declared in the repo's config and `.gitattributes`, as the reader;
+- a global `core.hooksPath` does not close it: repo config outranks global,
+  so the repo's own `core.hooksPath` wins, and hooks are the minor vector.
+
+So the repos' user (the patch runner) could act as every reader. The room
+ships permissions only; a reader either clones with `--no-local` (or
+`file://`) or opts in itself (its own `~/.gitconfig`, or `-c
+safe.directory=…` per command), taking that risk in its own repo. A reader
+can opt in whatever the room does, so a room-wide exception would only move
+the choice away from the party that bears it. satan:SL-027 decides for
+`satan`.
+
 ## Verification
 
-- `rooms-cases.nix`: an unknown reader, and `repos.user` listed as a reader,
-  both throw.
-- Rendered seed (pure check): `0750` and the readers' group when `readers` is
-  set; `0700 -g users` when it is not.
+- `rooms-cases.nix`: an unknown reader, `repos.user` listed as a reader, and
+  a non-list `readers` throw; readers are carried in order. **Done.**
+- `roomImages`: the repos' user and each reader carry exactly the readers'
+  group, everyone else none, and the group's gid is declared; the fixture's
+  `assistant` has reader `eve`. **Done.**
+- Rendered seed (read by eval, not asserted): `0750 -g repos-read` for the
+  fixture's `assistant`; `lounge` unchanged. No room in the fixture has repos
+  without readers, so that branch's `0700 -g users` is not rendered.
 - Live, in room `assistant` after a restart (the seed runs at boot):
-  - as `satan`: `git clone /work/<repo> ~/x` succeeds and
-    `git -C /work/<repo> log -1` works;
+  - as `satan`: `git clone --no-local /work/<repo> ~/x` succeeds;
+    `git -C /work/<repo> log -1` is refused ("dubious ownership") and
+    succeeds with `-c safe.directory=/work/<repo>`;
   - as `satan`: `touch /work/<repo>/f` and `git -C /work/<repo> commit`
     fail with permission denied;
   - as `satan`: `/home/agent` is still unreadable;

@@ -91,6 +91,7 @@
     slotNames = lib.attrNames fleet.slots;
   };
   roomRecords = roomDecision.instances;
+  inherit (roomDecision) readersGroup;
 
   # The fabric the case suites run on (guardCases, netnsCases, policyCases,
   # volumeCases, volumeRootCases): the same function, applied to a declaration
@@ -184,7 +185,7 @@
   # it is not in `devshellVms`.
   # Every room is handed the targets, their flakes and `session`, as a slot is
   # handed its target and flake (fleet.nix); a room without repos reads none.
-  roomVms = lib.mapAttrs (_: room: mkVm "capsule" ./vm/room.nix {inherit room targets targetFlakes session;}) roomRecords;
+  roomVms = lib.mapAttrs (_: room: mkVm "capsule" ./vm/room.nix {inherit room targets targetFlakes session readersGroup;}) roomRecords;
 
   # The room's one per-repo launcher, built once at its default root: every room
   # with repos ships this store path, and `sessionCases` runs the same value.
@@ -206,6 +207,11 @@
       inherit ok;
       reason = "roomImages: room '${name}': ${rule}";
     };
+    # The repos user and its readers share the readers' group, and only when
+    # there are readers (IMP-023); everyone else is in none.
+    reading = room.repos != null && room.repos.readers != [];
+    groupsOf = u:
+      lib.optional (reading && builtins.elem u ([room.repos.user] ++ room.repos.readers)) readersGroup.name;
     userChecks = u: let
       present = c.users.users ? ${u};
       user = c.users.users.${u};
@@ -217,8 +223,8 @@
           "user '${u}' does not carry exactly its declared keys (sec-5)")
         (check (user.uid == room.users.${u}.uid)
           "user '${u}' has uid ${builtins.toJSON user.uid}, not the record's uid ${toString room.users.${u}.uid}; an allocated one moves with name order (RSK-012)")
-        (check (user.extraGroups == [])
-          "user '${u}' has extra groups ${builtins.toJSON user.extraGroups}; a room grants none (POL-001 limb 3)")
+        (check (user.extraGroups == groupsOf u)
+          "user '${u}' has extra groups ${builtins.toJSON user.extraGroups}, not ${builtins.toJSON (groupsOf u)}; a room grants only the readers' group (POL-001 limb 3, IMP-023)")
       ];
 
     # The work volume and the tree `session` reads (sec-3). A repo-less room is
@@ -285,6 +291,9 @@
         "kernel modules or the kernel image are not locked (vm/room.nix)")
     ]
     ++ lib.concatMap userChecks (lib.attrNames room.users)
+    ++ lib.optional reading
+    (check ((c.users.groups.${readersGroup.name}.gid or null) == readersGroup.gid)
+      "the readers' group '${readersGroup.name}' is absent or its gid is not ${toString readersGroup.gid}; an allocated one moves with name order (RSK-012, IMP-023)")
     ++ repoRules;
 
   # Every room's runner, built — the first gate in `just build` that builds a VM

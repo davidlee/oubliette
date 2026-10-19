@@ -1,7 +1,8 @@
 # What a room declaration decides — SL-005 design sec-2, DEC-038; SL-006 design
 # sec-2, DEC-048 (a room's repos, policy and work volume) and DEC-046 (its
 # policy is one the fleet declares); SL-007 design sec-2, DEC-052 (a room's
-# extras are names from the fragment vocabulary).
+# extras are names from the fragment vocabulary); IMP-023 (a room's repos may
+# name readers, other declared users who may read the clones).
 #
 # The subject is a *library*, not a program: `rooms.nix` is the function its one
 # caller (mkfleet.nix) applies, and this suite applies the same function to
@@ -250,6 +251,7 @@ in
       ${lib.boolToString (repoOf.instances.assistant.repos
       == {
         user = "agent";
+        readers = [];
         targets = [
           {
             name = "a";
@@ -413,6 +415,44 @@ in
       has "  the policy is still reported" nope ${lib.escapeShellArg (reason d.reasons.policy)}
       has "  and so is the extra" 'assistant ("gone")' ${lib.escapeShellArg (reason d.reasons.extras)}
     ''}
+
+    # 24. Readers (IMP-023): absent is [], declared ones are carried in order,
+    # and each is a declared user of the room other than the repos' own.
+    ${let
+      d = with' {
+        assistant = withRepos {
+          users = {
+            agent = as 1001;
+            satan = as 1002;
+            ada = as 1003;
+          };
+          repos = {
+            user = "agent";
+            targets = ["a"];
+            readers = ["satan" "ada"];
+          };
+        };
+      };
+    in ''
+      ck "a room with readers evaluates" false ${verdict d.instances}
+      ck "  with no reason to refuse its repos" "" ${lib.escapeShellArg (reason d.reasons.repos)}
+      ck "  and its record carries them in order" "satan ada" ${lib.escapeShellArg (toString d.instances.assistant.repos.readers)}
+    ''}
+    ${repoRefused "readers as a bare string throws" (withReposIn {
+      user = "agent";
+      targets = ["a"];
+      readers = "agent";
+    }) ["assistant" "readers"]}
+    ${repoRefused "a reader the room does not declare throws" (withReposIn {
+      user = "agent";
+      targets = ["a"];
+      readers = ["carol"];
+    }) ["assistant/carol" "reader not a declared user"]}
+    ${repoRefused "the repos' own user as a reader throws" (withReposIn {
+      user = "agent";
+      targets = ["a"];
+      readers = ["agent"];
+    }) ["assistant/agent" "reader is the repos' user"]}
 
     cat "$log"
     exit "$fail"

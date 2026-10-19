@@ -355,7 +355,7 @@ supplies back is not the table above:
 | --- | --- |
 | clone | `guestPath` on the room's `/work` volume, `git init`ed on an unborn `work` branch, **no commits**, and never touched by the seed again (`DEC-043`) |
 | history | `capsule <room> push <repo> <branch>` sends a branch of `path` as `refs/host/<branch>`; the worktree is never touched, so `updateInstead` does not arise |
-| user | the room's declared `repos.user`, not `agent` uid 1000 |
+| user | the room's declared `repos.user`, not `agent` uid 1000; with `repos.readers`, each reader may read the clone and never write it — its directory is `0750` in group `repos-read`, else `0700` (`IMP-023`). Git's `safe.directory` is not set for them: git in a repo another user owns runs that owner's config as the reader, so a reader either clones with `git clone --no-local` or opts in itself |
 | tools | `session <repo> -- <cmd>` puts this target's `toolsPackage` first, then the room's base `/etc/room/base` (floor `git bash coreutils-full which` plus the room's declared `extras`, `DEC-052`), then the caller's `PATH`, and `cd`s into the clone (`DEC-049`); the base is also on a login's `PATH`, the tool set never is |
 | egress | none: no proxy and no route, and nothing is fetched at run time (`POL-005`) |
 | dependencies | language-package dependencies (`node_modules`, gems, a Python environment) are the repo's flake output, fixed by its lockfile and manifests and reached through `toolsPackage`; putting them into the clone is the repo's own recipe, which refuses when the clone's dependency inputs differ from those the tree was built from, and a dependency change is made outside the room |

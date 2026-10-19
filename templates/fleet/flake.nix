@@ -90,6 +90,8 @@
       #     repos = {
       #       user = "agent";
       #       targets = ["doctrine"];
+      #       # Optional: other declared users who may read the clones.
+      #       # readers = ["ada"];
       #     };
       #     policy = "build";
       #     extras = ["search"];

@@ -19,7 +19,9 @@
 # part of that volume's format, so nothing here picks one (POL-003).
 #
 # A room may also declare `repos = { user; targets = [<target name>]; }`, a
-# `policy` and `sizes.work`, all or none (DEC-048). A repo is a *target's name*,
+# `policy` and `sizes.work`, all or none (DEC-048). `repos.readers`, optional and
+# `[]` when absent, names other declared users who may read the clones and never
+# write them (IMP-023); what git a reader runs there is the reader's affair. A repo is a *target's name*,
 # resolved here against `targets`, so its tools come from that target and its
 # path from the derivation (`guestPath`), which is read and never re-spelt
 # (POL-003). `policy` names one of `policies.everything` (DEC-046). A room
@@ -121,16 +123,22 @@
     && isAttrs d.repos
     && d.repos ? user
     && d.repos ? targets
-    && removeAttrs d.repos ["user" "targets"] == {}
+    && removeAttrs d.repos ["user" "targets" "readers"] == {}
     && isString d.repos.user
     && isList d.repos.targets
-    && lib.all isString d.repos.targets;
+    && lib.all isString d.repos.targets
+    && isList (d.repos.readers or [])
+    && lib.all isString (d.repos.readers or []);
   repoRooms = lib.filter reposShaped roomNames;
   repoPairs =
     lib.concatMap
     (r: map (t: {inherit r t;}) rooms.${r}.repos.targets)
     repoRooms;
   repoNamed = p: "${p.r}/${p.t}";
+  readerPairs =
+    lib.concatMap
+    (r: map (u: {inherit r u;}) (rooms.${r}.repos.readers or []))
+    repoRooms;
 
   # As for repos: a room's extras are checked for shape before their content.
   extrasShaped = r: isList rooms.${r}.extras && lib.all isString rooms.${r}.extras;
@@ -162,12 +170,14 @@
       refusal "DEC-048" "a room's repos, policy and work volume come together, and each repo is a declared target"
       (
         clause "partial, so declare all of repos, policy and sizes.work" (map partialNamed (lib.filter partial roomNames))
-        ++ clause "repos not { user; targets = [ <target name> ]; }" (lib.filter (r: rooms.${r} ? repos && !reposShaped r) roomNames)
+        ++ clause "repos not { user; targets = [ <target name> ]; readers ? [ <user> ]; }" (lib.filter (r: rooms.${r} ? repos && !reposShaped r) roomNames)
         ++ clause "no targets" (lib.filter (r: rooms.${r}.repos.targets == []) repoRooms)
         ++ clause "not a declared target" (map repoNamed (lib.filter (p: !(targets.byName ? ${p.t})) repoPairs))
         ++ clause "named twice" (lib.unique (map repoNamed (lib.filter (p: lib.count (o: o == p) repoPairs > 1) repoPairs)))
         ++ clause "not repo-safe ([A-Za-z0-9._-]+, and not . or ..)" (map repoNamed (lib.filter (p: !repoSafe p.t) repoPairs))
         ++ clause "user not a declared user of the room" (map (r: "${r}/${rooms.${r}.repos.user}") (lib.filter (r: !(rooms.${r}.users ? ${rooms.${r}.repos.user})) repoRooms))
+        ++ clause "reader not a declared user of the room" (map userNamed (lib.filter (p: !(rooms.${p.r}.users ? ${p.u})) readerPairs))
+        ++ clause "reader is the repos' user" (map userNamed (lib.filter (p: p.u == rooms.${p.r}.repos.user) readerPairs))
       );
     policy =
       refusal "DEC-046" "a room's policy is one the fleet declares"
@@ -186,6 +196,15 @@
   stateRootOf = state: "${state}/room";
   stateDirOf = state: name: "${stateRootOf state}/${name}";
 
+  # The guest group a room's repos user and its readers share, which is the
+  # clones' group (IMP-023). Its gid is fixed, outside NixOS's 400-999 allocation,
+  # because the root fs is tmpfs (RSK-012); the seed re-applies it to each clone
+  # every boot, so nothing on `/work` keeps an old number.
+  readersGroup = {
+    name = "repos-read";
+    gid = 2000;
+  };
+
   recordOf = name: decl: {
     inherit name;
     ns = "room-${name}";
@@ -197,6 +216,7 @@
       if decl ? repos
       then {
         inherit (decl.repos) user;
+        readers = decl.repos.readers or [];
         targets =
           map (t: {
             name = t;
@@ -209,7 +229,7 @@
     extras = decl.extras or [];
   };
 in {
-  inherit reasons socketOf stateRootOf stateDirOf;
+  inherit reasons socketOf stateRootOf stateDirOf readersGroup;
   instances =
     if !(isNull reasons.names)
     then throw reasons.names

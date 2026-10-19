@@ -16,7 +16,13 @@
 # target's `guestPath`, and `session`, which runs a command in one repo over the
 # tree rendered under `/etc/room/repo` — per repo a `clone` link and, for a
 # target with a tool set, a `tools` link — with the base behind the repo's
-# tools. A repo-less room renders none of that.
+# tools. A repo-less room renders none of that. A room whose repos name readers
+# (IMP-023) puts the repos' user and each reader in `readersGroup` and makes
+# each clone's directory `0750` in it, so a reader may read and never write;
+# the repos' user's umask (022) keeps everything inside readable and not
+# group-writable, so the directory is the one gate. Nothing here sets git's
+# `safe.directory`: running git in a repo another user owns runs that user's
+# config as the reader, so opting in is the reader's act, not the room's.
 #
 # What it deliberately lacks, against `vm/capsule.nix`: no egress (a room has
 # no uplink), so no proxy; no repo's tool set on the login `PATH` — one is
@@ -38,6 +44,9 @@
   # The fragment sources (mkFleet's `flavour.sources`), which a room's extras
   # are built from, as a capsule's are.
   flavour,
+  # `rooms.nix`' group for a room's repos user and readers: read only for a
+  # room whose repos name readers.
+  readersGroup,
   ...
 }: let
   # The vocabulary, resolved against this guest's pkgs, as `vm/capsule.nix` does.
@@ -59,6 +68,16 @@
     if room.repos == null
     then []
     else room.repos.targets;
+  reading = room.repos != null && room.repos.readers != [];
+  # Without readers a clone is its user's alone, as it was before readers.
+  cloneGroup =
+    if reading
+    then readersGroup.name
+    else "users";
+  cloneMode =
+    if reading
+    then "0750"
+    else "0700";
   # A repo's tool set, by `vm/capsule.nix`'s lookup, or `null` for a target
   # with none.
   toolsOf = r: let
@@ -96,16 +115,23 @@ in {
   # every boot in name order, and `/home` keeps the old numbers. Persisting
   # NixOS's uid map would not help — it lives on the root fs, and `/home` is
   # mounted after activation. `createHome = false` for the same reason: the
-  # seed makes the home instead. No groups: nothing here is sudo.
+  # seed makes the home instead. No groups but the readers' one: nothing here
+  # is sudo.
   users.users =
     lib.mapAttrs (user: decl: {
       inherit (decl) uid;
+      extraGroups = lib.optional (reading && builtins.elem user ([room.repos.user] ++ room.repos.readers)) readersGroup.name;
       isNormalUser = true;
       home = "/home/${user}";
       createHome = false;
       openssh.authorizedKeys.keys = decl.keys;
     })
     room.users;
+
+  # Its gid is declared for the reason the uids are.
+  users.groups = lib.optionalAttrs reading {
+    ${readersGroup.name}.gid = readersGroup.gid;
+  };
 
   # `vm/common.nix` autologs root on the console and a capsule forces `agent`;
   # a room forces nobody, so root stays reachable by key alone (POL-001 limb 3,
@@ -165,7 +191,7 @@ in {
         u = lib.escapeShellArg room.repos.user;
         dir = lib.escapeShellArg r.guestPath;
       in ''
-        install -d -m 0700 -o ${u} -g users ${dir}
+        install -d -m ${cloneMode} -o ${u} -g ${cloneGroup} ${dir}
         [ -e ${dir}/.git ] ||
           runuser -u ${u} -- env HOME=${lib.escapeShellArg "/home/${room.repos.user}"} \
             git init -q --initial-branch=${lib.escapeShellArg workBranch} ${dir}
