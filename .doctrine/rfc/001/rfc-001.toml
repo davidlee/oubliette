@@ -4,7 +4,7 @@ version = 1
 id = 1
 slug = "room-package-dependencies"
 title = "How a sealed room gets a repo's package dependencies"
-status = "open"
+status = "resolved"
 created = "2026-10-19"
 updated = "2026-10-19"
 tags = []
@@ -29,4 +29,8 @@ target = "IMP-020"
 [[relation]]
 label = "related"
 target = "CHR-018"
+
+[[relation]]
+label = "related"
+target = "POL-005"
 

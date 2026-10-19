@@ -22,3 +22,10 @@ Two shapes, neither chosen:
 
 The first is cheaper and keeps the room sealed. The same gap applies to any
 room repo whose tools come from a language package manager rather than nix.
+
+**Settled 2026-10-19 by `RFC-001` → `POL-005` ("A room never fetches"):** the
+first shape, the repo's flake builds the tree. The room stays sealed and
+`DEC-036` stands. The work moved to the repos: doctrine `IMP-519` (export
+`webModules`) and malebolge `IMP-001` (a dev `node_modules`). Separate id
+spaces, so those ids are theirs, not this corpus's. The room's missing loader,
+which both may hit, is `IMP-021` here.
