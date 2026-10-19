@@ -84,6 +84,17 @@ the choice away from the party that bears it. satan:SL-027 decides for
   - a patch job on the same repo still prepares, runs and collects (the
     runner's clean step and `dirty_clone` check are `agent`'s and unaffected).
 
+## Live results (2026-10-20, room `assistant`, after `microvm -u` and a restart)
+
+- `satan` is uid 1002 in groups `users` and `repos-read` (2000); every clone
+  is `drwxr-x--- agent repos-read`, `/work` itself `0755 root`.
+- As `satan`: `git clone --no-local /work/doctrine` succeeded; `git -C
+  /work/doctrine log` was refused ("dubious ownership") and succeeded with
+  `-c safe.directory=/work/doctrine`; `touch` in the clone and in its `.git`
+  and `git commit` (`index.lock`) were denied; `ls /home/agent` was denied.
+- **Not yet exercised:** a patch job on a repo beside a reader (prepare, run,
+  collect as `agent`). That is the last check before this resolves.
+
 ## Links
 
 satan:SL-027 design §4.8 (room user, D3 by permissions) and §7 Q2;
