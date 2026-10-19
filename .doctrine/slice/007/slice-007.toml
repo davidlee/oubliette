@@ -1,9 +1,9 @@
 id = 7
 slug = "programs-bring-their-own-tools"
 title = "Programs bring their own tools: session's base tools and the profile reader's jq"
-status = "ready"
+status = "reconcile"
 created = "2026-10-18"
-updated = "2026-10-18"
+updated = "2026-10-19"
 tags = []
 
 [relationships]

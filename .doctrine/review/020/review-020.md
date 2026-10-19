@@ -81,8 +81,8 @@ attack on behaviour came back aligned, so nothing was raised against code:
 **Findings.** F-1 (major) and F-2 are governance drift for reconcile: DEC-044
 still reads accepted with no supersede edge, and CON-001 overstates for rooms.
 F-3 is selector/sec-7 lag over in-scope edits. F-4 and F-5 were fixed in the
-audit (PHASE-05's delta row; a README paragraph). F-6 needs the user's word on
-VH-1.
+audit (PHASE-05's delta row; a README paragraph). F-6: the user accepted the
+live outputs (VH-1) on 2026-10-19.
 
 ## Reconciliation Brief
 

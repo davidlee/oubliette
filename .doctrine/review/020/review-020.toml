@@ -10,6 +10,14 @@ raiser    = "raiser"
 responder = "responder"
 rounds_base = 0
 contests_base = 0
+concluded = true
+
+[[review.turn]]
+act = "conclude"
+role = "raiser"
+note = """
+Conformance audit of SL-007 PHASE-01..05 (7ce98a2..71f141b) against design sec-2..sec-7 and plan.toml EX/VT: code read in full for vm/session.nix, vm/room.nix, rooms.nix, host/profile.nix, fragments.nix, mkfleet.nix and the suites; doctrine check gate (just check + full just build) green at 495b43c; verify-vt 14/14; slice conformance (registry, completed by F-4, and --against 8f55b0b..HEAD); binding docs, DEC-043/044/052/053, CON-001 and README; phase mutation records; the live outputs and the user's VH-1 acceptance.
+"""
 
 [target]                   # the outbound `reviews` edge: RV-NNN ──reviews──▶ <ref>
 ref   = "SL-007"
@@ -173,17 +181,34 @@ note = "README.md § Rooms read after the edit"
 
 [[finding]]
 id = "F-6"
-status = "open"
+status = "verified"
 severity = "minor"
 title = "VH-1: the user accepts the live outputs (expected); notes record the outputs but not the user's acceptance (observed)"
 detail = """
 Expected: plan PHASE-05 VH-1 "the user runs the rebuild and accepts the live outputs".
 Observed: notes § PHASE-05 record the user's switch and `capsule assistant start`, and the EX-1/EX-2 outputs; VA-1 is met (outputs match design sec-4's live claims: PATH=…/tools/bin:/etc/room/base/bin:/no-such-path, `git` and `rg` under /etc/room/base/bin). No line records the user accepting them.
 """
+disposition = "fix-now"
+response = """
+The user accepted the live outputs on 2026-10-19 ("agreed"), after the agent explained what `env -i` isolates and that the trailing `/no-such-path` (bash's default for an unset PATH, behind the base) and emacs's mailutils binaries are cosmetic. VH-1 met; recorded in notes § PHASE-05.
+"""
 
 [[finding.turn]]
 act = "raise"
 role = "raiser"
+
+[[finding.turn]]
+act = "dispose"
+role = "responder"
+disposition = "fix-now"
+response = """
+The user accepted the live outputs on 2026-10-19 ("agreed"), after the agent explained what `env -i` isolates and that the trailing `/no-such-path` (bash's default for an unset PATH, behind the base) and emacs's mailutils binaries are cosmetic. VH-1 met; recorded in notes § PHASE-05.
+"""
+
+[[finding.turn]]
+act = "verify"
+role = "raiser"
+note = "user's reply recorded in notes § PHASE-05"
 
 # Findings are append-only `[[finding]]` tables, added by `review raise`.
 # Empty here at creation — a fresh review is Active, awaiting the raiser.

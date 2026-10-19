@@ -6,7 +6,7 @@ disposable phase sheet (`.doctrine/state/.../phase-NN.md`) that must survive
 
 ## Harvest
 <!-- single-copy: updated in place each harvest; ids only, never restated content -->
-fresh-as-of: 2026-10-19 · audit RV-020 open on F-6 (VH-1, the user's word) · reconcile next · head 495b43c+
+fresh-as-of: 2026-10-19 · audit RV-020 done · reconcile next
 
 ### Produced
 - DEC-052 (room base = floor + declared extras; supersedes DEC-044); amended: floor coreutils-full (bb52b4a)
@@ -16,7 +16,7 @@ fresh-as-of: 2026-10-19 · audit RV-020 open on F-6 (VH-1, the user's word) · r
 - commits 7ce98a2 (P01) · 8672b2d (P02) · 3728bf1 (P03) · a4a7808 (P04) · 71f141b (P05)
 - ISS-023 resolved · duplicate of ISS-013
 - ISS-026 (refresh-build/up assume a slot; switch does not move a room runner)
-- RV-020 (audit): F-1..F-5 terminal, F-6 awaits the user; brief in review-020.md
+- RV-020 (audit): done, all six findings terminal; brief in review-020.md
 - PHASE-05 source-delta row (71f141b); README.md § Rooms names the base (RV-020 F-4, F-5)
 
 ### Learned
@@ -383,3 +383,7 @@ overlaps `agents` (`ripgrep`, `fd`) — same store paths, so `buildEnv` accepts
 both in one room; docs must not claim the collision check covers a login's
 `PATH` against `system-path` (`ISS-025`). Everything else in the sheets is
 already in the phase sections above.
+
+### VH-1 (2026-10-19, at audit RV-020 F-6)
+The user accepted the live outputs ("agreed"), after the agent explained what
+`env -i` isolates and that `/no-such-path` and the mailutils binaries are cosmetic.
