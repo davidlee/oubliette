@@ -34,3 +34,14 @@ What a further pass would probe, and why none is scheduled before locking:
   verification pass already checked `moduleState`'s insertions (cli.nix:917,
   :937, :1907; volume-root.nix:76). The remaining readers are listed in sec-2's
   table.
+
+## Plan-time refinements of the design
+
+- Design sec-5 case 6 is split by subject. The channel's half (the shipped
+  channel text behind a fixture sshd writes the room's known_hosts) goes in
+  `roomGitCases` (PHASE-02). The bundle's half goes in `roomClientCases`
+  (PHASE-03). Same assertions; each suite pins its own subject.
+- The state-root refusal is `state-dir.nix` plus `stateDirCases`, not
+  `fleet.nix` (design sec-8's "if").
+- Sandbox spike (2026-10-20): an unprivileged `sshd -i` behind socat works in
+  a nix build. Case 6's fallback is moot.

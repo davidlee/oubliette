@@ -1,0 +1,263 @@
+# Implementation plan for SL-008 — the authored, durable phase plan.
+#
+# This is the single source of each phase's objective, criteria, verification,
+# and links. Runtime status lives separately under .doctrine/state/ (phase
+# tracking) — never record progress here. Hand-edit freely: the tool reads this
+# file but does not rewrite it.
+schema  = "doctrine.plan.overview"
+version = 1
+slice   = "SL-008"
+
+[specs]
+primary       = []
+collaborators = []
+
+[requirements]
+targets      = []
+dependencies = []
+
+# One [[phase]] per ordered phase, in execution order.
+[[phase]]
+id        = "PHASE-01"
+name      = "The state root is mkFleet's declaration, refused unless it is a safe absolute path"
+objective = """
+Design sec-2, `DEC-054`, RV-023 F-4. A new root-level `state-dir.nix` takes the
+declared value and returns `{value; reasons}`. It refuses anything that is not
+an absolute path over `[A-Za-z0-9._+/-]` with no `..` component, and each
+reason names the offending value. This follows `fleet.nix`'s `reasons` pattern.
+It lives in its own file rather than in `fleet.nix`, which covers slot binding,
+not host paths; design sec-8 allowed for that.
+
+`mkFleet` gains the required argument `stateDir`, applies `state-dir.nix` and
+throws its reason. It passes the value to:
+- the module, which closes over it in place of `cfg.stateDir`;
+- `capsule-cli`'s `moduleState`, at mkfleet.nix:624 and through
+  host/services.nix:160;
+- `capsule-volume-root`'s `moduleState`, through host/programs.nix:264.
+
+`host/services.nix` drops the `stateDir` option for
+`lib.mkRemovedOptionModule`, whose message names `mkFleet`'s `stateDir`. The
+wrapper's `paths.stateDir` and the perimeter check
+(mkfleet.nix:1156-1167, 1174) read the declared value. The check keeps its own
+spelling of `<root>/room/<n>`. `fixture/default.nix` and
+`templates/fleet/flake.nix` declare `stateDir = "/var/lib/capsule"`.
+`docs/contract-assignment.md:63` redefines `<state>` as `mkFleet`'s `stateDir`
+and keeps the `CAPSULE_STATE` override (RV-023 F-7). The README's module block
+loses `stateDir`, and its `mkFleet` description gains it.
+
+New suite `stateDirCases` (`state-dir-cases.nix`, beside `state-dir.nix`, wired
+into `packages` and both `just build` and `just cases`). It uses `tryEval` plus
+`deepSeq` over the shipped function, asserted in the shell, and pins refusal
+and reason for each of:
+- a relative path;
+- a path with a `..` component;
+- a space;
+- `%`;
+- `$(id)`;
+- a quote;
+- the empty string.
+
+It also pins acceptance of `/var/lib/capsule` and `/build/state`.
+`hostModuleUnits` pins three things:
+- setting the old option fails eval with the removal message;
+- the tmpfiles rules carry the declared root;
+- the wrapper's `CAPSULE_STATE` default is the declared root.
+
+Not moved: `policyDir`, `allowlistDir`, `profileDir` (scope non-goal)."""
+entrance_criteria = [
+  { id = "EN-1", text = "SL-008 design locked (run rev 36) and the slice at `ready`" },
+  { id = "EN-2", text = "`just` green at the starting commit" },
+]
+exit_criteria = [
+  { id = "EX-1", text = "`mkFleet` without `stateDir` fails eval naming it; with an unsafe value fails with `state-dir.nix`'s reason" },
+  { id = "EX-2", text = "No shipped caller reaches the `/var/lib/capsule` defaults in host/cli.nix:94 or host/volume-root.nix:46; both copies of `capsule-cli` are still one store path (RSK-004)" },
+  { id = "EX-3", text = "Setting `services.capsule-perimeter.stateDir` fails eval with a message naming `mkFleet`'s `stateDir`" },
+  { id = "EX-4", text = "Fixture, template, contract row and README declare or describe the new home; `templateCases` green" },
+  { id = "EX-5", text = "`stateDirCases` red first (written before `state-dir.nix`), then green; in `just build`; mutation: widen the character set to admit `$` and watch the `$(id)` case go red for its reason" },
+  { id = "EX-6", text = "`just check` and `just` green; committed with a message citing DEC-054 and RV-023 F-4/F-7" },
+]
+verification = [
+  { id = "VT-1", expects = "state-dir.nix refuses each hostile value with its reason and accepts safe absolute paths", test_file = "state-dir-cases.nix", keywords = ["stateDirCases", "tryEval", "deepSeq", "$(id)", "/build/state", ".."], waived = false },
+  { id = "VT-2", expects = "the removed module option fails eval naming mkFleet's stateDir, and tmpfiles/wrapper carry the declared root", test_file = "mkfleet.nix", keywords = ["mkRemovedOptionModule", "stateDir", "state-dir.nix"], waived = false },
+  { id = "VT-3", expects = "stateDirCases is built by just build and run by just cases", test_file = "just/fleet.just", keywords = ["stateDirCases"], waived = false },
+  { id = "VA-1", text = "Grep: no `cfg.stateDir` remains in host/services.nix or mkfleet.nix, and every `moduleState` call site in mkfleet.nix/host/services.nix/host/programs.nix passes the declared value" },
+]
+specs        = []
+requirements = []
+
+[[phase]]
+id        = "PHASE-02"
+name      = "One door: room-door.nix renders the option list for oubliette's doors, with no global known_hosts"
+objective = """
+Design sec-3, `DEC-055`, RV-023 F-2 and F-6. `host/guest-ssh.nix` gains
+`proxyCommand {socat, socket}`, and `proxyThrough` becomes its `-o` rendering
+with the same text, so slot callers are unchanged.
+
+New `host/room-door.nix`, `{lib, guestSsh, socat, stateDirOf}`, exports:
+- `aliasOf`;
+- `optionsOf {checking, room, socket, knownHosts}`: StrictHostKeyChecking,
+  HostKeyAlias, UserKnownHostsFile, `GlobalKnownHostsFile none`, ProxyCommand;
+- `words`;
+- `config`;
+- `knownHostsIn`, `knownHostsOf`.
+
+`host/programs.nix` builds it once, with `socat = lib.getExe pkgs.socat` and
+`rooms.stateDirOf`.
+
+`host/room-git.nix` takes `roomDoor` and loses `door`, `knownHosts*` and its
+own `socat`. Its `ssh_cmd` becomes
+`ssh ${roomDoor.words {checking = "accept-new"; …}} -o BatchMode=yes -o ConnectTimeout=10`.
+`roomTrust` is built from `roomDoor` (its words and `knownHostsOf`) plus
+room-git's `refuseOddState`. The front end's human room door
+(host/cli.nix:856-868) passes `checking = "accept-new"`.
+
+`roomVerbsCases`' existing `ssh -G` pin (host/room-verbs-cases.nix:350-361)
+adds `globalknownhostsfile none`. `roomGitCases` adds the channel's half of
+design sec-5 case 6, refined at plan time into the channel's own suite. That
+suite already builds the channel from the shipped text over `$CASE_RUN`
+sockets (room-git-cases.nix:242-259). Its new listener execs an unprivileged
+`sshd -i` with a fixture host key, which a 2026-10-20 sandbox spike showed
+works inside a nix build. A `push` through it fails at auth (exit 1), and the
+case asserts:
+- `$CAPSULE_STATE/room/<r>/known_hosts` holds exactly one `room-<r> ssh-ed25519`
+  line;
+- no other known_hosts was written.
+
+The header's "not reachable by any case: … accept-new writing the room's
+known_hosts" (room-git-cases.nix:18-21) is revised to match."""
+entrance_criteria = [
+  { id = "EN-1", text = "PHASE-01 completed and committed" },
+]
+exit_criteria = [
+  { id = "EX-1", text = "The alias, trust store, GlobalKnownHostsFile and ProxyCommand of a room door are spelled only in host/room-door.nix and host/guest-ssh.nix (grep)" },
+  { id = "EX-2", text = "Slot transports' text is unchanged: `proxyThrough` renders the same `-o \"ProxyCommand=…\"` as before" },
+  { id = "EX-3", text = "`roomVerbsCases` pins `globalknownhostsfile none` on the front end's room door; red before room-door.nix carries it" },
+  { id = "EX-4", text = "`roomGitCases`' fixture-sshd case: the channel's push writes one `room-<r>` entry to the room's known_hosts and nowhere else; red first; mutation: pass the channel a wrong `knownHosts` at its call site and watch it go red for its reason" },
+  { id = "EX-5", text = "`just check` and `just` green; committed citing DEC-055 and RV-023 F-2/F-5/F-6" },
+]
+verification = [
+  { id = "VT-1", expects = "room-door.nix carries the one option list and both renders, including GlobalKnownHostsFile none", test_file = "host/room-door.nix", keywords = ["optionsOf", "aliasOf", "words", "config", "GlobalKnownHostsFile", "knownHostsOf"], waived = false },
+  { id = "VT-2", expects = "the front end's room door resolves globalknownhostsfile none under ssh -G", test_file = "host/room-verbs-cases.nix", keywords = ["globalknownhostsfile none"], waived = false },
+  { id = "VT-3", expects = "the shipped channel text, behind a fixture sshd, writes the room-<r> host key to the room's known_hosts only", test_file = "host/room-git-cases.nix", keywords = ["sshd", "-i", "known_hosts", "room-"], waived = false },
+  { id = "VA-1", text = "Read guest-ssh.nix's diff: proxyThrough's output text is byte-identical for slot callers" },
+]
+specs        = []
+requirements = []
+
+[[phase]]
+id        = "PHASE-03"
+name      = "The bundle: packages.room-client-<r>, its binds, and /run/capsule-room from boot"
+objective = """
+Design sec-4 and sec-5, `DEC-056`, `DEC-057`, RV-023 F-3, F-5 and F-8. New
+`host/room-client.nix`, `{pkgs, lib, roomDoor, rooms, stateDir}: record ->
+derivation`. It builds `capsule-room-client-<r>`, containing:
+- `etc/ssh_config`, which is `roomDoor.config {checking = "yes"; …}`;
+- `bin/ssh`, a link to openssh's.
+
+Its passthru is `room`, `socket`, `knownHosts`, `hostKeyAlias` (from
+`aliasOf`), `config` (the file's store path) and `binds`. `binds` is
+`dirOf (dirOf socket)` plus `rooms.stateDirOf stateDir r`.
+
+`mkFleet` adds `packages.${system}."room-client-<r>"` per room record. The
+module adds one tmpfiles rule when rooms exist,
+`d <dirOf (dirOf (socketOf …))> 0755 root root -`, derived rather than spelled
+out, and `hostModuleUnits` pins it present with rooms and absent without.
+
+New suite `roomClientCases` (`host/room-client-cases.nix`, wired into
+`packages` and both `just build` and `just cases`). Its header says it is
+handed a fixture for case 6. Cases 1–5 run over the **shipped** fixture-room
+bundle and the shipped `roomDoor.words`:
+1. `ssh -G -F <config> anyhost`: `stricthostkeychecking true`, the alias, the
+   trust store, `globalknownhostsfile none`, and a proxycommand whose first
+   word is an executable socat store path and whose socket is the record's.
+2. The destinations `room-<r>`, `10.99.0.2` and `<r>`: the same proxycommand
+   for each.
+3. `ssh -G -F /dev/null $(words {checking = "accept-new"; …})`: the same alias,
+   trust store, global setting and proxycommand as case 1, and
+   `stricthostkeychecking accept-new`.
+4. `binds` is exactly the socket's grandparent and the room state directory,
+   and contains the socket and known_hosts.
+5. `bin/ssh` is an executable openssh `ssh`.
+
+Case 6 uses a fixture bundle from the same builder with
+`stateDir = "/build/state"`. Its record's `socket` is overridden to a path under
+that root, as `roomVerbsCases` overrides one with `lib.recursiveUpdate`
+(room-verbs-cases.nix:129), so `binds` follows the override. A fixture
+`sshd -i` sits behind it:
+- (a) the bundle's ssh is refused with `Host key verification failed`;
+- (b) after an `accept-new` connection through the shipped `words` learns the
+  key, the bundle's ssh reaches `Permission denied`.
+
+Mutations, each going red for its reason and never at shellcheck:
+- `checking = "accept-new"` in the bundle (fails 1);
+- `Host room-<r>` (fails 2);
+- `dirOf r.socket` as the bind (fails 4);
+- `GlobalKnownHostsFile` dropped (fails 1 and 3)."""
+entrance_criteria = [
+  { id = "EN-1", text = "PHASE-02 completed and committed" },
+]
+exit_criteria = [
+  { id = "EX-1", text = "`nix build .#room-client-<fixture room>` produces etc/ssh_config and bin/ssh; its closure holds socat and openssh" },
+  { id = "EX-2", text = "The bundle names no user and no identity; no value in it is spelled outside room-door.nix, rooms.nix and the declaration (grep)" },
+  { id = "EX-3", text = "`hostModuleUnits` pins the /run/capsule-room tmpfiles rule (present with rooms, absent with `rooms = {}`)" },
+  { id = "EX-4", text = "`roomClientCases` cases 1–6 written red first, then green; each listed mutation turns its case red for the asserted reason" },
+  { id = "EX-5", text = "`roomClientCases` is in `just build` and `just cases` (NOTES item 51 step 3 check)" },
+  { id = "EX-6", text = "`just check` and `just` green; committed citing DEC-056, DEC-057 and RV-023 F-3/F-5/F-8" },
+]
+verification = [
+  { id = "VT-1", expects = "ssh -G over the shipped bundle and the shipped words pins checking, alias, trust store, global setting, proxycommand and the three destination names", test_file = "host/room-client-cases.nix", keywords = ["roomClientCases", "ssh -G", "stricthostkeychecking true", "globalknownhostsfile none", "proxycommand", "10.99.0.2"], waived = false },
+  { id = "VT-2", expects = "fixture sshd: the bundle refuses before the key is learned and reaches auth after", test_file = "host/room-client-cases.nix", keywords = ["sshd", "Host key verification failed", "Permission denied", "/build/state"], waived = false },
+  { id = "VT-3", expects = "the bundle's derivation and passthru", test_file = "host/room-client.nix", keywords = ["capsule-room-client-", "binds", "hostKeyAlias", "knownHosts", "checking = \"yes\""], waived = false },
+  { id = "VT-4", expects = "roomClientCases wired into just build and just cases", test_file = "just/fleet.just", keywords = ["roomClientCases"], waived = false },
+]
+specs        = []
+requirements = []
+
+[[phase]]
+id        = "PHASE-04"
+name      = "The client contract, the governance records, and the handback"
+objective = """
+Design sec-6. Seven pieces:
+- **New `docs/contract-room-client.md`**, indexed in `docs/index.md`. It
+  covers:
+  - the attributes;
+  - the precondition (run as the module owner, `DEC-037`);
+  - strict checking, with refusal before the first push and after
+    `forget-host-key`;
+  - the binds and why each is the directory it is;
+  - that the destination name, the user and the identity are the client's;
+  - that `CAPSULE_STATE` is not honoured;
+  - an unjailed example and a bwrap example.
+- **`docs/contract-assignment.md`'s room row** points to it.
+- **README "Rooms"** names the bundle.
+- **CLAUDE.md**:
+  - its summary of the room channel's suite drops the "accept-new … not
+    reachable" claim;
+  - the four-kinds paragraph lists `stateDirCases` and `roomClientCases`;
+  - the count of suites handed a fixture is updated.
+- **A `DEC-042` successor** ("mkFleet has ten arguments"), then
+  `doctrine supersede`. It needs the user's assent.
+- **A `POL-003` revision** adding the state root to the axis table, through
+  `doctrine revision`. It needs the user's assent.
+- **Follow-Ups in slice-008.md**: the handback to satan:SL-027 and
+  flakes:SL-015, plus the `/srv/fleet` `stateDir` edit that is the user's.
+
+`DEC-037` and `DEC-047` are related to `DEC-056` and `DEC-057` by `doctrine
+link`, not edited."""
+entrance_criteria = [
+  { id = "EN-1", text = "PHASE-03 completed and committed" },
+]
+exit_criteria = [
+  { id = "EX-1", text = "contract-room-client.md exists, is indexed, and every attribute it names exists on the shipped bundle" },
+  { id = "EX-2", text = "CLAUDE.md, README and contract-assignment.md carry no statement the slice made false (grep for `stateDir`, `not reachable`, `/var/lib/capsule`)" },
+  { id = "EX-3", text = "DEC-042 successor and POL-003 revision drafted and accepted on the user's assent, or explicitly deferred by the user" },
+  { id = "EX-4", text = "Follow-Ups name the handback and the /srv/fleet edit in each repo's own ids, prefixed" },
+  { id = "EX-5", text = "`just check` and `just` green; committed" },
+]
+verification = [
+  { id = "VT-1", expects = "the contract names every passthru attribute and the precondition", test_file = "docs/contract-room-client.md", keywords = ["knownHosts", "hostKeyAlias", "binds", "config", "socket", "module owner", "StrictHostKeyChecking"], waived = false },
+  { id = "VA-1", text = "Read each attribute the contract names against host/room-client.nix's passthru" },
+  { id = "VH-1", text = "User assents to the DEC-042 successor and the POL-003 revision (or defers them)" },
+]
+specs        = []
+requirements = []
