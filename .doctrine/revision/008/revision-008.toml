@@ -1,8 +1,8 @@
 id      = 8
 slug    = "pol-003-gains-a-host-state-root-axis"
 title   = "POL-003 gains a host state root axis"
-status  = "proposed"   # work lifecycle: proposed | started | done | abandoned
-approval = "none"      # SEPARATE axis, orthogonal to status: none | requested | approved | rejected
+status = "done"
+approval = "approved"
 updated = "2026-10-19"
 tags    = []
 

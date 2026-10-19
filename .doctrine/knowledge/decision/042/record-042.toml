@@ -7,7 +7,7 @@ title = "mkFleet has nine arguments: DEC-025 restated with a required rooms"
 record_kind = "decision"
 status = "accepted"
 created = "2026-10-18"
-updated = "2026-10-18"
+updated = "2026-10-19"
 tags = []
 
 [facet]                         # every field typed; seeded empty (captured later)
@@ -26,4 +26,4 @@ notes       = []
 
 [relationships]                 # verb-written edges (set by doctrine supersede)
 supersedes    = ["DEC-025"]   # record ids this one replaces (set by doctrine supersede)
-superseded_by = []   # set on superseded predecessor (verb-written)
+superseded_by = ["DEC-058"]   # set on superseded predecessor (verb-written)
