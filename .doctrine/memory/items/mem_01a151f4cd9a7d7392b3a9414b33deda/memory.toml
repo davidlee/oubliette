@@ -1,0 +1,50 @@
+memory_uid = "mem_01a151f4cd9a7d7392b3a9414b33deda"
+memory_key = "mem.fact.oubliette.host-switch-does-not-move-a-room-runner"
+schema_version = 1
+memory_type = "fact"
+status = "active"
+title = "A host switch does not move a room's runner; only microvm -u does"
+summary = "/var/lib/microvms/<room>/current changes only through microvm -u (just refresh-build), so a room boots its old image after a switch"
+created = "2026-10-19"
+updated = "2026-10-19"
+
+[scope]
+paths = ["vm/room.nix", "rooms.nix"]
+globs = []
+commands = ["just refresh-build", "capsule <room> start"]
+tags = ["gotcha"]
+workspace = "default"
+repo = "github.com/davidlee/oubliette"
+repo_id_kind = "remote"
+repo_id_confidence = "high"
+
+[git]
+anchor_kind = "commit"
+commit = "894dec9591cbe308fa090007a5a04e1276a7be22"
+tree = "fe099bfd99405d13edc94b0b3180b29fcf8a0e35"
+ref_name = "refs/heads/main"
+checkout_state_id = ""
+base_commit = "894dec9591cbe308fa090007a5a04e1276a7be22"
+verified_sha = ""
+normalizer = ""
+
+[review]
+verification_state = "unverified"
+reviewed = ""
+review_by = ""
+
+[trust]
+trust_level = "high"
+
+[ranking]
+severity = "high"
+weight = 0
+
+[[source]]
+kind = "slice"
+ref = "SL-007"
+
+[[source]]
+kind = "issue"
+ref = "ISS-026"
+

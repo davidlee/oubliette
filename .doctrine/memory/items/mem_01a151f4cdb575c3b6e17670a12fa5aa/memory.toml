@@ -1,0 +1,46 @@
+memory_uid = "mem_01a151f4cdb575c3b6e17670a12fa5aa"
+memory_key = "mem.fact.oubliette.ssh-payload-must-be-one-string"
+schema_version = 1
+memory_type = "fact"
+status = "active"
+title = "capsule <room> ssh -- a; b runs b in the remote login shell: quote the payload as one string"
+summary = "ssh joins argv into one string for the remote shell, so an unquoted ; splits the command and a later part runs outside the wrapper — a false pass"
+created = "2026-10-19"
+updated = "2026-10-19"
+
+[scope]
+paths = ["host/cli.nix"]
+globs = []
+commands = ["capsule <room> ssh"]
+tags = ["gotcha"]
+workspace = "default"
+repo = "github.com/davidlee/oubliette"
+repo_id_kind = "remote"
+repo_id_confidence = "high"
+
+[git]
+anchor_kind = "checkout_state"
+commit = ""
+tree = "fe099bfd99405d13edc94b0b3180b29fcf8a0e35"
+ref_name = "refs/heads/main"
+checkout_state_id = "6328fc94b25e8657f012d627c925532d3f27167765c42bfc98d0464be55db620"
+base_commit = "894dec9591cbe308fa090007a5a04e1276a7be22"
+verified_sha = ""
+normalizer = "forget.checkout.v1"
+
+[review]
+verification_state = "unverified"
+reviewed = ""
+review_by = ""
+
+[trust]
+trust_level = "high"
+
+[ranking]
+severity = "medium"
+weight = 0
+
+[[source]]
+kind = "slice"
+ref = "SL-007"
+

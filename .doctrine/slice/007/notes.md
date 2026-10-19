@@ -6,7 +6,7 @@ disposable phase sheet (`.doctrine/state/.../phase-NN.md`) that must survive
 
 ## Harvest
 <!-- single-copy: updated in place each harvest; ids only, never restated content -->
-fresh-as-of: 2026-10-19 · reconciled (RV-020 § Reconciliation Outcome) · close next
+fresh-as-of: 2026-10-19 · closed (done)
 
 ### Produced
 - DEC-052 (room base = floor + declared extras; supersedes DEC-044); amended: floor coreutils-full (bb52b4a)
@@ -28,9 +28,8 @@ fresh-as-of: 2026-10-19 · reconciled (RV-020 § Reconciliation Outcome) · clos
 - `capsule <room> ssh -- a; b` runs b in the remote login shell: quote the payload (notes § PHASE-05).
 
 ### Open
-- IMP-017, ISS-013 (resolve at close)
+- closed: IMP-017, ISS-013 resolved (fixed); memories mem.fact.oubliette.host-switch-does-not-move-a-room-runner, mem.fact.oubliette.ssh-payload-must-be-one-string
 - reconciled: DEC-044 superseded, CON-001 narrowed to slots, six selectors + sec-7 rows (RV-020)
-- Memory candidates for /close harvest: switch-vs-microvm -u for rooms; ssh payload quoting
 - Follow-up: a room user's login shell (slice-007.md § Follow-Ups)
 - satan relay line drafted (notes § PHASE-05 EX-3); the user delivers
 
