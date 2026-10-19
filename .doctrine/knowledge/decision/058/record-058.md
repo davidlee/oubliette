@@ -1,3 +1,3 @@
-Supersedes DEC-042 (supersede relation to be recorded after acceptance). Context: SL-008, DEC-054.
+Supersedes DEC-042 (recorded 2026-10-20, 789c102). Context: SL-008, DEC-054.
 
-User assent that will justify acceptance (verbatim): "a,b agreed" — a) is this successor decision; b) is the POL-003 revision REV-008. Status stays proposed until the user's act is recorded.
+Accepted 2026-10-20 on the user's assent (verbatim): "a,b agreed" — a) is this successor decision; b) is the POL-003 revision REV-008, applied the same day.

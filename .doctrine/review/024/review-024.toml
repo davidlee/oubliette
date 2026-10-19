@@ -1,0 +1,403 @@
+id    = 24
+slug  = "reconciliation-review-of-sl-008"
+title = "reconciliation review of SL-008"
+# no status — a review's status is DERIVED from its findings, so
+# it is never stored (the storage rule forbids derived data in authored files).
+
+[review]
+facet     = "reconciliation"     # scope|design|plan|phase-plan|implementation|code-review|reconciliation
+raiser    = "raiser"
+responder = "responder"
+rounds_base = 0
+contests_base = 0
+concluded = true
+
+[[review.turn]]
+act = "conclude"
+role = "raiser"
+note = """
+Conformance audit of SL-008 (ba3e2af..789c102) against the locked design sec-1..8, plan.toml EN/EX/VT for PHASE-01..04, notes.md refinements, DEC-054..058, RV-023 F-1..F-8 and POL-001..005. Evidence: just check, just, just cases and doctrine check gate all exit 0; slice conformance 8's algebra read; line-level read by a read-only reviewer, spot-checked by the seat. 13 findings: 6 fix-now (fixed in tree), 4 design-wrong (reconciliation brief), 2 follow-up (IMP-024, IMP-025), 1 tolerated. No blocker.
+"""
+
+[target]                   # the outbound `reviews` edge: RV-NNN ──reviews──▶ <ref>
+ref   = "SL-008"
+
+[[finding]]
+id = "F-1"
+status = "verified"
+severity = "minor"
+title = "expected CLAUDE.md's stateDirCases summary to name its cases; it claims a symlinked path the suite never tries"
+detail = """
+CLAUDE.md:70-71 (added in 10a7cf6): "the state root's by handing the refusal a relative, a symlinked and a traversing path". state-dir-cases.nix has no symlink case (grep: none); its refusals are relative, empty, `..`, `/`, trailing slash, space, `%`, `$(id)`, quote. A pure value check cannot see a symlink anyway.
+"""
+disposition = "fix-now"
+response = """
+Fixed: CLAUDE.md now says "a relative, a traversing and a non-canonical path and one carrying shell or ssh_config syntax", matching state-dir-cases.nix.
+"""
+
+[[finding.turn]]
+act = "raise"
+role = "raiser"
+
+[[finding.turn]]
+act = "dispose"
+role = "responder"
+disposition = "fix-now"
+response = """
+Fixed: CLAUDE.md now says "a relative, a traversing and a non-canonical path and one carrying shell or ssh_config syntax", matching state-dir-cases.nix.
+"""
+
+[[finding.turn]]
+act = "verify"
+role = "raiser"
+
+[[finding]]
+id = "F-2"
+status = "verified"
+severity = "minor"
+title = "expected design sec-2/sec-5 to place the stateDir refusal in state-dir.nix with its canonical rule; they say fleet.nix/fleetCases and only no-.."
+detail = """
+design.md sec-2: "It runs in `mkFleet` and is exposed for `fleetCases` to pin", and "no `..` component". sec-5 bullet "**`fleetCases`**: a `stateDir` that is relative…". Delivered: state-dir.nix + stateDirCases (notes.md "Plan-time refinements"), and a canonical-form rule (every component after `/` is a name), which also refuses `/`, `//`, trailing slash, `.`. DEC-058 already says "canonical". Also sec-2 "refused at eval" — mkfleet.nix:58 documents the refusal as lazy (fires wherever stateDir is read).
+"""
+disposition = "design-wrong"
+response = """
+The design text is stale; the code follows notes.md's plan-time refinement. Reconciliation brief, per-slice: rewrite sec-2 (state-dir.nix + stateDirCases; every component a name; refused wherever read) and retitle the sec-5 bullet stateDirCases.
+"""
+
+[[finding.turn]]
+act = "raise"
+role = "raiser"
+
+[[finding.turn]]
+act = "dispose"
+role = "responder"
+disposition = "design-wrong"
+response = """
+The design text is stale; the code follows notes.md's plan-time refinement. Reconciliation brief, per-slice: rewrite sec-2 (state-dir.nix + stateDirCases; every component a name; refused wherever read) and retitle the sec-5 bullet stateDirCases.
+"""
+
+[[finding.turn]]
+act = "verify"
+role = "raiser"
+
+[[finding]]
+id = "F-3"
+status = "verified"
+severity = "minor"
+title = "expected design sec-5 case 6 to describe the delivered two-suite split; it describes one suite driving a channel push at /build/state"
+detail = """
+sec-5 case 6 describes one suite. Delivered: the channel half in roomGitCases (state at run-time CAPSULE_STATE=$here/state) and the bundle half in room-client-cases.nix, whose step (b) learns the key through roomDoor.words, not a channel push. The "wrong knownHosts at the channel call site" mutation belongs to roomGitCases. Recorded in notes.md "Plan-time refinements"; design text not updated.
+"""
+disposition = "design-wrong"
+response = """
+Reconciliation brief, per-slice: rewrite sec-5 case 6 as its two delivered halves (roomGitCases channel half at run-time CAPSULE_STATE; room-client-cases bundle half at /build/state, learning through roomDoor.words), and move the call-site mutation to roomGitCases.
+"""
+
+[[finding.turn]]
+act = "raise"
+role = "raiser"
+
+[[finding.turn]]
+act = "dispose"
+role = "responder"
+disposition = "design-wrong"
+response = """
+Reconciliation brief, per-slice: rewrite sec-5 case 6 as its two delivered halves (roomGitCases channel half at run-time CAPSULE_STATE; room-client-cases bundle half at /build/state, learning through roomDoor.words), and move the call-site mutation to roomGitCases.
+"""
+
+[[finding.turn]]
+act = "verify"
+role = "raiser"
+
+[[finding]]
+id = "F-4"
+status = "verified"
+severity = "minor"
+title = "expected design sec-8/sec-1/sec-3 and the selector registry to match the touched files; conformance shows 4 undelivered, 9 undeclared code paths"
+detail = """
+`doctrine slice conformance 8`: undelivered fleet.nix, host/fleet-cases.nix (path never existed; suite is root fleet-cases.nix), host/wrap-cases.nix (takes no door; nothing to follow), host/volume-root.nix (design says "unchanged text" — no diff is correct). Undeclared but legitimate: state-dir.nix, state-dir-cases.nix, host/fixture-sshd.nix, rooms.nix (doorRootOf), rooms-cases.nix, justfile (nix_paths), docs/contract-target.md, templates/fleet/README.md, host/record.nix (comment). sec-1 diagram lacks doorRootOf; sec-3 says socat "built once in room-door.nix" while its signature takes socat as an argument (built in programs.nix). None is missing work.
+"""
+disposition = "design-wrong"
+response = """
+Reconciliation brief, per-slice: `doctrine slice selector rm` fleet.nix, host/fleet-cases.nix, host/wrap-cases.nix; `selector add` for the nine undeclared code/doc paths; keep host/volume-root.nix and say no diff is intended. Mirror in sec-8; add doorRootOf to the sec-1 diagram; correct the socat line in sec-3.
+"""
+
+[[finding.turn]]
+act = "raise"
+role = "raiser"
+
+[[finding.turn]]
+act = "dispose"
+role = "responder"
+disposition = "design-wrong"
+response = """
+Reconciliation brief, per-slice: `doctrine slice selector rm` fleet.nix, host/fleet-cases.nix, host/wrap-cases.nix; `selector add` for the nine undeclared code/doc paths; keep host/volume-root.nix and say no diff is intended. Mirror in sec-8; add doorRootOf to the sec-1 diagram; correct the socat line in sec-3.
+"""
+
+[[finding.turn]]
+act = "verify"
+role = "raiser"
+
+[[finding]]
+id = "F-5"
+status = "verified"
+severity = "minor"
+title = "expected POL-003's state-root row and DEC-058 to say what stateDir holds; both say volumes, which live under microvms"
+detail = """
+POL-003 row (789c102) and DEC-058 rationale: "slot records, volumes and quarantines". Volumes live under `microvms` (host/cli.nix:107 default /var/lib/microvms; host/volume-root.nix). stateDir holds slot records (host/services.nix:130 slotRoot), the scrub marker, quarantines, and each room's known_hosts (rooms.nix stateDirOf).
+"""
+disposition = "design-wrong"
+response = """
+This is governance text, so it is reconcile's REV surface, not a backlog item. Reconciliation brief: an errata REV modifying POL-003's host-state-root row to "slot records, the scrub marker, quarantines and each room's known_hosts" (volumes live under microvms). Correct DEC-058's rationale the same way, by a dated amendment line rather than by rewriting the decision.
+"""
+
+[[finding.turn]]
+act = "raise"
+role = "raiser"
+
+[[finding.turn]]
+act = "dispose"
+role = "responder"
+disposition = "design-wrong"
+response = """
+This is governance text, so it is reconcile's REV surface, not a backlog item. Reconciliation brief: an errata REV modifying POL-003's host-state-root row to "slot records, the scrub marker, quarantines and each room's known_hosts" (volumes live under microvms). Correct DEC-058's rationale the same way, by a dated amendment line rather than by rewriting the decision.
+"""
+
+[[finding.turn]]
+act = "verify"
+role = "raiser"
+
+[[finding]]
+id = "F-6"
+status = "verified"
+severity = "nit"
+title = "expected DEC-058's body and slice-008 Follow-Ups to read as accepted; both still say acceptance is pending"
+detail = """
+record-058.md: "supersede relation to be recorded after acceptance … Status stays proposed until the user's act is recorded". record-058.toml is accepted with supersedes DEC-042 (789c102). slice-008.md Follow-Ups: "Pending the user's acceptance".
+"""
+disposition = "fix-now"
+response = """
+Fixed: record-058.md now records the acceptance and the supersede (789c102), and the slice-008.md Follow-Ups line reads "Accepted 2026-10-20".
+"""
+
+[[finding.turn]]
+act = "raise"
+role = "raiser"
+
+[[finding.turn]]
+act = "dispose"
+role = "responder"
+disposition = "fix-now"
+response = """
+Fixed: record-058.md now records the acceptance and the supersede (789c102), and the slice-008.md Follow-Ups line reads "Accepted 2026-10-20".
+"""
+
+[[finding.turn]]
+act = "verify"
+role = "raiser"
+
+[[finding]]
+id = "F-7"
+status = "verified"
+severity = "minor"
+title = "expected the contract's bwrap example to be runnable in shape; it binds no passwd, which openssh's client needs, and shares a net it does not use"
+detail = """
+docs/contract-room-client.md:96-103. No /etc/passwd bound; the openssh client resolves getpwuid(getuid()) and exits ("No user exists for uid N") without one — from knowledge of openssh, not run here. `--share-net` is unneeded for a unix-socket door. The example is labelled a sketch, not exercised.
+"""
+disposition = "fix-now"
+response = """
+Fixed in docs/contract-room-client.md: the sketch binds /etc/passwd read-only and says why, and `--share-net` is dropped. It is still marked not exercised, and satan:SL-027 is the first real jail.
+"""
+
+[[finding.turn]]
+act = "raise"
+role = "raiser"
+
+[[finding.turn]]
+act = "dispose"
+role = "responder"
+disposition = "fix-now"
+response = """
+Fixed in docs/contract-room-client.md: the sketch binds /etc/passwd read-only and says why, and `--share-net` is dropped. It is still marked not exercised, and satan:SL-027 is the first real jail.
+"""
+
+[[finding.turn]]
+act = "verify"
+role = "raiser"
+
+[[finding]]
+id = "F-8"
+status = "verified"
+severity = "minor"
+title = "expected the contract to say the bundle is for ssh -F only; Host * Included from ~/.ssh/config would capture every destination"
+detail = """
+host/room-client.nix:8 and DEC-057: one `Host *` block, correct under `ssh -F`. docs/contract-room-client.md says use `ssh -F …` but does not forbid `Include`; an Include would route every host (github included) through the room's ProxyCommand with strict checking against the room's store.
+"""
+disposition = "fix-now"
+response = """
+Fixed: the contract says `ssh -F` and only so, and says what an Include of a `Host *` block would do.
+"""
+
+[[finding.turn]]
+act = "raise"
+role = "raiser"
+
+[[finding.turn]]
+act = "dispose"
+role = "responder"
+disposition = "fix-now"
+response = """
+Fixed: the contract says `ssh -F` and only so, and says what an Include of a `Host *` block would do.
+"""
+
+[[finding.turn]]
+act = "verify"
+role = "raiser"
+
+[[finding]]
+id = "F-9"
+status = "verified"
+severity = "nit"
+title = "expected 'a client never writes known_hosts' to be pinned; it rests on openssh disabling UpdateHostKeys implicitly"
+detail = """
+No `UpdateHostKeys` anywhere in host/*.nix. With UserKnownHostsFile overridden openssh defaults UpdateHostKeys off (from memory, unchecked). Case 6(c) "leaves known_hosts as (b) left it" cannot catch a regression: the fixture sshd offers one host key. The bind is read-only, so a write would fail rather than land.
+"""
+disposition = "follow-up"
+response = """
+IMP-024. A read-only bind already makes a write fail rather than land, so the gap is a missing pin, not exposure.
+"""
+
+[[finding.turn]]
+act = "raise"
+role = "raiser"
+
+[[finding.turn]]
+act = "dispose"
+role = "responder"
+disposition = "follow-up"
+response = """
+IMP-024. A read-only bind already makes a write fail rather than land, so the gap is a missing pin, not exposure.
+"""
+
+[[finding.turn]]
+act = "verify"
+role = "raiser"
+
+[[finding]]
+id = "F-10"
+status = "verified"
+severity = "minor"
+title = "expected the contract to say a bind of the door root reaches every room's socket; it is silent"
+detail = """
+binds = doorRootOf socket (/run/capsule-room) + stateDirOf room. A jail bundled for room r can connect to every room's socket (it still needs that room's user key to authenticate). DEC-056 accepted the parent bind, reasoning about the host uid; docs/contract-room-client.md's binds section does not state the reach.
+"""
+disposition = "fix-now"
+response = """
+The exposure is accepted in DEC-056. The contract's binds section now states it: the root reaches every room's socket, and authentication decides the rest.
+"""
+
+[[finding.turn]]
+act = "raise"
+role = "raiser"
+
+[[finding.turn]]
+act = "dispose"
+role = "responder"
+disposition = "fix-now"
+response = """
+The exposure is accepted in DEC-056. The contract's binds section now states it: the root reaches every room's socket, and authentication decides the rest.
+"""
+
+[[finding.turn]]
+act = "verify"
+role = "raiser"
+
+[[finding]]
+id = "F-11"
+status = "verified"
+severity = "nit"
+title = "expected contract-assignment.md's room row to say accept-new is oubliette's doors only; it reads 'every door'"
+detail = """
+docs/contract-assignment.md room row: "every door to it checks … (HostKeyAlias=room-<room>, accept-new — DEC-047)", beside a pointer to the client bundle, which is strict (DEC-057).
+"""
+disposition = "fix-now"
+response = """
+Fixed: the row says "every one of oubliette's doors … accept-new" and names the client as strict.
+"""
+
+[[finding.turn]]
+act = "raise"
+role = "raiser"
+
+[[finding.turn]]
+act = "dispose"
+role = "responder"
+disposition = "fix-now"
+response = """
+Fixed: the row says "every one of oubliette's doors … accept-new" and names the client as strict.
+"""
+
+[[finding.turn]]
+act = "verify"
+role = "raiser"
+
+[[finding]]
+id = "F-12"
+status = "verified"
+severity = "nit"
+title = "expected design sec-5's 'an absent stateDir fails eval naming the argument' to be pinned; no case pins it"
+detail = """
+Nix's own missing-argument error provides it (seen by hand in PHASE-01 EX-1: "called without required argument 'stateDir'", and templateCases went red that way). tryEval cannot catch it, so no suite can pin it cheaply.
+"""
+disposition = "tolerated"
+response = """
+Nix's own missing-argument error is the refusal, observed by hand in PHASE-01 EX-1, and templateCases went red that way. tryEval cannot catch it, so a suite would pin Nix rather than this repo. Accepted unpinned.
+"""
+
+[[finding.turn]]
+act = "raise"
+role = "raiser"
+
+[[finding.turn]]
+act = "dispose"
+role = "responder"
+disposition = "tolerated"
+response = """
+Nix's own missing-argument error is the refusal, observed by hand in PHASE-01 EX-1, and templateCases went red that way. tryEval cannot catch it, so a suite would pin Nix rather than this repo. Accepted unpinned.
+"""
+
+[[finding.turn]]
+act = "verify"
+role = "raiser"
+
+[[finding]]
+id = "F-13"
+status = "verified"
+severity = "nit"
+title = "expected the case-harness helpers to have one home; room-client-cases.nix copies ck/saw/never/run again"
+detail = """
+host/room-client-cases.nix redefines ck/saw/never/run as other suites do (also PHASE-03 friction observation 5). clientRoom = lib.findFirst (_: true) null … is a long spelling of head-or-null. Not a defect; a design opportunity.
+"""
+disposition = "follow-up"
+response = """
+IMP-025. Duplication shared by every suite, not a defect of this slice; the findFirst spelling is left as it reads.
+"""
+
+[[finding.turn]]
+act = "raise"
+role = "raiser"
+
+[[finding.turn]]
+act = "dispose"
+role = "responder"
+disposition = "follow-up"
+response = """
+IMP-025. Duplication shared by every suite, not a defect of this slice; the findFirst spelling is left as it reads.
+"""
+
+[[finding.turn]]
+act = "verify"
+role = "raiser"
+
+# Findings are append-only `[[finding]]` tables, added by `review raise`.
+# Empty here at creation — a fresh review is Active, awaiting the raiser.

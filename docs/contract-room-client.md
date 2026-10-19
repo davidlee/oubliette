@@ -18,7 +18,9 @@ client is anything on this host that is not one of oubliette's own doors (`ssh`,
 | `bin/ssh` | openssh's `ssh`, linked rather than wrapped |
 
 It needs nothing on the client's `PATH`. Use it as
-`ssh -F <bundle>/etc/ssh_config <user>@<name>`.
+`ssh -F <bundle>/etc/ssh_config <user>@<name>`, and only so: the block is
+`Host *`, so an `Include` of it from `~/.ssh/config` would send every destination
+through the room's door and check every host against the room's key.
 
 ## Attributes
 
@@ -70,6 +72,10 @@ Neither is a file or the socket itself. A bind is mounted as root and opened as
 the owner, so it grants no access on its own
 (`mem.fact.oubliette.a-bind-is-not-an-access`).
 
+**The root reaches every room's door, not only `<r>`'s** (`DEC-056`): a jail
+given these binds can connect to any room's socket. What it reaches past the
+socket is decided by authentication, by the user key the client brings.
+
 ## What is the client's
 
 The bundle sets no destination name, no user and no identity. `Host *` matches
@@ -91,11 +97,13 @@ ssh -F "$(nix build --print-out-paths .#room-client-<r>)/etc/ssh_config" <user>@
 
 In bwrap (a sketch; **not exercised**): bind each of `binds` read-only, the
 config, and the store closure the config and `ssh` need, and run as the owner's
-uid:
+uid. ssh resolves its own uid to a passwd entry and exits without one, so the jail
+must provide one (here, the host's, read-only):
 
 ```
 b=$(nix build --print-out-paths .#room-client-<r>)
-bwrap --unshare-all --share-net \
+bwrap --unshare-all \
+  --ro-bind /etc/passwd /etc/passwd \
   --ro-bind /run/capsule-room /run/capsule-room \
   --ro-bind <stateDir>/room/<r> <stateDir>/room/<r> \
   $(nix-store -qR "$b" | sed 's/.*/--ro-bind & &/') \

@@ -6,24 +6,28 @@ disposable phase sheet (`.doctrine/state/.../phase-NN.md`) that must survive
 
 ## Harvest
 <!-- single-copy: updated in place each harvest; ids only, never restated content -->
-fresh-as-of: 2026-10-20 · ready (pre-PHASE-01) · 99a9f09
+fresh-as-of: 2026-10-20 · audited (RV-024 concluded) · reconcile next
 
 ### Produced
-- scope, research, locked design, plan; no code yet (commits 10f05c1..99a9f09)
-- minted: DEC-054 — state root as mkFleet's declaration; DEC-055 — one door option list; DEC-056 — client binds and strictness; DEC-057 — bundle shape
-- reviews: RV-023 — gpt-6-sol design pass, findings disposed; RV-022 — the run's ledger, concluded onto RV-023
-- IMP-022 — related; resolves at close
+- scope, research, locked design, plan (10f05c1..99a9f09); code PHASE-01 b4698aa, PHASE-02 923e3e3, PHASE-03 8cf3ea8, PHASE-04 10a7cf6; governance 789c102
+- minted: DEC-054, DEC-055, DEC-056, DEC-057; DEC-058 accepted, supersedes DEC-042; REV-008 applied to POL-003
+- new suites: stateDirCases, roomClientCases; shared host/fixture-sshd.nix; rooms.nix doorRootOf
+- reviews: RV-022 (run ledger), RV-023 (design pass), RV-024 (audit: 13 findings, 0 blockers)
+- backlog: IMP-024 (pin UpdateHostKeys off), IMP-025 (one home for case-harness helpers); IMP-022 resolves at close
 
 ### Learned
 - mem.pattern.oubliette.fixture-sshd-in-the-build-sandbox — a case can pin host-key behaviour past the banner
 - mem.fact.oubliette.ssh-reads-global-known-hosts — GlobalKnownHostsFile none for a one-store door
 - mem.fact.oubliette.runtime-directory-goes-on-every-stop — bind the parent, not the RuntimeDirectory
 - mem.fact.oubliette.flakes-home-manager-is-standalone — why DEC-054 is a flake output, not a module option
+- mem.fact.oubliette.revision-apply-leaves-prose-rows — apply surfaces modify rows; land them by hand
+- from the phase sheets: the module evaluates with rooms = {} (pinned by hostModuleUnits' second eval); a fixture value equal to an old default makes a green build prove nothing about wiring; nsPrograms is the easy-to-miss third programs.nix call site
 
 ### Open
+- RV-024 reconciliation brief — F-2, F-3, F-4 (design.md + selector registry), F-5 (POL-003 errata REV, DEC-058 amendment line)
 - ASM-004 — /run/capsule-room survives a relay stop; consumer's reach rung
-- RV-023 F-5, F-8 — answered in design, settled by PHASE-02 and PHASE-03 cases
-- DEC-042 successor and POL-003 revision — PHASE-04, need the user's assent
+- unexercised: live host, push/collect past auth, changed host key refused, the bwrap sketch (satan:SL-027)
+- outside: push oubliette; /srv/fleet lock bump from 10f05c1 (user's)
 
 ## Design review passes
 

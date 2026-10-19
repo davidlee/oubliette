@@ -1,0 +1,46 @@
+memory_uid = "mem_01a154e321dc78b1958d3e97f494c3d0"
+memory_key = "mem.fact.oubliette.revision-apply-leaves-prose-rows"
+schema_version = 1
+memory_type = "fact"
+status = "active"
+title = "doctrine revision apply surfaces a modify row; it does not write the policy's prose"
+summary = "After approve+apply, a REV's modify/prose rows must be hand-landed in the target's .md, then the REV moved to done"
+created = "2026-10-19"
+updated = "2026-10-19"
+
+[scope]
+paths = []
+globs = []
+commands = ["doctrine revision apply"]
+tags = ["gotcha", "governance"]
+workspace = "default"
+repo = "github.com/davidlee/oubliette"
+repo_id_kind = "remote"
+repo_id_confidence = "high"
+
+[git]
+anchor_kind = "checkout_state"
+commit = ""
+tree = "d9a1bddccca702bdd98b867b11fc11bf740a6f35"
+ref_name = "refs/heads/main"
+checkout_state_id = "fbae1dcc16b632dc7b9b4d8e0d36c1b56452174bc821469ee733edc5c8784e72"
+base_commit = "3c44a3706a2b0471997b4b0a41cbaddb425e016e"
+verified_sha = ""
+normalizer = "forget.checkout.v1"
+
+[review]
+verification_state = "unverified"
+reviewed = ""
+review_by = ""
+
+[trust]
+trust_level = "medium"
+
+[ranking]
+severity = "none"
+weight = 0
+
+[[source]]
+kind = "review"
+ref = "RV-024"
+

@@ -68,7 +68,7 @@ with no socket, a branch the host checkout lacks and a door that answers with no
 banner or, behind a fixture `sshd -i`, one that reaches authentication, the room
 client's by running `ssh -G` over the shipped bundle and by putting a fixture
 `sshd -i` behind its socket, the state root's by handing the refusal a relative,
-a symlinked and a traversing path, the quarantine's bounded fetch by
+a traversing and a non-canonical path and one carrying shell or ssh_config syntax, the quarantine's bounded fetch by
 offering it a pack over the ceiling, a malformed object, a tag and a held ref lock,
 and the volume root helper's by
 deleting and overwriting a real slot's image as root, the guest's reset of

@@ -116,6 +116,6 @@ Settled in the design run: `DEC-054` (export site and state root), `DEC-055`
 - The `/srv/fleet` `stateDir` edit is the user's: it already declares it
   (flake.nix:183) but needs this repo's commits pushed and its lock bumped from
   `10f05c1`.
-- Pending the user's acceptance (basis: "a,b agreed"): DEC-058, the `mkFleet`
+- Accepted 2026-10-20 on the user's "a,b agreed" (789c102): DEC-058, the `mkFleet`
   ten-arguments successor to DEC-042, and REV-008, POL-003's host state root row.
   `IMP-022` resolves at close.
