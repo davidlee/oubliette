@@ -1,0 +1,148 @@
+id    = 23
+slug  = "sl-008-design-adversarial-pass-gpt-6-sol-via-codex"
+title = "SL-008 design: adversarial pass (gpt-6-sol via codex)"
+# no status — a review's status is DERIVED from its findings, so
+# it is never stored (the storage rule forbids derived data in authored files).
+
+[review]
+facet     = "design"     # scope|design|plan|phase-plan|implementation|code-review|reconciliation
+raiser    = "gpt-6-sol"
+responder = "responder"
+rounds_base = 0
+contests_base = 0
+
+[target]                   # the outbound `reviews` edge: RV-NNN ──reviews──▶ <ref>
+ref   = "SL-008"
+
+[[finding]]
+id = "F-1"
+status = "withdrawn"
+severity = "nit"
+title = "t"
+detail = "d"
+
+[[finding.turn]]
+act = "raise"
+role = "raiser"
+
+[[finding.turn]]
+act = "withdraw"
+role = "raiser"
+note = "placeholder raised while probing the CLI's argument handling; not a finding"
+
+[[finding]]
+id = "F-2"
+status = "answered"
+severity = "major"
+title = "Global host keys can defeat the promised first-contact refusal"
+detail = "optionsOf sets UserKnownHostsFile but not GlobalKnownHostsFile (design sec-3). sec-4 promises refusal before the first push and after forget-host-key. pi-env sets GlobalKnownHostsFile=none (pi-env dist/ssh.js:67); plain ssh -F does not: ssh -G -F /dev/null lists /etc/ssh/ssh_known_hosts*. Fix: GlobalKnownHostsFile none for clients; decide for oubliette's doors; assert in the suite."
+disposition = "fix-now"
+response = "Verified: ssh -G -F /dev/null resolves globalknownhostsfile /etc/ssh/ssh_known_hosts /etc/ssh/ssh_known_hosts2. optionsOf gains GlobalKnownHostsFile none for every door, oubliette's included: DEC-047 says every door checks one store, and today's door words silently also consult the global files. roomClientCases case 1 asserts globalknownhostsfile none on both renders."
+
+[[finding.turn]]
+act = "raise"
+role = "raiser"
+
+[[finding.turn]]
+act = "dispose"
+role = "responder"
+disposition = "fix-now"
+response = "Verified: ssh -G -F /dev/null resolves globalknownhostsfile /etc/ssh/ssh_known_hosts /etc/ssh/ssh_known_hosts2. optionsOf gains GlobalKnownHostsFile none for every door, oubliette's included: DEC-047 says every door checks one store, and today's door words silently also consult the global files. roomClientCases case 1 asserts globalknownhostsfile none on both renders."
+
+[[finding]]
+id = "F-3"
+status = "answered"
+severity = "major"
+title = "A jail can fail to start before any room relay has started"
+detail = "Binds /run/capsule-room (sec-4), but only each relay's nested RuntimeDirectory creates it, at service start (host/services.nix:335); tmpfiles makes the state dir, not the /run parent (services.nix:793). Fix: create /run/capsule-room at boot; test jail start before the first relay start."
+disposition = "fix-now"
+response = "Verified from services.nix:335 and :793: nothing makes /run/capsule-room except a relay start. The module gains a tmpfiles rule d <dirOf (dirOf (socketOf r))> 0755 root root, emitted once when rooms exist and derived from socketOf (no new spelling); hostModuleUnits pins it. A jail started before any relay then binds an existing empty directory and sees each room's door appear and disappear under it."
+
+[[finding.turn]]
+act = "raise"
+role = "raiser"
+
+[[finding.turn]]
+act = "dispose"
+role = "responder"
+disposition = "fix-now"
+response = "Verified from services.nix:335 and :793: nothing makes /run/capsule-room except a relay start. The module gains a tmpfiles rule d <dirOf (dirOf (socketOf r))> 0755 root root, emitted once when rooms exist and derived from socketOf (no new spelling); hostModuleUnits pins it. A jail started before any relay then binds an existing empty directory and sees each room's door appear and disappear under it."
+
+[[finding]]
+id = "F-4"
+status = "answered"
+severity = "major"
+title = "The new stateDir accepts shell syntax that its readers execute"
+detail = "The eval refusal checks only absoluteness, whitespace and % (sec-2). /tmp/$(id) passes, then enters generated shell unquoted at host/cli.nix:937 (recordRoot=${moduleState}) and host/volume-root.nix:76. Fix: escape at every insertion, keep the ssh refusal, add hostile-path cases for the shipped CLI and root helper."
+disposition = "fix-now"
+response = "Verified: cli.nix:937 and volume-root.nix:76 splice moduleState unquoted. Different fix from the proposal: the eval refusal narrows stateDir to an absolute path over [A-Za-z0-9._+/-] with no '..' component. That one check covers the ssh concerns (whitespace, %) and every shell insertion, current and future, instead of escaping at each site. fleetCases pins the refusal and its reason for $(…), a space, %, a relative path and '..'. The seams' shell-expression form for suites is unchanged."
+
+[[finding.turn]]
+act = "raise"
+role = "raiser"
+
+[[finding.turn]]
+act = "dispose"
+role = "responder"
+disposition = "fix-now"
+response = "Verified: cli.nix:937 and volume-root.nix:76 splice moduleState unquoted. Different fix from the proposal: the eval refusal narrows stateDir to an absolute path over [A-Za-z0-9._+/-] with no '..' component. That one check covers the ssh concerns (whitespace, %) and every shell insertion, current and future, instead of escaping at each site. fleetCases pins the refusal and its reason for $(…), a space, %, a relative path and '..'. The seams' shell-expression form for suites is unchanged."
+
+[[finding]]
+id = "F-5"
+status = "answered"
+severity = "major"
+title = "The render comparison does not pin both shipped doors"
+detail = "Case 3 calls roomDoor.words directly (sec-5). The channel assembles its own ssh_cmd (host/room-git.nix:224); roomVerbsCases pins only the front end (room-verbs-cases.nix:350); roomGitCases cannot reach ssh past the banner (room-git-cases.nix:18). The suite could pass with the channel calling the render wrongly. Fix: a case over the channel's shipped command construction; mutate the call site."
+disposition = "fix-now"
+response = "Verified (room-git.nix:224-228; room-git-cases.nix:18). Spike 2026-10-20: an unprivileged sshd -i (openssh 10.5p1) behind socat UNIX-LISTEN made accept-new write 'room-x ssh-ed25519 …' to the declared known_hosts, then auth failed (Permission denied, 255). roomClientCases gains a fixture sshd behind the room's socket and drives (a) the shipped capsule-room-git push: the entry lands under room-<r> in $state/room/<r>/known_hosts; (b) the bundle's ssh before that: 'Host key verification failed'; after it: 'Permission denied' (key accepted). Mutating the channel's call site (wrong alias or trust store) turns (a) red. Unverified: sshd inside the nix build sandbox; if it cannot run there, this falls back to a stated residual and the user is told."
+
+[[finding.turn]]
+act = "raise"
+role = "raiser"
+
+[[finding.turn]]
+act = "dispose"
+role = "responder"
+disposition = "fix-now"
+response = "Verified (room-git.nix:224-228; room-git-cases.nix:18). Spike 2026-10-20: an unprivileged sshd -i (openssh 10.5p1) behind socat UNIX-LISTEN made accept-new write 'room-x ssh-ed25519 …' to the declared known_hosts, then auth failed (Permission denied, 255). roomClientCases gains a fixture sshd behind the room's socket and drives (a) the shipped capsule-room-git push: the entry lands under room-<r> in $state/room/<r>/known_hosts; (b) the bundle's ssh before that: 'Host key verification failed'; after it: 'Permission denied' (key accepted). Mutating the channel's call site (wrong alias or trust store) turns (a) red. Unverified: sshd inside the nix build sandbox; if it cannot run there, this falls back to a stated residual and the user is told."
+
+[[finding]]
+id = "F-6"
+status = "answered"
+severity = "minor"
+title = "room-door.nix lacks its state-path dependency"
+detail = "Inputs are {lib, guestSsh, socat} yet knownHostsOf calls stateDirOf (sec-3), which comes from rooms.nix (rooms.nix:185) and is passed explicitly today (host/programs.nix:223). Fix: pass rooms.stateDirOf in."
+disposition = "fix-now"
+response = "Accepted: room-door.nix takes stateDirOf (rooms.stateDirOf) as an argument."
+
+[[finding.turn]]
+act = "raise"
+role = "raiser"
+
+[[finding.turn]]
+act = "dispose"
+role = "responder"
+disposition = "fix-now"
+response = "Accepted: room-door.nix takes stateDirOf (rooms.stateDirOf) as an argument."
+
+[[finding]]
+id = "F-7"
+status = "answered"
+severity = "minor"
+title = "The state-root move leaves a stale contract statement"
+detail = "docs/contract-assignment.md:63 says <state> falls back to the module's /var/lib/capsule; DEC-054 makes mkFleet's stateDir its home. Fix: revise the row's state-root definition in the same edit, keeping the CAPSULE_STATE override."
+disposition = "fix-now"
+response = "Accepted: sec-6 revises contract-assignment.md:63's state-root definition to mkFleet's stateDir, keeping the CAPSULE_STATE override."
+
+[[finding.turn]]
+act = "raise"
+role = "raiser"
+
+[[finding.turn]]
+act = "dispose"
+role = "responder"
+disposition = "fix-now"
+response = "Accepted: sec-6 revises contract-assignment.md:63's state-root definition to mkFleet's stateDir, keeping the CAPSULE_STATE override."
+
+# Findings are append-only `[[finding]]` tables, added by `review raise`.
+# Empty here at creation — a fresh review is Active, awaiting the raiser.

@@ -126,6 +126,10 @@ intent = "design-target"
 selector = "docs/contract-assignment.md"
 intent = "design-target"
 
+[[selector]]
+selector = "CLAUDE.md"
+intent = "design-target"
+
 [[relation]]
 label = "governed_by"
 target = "ADR-001"

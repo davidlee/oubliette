@@ -27,11 +27,17 @@ Three changes, in dependency order: the state root becomes a declaration
 ## The state root is a declaration (`DEC-054`)
 
 `mkFleet` takes a tenth argument, `stateDir`: a string, required, with no
-default (`POL-003`). It is refused at eval if it is not absolute or holds
-whitespace or `%`: ssh reads `UserKnownHostsFile` as a list and expands `%`
-tokens, which is `refuseOddState`'s reason (host/room-git.nix:89-100) applied to
-a declared value. That check runs in `mkFleet` and is exposed for `fleetCases`
-to pin, following the `reasons` pattern in `fleet.nix`.
+default (`POL-003`). It is refused at eval unless it is an absolute path over
+`[A-Za-z0-9._+/-]` with no `..` component (RV-023 F-4). That one check covers
+two hazards:
+- ssh reads `UserKnownHostsFile` as a list and expands `%` tokens, which is
+  `refuseOddState`'s reason (host/room-git.nix:89-100);
+- the value is spliced unquoted into generated shell (host/cli.nix:937,
+  host/volume-root.nix:76) and into whatever reads it later.
+
+A narrow character set beats escaping at each insertion: one check, and no
+insertion added later can miss it. It runs in `mkFleet` and is exposed for
+`fleetCases` to pin, following the `reasons` pattern in `fleet.nix`.
 
 Readers, all from the one argument:
 
@@ -62,7 +68,7 @@ and the declaration is its only source.
 <!-- doctrine:section sec-3 -->
 ## One door, two renders (`DEC-055`)
 
-New `host/room-door.nix`, a function of `{lib, guestSsh, socat}`:
+New `host/room-door.nix`, a function of `{lib, guestSsh, socat, stateDirOf}` (`stateDirOf` is `rooms.stateDirOf`, passed as room-git.nix takes it today, host/programs.nix:223):
 
 ```nix
 aliasOf = room: "room-${room}";
@@ -70,6 +76,7 @@ optionsOf = {checking, room, socket, knownHosts}: [
   {name = "StrictHostKeyChecking"; value = checking;}
   {name = "HostKeyAlias";          value = aliasOf room;}
   {name = "UserKnownHostsFile";    value = knownHosts;}
+  {name = "GlobalKnownHostsFile";  value = "none";}
   {name = "ProxyCommand";          value = guestSsh.proxyCommand {inherit socat socket;};}
 ];
 words  = args: concatMapStringsSep " " (o: ''-o "${o.name}=${o.value}"'') (optionsOf args);
@@ -96,6 +103,13 @@ knownHostsOf = state: room: knownHostsIn (stateDirOf state room);
   1988-1998) supplies `checking = "accept-new"` in the human door.
 - `socat` is `lib.getExe pkgs.socat`, built once in `room-door.nix`
   (`DEC-053`'s precedent, moved from room-git.nix:72).
+
+- `GlobalKnownHostsFile none` is new for **every** door, oubliette's included
+  (RV-023 F-2). ssh consults `/etc/ssh/ssh_known_hosts*` by default
+  (`ssh -G -F /dev/null` here), so today's door words check a second store
+  beside the room's. That contradicts `DEC-047`'s one store, and a client
+  promised refusal before first contact would not refuse a key the host's
+  global file holds.
 
 Neither render is a spelling of the other. The alias, the trust store and the
 ProxyCommand each have one home.
@@ -134,6 +148,13 @@ in pkgs.runCommand "capsule-room-client-${r.name}" {
   first push. Both are derived from the record and the declaration; neither is
   respelled. Read-only binds are enough: `connect()` needs no write, and a client
   never writes `known_hosts`.
+- **The parent exists from boot** (RV-023 F-3). Only a relay's start creates
+  `/run/capsule-room`, as the parent of its RuntimeDirectory
+  (host/services.nix:348). The module therefore adds one tmpfiles rule when
+  rooms exist: `d <dirOf (dirOf (socketOf <any room>))> 0755 root root -`. It
+  is derived from `socketOf`, so the path is not spelled out again. A jail
+  started before any relay binds an empty directory, and each room's door
+  appears under it when that room starts.
 - **Strictness**: `checking = "yes"`. A client refuses before the first push
   and after `forget-host-key` until the next push. That is ssh exit 255, the
   behaviour satan's runner already relies on (SL-006 design sec-5).
@@ -157,7 +178,8 @@ reaches a live room; that is the consumer's reach rung.
   (NOTES item 51 step 3).
   1. `ssh -G -F ${bundle}/etc/ssh_config anyhost` yields
      `stricthostkeychecking true`, `hostkeyalias room-<r>`,
-     `userknownhostsfile <declared>/room/<r>/known_hosts`, and a `proxycommand`
+     `userknownhostsfile <declared>/room/<r>/known_hosts`,
+     `globalknownhostsfile none`, and a `proxycommand`
      whose first word is an executable socat store path and whose socket is the
      record's.
   2. The same `ssh -G` with `-l x` and the destinations `room-<r>`, `10.99.0.2`
@@ -170,18 +192,42 @@ reaches a live room; that is the consumer's reach rung.
   4. `binds` is exactly the socket's grandparent and the room state directory;
      the known_hosts path lies under the second; the socket lies under the first.
   5. `bin/ssh` resolves to an executable openssh `ssh`.
+  6. **Both doors against a fixture sshd** (RV-023 F-5). An unprivileged
+     `sshd -i` behind `socat UNIX-LISTEN:<fixture socket>` serves as the room.
+     The 2026-10-20 spike showed `accept-new` writes the key and auth then fails
+     with `Permission denied`. The fixture builds the bundle and the channel
+     over the fixture socket through the same seam `roomGitCases` uses
+     (`roomGitOf`, mkfleet.nix:715-722), with the state root from the fixture's
+     declaration. Three steps:
+     - (a) The bundle's `ssh` before any push: `Host key verification failed`,
+       and `known_hosts` absent or empty.
+     - (b) The **shipped** `capsule-room-git push` (or the fixture-socket
+       build of it): an entry `room-<r> ssh-ed25519 …` lands in
+       `$state/room/<r>/known_hosts`, and nothing lands elsewhere.
+     - (c) The bundle's `ssh` again: `Permission denied`. The key was accepted
+       and auth was refused, which is as far as a client with no identity gets.
+
+     This pins the channel's call site, not just the render. If an unprivileged
+     sshd cannot run inside the nix build sandbox, case 6 drops to a stated
+     residual (the live rung), and the user is told before the plan is
+     approved.
 
   Each case asserts its reason, not only its exit status. **Mutations** (each
   must go red, and for the right reason, never at shellcheck): set the bundle's
   `checking` to `accept-new` (fails 1); drop `Host *` for `Host room-<r>` (fails
-  2); bind `dirOf r.socket` instead of its parent (fails 4).
-- **`fleetCases`**: `stateDir` that is relative, or holds a space or `%`, is
-  refused with its reason; an absent `stateDir` fails eval naming the argument.
+  2); bind `dirOf r.socket` instead of its parent (fails 4); drop
+  `GlobalKnownHostsFile` from `optionsOf` (fails 1 and 3); pass the channel a
+  wrong `knownHosts` at its call site (fails 6b).
+- **`fleetCases`**: a `stateDir` that is relative, contains a `..` component,
+  or contains a space, `%` or `$(…)` is refused with its reason. An absent
+  `stateDir` fails eval naming the argument.
 - **`roomVerbsCases`** and **`roomGitCases`** stay green unchanged. They already
   pin the front end's door with `ssh -G` (host/room-verbs-cases.nix:350-361),
   so the quoting change in sec-3 is covered.
 - **`hostModuleUnits`**: setting `services.capsule-perimeter.stateDir` fails
-  eval with the removal message, and the tmpfiles rules carry the declared root.
+  eval with the removal message, the tmpfiles rules carry the declared root, and
+  `/run/capsule-room` has its `0755 root` rule when rooms exist and none when
+  they don't.
 - **`templateCases`** forces the template with `stateDir` declared.
 - `just check` and `just` stay green.
 
@@ -196,7 +242,12 @@ reaches a live room; that is the consumer's reach rung.
   - strict checking, and refusal before the first push;
   - that the destination name, the user and the identity are the client's.
 
-  `docs/contract-assignment.md:63`'s room row points to it.
+  `docs/contract-assignment.md:63`'s room row points to it. Its definition of
+  `<state>` changes from the module's `/var/lib/capsule` to `mkFleet`'s
+  `stateDir`, and it keeps the `CAPSULE_STATE` override (RV-023 F-7).
+- **CLAUDE.md**: the claim that accept-new writing a room's `known_hosts` is
+  "not reachable by any case" (room-git-cases.nix:18-21) becomes false if case
+  6 lands. Update that header.
 - **README**: the module setup block (README.md:153ff) loses `stateDir`, and the
   `mkFleet` description gains it. "Rooms" (README.md:489ff) names the bundle.
 - **`DEC-042` successor**: "mkFleet has ten arguments", restating it with
@@ -227,6 +278,11 @@ reaches a live room; that is the consumer's reach rung.
 - **The bundle ignores `CAPSULE_STATE`.** A host that moves its state at run
   time has bundles naming the declared root. That is intended: a consumer's jail
   is built, not invoked.
+- **`GlobalKnownHostsFile none` changes oubliette's own doors.** A host that
+  relied on a global known_hosts entry for a room stops trusting it. No such
+  entry is declared anywhere, and `DEC-047` already forbids that second store.
+- **The fixture sshd may not run in the build sandbox** (sec-5 case 6). If it
+  can't, the fallback is a stated residual.
 - **The quoting change in `words`** is covered by the existing `ssh -G` pins in
   `roomVerbsCases`.
 - **Out of scope**: consumer edits; the module's other path options; the door's
@@ -246,10 +302,11 @@ reaches a live room; that is the consumer's reach rung.
 | `host/room-git.nix` | takes `roomDoor`; `door`, `knownHosts*` and its own socat removed |
 | `host/programs.nix` | builds `roomDoor` once; `roomTrust` from it; `moduleState` to `volume-root.nix` |
 | `host/cli.nix` | human room door passes `checking`; `moduleState` passed from mkFleet |
-| `host/services.nix` | `stateDir` option removed (`mkRemovedOptionModule`); reads the declared value; passes `moduleState` |
+| `host/services.nix` | `stateDir` option removed (`mkRemovedOptionModule`); reads the declared value; passes `moduleState`; tmpfiles `d /run/capsule-room` (derived) when rooms exist |
 | `host/volume-root.nix` | unchanged text; now passed `moduleState` |
 | `fleet.nix` and `host/fleet-cases.nix` | `stateDir` reasons and their cases (if the refusal lives in `fleet.nix`) |
-| `host/room-verbs-cases.nix`, `host/room-git-cases.nix`, `host/wrap-cases.nix` | follow the moved `door`/`roomTrust` arguments only |
+| `host/room-verbs-cases.nix`, `host/room-git-cases.nix`, `host/wrap-cases.nix` | follow the moved `door`/`roomTrust` arguments; room-git-cases' header (accept-new unreachable) revised if sec-5 case 6 lands |
+| `CLAUDE.md` | the same claim, where it summarises the room channel's suite |
 | `fixture/default.nix`, `templates/fleet/flake.nix` | `stateDir = "/var/lib/capsule"` |
 | `just/fleet.just` | `roomClientCases` in `just build` and `just cases` |
 | `docs/contract-room-client.md` (new), `docs/index.md`, `docs/contract-assignment.md`, `README.md` | sec-6 |
