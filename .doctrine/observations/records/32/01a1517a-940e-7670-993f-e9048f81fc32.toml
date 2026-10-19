@@ -1,0 +1,18 @@
+schema = "doctrine.observation"
+schema_version = 1
+uid = "01a1517a-940e-7670-993f-e9048f81fc32"
+recorded_at = "2026-10-19T00:05:50.222622467Z"
+kind = "friction"
+summary = "doctrine supersede reports success on an edge that already exists, and leaves the old record accepted"
+detail = "SL-007 PHASE-04: DEC-052 already held supersedes=[DEC-044]. 'doctrine supersede DEC-052 DEC-044' printed success and changed only DEC-044's updated date; DEC-044 stays status accepted and inspect shows no edge. Also: knowledge edit --choice replaces the whole field, so an append has to restate the text."
+
+[facets.execution]
+schema_version = 1
+interface = "cli"
+interface_origin = "automatic"
+product_surface = "doctrine"
+product_surface_origin = "automatic"
+command = "observation record"
+command_origin = "automatic"
+repository_context = "primary"
+repository_context_origin = "automatic"
