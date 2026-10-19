@@ -158,6 +158,11 @@ services.capsule-perimeter = {
 microvm.host.enable = true; # the microvm@ template these units hang drop-ins on
 ```
 
+The state root is not an option here: it is `mkFleet`'s `stateDir`, declared
+beside `fleetPath`, so the front end, the programs and this module read one
+root (`DEC-054`). A host that still sets `services.capsule-perimeter.stateDir`
+fails eval with a message saying so.
+
 The namespace is what makes more than one capsule possible, and it moves the
 control this whole thing rests on *into this repo*: `net.ipv4.ip_forward` is
 per-namespace, so the guest's confinement is a sysctl these units own rather
@@ -535,7 +540,7 @@ declared user (`DEC-037`).
 
 Every door to a room — `ssh`, `push`, `collect` — checks one `known_hosts` of
 the room's own, `<state>/room/<room>/known_hosts` (`<state>` is `CAPSULE_STATE`,
-else `/var/lib/capsule`), as `HostKeyAlias=room-<room>` with accept-new: the
+else `mkFleet`'s `stateDir`), as `HostKeyAlias=room-<room>` with accept-new: the
 first contact learns the key, a changed one is refused (`DEC-047`). After the room's volume
 is deleted, `capsule <room> forget-host-key` empties that file
 (`capsule <room>: forgot the room's host key (<file>).`).

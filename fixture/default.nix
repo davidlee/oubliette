@@ -198,4 +198,6 @@ in {
   };
 
   fleetPath = "/nonexistent/fixture-fleet";
+  # The module's old default, so no shipped store path moved with it (DEC-054).
+  stateDir = "/var/lib/capsule";
 }

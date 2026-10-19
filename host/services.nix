@@ -50,6 +50,11 @@
   # Where this host's declarations live. The policy directory's default is
   # `fleetPath + "/" + policies.dir` (RV-012 F-11).
   fleetPath,
+  # Where this host keeps its state (`mkFleet`'s `stateDir`, DEC-054), already
+  # checked by state-dir.nix. A flake argument and not an option here, so a host
+  # flake that never evaluates this module reads the same root; the option it
+  # replaces is removed below, and says so.
+  stateDir,
 }: {
   config,
   lib,
@@ -122,7 +127,7 @@
 
   allowlistOf = c: "${cfg.allowlistDir}/${c.name}";
   # Every slot's record directory is under this one (host/record.nix's `slotDir`).
-  slotRoot = "${cfg.stateDir}/slot";
+  slotRoot = "${stateDir}/slot";
   policyFile = name: "${cfg.policyDir}/${policies.policies.${name}.allowlist}";
 
   # The guest is not routable from the root namespace any more, so the human's
@@ -139,7 +144,7 @@
   guestSsh = import ./guest-ssh.nix {inherit lib;};
 
   hostPrograms = import ./programs.nix {
-    inherit pkgs lib net targets capsules rooms policies workBranch injections;
+    inherit pkgs lib net targets capsules rooms policies workBranch injections stateDir;
     access = guestSsh.viaSocket {
       socat = "${pkgs.socat}/bin/socat";
       socket = capsules.socketOf ''"$capsule"'';
@@ -153,6 +158,7 @@
   # is the one thing about a capsule that does not differ between the two paths.
   cli = import ./cli.nix {
     inherit pkgs lib net capsules policies guestSsh;
+    moduleState = stateDir;
     rooms = rooms.instances;
     # Same store path as the devshell's, because it is the same construction from
     # the same values (host/programs.nix) — a status asks a guest one question
@@ -196,7 +202,10 @@
   inherit
     (import ./wrap.nix {
       inherit pkgs lib;
-      paths = {inherit (cfg) stateDir policyDir allowlistDir profileDir;};
+      paths = {
+        inherit stateDir;
+        inherit (cfg) policyDir allowlistDir profileDir;
+      };
     })
     wrap
     ;
@@ -481,6 +490,14 @@ in {
       A target's source is its profile document's `path`: set `path` in
       the target's file under targets/, or export CAPSULE_REPO for a one-off.
     '')
+    # The state root moved out of the module (SL-008, `DEC-054`), so a host
+    # flake that never evaluates this module still reads the root the front end
+    # and the programs use. Held to both halves by `checked`, like `repo`'s.
+    (lib.mkRemovedOptionModule ["services" "capsule-perimeter" "stateDir"] ''
+      The state root is mkFleet's `stateDir` (DEC-054): declare it beside
+      `fleetPath` in the host flake's mkFleet call, so the front end, the
+      programs and this module read one root.
+    '')
   ];
 
   options.services.capsule-perimeter = {
@@ -565,15 +582,6 @@ in {
         person's business. Generated once by hand (README, "Host requirements");
         its public half is in the guest's closure, so replacing it is a guest
         rebuild.
-      '';
-    };
-
-    stateDir = lib.mkOption {
-      type = lib.types.path;
-      default = "/var/lib/capsule";
-      description = ''
-        Holds the quarantine repositories `capsule-collect` fetches into. Owned
-        by `owner`: no service touches it, and nothing else has a reason to.
       '';
     };
   };
@@ -741,7 +749,7 @@ in {
       # repository any more, which is the point of item 18.
       systemd.tmpfiles.rules =
         [
-          "d ${cfg.stateDir} 0750 ${cfg.owner} users -"
+          "d ${stateDir} 0750 ${cfg.owner} users -"
           # Traversable, unlike `stateDir`, because a proxy has to reach its own
           # link and is in neither of that directory's owners. Nothing is in here
           # but the links, which is what makes 0755 cost nothing: a reader learns
@@ -793,8 +801,8 @@ in {
         # A room's trust store: its one known_hosts, which every door to it
         # checks (DEC-047). Every room, with repos or not, because the front
         # end's ssh is a door too (SL-006 design sec-5). The owner's alone.
-        ++ lib.optional (rooms.instances != {}) "d ${rooms.stateRootOf cfg.stateDir} 0750 ${cfg.owner} users -"
-        ++ map (r: "d ${rooms.stateDirOf cfg.stateDir r.name} 0700 ${cfg.owner} users -")
+        ++ lib.optional (rooms.instances != {}) "d ${rooms.stateRootOf stateDir} 0750 ${cfg.owner} users -"
+        ++ map (r: "d ${rooms.stateDirOf stateDir r.name} 0700 ${cfg.owner} users -")
         (lib.attrValues rooms.instances);
 
       # The documents themselves, **installed rather than linked** (NOTES item 52,

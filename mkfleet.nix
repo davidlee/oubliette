@@ -42,14 +42,27 @@
   # Where this host's declarations live. Threaded to the module and read by
   # nothing yet (RV-012 F-11).
   fleetPath,
+  # Where this host keeps its state: assignment records, quarantines, a room's
+  # trust store (DEC-054). A flake argument rather than a module option, so a
+  # host flake that does not evaluate the module still reads the same root.
+  # Required, with no default (POL-003), and refused unless it is a safe
+  # absolute path (state-dir.nix). **Shadowed below** by the checked value, so
+  # the raw one is reachable only as `declared.stateDir`.
+  stateDir,
 } @ declared: let
   system = "x86_64-linux";
   pkgs = nixpkgs.legacyPackages.${system};
   inherit (nixpkgs) lib;
 
+  # The declared root, checked. It throws state-dir.nix's reason wherever it is
+  # read — the module, both front ends, the programs, the probes — and only
+  # there: an output that never reads the root (`fleetCases`, say) still
+  # evaluates, which is fleet.nix's `slotImages` laziness again.
+  stateDir = (import ./state-dir.nix {inherit lib;} declared.stateDir).value;
+
   # The host module, bound once: `hostModule` imports it and `nixosModules` exports it.
   capsulePerimeter = import ./host/services.nix {
-    inherit net targets capsules policies workBranch fleetPath;
+    inherit net targets capsules policies workBranch fleetPath stateDir;
     inherit (access) injections;
     rooms = roomDecision;
   };
@@ -550,7 +563,7 @@
   # `injections`) and, as a key below, the transport programs.nix takes. Only
   # `injections` crosses — never `inherit access` into this call.
   hostPrograms = import ./host/programs.nix {
-    inherit pkgs lib net targets capsules policies workBranch;
+    inherit pkgs lib net targets capsules policies workBranch stateDir;
     inherit (access) injections;
     rooms = roomDecision;
     # The same socket expression the units inject, for the opposite purpose:
@@ -629,6 +642,7 @@
   # of them can be missing.
   capsule-cli = import ./host/cli.nix {
     inherit pkgs lib net capsules policies guestSsh;
+    moduleState = stateDir;
     rooms = roomRecords;
     inherit (hostPrograms) observe observeFragment programVerbs profileVerbs stateRefPrefix volumeRootHelper roomTrust;
   };
@@ -837,6 +851,14 @@
   fleetCases = import ./fleet-cases.nix {
     inherit pkgs lib;
     fleet = import ./fleet.nix;
+  };
+
+  # What `mkFleet` accepts as this host's state root (SL-008 sec-2, DEC-054),
+  # against values that are nobody's. Its subject is the unapplied function, as
+  # `stateDir` above applies it (state-dir-cases.nix).
+  stateDirCases = import ./state-dir-cases.nix {
+    inherit pkgs lib;
+    stateDir = import ./state-dir.nix;
   };
 
   # A room declaration's verdicts (SL-005 sec-2), against fixtures that are no
@@ -1088,7 +1110,7 @@
       declared = lib.filter (p: p.path == parent) dirRules;
       safe = p: p.owner == "root" || p.owner == d.owner;
     in
-      if !(lib.hasPrefix "${cfg.stateDir}/" d.path) || lib.any safe declared
+      if !(lib.hasPrefix "${stateDir}/" d.path) || lib.any safe declared
       then []
       else if declared == []
       then ["${d.path} (owned by ${d.owner}) has no `d ${parent}` rule, so tmpfiles makes ${parent} root:root and then refuses the unsafe path transition into it"]
@@ -1117,20 +1139,35 @@
       lib.filter (n: !(lib.elem (import ./host/proxy-restart.nix n) sudoCommands))
       (lib.filter (lib.hasPrefix "capsule-proxy-") units);
 
-    # The removed `repo` option (SL-001, `DEC-013`), which the fixture above
-    # never sets and so cannot see. A second evaluation of the same host with
-    # the option set — `extendModules`, not a second `nixosSystem` — asked two
-    # things, each under its own `tryEval`: a shim deleted or misnamed makes
-    # reading `options` throw on the unmatched definition, which must read as
-    # that and not as some other eval failure; and `mkRemovedOptionModule`
-    # reports through `config.assertions`, so its message is readable here.
-    withRepo = host.extendModules {
-      modules = [{services.capsule-perimeter.repo = "/set/by/an/old/host";}];
+    # The removed options — `repo` (SL-001, `DEC-013`) and `stateDir` (SL-008,
+    # `DEC-054`) — which the fixture above never sets and so cannot see. A
+    # second evaluation of the same host with the option set — `extendModules`,
+    # not a second `nixosSystem` — asked two things, each under its own
+    # `tryEval`: a shim deleted or misnamed makes reading `options` throw on the
+    # unmatched definition, which must read as that and not as some other eval
+    # failure; and `mkRemovedOptionModule` reports through `config.assertions`,
+    # so its message is readable here, and must name what replaced the option.
+    removed = name: replacement: let
+      withOld = host.extendModules {
+        modules = [{services.capsule-perimeter.${name} = "/set/by/an/old/host";}];
+      };
+      held = r: r.success && r.value;
+    in {
+      readable = held (builtins.tryEval (withOld.options.services.capsule-perimeter ? ${name}));
+      redirected = held (builtins.tryEval (lib.any
+        (a: !a.assertion && lib.hasInfix replacement a.message)
+        withOld.config.assertions));
     };
-    repoReadable = builtins.tryEval (withRepo.options.services.capsule-perimeter ? repo);
-    repoRedirected = builtins.tryEval (lib.any
-      (a: !a.assertion && lib.hasInfix "profile document's `path`" a.message)
-      withRepo.config.assertions);
+    repoRemoved = removed "repo" "profile document's `path`";
+    stateDirRemoved = removed "stateDir" "mkFleet's `stateDir`";
+
+    # The state root is `mkFleet`'s declaration (`DEC-054`) and the module makes
+    # it, the owner's and closed to everyone else. Compared against the binding
+    # this file checked rather than a spelling, so a module that made the old
+    # default where a host declared another root is the one this refuses.
+    stateRootMissing =
+      !(lib.any (d: d.path == stateDir && d.mode == "0750" && d.owner == cfg.owner && d.group == "users")
+        dirRules);
 
     # A room is a guest and not a slot (SL-005 design sec-4, `DEC-036`): it gets
     # the per-guest units — namespace, tap and VMM drop-ins, relay — and none of
@@ -1168,26 +1205,31 @@
     # read from `rooms.stateDirOf`, so the check cannot agree with itself.
     # And the one `capsule-room-git` on PATH is the wrapped one, compared by
     # store path in the condition and never embedded (`installed`'s rule): bare,
-    # its state falls back to `$PWD/.vm/host` (RV-015 F-3, `ISS-004`).
+    # its state falls back to `$PWD/.vm/host` (RV-015 F-3, `ISS-004`). So is the
+    # one `capsule`, around this file's own `capsule-cli`: that one comparison
+    # says the wrapper's `CAPSULE_STATE` default is the declared root *and* that
+    # the module's front end is the devshell's store path (RSK-004).
     cfg = host.config.services.capsule-perimeter;
     roomStateMissing = lib.filter (n:
-      !(lib.any (d: d.path == "${cfg.stateDir}/room/${n}" && d.mode == "0700" && d.owner == cfg.owner && d.group == "users")
+      !(lib.any (d: d.path == "${stateDir}/room/${n}" && d.mode == "0700" && d.owner == cfg.owner && d.group == "users")
         dirRules))
     roomNames;
-    roomGitInstalled =
-      lib.filter (p: (p.pname or p.name or "") == "capsule-room-git")
-      host.config.environment.systemPackages;
-    roomGitWrapped =
-      ((import ./host/wrap.nix {
-          inherit pkgs lib;
-          paths = {inherit (cfg) stateDir policyDir allowlistDir profileDir;};
-        }).wrap "capsule-room-git"
-        hostPrograms.roomGit)
-      .outPath;
-    roomGitIsWrapped =
-      lib.length roomGitInstalled
-      == 1
-      && (lib.head roomGitInstalled).outPath == roomGitWrapped;
+    inherit
+      (import ./host/wrap.nix {
+        inherit pkgs lib;
+        paths = {
+          inherit stateDir;
+          inherit (cfg) policyDir allowlistDir profileDir;
+        };
+      })
+      wrap
+      ;
+    isWrapped = name: program: let
+      found =
+        lib.filter (p: (p.pname or p.name or "") == name)
+        host.config.environment.systemPackages;
+    in
+      lib.length found == 1 && (lib.head found).outPath == (wrap name program).outPath;
 
     # Refused before either derivation is named, so a `nix build` of the
     # programs cannot pass a module whose units are wrong.
@@ -1204,10 +1246,16 @@
       then throw "capsule-perimeter: ${lib.concatStringsSep "; " unparented} (ISS-024)."
       else if unrestartable != []
       then throw "capsule-perimeter: no sudoers rule permits restarting ${lib.concatStringsSep ", " unrestartable}, so `capsule <slot> policy <name>` cannot finish a selection for those slots and will undo it instead (NOTES item 41)."
-      else if !(repoReadable.success && repoReadable.value)
+      else if !repoRemoved.readable
       then throw "capsule-perimeter: with services.capsule-perimeter.repo set, the module's options are unreadable — the removed-option shim for `repo` is gone or misnamed, so a host that still sets it fails on an unknown option instead of being told source is the profile document's `path` (SL-001)."
-      else if !(repoRedirected.success && repoRedirected.value)
+      else if !repoRemoved.redirected
       then throw "capsule-perimeter: with services.capsule-perimeter.repo set, no assertion names the profile document's `path` — the removed-option shim for `repo` no longer says what replaced it (SL-001)."
+      else if !stateDirRemoved.readable
+      then throw "capsule-perimeter: with services.capsule-perimeter.stateDir set, the module's options are unreadable — the removed-option shim for `stateDir` is gone or misnamed, so a host that still sets it fails on an unknown option instead of being told the root is mkFleet's `stateDir` (DEC-054)."
+      else if !stateDirRemoved.redirected
+      then throw "capsule-perimeter: with services.capsule-perimeter.stateDir set, no assertion names mkFleet's `stateDir` — the removed-option shim for `stateDir` no longer says what replaced it (DEC-054)."
+      else if stateRootMissing
+      then throw "capsule-perimeter: no tmpfiles `d ${stateDir} 0750 <owner> users` — the module does not make the state root mkFleet declares (DEC-054)."
       else if roomUnitsMissing != []
       then throw "capsule-perimeter: room(s) ${lib.concatStringsSep ", " roomUnitsMissing} have no capsule-netns, capsule-ssh-relay, microvm@ or microvm-tap-interfaces@ unit — a room is a guest, and those units are built over guests (SL-005 design sec-4, DEC-036)."
       else if roomOnAggregator != []
@@ -1218,8 +1266,10 @@
       then throw "capsule-perimeter: the ssh relay of room(s) ${lib.concatStringsSep ", " roomRelayElsewhere} does not listen on the room's own socket under RuntimeDirectory capsule-room/<name> — a room's door is its record's (SL-005 design sec-4)."
       else if roomStateMissing != []
       then throw "capsule-perimeter: room(s) ${lib.concatStringsSep ", " roomStateMissing} have no tmpfiles `d <stateDir>/room/<name> 0700 <owner> users` — that is the room's one known_hosts, which every door to it checks (SL-006 design sec-5, DEC-047)."
-      else if !roomGitIsWrapped
+      else if !(isWrapped "capsule-room-git" hostPrograms.roomGit)
       then throw "capsule-perimeter: the module does not install exactly one capsule-room-git, wrapped (host/wrap.nix) around the same program `hostPrograms.roomGit` builds — bare, its quarantine and known_hosts fall back to $PWD/.vm/host and its profiles to the store's (RV-015 F-3, ISS-004)."
+      else if !(isWrapped "capsule" capsule-cli)
+      then throw "capsule-perimeter: the module does not install exactly one capsule, wrapped (host/wrap.nix) with mkFleet's `stateDir` around the same `capsule-cli` the devshell carries — either its CAPSULE_STATE default is not the declared root or its front end is a second store path (DEC-054, RSK-004)."
       else drv;
   in {
     units = checked (pkgs.writeText "capsule-units.txt" ''
@@ -1556,7 +1606,7 @@
   # a run-time argument now. `socat` is bare here: a probe has it in
   # `runtimeInputs`, where a unit has no PATH to trust.
   nsPrograms = import ./host/programs.nix {
-    inherit pkgs lib net targets capsules policies workBranch;
+    inherit pkgs lib net targets capsules policies workBranch stateDir;
     inherit (access) injections;
     rooms = roomDecision;
     access = guestSsh.viaSocket {
@@ -1784,7 +1834,7 @@ in {
       # The checks that need no root and no host: what the module says, what the
       # guard decides, and which policy a slot resolves to.
       inherit hostModuleUnits hostModulePrograms guardCases netnsCases policyCases observeCases;
-      inherit profileCases gitChannelCases roomGitCases quarantineCases vmCases wrapCases volumeRootCases resetHomeCases sessionCases volumeCases fleetCases roomsCases fabricCases roomVerbsCases;
+      inherit profileCases gitChannelCases roomGitCases quarantineCases vmCases wrapCases volumeRootCases resetHomeCases sessionCases volumeCases fleetCases stateDirCases roomsCases fabricCases roomVerbsCases;
       # Every declared room's image, checked and built (RV-014 F-7).
       inherit roomImages;
       # The rendered run-time half of every target, so a human can read what a

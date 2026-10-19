@@ -34,9 +34,11 @@ in one slot.
 
 3. **Say where things are.** In `targets/doctrine.nix`, set `path` to your
    checkout of doctrine (the same repo as `inputs.doctrine` in `flake.nix`). In
-   `flake.nix`, set `fleetPath` to this checkout's absolute path, and put your
-   own public key in `access.adminKeys` if you want to log into a guest as root
-   — it is empty, so nobody can.
+   `flake.nix`, set `fleetPath` to this checkout's absolute path and `stateDir`
+   to where this host keeps its state (`/var/lib/capsule` unless you have a
+   reason; an absolute path over `[A-Za-z0-9._+/-]`, refused at eval otherwise),
+   and put your own public key in `access.adminKeys` if you want to log into a
+   guest as root — it is empty, so nobody can.
 
 4. **Lock it** against published inputs only — never a `git+file` override,
    which writes a local path into the lock:

@@ -84,13 +84,16 @@
   # `quarantineOf` tries. The literal is the *devshell* copy's guess at where the
   # module put things, and the record's root on both.
   #
-  # **An argument with a default, and every real call site takes the default** —
-  # so both copies are still one store path, and no run-time value can move a
-  # record (CLAUDE.md: `CAPSULE_STATE` moves the quarantine and not the record,
-  # deliberately, since a record for a devshell capsule would describe a slot that
-  # does not exist). It is an argument for the reason `host/guard.nix`'s `tools`
-  # is: the one thing tying this program to this host is what a case suite has to
-  # substitute, and `policyCases` in mkfleet.nix is what does.
+  # **Every real call site passes `mkFleet`'s `stateDir`** (DEC-054), the one
+  # declared root — so both copies are still one store path, because both are
+  # built from the same value, and no run-time value can move a record
+  # (CLAUDE.md: `CAPSULE_STATE` moves the quarantine and not the record,
+  # deliberately, since a record for a devshell capsule would describe a slot
+  # that does not exist). Spliced unquoted below, which is safe only because
+  # state-dir.nix refuses anything but a plain absolute path. The default is a
+  # seam for suites and nothing else: it is an argument for the reason
+  # `host/guard.nix`'s `tools` is, since the one thing tying this program to this
+  # host is what a case suite has to substitute, and `policyCases` is what does.
   moduleState ? "/var/lib/capsule",
   # microvm.nix's state directory. A created VM tracks it rather than the flake
   # (CLAUDE.md), and its `tap-up` is what both `microvm@<name>` and the tap unit

@@ -75,6 +75,13 @@
   # `instances` is forced, so a program here still names no room. Threaded for
   # `policies`' reason: three call sites build this set.
   rooms,
+  # Where this host keeps its state (`mkFleet`'s `stateDir`, DEC-054), already
+  # checked by state-dir.nix. Only the volume root helper reads it, for where a
+  # slot's scrub marker sits. Required rather than defaulted (POL-003), and
+  # threaded for `policies`' reason: three call sites build this set, and a root
+  # each of them looked up separately is a root one of them can look up
+  # differently.
+  stateDir,
 }: let
   inherit (access) transport selectCapsule;
 
@@ -260,8 +267,13 @@ in {
   # front end reaches by store path and never off `PATH`. No transport and no
   # target, so both of this file's callers build the same store path; it is
   # here for `observe`'s reason, that a thing built at each of `capsule-cli`'s
-  # call sites is a thing one of them can build differently.
-  volumeRootHelper = import ./volume-root.nix {inherit pkgs lib capsules;};
+  # call sites is a thing one of them can build differently. Handed the declared
+  # root, so no shipped copy reaches its `moduleState` default, which is a seam
+  # for `volumeRootCases` alone.
+  volumeRootHelper = import ./volume-root.nix {
+    inherit pkgs lib capsules;
+    moduleState = stateDir;
+  };
 
   # Everything the front end needs to *build* that program's command line, as one
   # fragment (NOTES item 51 step 4): the profile reader, the record convention

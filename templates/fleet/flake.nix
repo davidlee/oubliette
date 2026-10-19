@@ -177,5 +177,11 @@
       # nothing yet (RV-012 F-11); it is where the module's policy allowlists
       # (`policies.dir` under it) are meant to be found.
       fleetPath = "/srv/fleet";
+
+      # Where this host keeps its state — assignment records, quarantines, each
+      # room's known_hosts — as an absolute path over [A-Za-z0-9._+/-]; anything
+      # else is refused at eval. Read by the front end, the programs and the
+      # host module alike, which has no option for it (DEC-054).
+      stateDir = "/var/lib/capsule";
     };
 }
