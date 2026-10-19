@@ -1,0 +1,18 @@
+schema = "doctrine.observation"
+schema_version = 1
+uid = "01a154d1-522e-7120-b1e1-1f6259fdd590"
+recorded_at = "2026-10-19T15:39:26.638641191Z"
+kind = "friction"
+summary = "revision new has no body input; REV prose needs a raw file edit"
+detail = "SL-008 PHASE-04 worker: doctrine revision new takes no --body, so the REV-008 before/after prose was appended directly to .doctrine/revision/008/revision-008.md at the path revision paths gives. revision new also printed 'revision 008' in a form the worker misread as REV-005 at first, and the wrong id was written into DEC-058 before being corrected."
+
+[facets.execution]
+schema_version = 1
+interface = "cli"
+interface_origin = "automatic"
+product_surface = "doctrine"
+product_surface_origin = "automatic"
+command = "observation record"
+command_origin = "automatic"
+repository_context = "primary"
+repository_context_origin = "automatic"

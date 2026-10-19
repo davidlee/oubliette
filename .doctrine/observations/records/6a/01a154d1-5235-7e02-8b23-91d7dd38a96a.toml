@@ -1,0 +1,18 @@
+schema = "doctrine.observation"
+schema_version = 1
+uid = "01a154d1-5235-7e02-8b23-91d7dd38a96a"
+recorded_at = "2026-10-19T15:39:26.645475842Z"
+kind = "friction"
+summary = "a DEC may not author a related link"
+detail = "SL-008 plan PHASE-04 said to relate DEC-037/DEC-047 to DEC-056/DEC-057 via doctrine link ... related; refused (DEC labels: references, shapes, spawns, governed_by). Worker used references --role concerns instead."
+
+[facets.execution]
+schema_version = 1
+interface = "cli"
+interface_origin = "automatic"
+product_surface = "doctrine"
+product_surface_origin = "automatic"
+command = "observation record"
+command_origin = "automatic"
+repository_context = "primary"
+repository_context_origin = "automatic"
