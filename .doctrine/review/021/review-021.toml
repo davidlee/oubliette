@@ -1,0 +1,81 @@
+id    = 21
+slug  = "critical-review-of-rfc-001-offline-dependency-contract-and-deferred-setup-boundary"
+title = "Critical review of RFC-001: offline dependency contract and deferred setup boundary"
+# no status — a review's status is DERIVED from its findings, so
+# it is never stored (the storage rule forbids derived data in authored files).
+
+[review]
+facet     = "code-review"     # scope|design|plan|phase-plan|implementation|code-review|reconciliation
+raiser    = "raiser"
+responder = "responder"
+rounds_base = 0
+contests_base = 0
+concluded = true
+
+[[review.turn]]
+act = "conclude"
+role = "raiser"
+note = "Reviewed RFC-001 and POL-005 against room/session source and the three surveyed repos. Raised three source-backed findings: the deferred E scratch-volume return channel, the accepted lockfile-only drift guard, and the incomplete malebolge development-tree evidence. No builds, evaluations, installs or live guest probes; security and drift failure scenarios are deductions, not executed demonstrations. This concludes the reviewer pass; findings are left for responder disposition rather than treated as repaired or accepted."
+
+[target]                   # the outbound `reviews` edge: RV-NNN ──reviews──▶ <ref>
+ref   = "RFC-001"
+
+[[finding]]
+id = "F-1"
+status = "answered"
+severity = "major"
+title = "E needs a fresh host-controlled transfer boundary; its shared scratch disk carries room data into egress"
+detail = "Expected: the deferred escape hatch preserves P1 even after arbitrary code has run in the sealed room. Observed: RFC-001 lines 163-188 attaches the same /setup scratch volume in room mode and later in the networked setup boot, but calls its contents public packages/manifests and says a fetcher exploit finds nothing to take. Nothing requires that volume to be read-only in room mode, discarded before setup, or replaced from host-controlled inputs. Room code can stage private repo/home data there; a later compromised fetcher (expressly within E's residual-risk model), including guest root, can read and transmit it. Detaching /home and /work does not eliminate this persistent channel. This is a verified omission in the design; the exploit scenario is inferred, not executed. Repair: make each networked setup use fresh scratch with no room-writable predecessor, transfer outputs only after egress is gone, and recreate/discard that scratch before any subsequent networked boot. If caching is retained, specify how room-written blocks can never reenter a networked guest, including failed runs/retries. Amend E's safety claims before treating it as POL-005's safe fallback. E is deferred, so this is major rather than a current-policy blocker."
+disposition = "fix-now"
+response = "Correct: E's step 3 attached /setup in room mode and then reattached it to the next setup boot, so a room-written block could reach a guest with egress. The claim that a fetcher exploit finds nothing to take was false. Integrated in RFC-001 E: every setup boot gets a fresh, host-created scratch volume. The result goes one way, into the room, read-only at the drive. The host discards the image before the next networked boot. A cache retained across setups is excluded unless separately argued, including retry and failure paths. The residual-risk paragraph and the P2 row are corrected, and POL-005's escape-hatch description now names the fresh scratch. E remains deferred; today's sealed-room policy is unaffected. Not exercised."
+
+[[finding.turn]]
+act = "raise"
+role = "raiser"
+
+[[finding.turn]]
+act = "dispose"
+role = "responder"
+disposition = "fix-now"
+response = "Correct: E's step 3 attached /setup in room mode and then reattached it to the next setup boot, so a room-written block could reach a guest with egress. The claim that a fetcher exploit finds nothing to take was false. Integrated in RFC-001 E: every setup boot gets a fresh, host-created scratch volume. The result goes one way, into the room, read-only at the drive. The host discards the image before the next networked boot. A cache retained across setups is excluded unless separately argued, including retry and failure paths. The residual-risk paragraph and the P2 row are corrected, and POL-005's escape-hatch description now names the fresh scratch. E remains deferred; today's sealed-room policy is unaffected. Not exercised."
+
+[[finding]]
+id = "F-2"
+status = "answered"
+severity = "major"
+title = "The accepted drift guard checks the lockfile but misses changed dependency manifests"
+detail = "Expected: option A's refusal prevents a room's mutable checkout from silently using dependencies built for a different dependency specification. Observed: RFC-001 lines 251-252 specifies only embedding/comparing the lockfile hash. A room user can edit package.json to add/change a dependency while leaving bun.lock/package-lock.json untouched, a normal intermediate state of development. The proposed check still succeeds against the old exported tree. Because POL-005 forbids the install that would otherwise reconcile or reject that state, the recipe can use stale dependencies or report missing tools instead of the promised drift refusal. This is a design deduction from the specified equality predicate; no new guard exists here to execute. Repair: define a per-repo fingerprint over all dependency-defining inputs, at least manifests and lockfiles, plus workspace manifests, patches/configuration where relevant. Bind that fingerprint to the exported tree and check it before every consuming recipe. Add a negative verification case where only package.json changes. Keep this repo agnostic by making the producer and verifier the consuming repo's responsibility."
+disposition = "fix-now"
+response = "Correct: a lockfile-only hash misses a manifest edit made without relocking, and POL-005 removes the install that would otherwise catch it. Integrated: RFC-001's Outcome drift guard is now a repo-owned fingerprint over every input that determines the tree (manifests, lockfiles, workspace manifests, patches, package-manager config), bound into the output and checked before use, with the manifest-only change as the negative case to verify. The same class was swept in E's staleness record (item 4, open question 8), POL-005's statement, docs/contract-target.md's dependencies row, doctrine IMP-519 item 3 and malebolge IMP-001 item 4. Oubliette learns no package-manager detail. No guard implemented or run."
+
+[[finding.turn]]
+act = "raise"
+role = "raiser"
+
+[[finding.turn]]
+act = "dispose"
+role = "responder"
+disposition = "fix-now"
+response = "Correct: a lockfile-only hash misses a manifest edit made without relocking, and POL-005 removes the install that would otherwise catch it. Integrated: RFC-001's Outcome drift guard is now a repo-owned fingerprint over every input that determines the tree (manifests, lockfiles, workspace manifests, patches, package-manager config), bound into the output and checked before use, with the manifest-only change as the negative case to verify. The same class was swept in E's staleness record (item 4, open question 8), POL-005's statement, docs/contract-target.md's dependencies row, doctrine IMP-519 item 3 and malebolge IMP-001 item 4. Oubliette learns no package-manager detail. No guard implemented or run."
+
+[[finding]]
+id = "F-3"
+status = "answered"
+severity = "minor"
+title = "The survey's export-only cost omits malebolge's missing development dependency tree"
+detail = "Expected: the evidence for 'cost ... exporting what exists, plus a recipe per repo' (RFC-001 lines 235-242) covers the motivating commands, including malebolge just check (lines 20-22). Observed: /home/david/dev/malebolge/flake.nix:43-48 explicitly runs npm prune --omit=dev before copying its runner node_modules; lines 58-60 exports dev-tools from a tool list containing node and just, not its npm development tools. Its justfile:2-15 runs biome, eslint, tsc and vitest, all listed as devDependencies in package.json. The RFC acknowledges 'production dependencies only' but still treats this as an export-only adoption. Exporting the existing final runner tree cannot satisfy those commands. Verified by source inspection, not by a build or live command. Repair: qualify the survey as reusable packaging machinery rather than a complete existing tree, and require a full development-dependency output for malebolge with the actual just check path as the acceptance command. This does not overturn choosing A; it corrects the evidence and scope used to justify its cost."
+disposition = "fix-now"
+response = "Correct: the cost estimate overclaimed. Malebolge's tree prunes the development dependencies just check runs, so exporting it fixes nothing. The mechanism exists; the artefact does not. Integrated: RFC-001's Outcome and POL-005's Rationale now say the mechanism exists in all three repos, and malebolge needs a second output, a complete development tree. malebolge IMP-001 already asked for that tree and now names its acceptance: just check passes in a sealed room, from a clean checkout and over an existing tree. Source inspection only."
+
+[[finding.turn]]
+act = "raise"
+role = "raiser"
+
+[[finding.turn]]
+act = "dispose"
+role = "responder"
+disposition = "fix-now"
+response = "Correct: the cost estimate overclaimed. Malebolge's tree prunes the development dependencies just check runs, so exporting it fixes nothing. The mechanism exists; the artefact does not. Integrated: RFC-001's Outcome and POL-005's Rationale now say the mechanism exists in all three repos, and malebolge needs a second output, a complete development tree. malebolge IMP-001 already asked for that tree and now names its acceptance: just check passes in a sealed room, from a clean checkout and over an existing tree. Source inspection only."
+
+# Findings are append-only `[[finding]]` tables, added by `review raise`.
+# Empty here at creation — a fresh review is Active, awaiting the raiser.

@@ -358,7 +358,7 @@ supplies back is not the table above:
 | user | the room's declared `repos.user`, not `agent` uid 1000 |
 | tools | `session <repo> -- <cmd>` puts this target's `toolsPackage` first, then the room's base `/etc/room/base` (floor `git bash coreutils-full which` plus the room's declared `extras`, `DEC-052`), then the caller's `PATH`, and `cd`s into the clone (`DEC-049`); the base is also on a login's `PATH`, the tool set never is |
 | egress | none: no proxy and no route, and nothing is fetched at run time (`POL-005`) |
-| dependencies | language-package dependencies (`node_modules`, gems, a Python environment) are the repo's flake output, fixed by its lockfile and reached through `toolsPackage`; putting them into the clone is the repo's own recipe, and a dependency change is made outside the room |
+| dependencies | language-package dependencies (`node_modules`, gems, a Python environment) are the repo's flake output, fixed by its lockfile and manifests and reached through `toolsPackage`; putting them into the clone is the repo's own recipe, which refuses when the clone's dependency inputs differ from those the tree was built from, and a dependency change is made outside the room |
 | proposals | `capsule <room> collect <repo> <branch>` lands in the room's quarantine for that repo, never in the real repo (`DEC-040`) |
 
 ## Commands and arguments at the boundary

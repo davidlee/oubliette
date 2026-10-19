@@ -4,7 +4,8 @@
 
 **A room has no egress, and nothing a room repo needs is fetched at run time.**
 A room repo's language-package dependencies (`node_modules`, a gem set, a
-Python environment) are **its flake's output, fixed by its lockfile**, and the
+Python environment) are **its flake's output, fixed by its lockfile and
+manifests**, and the
 room reaches them through the repo's `toolsPackage` like any other tool.
 
 Three limbs:
@@ -38,10 +39,12 @@ repos surveyed on 2026-10-19:
 
 - doctrine already builds `web/map`'s `node_modules` as a fixed-output
   derivation (`webModules`);
-- malebolge already builds its production `node_modules` (`buildNpmPackage`);
+- malebolge already builds its production `node_modules` (`buildNpmPackage`),
+  but prunes the development dependencies its `just check` runs;
 - www's Ruby set is already `bundlerEnv` over `gemset.nix`.
 
-So the cost is exporting what exists, not building a mechanism. It is also the
+So the mechanism exists. The cost is exporting it, plus one new artefact:
+malebolge's complete development tree (`RV-021` F-3). It is also the
 floor rule already in force (`docs/contract-flavour.md`): a tool the project
 builds or tests with belongs in that repo's flake, so the room cannot drift
 from the repo's devshell.
@@ -60,7 +63,8 @@ installing from a registry through it remains supported.
 
 **Revisit** if a repo's ecosystem cannot be packaged as a flake output, or if
 dependency churn inside the room makes limb 3's round-trip the dominant cost.
-`RFC-001`'s option E (a setup boot that attaches none of the room's volumes) is
+`RFC-001`'s option E (a setup boot that attaches none of the room's volumes,
+only a scratch volume made fresh for each setup boot) is
 the recorded escape hatch. Adopting it supersedes this policy and `DEC-036`.
 
 ## Verification
