@@ -92,8 +92,13 @@ the choice away from the party that bears it. satan:SL-027 decides for
   /work/doctrine log` was refused ("dubious ownership") and succeeded with
   `-c safe.directory=/work/doctrine`; `touch` in the clone and in its `.git`
   and `git commit` (`index.lock`) were denied; `ls /home/agent` was denied.
-- **Not yet exercised:** a patch job on a repo beside a reader (prepare, run,
-  collect as `agent`). That is the last check before this resolves.
+- A patch job as `agent` beside the reader: `pj-01M5ADS4JDE7HJQZMZ5QC50ZAX`
+  on `doctrine`, base `edge`, started 02:51:43 AEDT after the 02:44:58
+  restart, prepared its branch in the `0750 repos-read` clone, ran, and
+  collected one commit (`529b79f`) to the quarantine at
+  `refs/capsule/assistant/heads/job/pj-01M5ADS4JDE7HJQZMZ5QC50ZAX`
+  (read back from `collect/assistant/doctrine.git`); state `needs_review`,
+  class complete.
 
 ## Links
 
