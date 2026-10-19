@@ -20,7 +20,7 @@ intent = "design-target"
 
 [[selector]]
 selector = "rooms.nix"
-intent = "scope-relevant"
+intent = "design-target"
 
 [[selector]]
 selector = "mkfleet.nix"
@@ -53,6 +53,7 @@ intent = "design-target"
 [[selector]]
 selector = "host/volume-root.nix"
 intent = "design-target"
+note = "no diff intended: unchanged text, now passed moduleState (design sec-8; RV-024 F-4)"
 
 [[selector]]
 selector = "host/programs.nix"
@@ -83,23 +84,11 @@ selector = "host/room-client-cases.nix"
 intent = "design-target"
 
 [[selector]]
-selector = "fleet.nix"
-intent = "design-target"
-
-[[selector]]
-selector = "host/fleet-cases.nix"
-intent = "design-target"
-
-[[selector]]
 selector = "host/room-verbs-cases.nix"
 intent = "design-target"
 
 [[selector]]
 selector = "host/room-git-cases.nix"
-intent = "design-target"
-
-[[selector]]
-selector = "host/wrap-cases.nix"
 intent = "design-target"
 
 [[selector]]
@@ -128,6 +117,38 @@ intent = "design-target"
 
 [[selector]]
 selector = "CLAUDE.md"
+intent = "design-target"
+
+[[selector]]
+selector = "state-dir.nix"
+intent = "design-target"
+
+[[selector]]
+selector = "state-dir-cases.nix"
+intent = "design-target"
+
+[[selector]]
+selector = "host/fixture-sshd.nix"
+intent = "design-target"
+
+[[selector]]
+selector = "rooms-cases.nix"
+intent = "design-target"
+
+[[selector]]
+selector = "justfile"
+intent = "design-target"
+
+[[selector]]
+selector = "docs/contract-target.md"
+intent = "design-target"
+
+[[selector]]
+selector = "templates/fleet/README.md"
+intent = "design-target"
+
+[[selector]]
+selector = "host/record.nix"
 intent = "design-target"
 
 [[relation]]

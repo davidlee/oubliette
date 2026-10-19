@@ -109,3 +109,34 @@ Fixing it needs this repo pushed and that lock bumped, which is the user's step.
   known_hosts", since volumes live under `microvms`. DEC-058 gets a dated
   amendment line in its record body making the same correction. Its decision is
   unchanged.
+
+## Reconciliation Outcome
+
+User agreement for every item below: "agreed" (2026-10-20), given to the
+proposal that listed E1 to E8, the selector changes and the REV.
+
+### Direct edits applied
+- design.md sec-1 diagram: `state-dir.nix` line; `doorRootOf` added to rooms.nix (F-4).
+- design.md sec-2: canonical-form rule; refused wherever read; the refusal lives in `state-dir.nix`, pinned by `stateDirCases` (F-2).
+- design.md sec-3: socat built in host/programs.nix and passed to room-door.nix (F-4).
+- design.md sec-5:
+  - case 6 rewritten as its two delivered halves, `roomGitCases` and `roomClientCases`, on `host/fixture-sshd.nix` (F-3);
+  - the call-site mutation is attributed to `roomGitCases`;
+  - the `roomVerbsCases`/`roomGitCases` bullet says what each gained (F-3);
+  - the `fleetCases` bullet is now `stateDirCases`, with the delivered values and F-12's unpinned absent argument (F-2).
+- design.md sec-8: the `fleet.nix`/`fleet-cases.nix` row is gone and `wrap-cases.nix` is dropped from its row; there are rows for `state-dir*.nix`, `host/fixture-sshd.nix`, `rooms.nix`/`rooms-cases.nix`, `justfile`, `docs/contract-target.md`/`templates/fleet/README.md` and `host/record.nix` (F-4).
+- Selector registry (F-4):
+  - removed `fleet.nix`, `host/fleet-cases.nix` and `host/wrap-cases.nix`;
+  - added nine `design-target` selectors;
+  - `host/volume-root.nix` noted as "no diff intended".
+- Conformance afterwards: one undelivered path, `host/volume-root.nix` (by design, noted). Undeclared paths are only `.doctrine/` records and `slice-008.md`.
+
+### REVs completed
+- REV-009 (`reconcile-sl-008`): done. Its one `modify POL-003` row was hand-landed: the state-root row no longer says volumes. DEC-058 has a dated amendment line (F-5). The narrative is in revision-009.md.
+
+### Fix-now, follow-up, tolerated
+- F-1, F-6, F-7, F-8, F-10, F-11: fixed during the audit (3971bc3).
+- F-9 is IMP-024 and F-13 is IMP-025.
+- F-12 is tolerated, with its rationale in the disposition.
+
+Reconcile pass complete; handoff to /close.
