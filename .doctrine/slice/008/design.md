@@ -195,14 +195,18 @@ reaches a live room; that is the consumer's reach rung.
   6. **Both doors against a fixture sshd** (RV-023 F-5). An unprivileged
      `sshd -i` behind `socat UNIX-LISTEN:<fixture socket>` serves as the room.
      The 2026-10-20 spike showed `accept-new` writes the key and auth then fails
-     with `Permission denied`. The fixture builds the bundle and the channel
-     over the fixture socket through the same seam `roomGitCases` uses
-     (`roomGitOf`, mkfleet.nix:715-722), with the state root from the fixture's
-     declaration. Three steps:
+     with `Permission denied`. A sandboxed build cannot write `/var/lib/capsule`
+     (RV-023 F-8). So case 6 builds a **fixture** bundle and a **fixture**
+     channel from the shipped builders: `room-client.nix`'s per-room function,
+     and `roomGitOf` (the seam `roomGitCases` uses, mkfleet.nix:715-722). Both
+     take `stateDir = "/build/state"` (the Linux sandbox's build directory) and
+     a socket under it, and the case first asserts that both name that root. The
+     suite's header says it is handed a fixture. Cases 1–5 keep the shipped
+     bundle, since `ssh -G` touches no filesystem. Three steps:
      - (a) The bundle's `ssh` before any push: `Host key verification failed`,
        and `known_hosts` absent or empty.
-     - (b) The **shipped** `capsule-room-git push` (or the fixture-socket
-       build of it): an entry `room-<r> ssh-ed25519 …` lands in
+     - (b) The fixture channel's `push`, built from the shipped program text:
+       an entry `room-<r> ssh-ed25519 …` lands in
        `$state/room/<r>/known_hosts`, and nothing lands elsewhere.
      - (c) The bundle's `ssh` again: `Permission denied`. The key was accepted
        and auth was refused, which is as far as a client with no identity gets.

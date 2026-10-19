@@ -10,6 +10,12 @@ raiser    = "gpt-6-sol"
 responder = "responder"
 rounds_base = 0
 contests_base = 0
+concluded = true
+
+[[review.turn]]
+act = "conclude"
+role = "raiser"
+note = "Two gpt-6-sol passes via codex, read-only, 2026-10-20: adversarial review of design.md rev 19 against the touched code, pi-env and runner.nix (six findings), then a verification pass of rev 25 (five resolved, F-5 partial, F-8 raised). F-5 and F-8 are answered by rev 27's sec-5 and not re-verified by the raiser."
 
 [target]                   # the outbound `reviews` edge: RV-NNN ──reviews──▶ <ref>
 ref   = "SL-008"
@@ -32,7 +38,7 @@ note = "placeholder raised while probing the CLI's argument handling; not a find
 
 [[finding]]
 id = "F-2"
-status = "answered"
+status = "verified"
 severity = "major"
 title = "Global host keys can defeat the promised first-contact refusal"
 detail = "optionsOf sets UserKnownHostsFile but not GlobalKnownHostsFile (design sec-3). sec-4 promises refusal before the first push and after forget-host-key. pi-env sets GlobalKnownHostsFile=none (pi-env dist/ssh.js:67); plain ssh -F does not: ssh -G -F /dev/null lists /etc/ssh/ssh_known_hosts*. Fix: GlobalKnownHostsFile none for clients; decide for oubliette's doors; assert in the suite."
@@ -49,9 +55,14 @@ role = "responder"
 disposition = "fix-now"
 response = "Verified: ssh -G -F /dev/null resolves globalknownhostsfile /etc/ssh/ssh_known_hosts /etc/ssh/ssh_known_hosts2. optionsOf gains GlobalKnownHostsFile none for every door, oubliette's included: DEC-047 says every door checks one store, and today's door words silently also consult the global files. roomClientCases case 1 asserts globalknownhostsfile none on both renders."
 
+[[finding.turn]]
+act = "verify"
+role = "raiser"
+note = "gpt-6-sol verification pass 2026-10-20 judged it resolved in design.md (rev 25)"
+
 [[finding]]
 id = "F-3"
-status = "answered"
+status = "verified"
 severity = "major"
 title = "A jail can fail to start before any room relay has started"
 detail = "Binds /run/capsule-room (sec-4), but only each relay's nested RuntimeDirectory creates it, at service start (host/services.nix:335); tmpfiles makes the state dir, not the /run parent (services.nix:793). Fix: create /run/capsule-room at boot; test jail start before the first relay start."
@@ -68,9 +79,14 @@ role = "responder"
 disposition = "fix-now"
 response = "Verified from services.nix:335 and :793: nothing makes /run/capsule-room except a relay start. The module gains a tmpfiles rule d <dirOf (dirOf (socketOf r))> 0755 root root, emitted once when rooms exist and derived from socketOf (no new spelling); hostModuleUnits pins it. A jail started before any relay then binds an existing empty directory and sees each room's door appear and disappear under it."
 
+[[finding.turn]]
+act = "verify"
+role = "raiser"
+note = "gpt-6-sol verification pass 2026-10-20 judged it resolved in design.md (rev 25)"
+
 [[finding]]
 id = "F-4"
-status = "answered"
+status = "verified"
 severity = "major"
 title = "The new stateDir accepts shell syntax that its readers execute"
 detail = "The eval refusal checks only absoluteness, whitespace and % (sec-2). /tmp/$(id) passes, then enters generated shell unquoted at host/cli.nix:937 (recordRoot=${moduleState}) and host/volume-root.nix:76. Fix: escape at every insertion, keep the ssh refusal, add hostile-path cases for the shipped CLI and root helper."
@@ -86,6 +102,11 @@ act = "dispose"
 role = "responder"
 disposition = "fix-now"
 response = "Verified: cli.nix:937 and volume-root.nix:76 splice moduleState unquoted. Different fix from the proposal: the eval refusal narrows stateDir to an absolute path over [A-Za-z0-9._+/-] with no '..' component. That one check covers the ssh concerns (whitespace, %) and every shell insertion, current and future, instead of escaping at each site. fleetCases pins the refusal and its reason for $(…), a space, %, a relative path and '..'. The seams' shell-expression form for suites is unchanged."
+
+[[finding.turn]]
+act = "verify"
+role = "raiser"
+note = "gpt-6-sol verification pass 2026-10-20 judged it resolved in design.md (rev 25)"
 
 [[finding]]
 id = "F-5"
@@ -108,7 +129,7 @@ response = "Verified (room-git.nix:224-228; room-git-cases.nix:18). Spike 2026-1
 
 [[finding]]
 id = "F-6"
-status = "answered"
+status = "verified"
 severity = "minor"
 title = "room-door.nix lacks its state-path dependency"
 detail = "Inputs are {lib, guestSsh, socat} yet knownHostsOf calls stateDirOf (sec-3), which comes from rooms.nix (rooms.nix:185) and is passed explicitly today (host/programs.nix:223). Fix: pass rooms.stateDirOf in."
@@ -125,9 +146,14 @@ role = "responder"
 disposition = "fix-now"
 response = "Accepted: room-door.nix takes stateDirOf (rooms.stateDirOf) as an argument."
 
+[[finding.turn]]
+act = "verify"
+role = "raiser"
+note = "gpt-6-sol verification pass 2026-10-20 judged it resolved in design.md (rev 25)"
+
 [[finding]]
 id = "F-7"
-status = "answered"
+status = "verified"
 severity = "minor"
 title = "The state-root move leaves a stale contract statement"
 detail = "docs/contract-assignment.md:63 says <state> falls back to the module's /var/lib/capsule; DEC-054 makes mkFleet's stateDir its home. Fix: revise the row's state-root definition in the same edit, keeping the CAPSULE_STATE override."
@@ -143,6 +169,30 @@ act = "dispose"
 role = "responder"
 disposition = "fix-now"
 response = "Accepted: sec-6 revises contract-assignment.md:63's state-root definition to mkFleet's stateDir, keeping the CAPSULE_STATE override."
+
+[[finding.turn]]
+act = "verify"
+role = "raiser"
+note = "gpt-6-sol verification pass 2026-10-20 judged it resolved in design.md (rev 25)"
+
+[[finding]]
+id = "F-8"
+status = "answered"
+severity = "major"
+title = "Case 6 needs a writable state root inside the build sandbox"
+detail = "sec-5 case 6 uses the fixture's declared /var/lib/capsule (mkfleet.nix:715 seam), which a sandboxed build cannot create or write (/etc/nix/nix.conf:11, sandbox on, no extra paths). Fix: a suite fixture rooted under /build shared by the bundle and the fixture channel; assert both name that root. Verification pass also judged F-2, F-3, F-4, F-6, F-7 resolved and F-5 partial pending this."
+disposition = "fix-now"
+response = """Accepted. Cases 1-5 keep the shipped bundle (ssh -G touches no filesystem, so the declared /var/lib/capsule is fine). Case 6 builds a fixture bundle and a fixture channel from the shipped builders (room-client.nix's per-room function and roomGitOf) with stateDir = "/build/state" (Linux sandbox-build-dir default /build) and the socket under it; it asserts both name that root before driving them. The suite's header says it is handed a fixture, per CLAUDE.md. Resolves F-5's remaining part."""
+
+[[finding.turn]]
+act = "raise"
+role = "raiser"
+
+[[finding.turn]]
+act = "dispose"
+role = "responder"
+disposition = "fix-now"
+response = """Accepted. Cases 1-5 keep the shipped bundle (ssh -G touches no filesystem, so the declared /var/lib/capsule is fine). Case 6 builds a fixture bundle and a fixture channel from the shipped builders (room-client.nix's per-room function and roomGitOf) with stateDir = "/build/state" (Linux sandbox-build-dir default /build) and the socket under it; it asserts both name that root before driving them. The suite's header says it is handed a fixture, per CLAUDE.md. Resolves F-5's remaining part."""
 
 # Findings are append-only `[[finding]]` tables, added by `review raise`.
 # Empty here at creation — a fresh review is Active, awaiting the raiser.

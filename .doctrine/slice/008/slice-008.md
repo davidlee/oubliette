@@ -64,7 +64,11 @@ Facts the design must hold (evidence, read 2026-10-20):
 - Room repo data for home-manager (satan's `IMP-044`).
 - Slot (capsule) doors, the tailnet ingress (Plan E), the model door (`IDE-003`).
 - Changing the door itself: socket path, mode, alias, or oubliette's own
-  `accept-new` doors (`DEC-056` sets strict checking for *clients* only).
+  `accept-new` doors (`DEC-056` sets strict checking for *clients* only). Two
+  changes from RV-023 are in scope:
+  - every door gains `GlobalKnownHostsFile none`, because `DEC-047`'s one
+    store has to be the only store;
+  - the module creates `/run/capsule-room` at boot.
 - Moving the module's other path options (`policyDir`, `allowlistDir`,
   `profileDir`) into the fleet declaration.
 
