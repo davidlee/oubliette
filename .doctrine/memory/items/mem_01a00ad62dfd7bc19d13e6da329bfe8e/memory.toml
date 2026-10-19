@@ -7,7 +7,7 @@ status = "active"
 title = "CAPSULE_STATE moves the quarantine and not the record"
 summary = "A devshell capsule unit|purpose|provision writes the live record whatever CAPSULE_STATE says; there is no throwaway root."
 created = "2026-08-16"
-updated = "2026-08-16"
+updated = "2026-10-19"
 
 [scope]
 paths = ["host/cli.nix"]

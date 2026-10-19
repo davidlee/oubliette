@@ -48,7 +48,7 @@ evaluates). `just` (default) runs the build, units, and fmt.
 the NixOS module — what it says, including its programs, since a unit graph does
 not mention them. `guardCases`, `netnsCases`, `briefCases`, `snapshotCases`, `refreshCases`, `observeCases`,
 `baselineCases`, `policyCases`, `profileCases`, `vmCases`, `gitChannelCases`, `roomGitCases`, `quarantineCases`,
-`volumeRootCases`, `resetHomeCases`, `sessionCases`, `volumeCases`, `fleetCases`, `roomsCases`, `fabricCases` and `roomVerbsCases` *run* a
+`volumeRootCases`, `resetHomeCases`, `sessionCases`, `volumeCases`, `fleetCases`, `stateDirCases`, `roomsCases`, `fabricCases`, `roomClientCases` and `roomVerbsCases` *run* a
 program's own text with a substitute for the one thing tying it to this host
 (`just cases`), and are the answer whenever the interesting branches are ones a
 live host can only reach destructively or expensively — the guard's by unnaming a
@@ -65,7 +65,10 @@ declaring one named for a verb, exec'ing a faked channel to read what a `push` o
 holding two targets at once and by handing the render a target no host declares,
 the git channel's by confining a second project, the room channel's by naming a room
 with no socket, a branch the host checkout lacks and a door that answers with no
-banner, the quarantine's bounded fetch by
+banner or, behind a fixture `sshd -i`, one that reaches authentication, the room
+client's by running `ssh -G` over the shipped bundle and by putting a fixture
+`sshd -i` behind its socket, the state root's by handing the refusal a relative,
+a symlinked and a traversing path, the quarantine's bounded fetch by
 offering it a pack over the ceiling, a malformed object, a tag and a held ref lock,
 and the volume root helper's by
 deleting and overwriting a real slot's image as root, the guest's reset of
@@ -77,7 +80,9 @@ are the two whose subject ships in the *guest* (`vm/`); the first reads the scru
 list off the evaluated capsule and the second finds its program in an evaluated
 room, so `just build` evaluates the guest. **The two git channels, slot and
 room, are the only ones over a program that talks to a guest, and what they can
-reach is everything upstream of the door** — `pkgs.openssh` is in their subjects' `runtimeInputs`, so
+reach is as far as a fixture `sshd -i` behind a socket can take them** — for the
+room channel that is key exchange, first-contact learning and authentication
+(`host/fixture-sshd.nix`); `pkgs.openssh` is in their subjects' `runtimeInputs`, so
 nothing in a sandbox can stub `ssh`, and that is a boundary to respect rather
 than work around.
 **A suite that composes a program's command line by hand pins only one end of
@@ -101,7 +106,7 @@ written, wired into `just cases`, and left out of `just build` for a session
 (NOTES item 51 step 3). **One suite per file, beside the program it pins** —
 `host/<name>-cases.nix`, or `vm/<name>-cases.nix` for a guest program, a function of `pkgs`, `lib` and **the store path the
 program ships**, with a short `import` in `mkfleet.nix` (NOTES item 51 step 0).
-Fifteen of them are handed a fixture instead and say so in their headers: the
+Seventeen of them are handed a fixture instead and say so in their headers: the
 guard's stubbed kernel, the namespace program's stubbed kernel and scratch
 `/etc/netns` (a build sandbox's `/etc` is read-only, and the program's path is
 fixed at build), the front end's pool that is not this host's (three times,
@@ -111,7 +116,10 @@ no host's, the volume root helper's sandbox roots, since a root program's
 paths are fixed at build and its shipped store path cannot be aimed anywhere else,
 the guest reset's fixture home, for the same reason one level down, the
 session's repo tree, since its root is fixed at build, the room
-channel's door, a socket nobody's, since its path is fixed under `/run`, the
+channel's door, a socket nobody's, since its path is fixed under `/run` and
+a fixture `sshd -i` stands behind it (`host/fixture-sshd.nix`), the room
+client's state root `/build/state` and the same sshd (`room-client-cases.nix`),
+the state root's refusal values that are nobody's (`state-dir-cases.nix`), the
 fleet's targets and slots that are nobody's (`fleet-cases.nix`), the
 quarantine's policy vocabulary that is no host's (`quarantine-cases.nix`), and the rooms and
 probe fabric that are nobody's (`rooms-cases.nix`, `fabric-cases.nix`). A new suite goes in

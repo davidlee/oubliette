@@ -16,6 +16,7 @@ evaluations, and the frozen ledger.
 | what must a repo be, for this to confine it? | [contract-target.md](./contract-target.md) |
 | what is a slot assigned, and who may say so? | [contract-assignment.md](./contract-assignment.md) — record and policy built, selection of a profile unbuilt |
 | where does a guest's tool set come from, and how does it compose? | [contract-flavour.md](./contract-flavour.md) — composition built (`fragments.nix`), selection unbuilt |
+| what does a client of a room's door get, and what must it be? | [contract-room-client.md](./contract-room-client.md) |
 | what does doctrine ask of this, and supply to it? | [contract-doctrine.md](./contract-doctrine.md) |
 | what does the confinement actually claim? | [threat-model.md](./threat-model.md) |
 | why was *that* decided, and what was tried first? | [ledger/index.md](./ledger/index.md) — **closed archive**, items 1–54; new decisions are `doctrine adr new` |

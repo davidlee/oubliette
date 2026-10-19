@@ -29,5 +29,15 @@ supersedes    = []   # record ids this one replaces (set by doctrine supersede)
 superseded_by = []   # set on superseded predecessor (verb-written)
 
 [[relation]]
+label = "references"
+role = "concerns"
+target = "DEC-037"
+
+[[relation]]
+label = "references"
+role = "concerns"
+target = "DEC-047"
+
+[[relation]]
 label = "shapes"
 target = "SL-008"

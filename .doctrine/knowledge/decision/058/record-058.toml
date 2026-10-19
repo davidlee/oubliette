@@ -1,0 +1,29 @@
+schema = "doctrine.knowledge"
+version = 1
+
+id = 58
+slug = "mkfleet-has-ten-arguments-dec-042-restated-with-a-required-statedir"
+title = "mkFleet has ten arguments: DEC-042 restated with a required stateDir"
+record_kind = "decision"
+status = "proposed"
+created = "2026-10-19"
+updated = "2026-10-19"
+tags = []
+
+[facet]                         # every field typed; seeded empty (captured later)
+context = "SL-008 made the host state root a fleet declaration (DEC-054): the module option services.capsule-perimeter.stateDir is gone and mkFleet takes stateDir. DEC-042 (accepted) says nine arguments; this restates it with ten so the accepted text matches the code."
+choice = "oubliette exports lib.mkFleet: the flake outputs body in one function of ten owner-grouped arguments — targets (each {decl; flake}); fleet (slots; addressing; volumeReserve); policies; net; flavour (extras; sources); access (adminKeys; stopKey; injections); probe; fleetPath; rooms (required; no default; {} for none; shape per DEC-033); and stateDir (required; no default; a canonical safe absolute path, refused at eval by state-dir.nix and pinned by stateDirCases). The module option services.capsule-perimeter.stateDir is removed, with a message naming mkFleet's stateDir. Everything else in DEC-042's choice stands."
+alternatives = ["a module option (rejected in DEC-054: standalone home-manager cannot read it); a defaulted /var/lib/capsule (refused by POL-003)"]
+rationale = 'stateDir is the one place slot records, volumes and quarantines live, so it is a declaration with one home (POL-003), required and undefaulted like rooms. User assent for acceptance, verbatim: "a,b agreed" (a = this successor to DEC-042; b = the POL-003 revision REV-008).'
+consequences = ["every mkFleet caller breaks until it declares stateDir: oubliette's fixture and the template (done in SL-008 PHASE-01)", " and /srv/fleet (declares it at flake.nix:183 but needs this repo pushed and its lock bumped from 10f05c1; the user's edit)"]
+decided_by   = ""
+decided_on   = ""
+
+[evidence]                      # free-text citations (supports / contradicts / notes)
+supports    = []
+contradicts = []
+notes       = []
+
+[relationships]                 # verb-written edges (set by doctrine supersede)
+supersedes    = []   # record ids this one replaces (set by doctrine supersede)
+superseded_by = []   # set on superseded predecessor (verb-written)

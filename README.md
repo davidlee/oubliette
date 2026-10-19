@@ -270,7 +270,7 @@ way to tell which one served a request. `capsule-host` refuses if a
 | the forward control | the host's global sysctl, read back through sudo | `ip_forward=0` inside each capsule's namespace |
 | way in | `ssh 10.99.0.2` | `/run/capsule/<name>/ssh.sock` (`just ssh <name>`) |
 | proxy log | `.vm/host/tinyproxy.log` | `/var/lib/capsule-proxy/<name>/tinyproxy.log`, rotated weekly |
-| quarantine | `.vm/host/collect/` | `/var/lib/capsule/collect/` |
+| quarantine | `.vm/host/collect/` | `<stateDir>/collect/` |
 | perimeter check | sudo read + supervised watch | `capsule-perimeter-guard.service`, root, no sudo rule needed |
 | ceilings | none | `MemoryMax`, `CPUQuota`, `TasksMax`, `IOWeight` |
 
@@ -549,6 +549,14 @@ is deleted, `capsule <room> forget-host-key` empties that file
 asked anything; **75 when the room is not answering** (no socket, or no ssh
 banner through it), which a script can treat as "start it"; and 1 for anything
 after the banner, a host-key or authentication failure included (`DEC-050`).
+
+A client that is not oubliette's own door gets the same door as a bundle,
+`packages.<system>.room-client-<r>` (one per declared room): `etc/ssh_config`
+(`Host *`, strict checking, no user, no identity) and `bin/ssh`, with the
+mounts a jail needs as the `binds` attribute. It checks the room's key and never
+writes it, so it refuses until a `push`, `ssh` or `collect` has learned it, and
+it runs as the module's owner. [docs/contract-room-client.md](docs/contract-room-client.md)
+is the contract (`DEC-056`, `DEC-057`).
 
 ## Moving one capsule's work to another slot
 

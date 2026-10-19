@@ -27,8 +27,8 @@
   # callers there would have silently shadowed the other. A fragment injected into
   # somebody else's scope should not take a name that scope already uses.
   fragment = ''
-    # `<root>/slot/<name>/`, not `<root>/<name>/` as the contract's prose has it.
-    # The state root already holds `collect/`, and `capsules.nix` would accept a
+    # `<root>/slot/<name>/`, not `<root>/<name>/`: the state root also holds
+    # `collect/` and `room/`, and `capsules.nix` would accept a
     # slot called `collect` — an 11-character limit is the only name rule there
     # is. One namespacing directory is a structural fix; a list of reserved words
     # that grows every time this repo adds a state directory is not.
