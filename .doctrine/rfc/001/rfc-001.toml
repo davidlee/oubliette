@@ -1,0 +1,32 @@
+schema = "doctrine.rfc"
+version = 1
+
+id = 1
+slug = "room-package-dependencies"
+title = "How a sealed room gets a repo's package dependencies"
+status = "open"
+created = "2026-10-19"
+updated = "2026-10-19"
+tags = []
+
+[relationships]
+# RFCs participate in the tier-1 `related` relation (AnyNumbered — links to any entity).
+# Author with `doctrine link RFC-NNN related <target>`. `doctrine inspect RFC-NNN` renders them.
+superseded_by = []   # reverse link is derived (REV→RFC originates_from)
+
+[[relation]]
+label = "related"
+target = "IMP-019"
+
+[[relation]]
+label = "related"
+target = "DEC-036"
+
+[[relation]]
+label = "related"
+target = "IMP-020"
+
+[[relation]]
+label = "related"
+target = "CHR-018"
+
