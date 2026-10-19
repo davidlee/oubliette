@@ -11,7 +11,7 @@ updated = "2026-08-16"
 tags = []
 
 [facet]                         # every field typed; seeded empty (captured later)
-statement = "One extras list for the fleet, so one composition: one guest image per target, and every slot of a target boots the same one. The assignment record's extras and image fields are inert and nothing pins a composition."
+statement = "One extras list for the fleet's slots, so one composition per target: one guest image per target, and every slot of a target boots the same one. The assignment record's extras and image fields are inert and nothing pins a composition. A room is outside this: it is its own image and selects its own extras (DEC-052)."
 source = "technical"
 applies_to = ["fragments.nix", "mkFleet's flavour argument", "assignment record"]
 waiver_reason = ""
@@ -26,3 +26,9 @@ notes       = []
 [relationships]                 # verb-written edges (set by doctrine supersede)
 supersedes    = []   # record ids this one replaces (set by doctrine supersede)
 superseded_by = []   # set on superseded predecessor (verb-written, ADR-004 §5)
+
+[[relation]]
+label = "references"
+role = "concerns"
+descriptor = "which images the fleet's extras list governs"
+target = "DEC-052"

@@ -118,6 +118,30 @@ intent = "design-target"
 selector = "CLAUDE.md"
 intent = "design-target"
 
+[[selector]]
+selector = "fabric-cases.nix"
+intent = "design-target"
+
+[[selector]]
+selector = "host/guard-cases.nix"
+intent = "design-target"
+
+[[selector]]
+selector = "host/netns-cases.nix"
+intent = "design-target"
+
+[[selector]]
+selector = "host/room-verbs-cases.nix"
+intent = "design-target"
+
+[[selector]]
+selector = "docs/plan-f-assistant.md"
+intent = "design-target"
+
+[[selector]]
+selector = "README.md"
+intent = "design-target"
+
 [[relation]]
 label = "references"
 role = "concerns"

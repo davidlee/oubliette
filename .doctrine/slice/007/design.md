@@ -218,4 +218,7 @@ Not exercised: a collision between two extras (same mechanism as the floor);
 | `host/git-channel-cases.nix`, `host/wrap-cases.nix`, `host/room-git-cases.nix` | drop the masking `jq`, or name the suite's own; fix the comment |
 | `docs/contract-target.md`, `docs/contract-flavour.md`, `docs/contract-assignment.md` | sec-5 |
 | `templates/fleet/flake.nix`, `CLAUDE.md` | sec-5 |
+| `fabric-cases.nix`, `host/guard-cases.nix`, `host/netns-cases.nix`, `host/room-verbs-cases.nix` | pass `fragmentNames = []` (fixture appliers of `rooms.nix`) |
+| `docs/plan-f-assistant.md` | re-point its `DEC-044` citation to `DEC-052` |
+| `README.md` | § Rooms names the base and `extras` (at audit, `RV-020` F-5) |
 

@@ -6,7 +6,7 @@ disposable phase sheet (`.doctrine/state/.../phase-NN.md`) that must survive
 
 ## Harvest
 <!-- single-copy: updated in place each harvest; ids only, never restated content -->
-fresh-as-of: 2026-10-19 · audit RV-020 done · reconcile next
+fresh-as-of: 2026-10-19 · reconciled (RV-020 § Reconciliation Outcome) · close next
 
 ### Produced
 - DEC-052 (room base = floor + declared extras; supersedes DEC-044); amended: floor coreutils-full (bb52b4a)
@@ -29,7 +29,7 @@ fresh-as-of: 2026-10-19 · audit RV-020 done · reconcile next
 
 ### Open
 - IMP-017, ISS-013 (resolve at close)
-- RV-020 brief for /reconcile: F-1 DEC-044 supersession, F-2 CON-001, F-3 selectors + sec-7
+- reconciled: DEC-044 superseded, CON-001 narrowed to slots, six selectors + sec-7 rows (RV-020)
 - Memory candidates for /close harvest: switch-vs-microvm -u for rooms; ssh payload quoting
 - Follow-up: a room user's login shell (slice-007.md § Follow-Ups)
 - satan relay line drafted (notes § PHASE-05 EX-3); the user delivers

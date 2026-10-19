@@ -101,3 +101,30 @@ live outputs (VH-1) on 2026-10-19.
   `doctrine link`), then confirm with `doctrine inspect DEC-052`.
 - **F-2** — `CON-001`: statement narrowed to slots ("One extras list for the
   fleet's slots…; a room selects its own, DEC-052"), and a relation to `DEC-052`.
+
+## Reconciliation Outcome
+
+The user agreed all three items (2026-10-19). Knowledge records are not REV
+targets (a REV row takes a spec, requirement or ADR), so F-1 and F-2 went
+through the knowledge verbs, as PHASE-04 did for DEC-043. No REV.
+
+### Direct edits applied
+- **F-3**: `doctrine slice selector add 7 … --intent design-target` for
+  `fabric-cases.nix`, `host/guard-cases.nix`, `host/netns-cases.nix`,
+  `host/room-verbs-cases.nix`, `docs/plan-f-assistant.md`, `README.md`.
+  design.md sec-7 gains the three mirror rows. `slice conformance 7 --against
+  8f55b0b..HEAD`: undelivered 0, conformant 27, undeclared only `.doctrine/`
+  records. The registry view lists `README.md` undelivered, correctly: its edit
+  landed in the audit commit (F-5), which no phase row covers.
+
+### Governance records
+- **F-1**: `doctrine knowledge status DEC-044 superseded`. Correction to the
+  finding: the supersede edge was never missing. DEC-052 `supersedes =
+  ["DEC-044"]` and DEC-044 `superseded_by = ["DEC-052"]` have been in the
+  `[relationships]` table since the design; `doctrine inspect` does not render
+  that table. Only the status was stale.
+- **F-2**: CON-001's statement narrowed to slots, with a sentence that a room
+  selects its own extras (DEC-052); `doctrine link CON-001 references --role
+  concerns DEC-052`.
+
+Reconcile pass complete; handoff to /close.
