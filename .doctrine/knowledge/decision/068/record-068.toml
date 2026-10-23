@@ -1,0 +1,33 @@
+schema = "doctrine.knowledge"
+version = 1
+
+id = 68
+slug = "a-dedicated-postgres-volume-is-accommodated"
+title = "A dedicated PostgreSQL volume later fits the fragment interface; its cost is a per-room size"
+record_kind = "decision"
+status = "accepted"
+created = "2026-10-23"
+updated = "2026-10-23"
+tags = []
+
+[facet]                         # every field typed; seeded empty (captured later)
+context = "SL-009 inq-10. User asked whether a later dedicated volume could be accommodated."
+choice = "Not built. It would replace the bind mount with a microvm volume at /var/lib/postgresql, leaving the service config unchanged; POL-003 forbids a default size, so the room would declare one (e.g. sizes.fragments.<name>), making the fragment take a per-room value. Migration is a one-off operator copy of the directory."
+alternatives = ["decide the volume now"]
+rationale = "Today's layout fixes no format beyond the default service path, which the volume would reuse."
+consequences = ["recorded as headroom; backlog only when wanted"]
+decided_by = "user, on agent proposal"
+decided_on = "2026-10-24"
+
+[evidence]                      # free-text citations (supports / contradicts / notes)
+supports    = []
+contradicts = []
+notes       = []
+
+[relationships]                 # verb-written edges (set by doctrine supersede)
+supersedes    = []   # record ids this one replaces (set by doctrine supersede)
+superseded_by = []   # set on superseded predecessor (verb-written)
+
+[[relation]]
+label = "shapes"
+target = "SL-009"

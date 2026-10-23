@@ -1,0 +1,33 @@
+schema = "doctrine.knowledge"
+version = 1
+
+id = 63
+slug = "postgres-socket-only-peer-auth"
+title = "PostgreSQL listens on its unix socket only, with peer auth; a host client forwards the socket over the room's door"
+record_kind = "decision"
+status = "accepted"
+created = "2026-10-23"
+updated = "2026-10-23"
+tags = []
+
+[facet]                         # every field typed; seeded empty (captured later)
+context = "SL-009 inq-4. A room has no uplink (DEC-036, POL-001). The door's sshd is NixOS-default, which permits stream-local forwarding."
+choice = "listen_addresses = '' and the default local all all peer; a room login is its database login. A host client uses ssh -L <port>:/run/postgresql/.s.PGSQL.5432 over the existing door. No host network path, no passwords."
+alternatives = ["TCP on localhost inside the guest", "a new host-side forward or socket relay"]
+rationale = "Adds nothing to the perimeter and nothing to manage; identity is the door's key auth."
+consequences = ["that a forwarded connection reaches peer auth as the logged-in user is inferred and verified live (inq-8)"]
+decided_by = "user, on agent proposal"
+decided_on = "2026-10-24"
+
+[evidence]                      # free-text citations (supports / contradicts / notes)
+supports    = []
+contradicts = []
+notes       = []
+
+[relationships]                 # verb-written edges (set by doctrine supersede)
+supersedes    = []   # record ids this one replaces (set by doctrine supersede)
+superseded_by = []   # set on superseded predecessor (verb-written)
+
+[[relation]]
+label = "shapes"
+target = "SL-009"

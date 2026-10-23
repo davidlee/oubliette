@@ -1,0 +1,33 @@
+schema = "doctrine.knowledge"
+version = 1
+
+id = 59
+slug = "guest-service-is-a-capability-fragment"
+title = "A guest service is a capability fragment: a fragments.nix entry with an optional guestModule, selected by a room's extras"
+record_kind = "decision"
+status = "accepted"
+created = "2026-10-23"
+updated = "2026-10-23"
+tags = []
+
+[facet]                         # every field typed; seeded empty (captured later)
+context = "SL-009 inq-1, IMP-026. contract-flavour.md defines a flavour as packages plus guest capability fragments and names a guest service as a capability; fragments.nix keeps entries as attrsets for a guestModule. The user proposed ~/flakes/features-style generic features enabled per guest, so nothing generic learns what a room is for (POL-002)."
+choice = "A fragments.nix entry may carry guestModule beside packages. A room selects it by name in rooms.<r>.extras (DEC-052). The first is postgresql-18. A fragment takes no parameters: the postgresql module gives every normal user of the image a role with CREATEDB and a database of its own name, none a superuser."
+alternatives = ["a first-class rooms.<r>.postgresql field", "a separate features vocabulary beside fragments.nix", "a parameterised selection carrying databases and owners"]
+rationale = "One vocabulary for what a guest is composed of (no parallel implementation); a room stays users, sizes and selections (DEC-033, POL-002); the vocabulary is oubliette-owned, so DEC-034's objection to consumer modules does not reopen."
+consequences = ["fragments.nix gains guestModule and a postgresql-18 entry", "vm/room.nix imports the selected fragments' modules", "contract-flavour.md: capability fragments built, for rooms", "the fixture assistant room selects postgresql-18"]
+decided_by = "user, on agent proposal"
+decided_on = "2026-10-24"
+
+[evidence]                      # free-text citations (supports / contradicts / notes)
+supports    = []
+contradicts = []
+notes       = []
+
+[relationships]                 # verb-written edges (set by doctrine supersede)
+supersedes    = []   # record ids this one replaces (set by doctrine supersede)
+superseded_by = []   # set on superseded predecessor (verb-written)
+
+[[relation]]
+label = "shapes"
+target = "SL-009"

@@ -1,0 +1,33 @@
+schema = "doctrine.knowledge"
+version = 1
+
+id = 65
+slug = "no-verb-reports-postgres-readiness"
+title = "No oubliette verb waits for or reports PostgreSQL readiness"
+record_kind = "decision"
+status = "accepted"
+created = "2026-10-23"
+updated = "2026-10-23"
+tags = []
+
+[facet]                         # every field typed; seeded empty (captured later)
+context = "SL-009 inq-5. postgresql.service has RequiresMountsFor its dataDir; systemd orders a bind mount after the mount holding its source."
+choice = "Ordering is the mount's; readiness is systemctl is-active postgresql over ssh. Nothing in capsule status or start learns of a service."
+alternatives = ["a readiness wait in capsule <room> start", "a status column"]
+rationale = "A status or wait that knows a service is generic code learning what a room is for (POL-002)."
+consequences = []
+decided_by = "user, on agent proposal"
+decided_on = "2026-10-24"
+
+[evidence]                      # free-text citations (supports / contradicts / notes)
+supports    = []
+contradicts = []
+notes       = []
+
+[relationships]                 # verb-written edges (set by doctrine supersede)
+supersedes    = []   # record ids this one replaces (set by doctrine supersede)
+superseded_by = []   # set on superseded predecessor (verb-written)
+
+[[relation]]
+label = "shapes"
+target = "SL-009"

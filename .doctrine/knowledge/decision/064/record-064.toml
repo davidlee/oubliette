@@ -1,0 +1,33 @@
+schema = "doctrine.knowledge"
+version = 1
+
+id = 64
+slug = "sl009-verification-by-verb"
+title = "SL-009 verifies declaration and image by build, and service, persistence and access by a live run the user performs"
+record_kind = "decision"
+status = "accepted"
+created = "2026-10-23"
+updated = "2026-10-23"
+tags = []
+
+[facet]                         # every field typed; seeded empty (captured later)
+context = "SL-009 inq-8. STD-001: a build does not prove a started database, data across a VM cycle or a client connection."
+choice = "VT in just build: rooms-cases refusals (a slot naming a capability fragment, an unknown name); roomChecks over fixture assistant with postgresql-18 (bind mount, service enabled, no TCP listener, the door rules) and lounge as the absent path; roomImages build. VH by the user: start the room, connect as a user over the socket, write a row, restart, read it back, connect from the host over ssh -L. Whatever is not run is reported as not exercised."
+alternatives = ["a root probe in probe/", "build evidence only"]
+rationale = "The runtime claims are few and need a real room; a probe adds root-run machinery for a one-off read-back."
+consequences = ["the fixture assistant room image grows by postgresql's closure"]
+decided_by = "user, on agent proposal"
+decided_on = "2026-10-24"
+
+[evidence]                      # free-text citations (supports / contradicts / notes)
+supports    = []
+contradicts = []
+notes       = []
+
+[relationships]                 # verb-written edges (set by doctrine supersede)
+supersedes    = []   # record ids this one replaces (set by doctrine supersede)
+superseded_by = []   # set on superseded predecessor (verb-written)
+
+[[relation]]
+label = "shapes"
+target = "SL-009"

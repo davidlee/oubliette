@@ -1,0 +1,33 @@
+schema = "doctrine.knowledge"
+version = 1
+
+id = 62
+slug = "postgres-major-in-the-fragment-name"
+title = "A PostgreSQL major is in the fragment's name, and an upgrade is the operator's act"
+record_kind = "decision"
+status = "accepted"
+created = "2026-10-23"
+updated = "2026-10-23"
+tags = []
+
+[facet]                         # every field typed; seeded empty (captured later)
+context = "SL-009 inq-3. NixOS keys dataDir by the package's psqlSchema (/var/lib/postgresql/<major>). Pinned nixpkgs carries majors 14-19."
+choice = "The vocabulary names the major (postgresql-18). Moving to another is a declared selection change; the new major starts an empty cluster beside the old one. pg_upgrade or dump/restore is the operator's, documented, not automated."
+alternatives = ["one unversioned postgresql fragment tracking a default major", "automated pg_upgrade on boot"]
+rationale = "An unversioned name would let a vocabulary edit move every room to an empty cluster silently; automated upgrade is machinery with a destructive failure mode for an unexercised need."
+consequences = ["the vocabulary starts with postgresql-18 only", "docs name the upgrade path"]
+decided_by = "user, on agent proposal"
+decided_on = "2026-10-24"
+
+[evidence]                      # free-text citations (supports / contradicts / notes)
+supports    = []
+contradicts = []
+notes       = []
+
+[relationships]                 # verb-written edges (set by doctrine supersede)
+supersedes    = []   # record ids this one replaces (set by doctrine supersede)
+superseded_by = []   # set on superseded predecessor (verb-written)
+
+[[relation]]
+label = "shapes"
+target = "SL-009"

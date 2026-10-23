@@ -1,0 +1,33 @@
+schema = "doctrine.knowledge"
+version = 1
+
+id = 67
+slug = "postgres-reset-and-backup-are-the-operators"
+title = "Database reset and backup are the operator's out-of-band acts"
+record_kind = "decision"
+status = "accepted"
+created = "2026-10-23"
+updated = "2026-10-23"
+tags = []
+
+[facet]                         # every field typed; seeded empty (captured later)
+context = "SL-009 inq-7. No room has reset or backup verbs (docs/plan-f-assistant.md: room reset open)."
+choice = "Reset: dropdb as the owner, or root removes /home/.fragments/postgresql-18 with the room stopped. Backup: pg_dump over the forwarded socket. Documented, no new verbs."
+alternatives = ["a capsule <room> db-reset verb", "scheduled dumps"]
+rationale = "No exercised need; verbs would teach the front end a service."
+consequences = ["usage docs gain the two procedures"]
+decided_by = "user, on agent proposal"
+decided_on = "2026-10-24"
+
+[evidence]                      # free-text citations (supports / contradicts / notes)
+supports    = []
+contradicts = []
+notes       = []
+
+[relationships]                 # verb-written edges (set by doctrine supersede)
+supersedes    = []   # record ids this one replaces (set by doctrine supersede)
+superseded_by = []   # set on superseded predecessor (verb-written)
+
+[[relation]]
+label = "shapes"
+target = "SL-009"

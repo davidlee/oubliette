@@ -1,0 +1,33 @@
+schema = "doctrine.knowledge"
+version = 1
+
+id = 61
+slug = "postgres-data-on-home-by-bind-mount"
+title = "PostgreSQL data lives on the room's /home volume, bind-mounted onto /var/lib/postgresql"
+record_kind = "decision"
+status = "accepted"
+created = "2026-10-23"
+updated = "2026-10-23"
+tags = []
+
+[facet]                         # every field typed; seeded empty (captured later)
+context = "SL-009 inq-2. The room root fs is tmpfs (vm/room.nix). NixOS's postgresql unit sets ProtectHome = true (nixos/modules/services/databases/postgresql.nix:809), so a dataDir under /home is hidden from it."
+choice = "The fragment declares a bind mount of /home/.fragments/postgresql-18 onto /var/lib/postgresql; the service keeps its default dataDir, StateDirectory and hardening. Data survives stop/start, image rebuild and host switch; it goes only with room-home.img."
+alternatives = ["a dedicated volume with its own size", "dataDir directly under /home with ProtectHome relaxed"]
+rationale = "No new volume or size field (user preference, for now); no weakened hardening; the service path is the default either way, which keeps a later dedicated volume open (inq-10)."
+consequences = ["the database shares /home's space and cannot be sized or reset by volume separately", "the mount ordering is inferred and needs a live boot to confirm"]
+decided_by = "user, on agent proposal"
+decided_on = "2026-10-24"
+
+[evidence]                      # free-text citations (supports / contradicts / notes)
+supports    = []
+contradicts = []
+notes       = []
+
+[relationships]                 # verb-written edges (set by doctrine supersede)
+supersedes    = []   # record ids this one replaces (set by doctrine supersede)
+superseded_by = []   # set on superseded predecessor (verb-written)
+
+[[relation]]
+label = "shapes"
+target = "SL-009"
