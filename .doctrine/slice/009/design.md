@@ -16,13 +16,13 @@ rooms.assistant.extras =  ──────────►  rooms.nix        un
                                        vm/room.nix      imports modules; for each persist entry:
                                                           room-persist.service  mkdir /home/.fragments/<n><p>
                                                           fileSystems.<p>       bind, requires room-persist
-                                       vm/capsule.nix   throws slotRefusal flavour.extras
-                                       mkfleet.nix      roomChecks: three door rules + each persist bind
+                                       vm/capsule.nix   assertion from slotRefusal flavour.extras
+                                       mkfleet.nix      roomChecks: door rules (ssh, routing, sudo/doas) + persist edges
                                        fragments-cases.nix  fragmentsCases (new suite)
 
 boot order in a room that selects postgresql-18
   home.mount ─► room-persist.service ─► var-lib-postgresql.mount ─► local-fs.target
-                                                    └────────────► postgresql.service (RequiresMountsFor)
+                                                    └────────────► postgresql.service ─► postgresql-setup ─► postgresql.target
 host client:  ssh -L 5432:/run/postgresql/.s.PGSQL.5432  over the room's door  ─► peer auth as the login
 ```
 
@@ -52,7 +52,8 @@ fragment's module is never evaluated:
 - `modules extras` — the selected entries' `guestModule`s.
 - `persists extras` — `[{name; path;}]`, one per selected entry's `persist` path.
 - `slotRefusal extras` — `null`, or the message naming each selected entry that
-  carries a `guestModule` or `persist` (sec-5).
+  carries a `guestModule` or `persist`; `vm/capsule.nix` makes it an
+  `assertions` entry (sec-5), so its message is readable at eval.
 
 An entry with `persist` but no `guestModule` is legal and pointless; nothing
 refuses it. An unknown name stays `compose`'s refusal, and `rooms.nix` still
@@ -68,18 +69,24 @@ A room's root fs is tmpfs; `/home` is its one volume that every room has. For
 each entry of `fragments.persists room.extras`, `vm/room.nix` renders:
 
 - **`room-persist.service`**, one oneshot for all entries:
-  `DefaultDependencies = false`, `After`/`Requires` `home.mount`, `Before`
-  `local-fs.target`; its script `install -d -m 0700` each
-  `/home/.fragments/<name><path>` (parents root-owned `0700`). Absent when there
+  `unitConfig.DefaultDependencies = false`; `after` and `requires`
+  `home.mount`; `before` `local-fs.target` and each bind's mount unit. Its
+  script: `umask 077`, `mkdir -p /home/.fragments` and, **only when missing**,
+  `mkdir -p /home/.fragments/<name><path>`. Under that umask every parent
+  `mkdir -p` makes is `0700`, root's; an existing directory is never touched,
+  so a service-owned tree is not reset each boot (RV-025 F-7). Absent when there
   are no entries.
 - **`fileSystems.<path>`**: `device = "/home/.fragments/<name><path>"`,
+  `fsType = "none"` (required, no default: RV-025 F-2),
   `options = ["bind" "x-systemd.requires=room-persist.service"
-  "x-systemd.after=room-persist.service"]`.
+  "x-systemd.after=room-persist.service"]`. `requires` is what pulls the
+  oneshot into the boot transaction; `after` alone only orders it.
 
 So the source exists before the bind, the bind is in `local-fs.target`, and any
-unit with `RequiresMountsFor = <path>` waits for it. NixOS's own state
-directory handling (`StateDirectory`, its chown) then runs on the bound
-directory as it would on the root fs.
+unit with `RequiresMountsFor = <path>` waits for it. NixOS's own state directory
+handling (`StateDirectory`, its chown) then runs on the bound directory as it
+would on the root fs. In the pinned microvm.nix `/home` is not `neededForBoot`,
+so this is all stage 2 (RV-025 F-2, evidence: a read-only eval).
 
 **Why not a directory handed to the fragment.** The source must be made after
 `/home` mounts and before the bind, which is before `room-seed` (it runs
@@ -103,109 +110,150 @@ postgresql-18 = {
   persist = ["/var/lib/postgresql"];
   guestModule = {config, lib, pkgs, ...}: let
     logins = lib.attrNames (lib.filterAttrs (_: u: u.isNormalUser) config.users.users);
+    # PostgreSQL refuses these as role names, or they are its own superuser.
+    reserved = n: lib.hasPrefix "pg_" n
+      || builtins.elem n ["postgres" "public" "none" "current_user" "current_role" "session_user"];
   in {
+    assertions = [{
+      assertion = !(lib.any reserved logins);
+      message = "fragments.nix postgresql-18: a login is a reserved role name: ${toString (lib.filter reserved logins)}";
+    }];
     services.postgresql = {
       enable = true;
       package = pkgs.postgresql_18;
       enableTCPIP = false;
       settings.listen_addresses = lib.mkForce "";
+      # Replaces NixOS's default rules, whose `local all all peer` would admit
+      # any login to any database.
+      authentication = lib.mkForce ''
+        local all      postgres peer map=postgres
+        local sameuser all      peer
+      '';
       ensureDatabases = logins;
       ensureUsers = map (name: {
         inherit name;
         ensureDBOwnership = true;
-        ensureClauses.createdb = true;
       }) logins;
     };
   };
 };
 ```
 
-- **Roles by convention**: every normal user of the image gets a role and a
-  database of its own name, with `CREATEDB`, never `SUPERUSER`. In a room those
-  are its declared users; the module reads `config`, not the room record.
+- **One database per login, and only its own** (RV-025 F-1). Every normal user
+  of the image gets a role and a database of its own name, no `CREATEDB`, no
+  `SUPERUSER`. The access rules (`pg_hba`, first match wins) admit the
+  `postgres` maintenance role to every database and any other login only to
+  the database named as it is (`sameuser`), so `eve -d agent` matches no rule
+  and is refused. Separation within one's work is schemas in one's own database.
+  In a room the logins are its declared users; the module reads `config`, not
+  the room record.
+- **Reserved names refuse at eval** (RV-025 F-6). `rooms.nix` admits `pg_demo`;
+  PostgreSQL refuses `CREATE USER pg_demo`. The fragment's own assertion fails
+  the image with the names, and only for a room that selects it.
 - **Socket only**: `listen_addresses = ''`. `enableTCPIP = false` alone still
-  listens on localhost. Authentication stays NixOS's default,
-  `local all all peer`, so a login is its database identity and no password
-  exists.
+  listens on localhost. Peer auth: a login is its database identity and no
+  password exists.
 - **The major is in the name.** NixOS's `dataDir` is
   `/var/lib/postgresql/<psqlSchema>`, under the persisted path, so selecting
   `postgresql-19` later starts an empty cluster beside the old one. Upgrade
   (`pg_upgrade`, or `pg_dump`/restore) is the operator's.
-- **Readiness**: `postgresql.service` has `RequiresMountsFor` its `dataDir`
-  and NixOS's own `postgresql-setup` creates roles and databases after start.
-  No oubliette verb waits for it or reports it; `systemctl is-active postgresql`
-  over the door is how to ask.
+- **Readiness is `postgresql.target`** (RV-025 F-5). `postgresql.service` is
+  only the server; roles and databases are made by `postgresql-setup`, after
+  it, and `postgresql.target` requires both. No oubliette verb waits or
+  reports; `systemctl is-active postgresql.target` over the door is how to ask.
 - **Host access**: `ssh -L 5432:/run/postgresql/.s.PGSQL.5432` (or a local socket
   path) through the room's door, with the room-client bundle or
   `capsule <room> ssh`. The door's sshd is NixOS-default, which permits
   stream-local forwarding; this adds nothing to the perimeter.
-- **Reset and backup** are the operator's: `dropdb` as the owner; or, with the
-  room stopped, root removes `/home/.fragments/postgresql-18`; `pg_dump` over the
-  forward.
+- **Reset and backup** are the operator's: `dropdb` and re-create as `postgres`
+  (root runs `runuser -u postgres`), or, with the room stopped, root removes
+  `/home/.fragments/postgresql-18`; `pg_dump` over the forward.
 <!-- doctrine:section sec-5 -->
 ## The guard and the slot refusal (`DEC-060`, `DEC-066`)
 
 **Door rules.** `mkfleet.nix`'s `roomChecks` already assert root's keys, DHCP
-off with the static link, and no console autologin. They gain:
+off with the static link, no console autologin, and each user's exact groups.
+They gain:
 
 - `services.openssh.settings.PasswordAuthentication == false`;
 - `services.openssh.settings.PermitRootLogin == "prohibit-password"`;
 - no default route: `networking.defaultGateway == null` and the door network
-  `10-capsule` has no `gateway` and no `routes`.
+  `10-capsule` has no `gateway` and no `routes`;
+- no elevation (RV-025 F-3): `security.sudo.extraRules == []`,
+  `security.sudo.extraConfig == ""`, and `security.doas.enable == false`.
 
-These hold for every room, fragment or not, so a `guestModule` that weakens
-the door fails `roomImages` with the rule.
+These hold for every room, fragment or not. **They are a regression guard over
+the settings they name, not a proof over every effect a module can have**: a
+root `AuthorizedKeysCommand`, an sshd `Match` block or a second network
+declaration is not among them. The boundary that makes that acceptable is that
+every `guestModule` is oubliette's, reviewed here (`DEC-034`); the guard
+catches the likely mistakes.
 
-**Persistence rules**, generic over fragments: for each `persists` entry, a
-`fileSystems.<path>` whose `device` is `/home/.fragments/<name><path>` with
-`bind`, and `room-persist.service` present iff there are entries.
+**Persistence rules**, generic over fragments, for each `persists` entry:
+`fileSystems.<path>` has `device` `/home/.fragments/<name><path>`, `fsType`
+`none`, and options containing `bind` and
+`x-systemd.requires=room-persist.service`; `room-persist` has
+`DefaultDependencies = false`, `home.mount` in both `after` and `requires`, and
+`local-fs.target` in `before`. `room-persist` exists iff there are entries.
 
-**Slots refuse.** `vm/capsule.nix` throws `fragments.slotRefusal
-flavour.extras` when it is not null. A capsule's volume is its checkout and its
-provision resets tracked files, so where a slot would persist is its own
-design; until then a capability fragment in `flavour.extras` is a refusal, not
-a silent package-only half. `NOTES item 4` (a target's tests wanting a
-database) stays open, and `docs/contract-target.md` is unchanged.
+**Slots refuse.** `vm/capsule.nix` adds
+`{assertion = slotRefusal flavour.extras == null; message = …;}` to
+`assertions`, so a capsule image naming a capability fragment fails to build
+with that message, and a suite reads the failing message from
+`config.assertions` rather than through `tryEval` (RV-025 F-8). A capsule's
+volume is its checkout and its provision resets tracked files, so where a slot
+would persist is its own design; until then a capability fragment in
+`flavour.extras` is a refusal, not a silent package-only half. `NOTES item 4`
+stays open, and `docs/contract-target.md` is unchanged.
 <!-- doctrine:section sec-6 -->
 ## Verification (`DEC-064`)
 
 Rungs per `STD-001`. Everything in the first list is in `just build`.
 
 - **`fragmentsCases`** (new, `fragments-cases.nix`, beside its subject). Its
-  subjects are the **shipped** vocabulary and the **evaluated** fixture room
-  images, handed in by `mkfleet.nix`; the header says the rooms are the
-  fixture's. Verdicts
-  read at eval with `builtins.tryEval` over `deepSeq`, asserted in shell, each
-  with its reason. Red first.
-  1. `slotRefusal ["agents"]` is null; `slotRefusal ["agents" "postgresql-18"]`
-     carries a message naming `postgresql-18`.
-  2. A capsule image evaluated with `postgresql-18` in `flavour.extras` throws
-     that message (proves the call site, not just the function).
+  subjects are the **shipped** vocabulary and **evaluated** images handed in by
+  `mkfleet.nix`: the fixture rooms, and the same images extended with one
+  module each (`extendModules`) for the negative cases; the header says so.
+  A refusal is read as the **message of a failing entry in
+  `config.assertions`** (or a `roomChecks` reason), never a bare `tryEval`
+  verdict. Red first.
+  1. `slotRefusal ["agents"]` is null; with `postgresql-18` it names it.
+  2. A capsule image with `postgresql-18` in `flavour.extras` has a failing
+     assertion carrying that message.
   3. `persists ["search" "postgresql-18"]` is exactly
      `[{name = "postgresql-18"; path = "/var/lib/postgresql";}]`; `modules
      ["search"]` is `[]`.
-  4. Fixture `assistant` (selects `postgresql-18`): postgresql enabled,
-     package major 18, `listen_addresses == ""`, `ensureUsers` names are
-     exactly its declared users, none with `superuser`, `ensureDatabases` the same.
-  5. Fixture `lounge` (selects none): postgresql disabled, no
-     `/var/lib/postgresql` filesystem, no `room-persist`.
-  6. Mutation: drop `x-systemd.requires` or flip `listen_addresses`, watch the
-     case go red; recorded in the phase notes.
-- **`roomImages`**: the new door and persistence rules over both fixture
-  rooms; `assistant`'s image builds with postgres in it.
+  4. `assistant` (selects it): postgresql enabled, major 18,
+     `listen_addresses == ""`, `authentication` exactly the two rules,
+     `ensureUsers` names exactly its declared users with no clauses,
+     `ensureDatabases` the same, and no failing assertion.
+  5. `assistant` extended with a user `pg_demo`: a failing assertion naming
+     `pg_demo`.
+  6. `lounge` (selects none): postgresql disabled, no `/var/lib/postgresql`
+     filesystem, no `room-persist`.
+  7. `assistant` extended with a `security.sudo.extraRules` NOPASSWD grant:
+     `roomChecks` fails with the elevation rule.
+  8. Mutations, each required to turn a named case red, recorded in the phase
+     notes: drop `x-systemd.requires` (persistence rules); flip
+     `listen_addresses`; restore `local all all peer`; replace the capsule
+     assertion with an unrelated throw (case 2).
+- **`roomImages`**: the door and persistence rules over both fixture rooms;
+  `assistant`'s image builds with postgres in it.
 - **`just check`** and lint over every touched file; wired into `just build`
   and `just cases` (check that, NOTES item 51 step 3).
 
 **Live, by the user (VH)**, on a room selecting `postgresql-18`:
 
-1. start the room; `systemctl is-active postgresql` and
-   `findmnt /var/lib/postgresql` (source on `/home`) — confirms the ordering
-   inference;
-2. as a declared user: `psql -c 'create table t(x int); insert into t values (1)'`;
-3. stop and start the room; `psql -c 'select * from t'` reads `1`;
-4. from the host: `ssh -L` the socket over the door, `psql -h <local socket dir>`
-   as that user — confirms peer auth over a forward;
-5. as a second user, connecting to the first's database is refused.
+1. start the room; `systemctl is-active postgresql.target`,
+   `findmnt /var/lib/postgresql` (source on `/home`), and
+   `stat -c %a /home/.fragments` is `700` — confirms the ordering inference;
+2. as `agent`: `psql -c 'create table t(x int); insert into t values (1)'`;
+3. stop and start the room; `psql -c 'select * from t'` reads `1`, and
+   `/home/.fragments/postgresql-18/var/lib/postgresql` is still postgres-owned;
+4. from the host: `ssh -L` the socket over the door, `psql` through it as
+   `agent` — confirms peer auth over a forward;
+5. as `eve`, with her own role: `psql -U eve -d agent` is refused, and
+   `psql -d eve` succeeds.
 
 Whatever is not run is reported as not exercised. No probe is added.
 <!-- doctrine:section sec-7 -->
@@ -224,19 +272,20 @@ Whatever is not run is reported as not exercised. No probe is added.
 ## Risks and what is out of scope
 
 - **Inferred, verified live only**: that `room-persist` runs between
-  `home.mount` and the bind in a firecracker guest's early boot; that a forward
-  reaches peer auth as the login. A build proves neither.
-- **Recursion**: the module reads `config.users.users` while NixOS's postgres
-  module defines a user in it; case 4 is what shows it evaluates.
+  `home.mount` and the bind in a firecracker guest's boot; that a forward
+  reaches peer auth as the login. A build proves neither. Read-only evals in
+  RV-025 show the pieces evaluate and `/home` is a stage-2 mount.
+- **The guard is finite** (sec-5): it names settings, and a reviewed
+  vocabulary is what bounds the rest.
 - **Space**: the database shares `/home`'s size. A full `/home` stops both
   logins' writes and postgres. Accepted for now (`DEC-061`).
 - **Image size**: `assistant` and any consumer room selecting it grows by
   postgres' closure.
-- **`/home/.fragments` is root's**: `0700`, outside every home; a user cannot
-  reach the cluster files, only the socket.
+- **`/home/.fragments` is root's**: `0700`, outside every home; a user reaches
+  the cluster only through the socket, and only their own database.
 - Out of scope: slots selecting capability fragments; a dedicated volume;
   backup or reset verbs; TCP or any host network path; parameterised fragments;
-  extensions; schemas.
+  extensions; schemas; more than one database per login.
 <!-- doctrine:section sec-9 -->
 ## Code impact
 

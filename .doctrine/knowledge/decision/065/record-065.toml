@@ -12,7 +12,7 @@ tags = []
 
 [facet]                         # every field typed; seeded empty (captured later)
 context = "SL-009 inq-5. postgresql.service has RequiresMountsFor its dataDir; systemd orders a bind mount after the mount holding its source."
-choice = "Ordering is the mount's; readiness is systemctl is-active postgresql over ssh. Nothing in capsule status or start learns of a service."
+choice = "Ordering is the mount's; readiness is systemctl is-active postgresql.target over ssh, which requires both the server and postgresql-setup (roles and databases). Nothing in capsule status or start learns of a service. Amended 2026-10-24 after RV-025 F-5: was postgresql.service."
 alternatives = ["a readiness wait in capsule <room> start", "a status column"]
 rationale = "A status or wait that knows a service is generic code learning what a room is for (POL-002)."
 consequences = []

@@ -3,7 +3,7 @@ version = 1
 
 id = 63
 slug = "postgres-socket-only-peer-auth"
-title = "PostgreSQL listens on its unix socket only, with peer auth; a host client forwards the socket over the room's door"
+title = "PostgreSQL listens on its unix socket only; a login reaches only its own database by peer auth; a host client forwards the socket over the door"
 record_kind = "decision"
 status = "accepted"
 created = "2026-10-23"
@@ -12,8 +12,8 @@ tags = []
 
 [facet]                         # every field typed; seeded empty (captured later)
 context = "SL-009 inq-4. A room has no uplink (DEC-036, POL-001). The door's sshd is NixOS-default, which permits stream-local forwarding."
-choice = "listen_addresses = '' and the default local all all peer; a room login is its database login. A host client uses ssh -L <port>:/run/postgresql/.s.PGSQL.5432 over the existing door. No host network path, no passwords."
-alternatives = ["TCP on localhost inside the guest", "a new host-side forward or socket relay"]
+choice = "listen_addresses = ''. authentication is replaced (mkForce) by two rules: local all postgres peer map=postgres, then local sameuser all peer, so a login connects only to the database of its own name. No CREATEDB. A login whose name PostgreSQL reserves (pg_*, postgres, public, none, current_user, current_role, session_user) fails the fragment's own assertion at eval. A host client uses ssh -L <port>:/run/postgresql/.s.PGSQL.5432 over the existing door. No host network path, no passwords. Amended 2026-10-24 after RV-025 F-1 and F-6 (user chose own-database-only)."
+alternatives = ["TCP on localhost inside the guest", "a new host-side forward or socket relay", "keep CREATEDB and revoke PUBLIC CONNECT per database", "shared databases with identity-only separation"]
 rationale = "Adds nothing to the perimeter and nothing to manage; identity is the door's key auth."
 consequences = ["that a forwarded connection reaches peer auth as the logged-in user is inferred and verified live (inq-8)"]
 decided_by = "user, on agent proposal"
