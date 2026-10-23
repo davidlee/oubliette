@@ -3,7 +3,7 @@ version = 1
 
 id = 60
 slug = "capability-fragment-interface"
-title = "A capability fragment's module is told only its own persistent directory, is room-only for now, and the room image checks guard the door"
+title = "A capability fragment declares the paths it needs persistent and its module is plain guest config; room-only for now, and the room image checks guard the door"
 record_kind = "decision"
 status = "accepted"
 created = "2026-10-23"
@@ -12,10 +12,10 @@ tags = []
 
 [facet]                         # every field typed; seeded empty (captured later)
 context = "SL-009 inq-9. DEC-059 lets a fragment carry a guestModule; a module can set anything, including the door's sshd and routing (POL-001 limb 3, DEC-034)."
-choice = """A guestModule is applied with lib.modules.importApply {persistDir = "/home/.fragments/<name>";}, as door.nix takes hostKeyDir; it is never told room or slot. Slots' flavour.extras naming a fragment with a guestModule is refused at eval in this slice: a capsule's volume is its checkout. mkfleet.nix roomChecks gain PasswordAuthentication = false, PermitRootLogin = prohibit-password and no default route, beside the existing root-keys, DHCP and autologin checks."""
-alternatives = ["pass the whole room record to the module", "allow slots to select capability fragments now", "review alone as the guard"]
-rationale = "A directory is the one generic thing a service needs; refusing on slots is an explicit absent path rather than a silent package-only half; the guard extends existing checks rather than adding machinery."
-consequences = ["roomChecks grow three door rules", "a slot-side refusal with a pinned reason"]
+choice = "A fragments.nix entry may carry guestModule (plain NixOS config, applied unparameterised) and persist, a list of absolute guest paths that must survive the guest's lifecycle; the module is never told room or slot, nor where persistence lives. Slots' flavour.extras naming a fragment with a guestModule is refused at eval in this slice: a capsule's volume is its checkout. mkfleet.nix roomChecks gain PasswordAuthentication = false, PermitRootLogin = prohibit-password and no default route, beside the existing root-keys, DHCP and autologin checks. Amended 2026-10-24 during drafting, on user assent: was 'handed persistDir via importApply'."
+alternatives = ["hand the module its own persistDir (the original choice: it would have to order its own source mkdir against the room's boot)", "pass the whole room record to the module", "allow slots to select capability fragments now", "review alone as the guard"]
+rationale = "A fragment says what must persist and the guest decides how: the mkdir-before-bind ordering is one generic construction in the guest rather than one per fragment, and a later dedicated volume (DEC-068) is a guest change alone. Refusing on slots is an explicit absent path; the guard extends existing checks."
+consequences = ["roomChecks grow three door rules", "a slot-side refusal with a pinned reason", "vm/room.nix owns persistence for every selected fragment"]
 decided_by = "user, on agent proposal"
 decided_on = "2026-10-24"
 

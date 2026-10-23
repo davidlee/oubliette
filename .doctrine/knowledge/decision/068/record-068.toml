@@ -12,7 +12,7 @@ tags = []
 
 [facet]                         # every field typed; seeded empty (captured later)
 context = "SL-009 inq-10. User asked whether a later dedicated volume could be accommodated."
-choice = "Not built. It would replace the bind mount with a microvm volume at /var/lib/postgresql, leaving the service config unchanged; POL-003 forbids a default size, so the room would declare one (e.g. sizes.fragments.<name>), making the fragment take a per-room value. Migration is a one-off operator copy of the directory."
+choice = "Not built. With persist paths owned by the guest (DEC-060), a dedicated volume is the room satisfying /var/lib/postgresql with a microvm volume instead of a bind; no fragment changes. POL-003 forbids a default size, so the room would declare one (e.g. sizes.fragments.<name>). Migration is a one-off operator copy of the directory."
 alternatives = ["decide the volume now"]
 rationale = "Today's layout fixes no format beyond the default service path, which the volume would reuse."
 consequences = ["recorded as headroom; backlog only when wanted"]

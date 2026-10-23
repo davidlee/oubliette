@@ -16,7 +16,7 @@ intent = "scope-relevant"
 
 [[selector]]
 selector = "vm/room.nix"
-intent = "scope-relevant"
+intent = "design-target"
 
 [[selector]]
 selector = "host/services.nix"
@@ -24,7 +24,7 @@ intent = "scope-relevant"
 
 [[selector]]
 selector = "mkfleet.nix"
-intent = "scope-relevant"
+intent = "design-target"
 
 [[selector]]
 selector = "rooms-cases.nix"
@@ -41,6 +41,46 @@ intent = "scope-relevant"
 [[selector]]
 selector = "docs/contract-*.md"
 intent = "scope-relevant"
+
+[[selector]]
+selector = "fragments.nix"
+intent = "design-target"
+
+[[selector]]
+selector = "vm/capsule.nix"
+intent = "design-target"
+
+[[selector]]
+selector = "fragments-cases.nix"
+intent = "design-target"
+
+[[selector]]
+selector = "just/fleet.just"
+intent = "design-target"
+
+[[selector]]
+selector = "justfile"
+intent = "design-target"
+
+[[selector]]
+selector = "fixture/default.nix"
+intent = "design-target"
+
+[[selector]]
+selector = "templates/fleet/flake.nix"
+intent = "design-target"
+
+[[selector]]
+selector = "README.md"
+intent = "design-target"
+
+[[selector]]
+selector = "docs/contract-flavour.md"
+intent = "design-target"
+
+[[selector]]
+selector = "CLAUDE.md"
+intent = "design-target"
 
 [[relation]]
 label = "governed_by"

@@ -3,7 +3,7 @@ version = 1
 
 id = 61
 slug = "postgres-data-on-home-by-bind-mount"
-title = "PostgreSQL data lives on the room's /home volume, bind-mounted onto /var/lib/postgresql"
+title = "A fragment's persist paths live on the room's /home volume, under /home/.fragments/<name>, bind-mounted by the room"
 record_kind = "decision"
 status = "accepted"
 created = "2026-10-23"
@@ -12,10 +12,10 @@ tags = []
 
 [facet]                         # every field typed; seeded empty (captured later)
 context = "SL-009 inq-2. The room root fs is tmpfs (vm/room.nix). NixOS's postgresql unit sets ProtectHome = true (nixos/modules/services/databases/postgresql.nix:809), so a dataDir under /home is hidden from it."
-choice = "The fragment declares a bind mount of /home/.fragments/postgresql-18 onto /var/lib/postgresql; the service keeps its default dataDir, StateDirectory and hardening. Data survives stop/start, image rebuild and host switch; it goes only with room-home.img."
+choice = "For each selected fragment and each persist path p, vm/room.nix creates /home/.fragments/<name><p> in one early oneshot (after /home is mounted, before p is) and bind-mounts it onto p. postgresql-18 persists /var/lib/postgresql, so the service keeps its default dataDir, StateDirectory and hardening. Data survives stop/start, image rebuild and host switch; it goes only with room-home.img. Amended 2026-10-24 during drafting, on user assent: the room, not the fragment, makes the mount."
 alternatives = ["a dedicated volume with its own size", "dataDir directly under /home with ProtectHome relaxed"]
 rationale = "No new volume or size field (user preference, for now); no weakened hardening; the service path is the default either way, which keeps a later dedicated volume open (inq-10)."
-consequences = ["the database shares /home's space and cannot be sized or reset by volume separately", "the mount ordering is inferred and needs a live boot to confirm"]
+consequences = ["the database shares /home's space and cannot be sized or reset by volume separately", "the early oneshot and mount ordering are inferred and need a live boot to confirm", "a room's /home/.fragments is root-owned and outside every user's home"]
 decided_by = "user, on agent proposal"
 decided_on = "2026-10-24"
 

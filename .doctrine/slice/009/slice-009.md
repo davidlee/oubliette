@@ -27,18 +27,19 @@ Narrowed by inquiry (DEC-059…DEC-068): the service is a **capability
 fragment**, selected through the existing `extras`, so `rooms.nix` gains no
 field and no host-side volume is created.
 
-- `fragments.nix`: an optional `guestModule` per entry, and `postgresql-18`.
-- `vm/room.nix`: import the selected fragments' modules, each handed its own
-  persistent directory under `/home/.fragments/`.
-- `vm/capsule.nix` or `mkfleet.nix`: refuse a capability fragment in slots'
-  `flavour.extras` (DEC-060).
+- `fragments.nix`: optional `guestModule` and `persist` per entry; `modules`,
+  `persists`, `slotRefusal`; the `postgresql-18` entry.
+- `vm/room.nix`: import the selected fragments' modules; `room-persist.service`
+  and a bind mount from `/home/.fragments/<name><path>` per persist path.
+- `vm/capsule.nix`: refuse a capability fragment in slots' `flavour.extras`
+  (DEC-060).
 - `mkfleet.nix` `roomChecks`: three door rules (password auth, root login, no
-  default route) and the postgres fragment's mount, service and listener.
-- `rooms-cases.nix` (or the suite owning `flavour.extras`), `fixture/`,
-  `templates/`: the `assistant` room selects `postgresql-18`; `lounge` is the
-  absent path.
-- `docs/contract-flavour.md` (capability fragments built, for rooms) and room
-  usage docs (forwarding, reset, backup, upgrade).
+  default route) and the persistence binds; `fragmentsCases` wiring.
+- `fragments-cases.nix` (new), `just/fleet.just`, `justfile`, `fixture/`,
+  `templates/fleet/flake.nix`: the `assistant` room selects `postgresql-18`;
+  `lounge` is the absent path.
+- `docs/contract-flavour.md` (capability fragments built, for rooms), README
+  and `CLAUDE.md`'s suite list.
 
 ## Non-Goals
 
@@ -46,8 +47,8 @@ field and no host-side volume is created.
   language-level dependencies.
 - Giving rooms general egress or exposing the database through a new direct
   host network path as an implicit side effect.
-- A general arbitrary-NixOS-services extension unless design shows it is
-  necessary for this capability.
+- A general arbitrary-NixOS-services extension. Capability fragments are
+  oubliette's vocabulary, never a consumer module (DEC-059, DEC-034).
 - Designing application schemas, migrations, or application-specific backup
   jobs.
 
