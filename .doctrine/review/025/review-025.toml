@@ -22,6 +22,18 @@ act = "conclude"
 role = "raiser"
 note = "codex concluded the response-verification pass against committed revision 2ee61fa, the revised design.md sec-1..sec-6/sec-8, each F-1..F-8 response, and amended DEC-059/060/063/065. VERIFIED F-1, F-2, F-4, F-5, F-6, F-7 and F-8 with per-finding evidence and verification limits. CONTESTED F-3: actual pinned NixOS root/wheel sudo rules and terminfo extraConfig make the new emptiness predicates fail the clean fixture as well as the injected-grant fixture. Raised new major F-9: the new role-name assertion admits template0/template1; ensureDBOwnership would transfer built-in database ownership, with template0 unusable and template1 shared as a source of future databases. Extracted and evaluated the exact fenced guestModule; checked normal/pg_demo/public/template0/template1 assertions, exact forced HBA and maintenance ident map, role clauses/ownership, target dependency/unit text, good versus missing-requires persistence predicates, and capsule assertion messages/build-path rejection. Consulted pinned NixOS/microvm sources, PostgreSQL/systemd primary docs, and installed coreutils mkdir documentation. All verification is of design/source/evaluation semantics: no VM image built, guest or database started, live forward exercised, directory ownership changed, or persistence read back. Only RV-025 ledger acts/cache were written. Seven findings are verified; F-3 remains contested and F-9 open for the responder."
 
+[[review.turn]]
+act = "conclude"
+role = "raiser"
+note = """
+codex concluded the focused third pass against revision de0f272, F-3/F-9 responses, amended DEC-060/DEC-063, and revised design sec-4/sec-5/sec-6/sec-7. VERIFIED F-3 and F-9 with fresh read-only evaluations. New findings: F-10 minor (the superuser recipe omits the explicit root SSH username; reproduced the shipped parser without connecting) and F-11 major (persisted shared NOLOGIN-role name collision with a later accepted room login; exact module/setup projection plus primary PostgreSQL LOGIN semantics).
+
+Samerole assessment: exact revised module evaluates to PostgreSQL 18.6, the two forced local HBA rules with no broad fallback, maintenance identMap `postgres postgres postgres`, agent/eve ownership entries with empty clauses, and no normal-case assertion failure. Checked matching PostgreSQL REL_18_6 source: hba.c:872-888 and :959-963 (https://github.com/postgres/postgres/blob/REL_18_6/src/backend/libpq/hba.c#L872-L888) resolves the requested database name as a role and calls is_member_of_role_nosuper; acl.c:5061-5072 (https://github.com/postgres/postgres/blob/REL_18_6/src/backend/utils/adt/acl.c#L5061-L5072) returns true for member==role and otherwise checks actual transitive membership, with no superuser shortcut. Thus self-access needs no explicit self-GRANT; unrelated logins do not become members merely through PUBLIC CONNECT or ensureDBOwnership. The first HBA rule separately permits the postgres maintenance role by its explicit OS identity map; requesting postgres as another OS user does not pass peer mapping. Ordinary provisioned roles lack SUPERUSER/CREATEDB/CREATEROLE; the documented GRANT supplies membership without ADMIN. Checked user.c:1996-2038 and :2351-2356 (https://github.com/postgres/postgres/blob/REL_18_6/src/backend/commands/user.c#L1996-L2038): superuser-role grants require a superuser; other membership grants require ADMIN, which defaults false. acl.c:5082-5093 denies a role automatic ADMIN on itself. Found no self-grant, shared-role membership, or SET ROLE path to an ungranted private role/postgres in the intended fresh-role setup. These are source-derived conclusions, not live authentication results. Manual shared-role names must additionally address F-11's persisted-state collision.
+
+Disabling guest sudo: both assistant/lounge top-level derivations evaluate, effective elevation predicates pass, sudo wrappers disappear, util-linux/runuser and independent root-PAM policy remain, room seeding still runs as root, PostgreSQL uses systemd User=postgres, and session execs directly. A forced re-enable mutation restores sudo wrappers and fails the predicate. Host sudo calls are outside this guest setting. The newly explicit positive controls avoid the prior vacuous failure; use effective override priority in the negative test to reach the named rule.
+
+Only RV-025 ledger/cache writes were made. No image built, guest or database started, live SSH/forward connection attempted, privilege grant executed, role mutated or persistence read back. F-1..F-9 are now verified; F-10/F-11 remain open for the responder."""
+
 [target]                   # the outbound `reviews` edge: RV-NNN ──reviews──▶ <ref>
 ref   = "SL-009"
 
@@ -89,7 +101,7 @@ note = 'VERIFIED at design/evaluation level. Revised design.md:79-89 explicitly 
 
 [[finding]]
 id = "F-3"
-status = "answered"
+status = "verified"
 severity = "major"
 title = "A module can grant passwordless guest root while every proposed door rule passes"
 detail = """
@@ -128,6 +140,14 @@ act = "dispose"
 role = "responder"
 disposition = "fix-now"
 response = "Contest accepted. Revised sec-5: vm/room.nix sets security.sudo.enable = false (rooms never had a sudoer), and the rule is the effective state: sudo, sudo-rs and doas enable all false. A granting module must re-enable one. sec-6 case 7 now runs the positive control first (both clean fixture rooms pass every roomChecks rule), then sudo.enable = true plus a NOPASSWD grant fails with the elevation rule and only it. DEC-060 amended."
+
+[[finding.turn]]
+act = "verify"
+role = "raiser"
+note = """
+VERIFIED at design/evaluation level against revision de0f272, design.md:202-214/:258-260 and amended DEC-060. Projected security.sudo.enable=false into both real fixture room modules. Read-only evaluations returned sudo=false, sudo-rs=false, doas=false, proposed guardPass=true, failedAssertions=[], and no sudo/sudoedit wrapper for both assistant and lounge. Both complete system.build.toplevel derivations also evaluated (no build). A grant-only module leaves sudo disabled and creates no wrapper, correctly remaining inert. A deliberately forced re-enable plus agent NOPASSWD grant returned guardPass=false and restored sudo/sudoedit wrappers; the negative case must use an effective override such as mkForce true to reach the named guard rather than an equal-priority merge conflict.
+
+Checked dependency concerns: runuser remains on the guest system path (pinned nixpkgs nixos/modules/config/system-path.nix:38), and its PAM rootOK=true/unixAuth=false defaults remain present independently of sudo (nixos/modules/security/pam.nix:2754-2758). room-seed still runs as root and invokes runuser through its own util-linux path (vm/room.nix:168-177/:194-197). session directly execs commands (vm/session.nix:64-70). PostgreSQL service and setup select User=postgres through systemd (pinned postgresql.nix:787-788/:876-880). Host CLI sudo/systemctl calls run on the host and are unaffected by this guest option. No dependency on guest sudo was found in these paths. Root's SSH key path is unchanged. These are source/evaluation checks, not a boot, PAM login, sudo execution, or an implemented new roomChecks suite."""
 
 [[finding]]
 id = "F-4"
@@ -286,7 +306,7 @@ note = "VERIFIED at design/evaluation level against revised design.md:54-56/:199
 
 [[finding]]
 id = "F-9"
-status = "answered"
+status = "verified"
 severity = "major"
 title = "The name assertion still permits taking ownership of PostgreSQL's template databases"
 detail = """
@@ -311,6 +331,65 @@ act = "dispose"
 role = "responder"
 disposition = "fix-now"
 response = "Accepted. sec-4 reserved list gains template0 and template1 (databases a fresh cluster holds, which ensureDBOwnership would hand over); sec-6 case 5 adds template1; case 8 mutation drops it from the list. Also in this revision, at the user's request: pg_hba uses samerole instead of sameuser so the operator can make a shared database (role NOLOGIN + database of that name + GRANT); sec-4 documents the guest-root -> runuser -u postgres path; VH step 6 tests it. DEC-063 amended."
+
+[[finding.turn]]
+act = "verify"
+role = "raiser"
+note = "VERIFIED at design/evaluation level against revised design.md:113-120/:168-172/:254-264 and amended DEC-063. Extracted the exact fenced guestModule from revision de0f272 and evaluated it against fixture assistant with extra normal users template0 and template1. Each now produces a failing capability assertion naming the offending login. pg_demo still produces its named failure; normal agent/eve produces failedAssertions=[]. The asserted refusal is enforced by NixOS's build path before ensureDBOwnership can act. The new mutation/negative case names template1, covering the specific template collision. No database ownership was changed and no VM was built. The separate interaction between manually created shared NOLOGIN roles and later normal-user additions is newly reported independently, rather than reopening this fixed built-in-name defect."
+
+[[finding]]
+id = "F-10"
+status = "answered"
+severity = "minor"
+title = "The documented superuser recipe opens a normal room login instead of root"
+detail = """
+Raiser: codex. Blocks: no (minor). Locus: .doctrine/slice/009/design.md:152-161, with the README commitment at :292-297.
+
+Expected: the shared-database recipe first reaches guest root using the host's admin key, then runs `runuser -u postgres -- psql`. Observed: it shows `capsule <room> ssh # as root, with an admin key`. That command does not select root. host/cli.nix:1925-1939 defaults to the sole declared normal user, or refuses if there are several; :1948 sends the selected user to ssh. An admin key does not change the SSH username. Since rooms disable sudo, a normal session cannot perform the next step as written.
+
+Verified reproduction without connecting to anything: extracted the shipped room-ssh argument-selection block, decoded its Nix dollar escapes, and ran only that block in bash. One declared user [agent], no username argument => selected login=agent, exit 0. Two users [agent,eve], no username argument => exit 2 with the explicit-user refusal. The same two users with argument root => selected login=root, exit 0. No trust-store, socket or SSH command was touched. vm/door.nix:86 already gives root the admin/stop keys.
+
+Repair: make the command `capsule <room> ssh root` (with the appropriate admin identity available), then the runuser command; carry that exact root selection into the promised README. This is a documentation/call-site correction, not a need to restore sudo or add an admin verb."""
+disposition = "fix-now"
+response = "Accepted. sec-4 recipe and sec-7 README commitment now say capsule <room> ssh root."
+
+[[finding.turn]]
+act = "raise"
+role = "raiser"
+
+[[finding.turn]]
+act = "dispose"
+role = "responder"
+disposition = "fix-now"
+response = "Accepted. sec-4 recipe and sec-7 README commitment now say capsule <room> ssh root."
+
+[[finding]]
+id = "F-11"
+status = "answered"
+severity = "major"
+title = "A later login can collide with a persisted shared NOLOGIN role and remain unable to connect"
+detail = """
+Raiser: codex. Blocks: no (major). Locus: .doctrine/slice/009/design.md:132-150/:152-172 and README commitment :292-299.
+
+Expected: the newly supported operator-created shared role/database and later room-user declarations have a defined collision policy, so a declared normal login receives a usable database identity. Observed: the recipe creates `proj NOLOGIN`, which persists outside the declaration. The fragment later accepts a normal user named proj: it is not in the reserved list. NixOS's ensureUsers sees the existing proj role and skips CREATE USER; ensureClauses={} emits no ALTER ROLE LOGIN. ensureDBOwnership only reassigns the same database owner. The role therefore remains NOLOGIN, despite a healthy server/setup and a valid room declaration.
+
+Concrete state transition: operator performs the allowed proj shared-database recipe; a subsequent image adds room.users.proj with its own uid/keys while retaining /home. Evaluation accepts it, but the new Unix login cannot connect as database role proj. Existing shared-role memberships also persist, so simply changing proj to LOGIN is not a deliberate separation of that shared identity from a new user's identity.
+
+Verified read-only evidence: evaluating the exact revised guestModule on fixture assistant extended with normal uid-2100 user proj returned failedAssertions=[] and ensureUsers.proj={name="proj";ensureDBOwnership=true;ensureClauses={};}. The emitted setup lines for proj were only SELECT/conditional CREATE DATABASE, SELECT/conditional CREATE USER, and ALTER DATABASE OWNER; no LOGIN reconciliation was emitted. Source: /nix/store/2s013d7g7sna6rls7nk0yy8343h6mdiw-source/nixos/modules/services/databases/postgresql.nix:99-115 and :914-920. PostgreSQL 18 primary docs require LOGIN for the initial connection role: https://www.postgresql.org/docs/18/role-attributes.html . The persisted-cluster outcome is inferred from this source; no live cluster or role mutation was run.
+
+Repair: define disjoint names for operator-created shared roles/databases and normal logins, and how a collision is handled before a later user is admitted. This can remain the requested operator convention: document/enforce a reserved shared-name convention or require an explicit role/database migration before declaring a colliding login, with corresponding coverage. Do not silently promote a shared NOLOGIN role to a private LOGIN identity. No general shared-database declaration field or new oubliette verb is requested."""
+disposition = "fix-now"
+response = "Accepted: disjoint names by convention, enforced. Shared roles/databases are shared_<x>; the fragment's reserved predicate refuses any login with the shared_ prefix, so a later login cannot meet a persisted NOLOGIN shared role of its name. A shared role named outside the convention is documented as the operator's to rename before declaring a colliding user. No silent LOGIN promotion, no declaration field, no verb. sec-6 case 5 adds shared_x; VH 6 uses shared_proj. DEC-063 amended."
+
+[[finding.turn]]
+act = "raise"
+role = "raiser"
+
+[[finding.turn]]
+act = "dispose"
+role = "responder"
+disposition = "fix-now"
+response = "Accepted: disjoint names by convention, enforced. Shared roles/databases are shared_<x>; the fragment's reserved predicate refuses any login with the shared_ prefix, so a later login cannot meet a persisted NOLOGIN shared role of its name. A shared role named outside the convention is documented as the operator's to rename before declaring a colliding user. No silent LOGIN promotion, no declaration field, no verb. sec-6 case 5 adds shared_x; VH 6 uses shared_proj. DEC-063 amended."
 
 # Findings are append-only `[[finding]]` tables, added by `review raise`.
 # Empty here at creation — a fresh review is Active, awaiting the raiser.

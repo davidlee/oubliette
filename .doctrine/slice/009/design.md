@@ -112,7 +112,8 @@ postgresql-18 = {
     logins = lib.attrNames (lib.filterAttrs (_: u: u.isNormalUser) config.users.users);
     # Names PostgreSQL refuses as roles, its superuser, and the databases a
     # fresh cluster already has, which ensureDBOwnership would hand over.
-    reserved = n: lib.hasPrefix "pg_" n
+    # `shared_` is the operator's, for shared roles (below).
+    reserved = n: lib.hasPrefix "pg_" n || lib.hasPrefix "shared_" n
       || builtins.elem n ["postgres" "public" "none" "current_user" "current_role" "session_user" "template0" "template1"];
   in {
     assertions = [{
@@ -154,19 +155,24 @@ postgresql-18 = {
   superuser by peer through the `postgres` system user:
 
   ```
-  capsule <room> ssh            # as root, with an admin key
+  capsule <room> ssh root       # root, so with an admin key
   runuser -u postgres -- psql
-    CREATE ROLE proj NOLOGIN;
-    CREATE DATABASE proj OWNER proj;
-    GRANT proj TO agent, eve;   -- members may now open db proj; others may not
+    CREATE ROLE shared_proj NOLOGIN;
+    CREATE DATABASE shared_proj OWNER shared_proj;
+    GRANT shared_proj TO agent, eve;   -- members may open it; others may not
   ```
 
-  No room user can become `postgres` (no sudo, no keys on it). The shared role
+  **A shared role is named `shared_<x>`, and no login may be** (RV-025 F-11):
+  the fragment's assertion refuses a login with that prefix, so a user declared
+  later can never meet an existing `NOLOGIN` shared role of its own name — NixOS
+  would skip creating it and leave it unable to log in. A shared role named
+  outside the convention is the operator's to rename before a colliding user is
+  declared. No room user can become `postgres` (no sudo, no keys on it). The shared role
   and database live in the cluster on `/home`, survive like any data, and are
   not declared anywhere; a declared shared database would be a parameterised
   fragment, which `DEC-059` leaves for later.
 - **Reserved names refuse at eval** (RV-025 F-6, F-9). `rooms.nix` admits
-  `pg_demo` and `template1`; PostgreSQL refuses `CREATE USER pg_demo`, and
+  `pg_demo`, `template1` and `shared_x`; PostgreSQL refuses `CREATE USER pg_demo`, and
   `ensureDBOwnership` would give `template1`'s login the template every later
   database is copied from. The fragment's own assertion fails the image with
   the names, and only for a room that selects it.
@@ -251,7 +257,7 @@ Rungs per `STD-001`. Everything in the first list is in `just build`.
      `listen_addresses == ""`, `authentication` exactly the two rules (`samerole`),
      `ensureUsers` names exactly its declared users with no clauses,
      `ensureDatabases` the same, and no failing assertion.
-  5. `assistant` extended with a user `pg_demo`, then with `template1`: each a
+  5. `assistant` extended with a user `pg_demo`, then `template1`, then `shared_x`: each a
      failing assertion naming it.
   6. `lounge` (selects none): postgresql disabled, no `/var/lib/postgresql`
      filesystem, no `room-persist`.
@@ -279,8 +285,8 @@ Rungs per `STD-001`. Everything in the first list is in `just build`.
    `agent` — confirms peer auth over a forward;
 5. as `eve`, with her own role: `psql -U eve -d agent` is refused, and
    `psql -d eve` succeeds;
-6. as root, the sec-4 shared-database recipe for `proj` granted to `agent`
-   only: `agent -d proj` succeeds, `eve -d proj` is refused.
+6. as root, the sec-4 shared-database recipe for `shared_proj` granted to
+   `agent` only: `agent -d shared_proj` succeeds, `eve -d shared_proj` is refused.
 
 Whatever is not run is reported as not exercised. No probe is added.
 <!-- doctrine:section sec-7 -->
@@ -291,8 +297,9 @@ Whatever is not run is reported as not exercised. No probe is added.
   persistence, and that slots refuse one. Its `item 4` row stays a possibility.
 - **README, a "PostgreSQL in a room" section** (user, 2026-10-24: so it is not
   rediscovered): selecting `postgresql-18`; who can be the superuser (guest
-  root by admin key, then `runuser -u postgres -- psql`; no room user); the
-  shared-database recipe; the forward; readiness (`postgresql.target`); reset,
+  root by admin key, `capsule <room> ssh root`, then
+  `runuser -u postgres -- psql`; no room user); the
+  shared-database recipe and its `shared_` naming rule; the forward; readiness (`postgresql.target`); reset,
   backup and the major-version bump. `templates/fleet/flake.nix`'s rooms
   comment points at it.
 - A doctrine memory scoped to `fragments.nix` and `vm/room.nix` with the
