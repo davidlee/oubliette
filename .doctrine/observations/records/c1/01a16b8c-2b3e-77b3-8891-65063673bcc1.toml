@@ -1,0 +1,18 @@
+schema = "doctrine.observation"
+schema_version = 1
+uid = "01a16b8c-2b3e-77b3-8891-65063673bcc1"
+recorded_at = "2026-10-24T01:35:10.654165105Z"
+kind = "friction"
+summary = "TaskStop on a completed child fails with 'No task found'"
+detail = "SL-009 orchestrator: the reap-on-read instruction says TaskStop each child after its hand-back, but a foreground child that called SubagentHandback is already gone; TaskStop errors. Reaping is a no-op for foreground children."
+
+[facets.execution]
+schema_version = 1
+interface = "cli"
+interface_origin = "automatic"
+product_surface = "doctrine"
+product_surface_origin = "automatic"
+command = "observation record"
+command_origin = "automatic"
+repository_context = "primary"
+repository_context_origin = "automatic"

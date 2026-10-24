@@ -1,0 +1,18 @@
+schema = "doctrine.observation"
+schema_version = 1
+uid = "01a16b8c-2b3a-7763-8fb6-5bd1cf606033"
+recorded_at = "2026-10-24T01:35:10.650986822Z"
+kind = "friction"
+summary = "A suite case that reads a feature before it exists aborts the whole eval, so red-first needs guards"
+detail = "SL-009 PHASE-02/03: cases reading slotRefusal, services.postgresql.package, listen_addresses or an unrendered fileSystems entry produced an eval abort, not a FAIL line, stopping every case. Workers added guards (optionalString, or, no-op extensions) to make reds attributable. A suite helper for 'read or report absent' would make this the default."
+
+[facets.execution]
+schema_version = 1
+interface = "cli"
+interface_origin = "automatic"
+product_surface = "doctrine"
+product_surface_origin = "automatic"
+command = "observation record"
+command_origin = "automatic"
+repository_context = "primary"
+repository_context_origin = "automatic"
