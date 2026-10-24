@@ -95,3 +95,30 @@ DEC-061` is why the data lives on `/home`.
 - None. No ADR, policy, standard or spec is contradicted; POL-005's "a room never
   fetches" is untouched (the fragment adds no uplink, and the server listens on
   no address).
+
+## Reconciliation Outcome
+
+### Direct edits applied (design.md; the run is locked, so per doctrine's
+### refusal "at reconcile, edit design.md directly and do not adopt")
+
+- sec-4 (shared-database bullet) and sec-7 (README bullet): root is reached by
+  the host's admin keys **and** the stop key, unrestricted, present even with
+  `adminKeys = []` (F-1).
+- sec-4 (host access): the forward is the room-client bundle's `ssh` only;
+  `capsule <room> ssh` takes no ssh options (F-2).
+- sec-9 table: `fragments.nix` takes a required `lib`; `vm/capsule.nix` is an
+  `assertions` entry, matching sec-5; `fragments-cases.nix` takes `flavour` and
+  `roomRecords` (F-3).
+- sec-6: negative cases extend by one change each — a module for a room, a
+  `specialArgs.flavour` for the capsule; case 9, the persistence rules, added
+  (F-4).
+
+### REVs completed
+
+- None; the brief has no governance/spec items.
+
+### Not a write
+
+- F-5: follow-up, IMP-027. F-6: aligned.
+
+Reconcile pass complete — handoff to /close.

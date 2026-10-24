@@ -151,11 +151,14 @@ postgresql-18 = {
   `eve -d agent` matches no rule and is refused. In a room the logins are its
   declared users; the module reads `config`, not the room record.
 - **A shared database is the operator's act, by convention** (user, 2026-10-24).
-  Root in the guest is reached only by the host's admin keys; it becomes the
-  superuser by peer through the `postgres` system user:
+  Root in the guest is reached by the host's admin keys and by the host's stop
+  key (the `microvm@` units' reboot credential, `vm/door.nix`, installed with no
+  `command=` restriction, so a full root login; a room with `adminKeys = []`
+  still has it); root becomes the superuser by peer through the `postgres`
+  system user:
 
   ```
-  capsule <room> ssh root       # root, so with an admin key
+  capsule <room> ssh root       # root: an admin key or the stop key
   runuser -u postgres -- psql
     CREATE ROLE shared_proj NOLOGIN;
     CREATE DATABASE shared_proj OWNER shared_proj;
@@ -188,8 +191,9 @@ postgresql-18 = {
   it, and `postgresql.target` requires both. No oubliette verb waits or
   reports; `systemctl is-active postgresql.target` over the door is how to ask.
 - **Host access**: `ssh -L 5432:/run/postgresql/.s.PGSQL.5432` (or a local socket
-  path) through the room's door, with the room-client bundle or
-  `capsule <room> ssh`. The door's sshd is NixOS-default, which permits
+  path) through the room's door, with the room-client bundle's `ssh`.
+  `capsule <room> ssh` cannot carry it: everything after the user is the remote
+  command, so it takes no ssh options. The door's sshd is NixOS-default, which permits
   stream-local forwarding; this adds nothing to the perimeter.
 - **Reset and backup** are the operator's: `dropdb` and re-create as `postgres`
   (root runs `runuser -u postgres`), or, with the room stopped, root removes
@@ -242,8 +246,10 @@ Rungs per `STD-001`. Everything in the first list is in `just build`.
 
 - **`fragmentsCases`** (new, `fragments-cases.nix`, beside its subject). Its
   subjects are the **shipped** vocabulary and **evaluated** images handed in by
-  `mkfleet.nix`: the fixture rooms, and the same images extended with one
-  module each (`extendModules`) for the negative cases; the header says so.
+  `mkfleet.nix`: the fixture rooms, and the same images extended
+  (`extendModules`) by one change each for the negative cases — one module for
+  a room, and for the capsule (case 2) one `specialArgs.flavour` with
+  `postgresql-18` added; the header says so.
   A refusal is read as the **message of a failing entry in
   `config.assertions`** (or a `roomChecks` reason), never a bare `tryEval`
   verdict. Red first.
@@ -268,6 +274,9 @@ Rungs per `STD-001`. Everything in the first list is in `just build`.
      notes: drop `x-systemd.requires` (persistence rules); flip
      `listen_addresses`; restore `local all all peer`; drop `template1` from the reserved list; replace the capsule
      assertion with an unrelated throw (case 2).
+  9. The persistence rules, positive control first: `assistant` as shipped
+     fails none; its bind with `fsType = "auto"`, then without
+     `x-systemd.requires`, each fails exactly that one rule.
 - **`roomImages`**: the door and persistence rules over both fixture rooms;
   `assistant`'s image builds with postgres in it.
 - **`just check`** and lint over every touched file; wired into `just build`
@@ -297,7 +306,7 @@ Whatever is not run is reported as not exercised. No probe is added.
   persistence, and that slots refuse one. Its `item 4` row stays a possibility.
 - **README, a "PostgreSQL in a room" section** (user, 2026-10-24: so it is not
   rediscovered): selecting `postgresql-18`; who can be the superuser (guest
-  root by admin key, `capsule <room> ssh root`, then
+  root by an admin key or the stop key, `capsule <room> ssh root`, then
   `runuser -u postgres -- psql`; no room user); the
   shared-database recipe and its `shared_` naming rule; the forward; readiness (`postgresql.target`); reset,
   backup and the major-version bump. `templates/fleet/flake.nix`'s rooms
@@ -330,11 +339,11 @@ Whatever is not run is reported as not exercised. No probe is added.
 
 | path | change |
 |---|---|
-| `fragments.nix` | `guestModule`/`persist` keys; `modules`, `persists`, `slotRefusal`; the `postgresql-18` entry; header's "two things absent" revised |
+| `fragments.nix` | takes a required `lib` (a module's `imports` may not force `pkgs`); `guestModule`/`persist` keys; `modules`, `persists`, `slotRefusal`; the `postgresql-18` entry; header's "two things absent" revised |
 | `vm/room.nix` | imports `fragments.modules room.extras`; `room-persist.service` and the bind `fileSystems` from `fragments.persists room.extras`; `security.sudo.enable = false`; header |
-| `vm/capsule.nix` | throws `fragments.slotRefusal flavour.extras` |
+| `vm/capsule.nix` | an `assertions` entry from `fragments.slotRefusal flavour.extras` (sec-5) |
 | `mkfleet.nix` | `roomChecks` door and persistence rules; `fragmentsCases` wiring |
-| `fragments-cases.nix` (new) | `fragmentsCases` |
+| `fragments-cases.nix` (new) | `fragmentsCases`; takes `flavour` and `roomRecords` beside the vocabulary and images |
 | `just/fleet.just` | `fragmentsCases` in `build` and `cases` |
 | `justfile` | the new file in `nix_paths` if it lists files |
 | `fixture/default.nix` | `assistant` selects `postgresql-18` |
