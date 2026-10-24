@@ -637,8 +637,9 @@ b=$(nix build --print-out-paths .#room-client-<room>)
 (or a local socket path in place of `5432`). `capsule <room> ssh` takes no ssh
 options: its first argument is the user and everything after is the remote
 command, so there is no `-L` through it. Peer authentication makes a forwarded
-connection the logged-in ssh user, which is how it is meant to work; the live
-check is `ASM-006`'s, not yet made. The door's sshd is NixOS-default and
+connection the logged-in ssh user, which is how it is meant to work, and
+naming another role through it is refused by peer (`ASM-006`, checked live over
+a local-socket forward). The door's sshd is NixOS-default and
 permits stream-local forwarding, and the forward adds nothing to the perimeter.
 
 **Readiness is `postgresql.target`.** `postgresql.service` is only the server;
@@ -671,10 +672,11 @@ shares `/home`'s size (`sizes.volume`), so a full `/home` stops both a login's
 writes and postgres, and the image grows by postgres' closure. A dedicated
 volume per fragment is `DEC-068`, not built.
 
-**Not proven.** `fragmentsCases` pins the rules, the image and the module's
-settings. No room has been booted with it: that the bind is ordered after
-`/home` at boot (`ASM-005`) and that a forward reaches peer auth as the login
-(`ASM-006`) are the live rung's (`STD-001`).
+**What was checked live.** `fragmentsCases` pins the rules, the image and the
+module's settings. A booted room (`SL-009` PHASE-05) showed the bind ordered
+after `/home` and data surviving a stop and start (`ASM-005`), and a forward
+reaching peer auth as the login (`ASM-006`); not exercised: a TCP-port forward,
+or a room volume recreated (`STD-001`).
 
 ## Moving one capsule's work to another slot
 

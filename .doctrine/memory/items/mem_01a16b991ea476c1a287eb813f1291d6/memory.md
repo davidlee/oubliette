@@ -28,6 +28,12 @@ the remote command); forward the socket with the room-client bundle:
 `"$b/bin/ssh" -F "$b/etc/ssh_config" -L 5432:/run/postgresql/.s.PGSQL.5432 <user>@room-<room>`.
 
 Readiness is `postgresql.target`, not `postgresql.service`. User-facing
-detail: README.md "PostgreSQL in a room". Not live-verified until SL-009
-PHASE-05 (ASM-005/006).
+detail: README.md "PostgreSQL in a room". Live-verified on this host's
+`assistant` at SL-009 PHASE-05 (ASM-005/006 validated, 2026-10-24); a TCP-port
+forward was not exercised, only a local-socket one.
+
+**Quoting.** `capsule <room> ssh <user> -- cmd` joins its arguments into one
+remote command string, as `ssh` does, so the guest's shell re-parses it: pass a
+command with its own quotes as one string,
+`capsule <room> ssh agent -- "psql -c 'select 1'"`.
 

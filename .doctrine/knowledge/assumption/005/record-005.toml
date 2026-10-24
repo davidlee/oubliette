@@ -5,7 +5,7 @@ id = 5
 slug = "room-persist-boot-ordering-holds"
 title = "In a room guest, room-persist runs after home.mount and before the bind, and postgresql.target follows the bind"
 record_kind = "assumption"
-status = "held"
+status = "validated"
 created = "2026-10-24"
 updated = "2026-10-24"
 tags = []
@@ -15,8 +15,8 @@ claim = "systemd orders room-persist.service (DefaultDependencies=no, after/requ
 confidence = "medium"
 basis = "design-inference"
 validation_plan = "SL-009 DEC-064 VH 1 and 3: findmnt source on /home, /home/.fragments mode 700, postgresql.target active, data and postgres ownership survive a restart."
-validated_by    = ""
-validated_on    = ""
+validated_by = "agent, on the user's live run (SL-009 PHASE-05)"
+validated_on = "2026-10-24"
 invalidated_by  = ""
 invalidated_on  = ""
 

@@ -222,3 +222,127 @@ Verify: `just check` exit 0; `just` exit 0; `doctrine slice verify-vt 9`: PHASE-
 Not exercised: no room booted. The forward command line was derived from docs, not run; `ASM-005` (bind ordering at boot) and `ASM-006` (peer auth over a forward) are stated in the README as not proven (PHASE-05). Reset/`microvm -u` wording rests on the memory body only. EX-4 (memory) is the orchestrator's.
 
 Follow-up: README "From the host." now reads "an `ssh -L` over the room's door" so VT-1 keyword `ssh -L` appears literally (it was only `-L` on the code block's second line); code block unchanged.
+
+## PHASE-05 (live)
+
+Run by the user on this host's real room `assistant` (`/srv/fleet`), not a
+fixture (user's choice, 2026-10-24). Plan names map A = `agent`, B (`eve`) =
+`satan`. Landed: oubliette `67977f9` (contains e07fb7b) locked in `/srv/fleet`
+(`bb3d889` extras, `f21ed36` relock) and `~/flakes`; system switched 13:19 AEDT;
+room restarted 13:27 AEDT with `postgresql-18.6` in its runner's closure.
+Pre-flight before pushing: `/srv/fleet` built `roomImages`, `roomsCases`,
+`roomClientCases`, `hostModuleUnits`, `hostModulePrograms` against local
+oubliette b2e2b9d.
+
+Command-shape note (not a defect): `capsule <room> ssh <user> -- cmd` joins its
+arguments into one remote command string, as `ssh` does, so a remote command
+with its own quoting must be passed as one quoted string. Step 2 as first
+written failed in the guest's shell (`syntax error near unexpected token '('`)
+and was re-run quoted.
+
+### Step 1 (VH-1; EX-1, ASM-005) — rung: live, booted guest
+
+```
+active
+TARGET              SOURCE                                                 FSTYPE OPTIONS
+/var/lib/postgresql /dev/vdb[/.fragments/postgresql-18/var/lib/postgresql] ext4   rw,relatime
+700 root
+Requires=var-lib-postgresql.mount
+var-lib-postgresql.mount
+[    5.799925] capsule systemd[1]: Mounted /home.
+[    5.808879] capsule systemd[1]: Finished Make the directories a room's fragments persist, on /home.
+[    5.815024] capsule systemd[1]: Mounted /var/lib/postgresql.
+[    6.234242] capsule systemd[1]: Started PostgreSQL Server.
+[    6.292021] capsule systemd[1]: Finished PostgreSQL Setup Scripts.
+```
+
+`postgresql.target` active; the bind's source is `/dev/vdb` (the `/home`
+volume) at the fragment path; `/home/.fragments` `700 root`; one boot shows
+`/home` → `room-persist` → bind → server → setup, and postgres `Requires` the
+mount. One boot's order, plus the declared dependency: evidence for ASM-005's
+ordering, not proof against a race on every boot.
+
+### Step 6 (VH-3; EX-2) — rung: live
+
+```
+CREATE ROLE
+CREATE DATABASE
+GRANT ROLE
+ ?column?
+----------
+        1
+(1 row)
+
+psql: error: connection to server on socket "/run/postgresql/.s.PGSQL.5432" failed: FATAL:  no pg_hba.conf entry for host "[local]", user "satan", database "shared_proj", no encryption
+```
+
+Root's recipe ran through `runuser -u postgres -- psql`; `agent` (member)
+admitted to `shared_proj`; `satan` (not a member) refused by pg_hba, i.e. by
+`samerole`, not by a missing database.
+
+### Step 2 (VH-1) — rung: live, inferred
+
+Output not pasted. That the insert ran is shown by step 3's `select` returning
+the row after a stop/start; nothing else wrote `t`.
+
+### Step 3 (VH-1; ASM-005) — rung: live, across a VMM stop/start
+
+```
+microvm@assistant.service: Deactivated successfully.
+Stopped MicroVM 'assistant'.
+microvm@assistant.service: Consumed 7.186s CPU time over 3min 25.184s wall clock time, 809.7M memory peak, 14.3M read from disk, 1.9M written to disk, 4.5K incoming IP traffic, 4.8K outgoing IP traffic.
+ x
+---
+ 1
+(1 row)
+
+postgres:postgres 750
+```
+
+The VMM stopped (not merely the guest), and after the start `agent` reads the
+row back; the persisted data directory is `postgres:postgres 750` on `/home`.
+Root reads past `/home/.fragments` (`700 root`), which a login cannot.
+
+### Step 5 (VH-3; EX-2) — rung: live
+
+```
+$ capsule assistant ssh satan -- "psql -d agent -c 'select 1'"
+psql: error: connection to server on socket "/run/postgresql/.s.PGSQL.5432" failed: FATAL:  no pg_hba.conf entry for host "[local]", user "satan", database "agent", no encryption
+$ capsule assistant ssh satan -- "psql -c 'select current_user'"
+ current_user
+--------------
+ satan
+(1 row)
+$ capsule assistant ssh agent  -- "psql -c 'select current_user'"
+ current_user
+--------------
+ agent
+(1 row)
+```
+
+`satan` is refused another login's database by pg_hba (`samerole`) and admitted
+to its own; `agent` likewise to its own. The plan's `psql -U eve -d agent` was run
+as `-d agent` (role = the login): that isolates `samerole`. Naming another role
+with `-U` would test peer's identity check instead, which step 4's refused
+`-U satan` covers.
+
+### Step 4 (VH-2; ASM-006) — rung: live, host → door → guest socket
+
+Forward over the door with the room-client bundle built from `/srv/fleet`, to a
+local socket in a fresh `mktemp -d`; host `psql` 18 through it:
+
+```
+[1] 3805253
+ current_user | session_user
+--------------+--------------
+ agent        | agent
+(1 row)
+
+psql: error: connection to server on socket "/tmp/tmp.OmkP1mFdVx/.s.PGSQL.5432" failed: FATAL:  Peer authentication failed for user "satan"
+```
+
+The forwarded connection authenticates by peer as the ssh login (`agent`), and
+naming another role through the same forward is refused by peer, not by pg_hba
+lookup: the forward carries the guest-side identity of the ssh user and nothing
+the host client claims. Not exercised: a TCP-port forward (`-L 5432:…`), only a
+local-socket forward.
