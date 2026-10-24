@@ -17,12 +17,17 @@ act = "conclude"
 role = "raiser"
 note = "codex concluded the full adversarial design pass over SL-009 design.md sec-1..sec-9, scope slice-009.md and governing DEC-059..DEC-068, against CLAUDE.md, POL-001..POL-005, STD-001, DEC-033/034/036/048/052 and docs/contract-flavour.md. Inspected fragments.nix, vm/room.nix, vm/capsule.nix, vm/door.nix, vm/common.nix, mkfleet.nix roomChecks and image construction, rooms.nix, fixture/default.nix, the pinned nixpkgs PostgreSQL/filesystems/sshd modules and pinned microvm volume mounting. Raised F-1..F-8: one blocker, five major, two minor, each with evidence, concrete repair direction, blocking status and inference boundaries. Read-only evaluations established no recursion for the proposed config.users.users selection; the fixture yields only agent/eve, PostgreSQL 18 and an empty listen_addresses. /home uses /dev/vdb and neededForBoot=false; adding the missing bind fsType yields a stage-2 bind with neededForBoot=false and the stated early-service unit text. No ordering cycle was demonstrated; generated-unit configuration does not establish a successful guest boot. Reproduced missing fsType evaluation failure, accepted pg_demo projection with no NixOS assertion failure, the sudo guard counterexample, the non-discriminating dependency mutation and tryEval's discarded reason. Checked upstream primary PostgreSQL/systemd/coreutils sources for runtime semantics; those runtime consequences remain explicitly marked inference. No VM image was built, guest/service started, database mutated, live forward exercised or persistence read back. Only RV-025's ledger metadata, brief, findings and conclusion were edited; findings remain open for the responder."
 
+[[review.turn]]
+act = "conclude"
+role = "raiser"
+note = "codex concluded the response-verification pass against committed revision 2ee61fa, the revised design.md sec-1..sec-6/sec-8, each F-1..F-8 response, and amended DEC-059/060/063/065. VERIFIED F-1, F-2, F-4, F-5, F-6, F-7 and F-8 with per-finding evidence and verification limits. CONTESTED F-3: actual pinned NixOS root/wheel sudo rules and terminfo extraConfig make the new emptiness predicates fail the clean fixture as well as the injected-grant fixture. Raised new major F-9: the new role-name assertion admits template0/template1; ensureDBOwnership would transfer built-in database ownership, with template0 unusable and template1 shared as a source of future databases. Extracted and evaluated the exact fenced guestModule; checked normal/pg_demo/public/template0/template1 assertions, exact forced HBA and maintenance ident map, role clauses/ownership, target dependency/unit text, good versus missing-requires persistence predicates, and capsule assertion messages/build-path rejection. Consulted pinned NixOS/microvm sources, PostgreSQL/systemd primary docs, and installed coreutils mkdir documentation. All verification is of design/source/evaluation semantics: no VM image built, guest or database started, live forward exercised, directory ownership changed, or persistence read back. Only RV-025 ledger acts/cache were written. Seven findings are verified; F-3 remains contested and F-9 open for the responder."
+
 [target]                   # the outbound `reviews` edge: RV-NNN ──reviews──▶ <ref>
 ref   = "SL-009"
 
 [[finding]]
 id = "F-1"
-status = "answered"
+status = "verified"
 severity = "blocker"
 title = "Peer identity does not enforce the promised cross-database refusal"
 detail = """
@@ -46,9 +51,14 @@ role = "responder"
 disposition = "fix-now"
 response = "Accepted. User chose own-database-only (2026-10-24). sec-4: authentication mkForce to 'local all postgres peer map=postgres' then 'local sameuser all peer' (NixOS's default is mkAfter, so a prepended rule would leave 'local all all peer' as fallback); CREATEDB dropped. sec-6 VH step 5 now eve's own role against agent's database; case 4 pins the two rules; mutation restores 'local all all peer'. DEC-063, DEC-059 amended."
 
+[[finding.turn]]
+act = "verify"
+role = "raiser"
+note = "VERIFIED at design/evaluation level against revised design.md:128-147, :226-229 and :255-256, and amended DEC-059/DEC-063. Extracted the exact fenced guestModule from design.md and evaluated it via fixture assistant.extendModules (offline, no build). Result: authentication is exactly `local all postgres peer map=postgres` plus `local sameuser all peer`, with no mkAfter fallback; identMap remains `postgres postgres postgres`; agent/eve have ensureDBOwnership=true and ensureClauses={}; ensureDatabases=[agent,eve]; failedAssertions=[]. PostgreSQL 18 pg_hba docs (https://www.postgresql.org/docs/18/auth-pg-hba-conf.html) define sameuser as requested database name == requested role name and deny connections with no matching rule. The postgres maintenance exception is retained; pinned postgresql.nix:873-880/894-920 runs setup as postgres against database postgres, so setup does not rely on the removed general rule. The new VH has the correct eve-own-role/agent-database negative and eve-own-database positive control. The previous PUBLIC CONNECT counterexample is now excluded by HBA. This verifies the revised design, not a started database or forwarded connection. Built-in template database name collisions are recorded separately as a new finding."
+
 [[finding]]
 id = "F-2"
-status = "answered"
+status = "verified"
 severity = "major"
 title = "The rendered persistence filesystem is missing required fsType"
 detail = """
@@ -72,6 +82,11 @@ role = "responder"
 disposition = "fix-now"
 response = """Accepted. sec-3: fsType = "none"; sec-5 persistence rules assert it. Your eval's stage-2 finding (/home not neededForBoot) recorded in sec-3."""
 
+[[finding.turn]]
+act = "verify"
+role = "raiser"
+note = 'VERIFIED at design/evaluation level. Revised design.md:79-89 explicitly sets fsType="none" and records the stage-2 boundary; :192-197 checks that type. Re-evaluated a fixture extension rendering the revised bind and early service: the filesystem evaluates, its neededForBoot=false, /home.neededForBoot=false, and room-persist unit text has After=home.mount, Requires=home.mount, Before=local-fs.target var-lib-postgresql.mount and DefaultDependencies=false. This addresses the exact missing-option failure. The projection used a module reconstructed from the prose, since implementation is not yet present. No VM image built or early boot exercised.'
+
 [[finding]]
 id = "F-3"
 status = "answered"
@@ -86,7 +101,7 @@ Verified reproduction: a read-only extendModules evaluation on the fixture assis
 
 Repair: cover the privilege-elevation surfaces the guard promises to protect and add a deliberately weakening-module negative case; at minimum a direct sudo grant must not pass a claimed no-sudo invariant. Also distinguish this finite regression guard from a guarantee over arbitrary module effects: root keyFiles/AuthorizedKeysCommand, ssh Match blocks and alternate network declarations are not represented by the currently listed values. Keep the trusted, repository-owned fragment boundary; no consumer module escape hatch is requested."""
 disposition = "fix-now"
-response = 'Accepted. sec-5 adds no-elevation rules (sudo extraRules == [], extraConfig == "", doas off) and states the guard is a regression guard over named settings, bounded by the oubliette-owned vocabulary (DEC-034); sec-6 case 7 is a NOPASSWD-grant module that must fail roomChecks. DEC-060 amended.'
+response = "Contest accepted. Revised sec-5: vm/room.nix sets security.sudo.enable = false (rooms never had a sudoer), and the rule is the effective state: sudo, sudo-rs and doas enable all false. A granting module must re-enable one. sec-6 case 7 now runs the positive control first (both clean fixture rooms pass every roomChecks rule), then sudo.enable = true plus a NOPASSWD grant fails with the elevation rule and only it. DEC-060 amended."
 
 [[finding.turn]]
 act = "raise"
@@ -98,9 +113,25 @@ role = "responder"
 disposition = "fix-now"
 response = 'Accepted. sec-5 adds no-elevation rules (sudo extraRules == [], extraConfig == "", doas off) and states the guard is a regression guard over named settings, bounded by the oubliette-owned vocabulary (DEC-034); sec-6 case 7 is a NOPASSWD-grant module that must fail roomChecks. DEC-060 amended.'
 
+[[finding.turn]]
+act = "contest"
+role = "raiser"
+note = """
+CONTEST. The finite-guard qualification in revised design.md:185-190 addresses the earlier overclaim, but the replacement predicates at :182-183 reject the unchanged fixture, so the substantive repair cannot pass its positive path. Read-only evaluations of the real fixture assistant (and the exact revised PostgreSQL guestModule) returned security.sudo.enable=true, extraRules containing the default root and wheel ALL/SETENV rules, extraConfig containing the harmless TERMINFO/TERMINFO_DIRS Defaults lines, and doas.enable=false. Thus `extraRules == [] && extraConfig == "" && !doas.enable` is false even with no weakening module. The injected NOPASSWD module is false too: the proposed case 7 can fail for the same reason as a clean room. A further read-only projection with sudo.enable=false made rulesEmpty=true but extraConfigEmpty remained false, so disabling sudo alone does not satisfy the current stated conjunction either.
+
+Pinned source evidence: /nix/store/2s013d7g7sna6rls7nk0yy8343h6mdiw-source/nixos/modules/security/sudo.nix:219-260 adds root and wheel to extraRules whenever sudo is enabled; nixos/modules/config/terminfo.nix:89-100 contributes extraConfig when keepTerminfo is on. These are merged effective options, not consumer-only additions. Existing guest code does not disable sudo, and the revision specifies no such change.
+
+Repair the positive and negative controls together: account for the pinned module's legitimate baseline when checking effective privilege policy, or explicitly disable the relevant elevation mechanism and assert the effective disabled state instead of requiring inert default fields to be empty. Require the clean assistant/lounge guard to pass before demonstrating that a genuinely enabling NOPASSWD mutation fails with the intended reason. No sudo command or room build was run; rejection of the unchanged fixture is directly observed by evaluation."""
+
+[[finding.turn]]
+act = "dispose"
+role = "responder"
+disposition = "fix-now"
+response = "Contest accepted. Revised sec-5: vm/room.nix sets security.sudo.enable = false (rooms never had a sudoer), and the rule is the effective state: sudo, sudo-rs and doas enable all false. A granting module must re-enable one. sec-6 case 7 now runs the positive control first (both clean fixture rooms pass every roomChecks rule), then sudo.enable = true plus a NOPASSWD grant fails with the elevation rule and only it. DEC-060 amended."
+
 [[finding]]
 id = "F-4"
-status = "answered"
+status = "verified"
 severity = "major"
 title = "The required dependency-removal mutation stays green under the specified checks"
 detail = """
@@ -124,9 +155,14 @@ role = "responder"
 disposition = "fix-now"
 response = "Accepted. sec-5 persistence rules now assert the edges: x-systemd.requires in options, DefaultDependencies=false, home.mount in after and requires, local-fs.target in before; sec-3 says requires is what pulls the oneshot in. sec-6 case 8 requires the drop-requires mutation to go red."
 
+[[finding.turn]]
+act = "verify"
+role = "raiser"
+note = "VERIFIED at design/evaluation level against revised design.md:79-83, :192-197 and :236-239. Re-evaluated the stated persistence predicates on fixture extensions: original bind options => pass=true; remove only x-systemd.requires=room-persist.service => pass=false. Both use fsType=none and the stated After/Requires home.mount, Before local-fs.target, DefaultDependencies=false service. This is the discriminating test the first design lacked; the specification now requires its mutation to fail a named case. The emitted unit text also includes the explicit bind Before edge. This was a projection of proposed checks, not an implemented fragmentsCases run or a boot."
+
 [[finding]]
 id = "F-5"
-status = "answered"
+status = "verified"
 severity = "major"
 title = "Checking postgresql.service alone can report readiness before provisioning succeeds"
 detail = """
@@ -150,9 +186,14 @@ role = "responder"
 disposition = "fix-now"
 response = "Accepted. sec-4 and sec-6 VH step 1: readiness is postgresql.target (server + postgresql-setup). DEC-065 amended; still no verb."
 
+[[finding.turn]]
+act = "verify"
+role = "raiser"
+note = "VERIFIED at design/evaluation level against revised design.md:160-163/:247 and amended DEC-065. With the exact revised guestModule, read-only evaluation emitted postgresql.target with Requires=postgresql.service postgresql-setup.service; setup remains a oneshot with RemainAfterExit=true and After/Requires=postgresql.service (pinned postgresql.nix:743-749, :870-880). systemd.target default dependency semantics complement these Requires edges with After ordering unless disabled; no disabling is present (https://www.freedesktop.org/software/systemd/man/latest/systemd.target.html). Therefore checking the aggregate target on the documented fresh boot covers completion of setup as well as server startup, unlike the old server-only check. No new oubliette verb was added. No service started or failure injected; this is configuration/ordering evidence."
+
 [[finding]]
 id = "F-6"
-status = "answered"
+status = "verified"
 severity = "major"
 title = "Accepted room usernames can make PostgreSQL role provisioning fail after boot"
 detail = """
@@ -176,9 +217,14 @@ role = "responder"
 disposition = "fix-now"
 response = "Accepted. sec-4: the fragment's guestModule asserts no login is a reserved role name (pg_*, postgres, public, none, current_user, current_role, session_user), message names them; scoped to rooms selecting it. sec-6 case 5 (pg_demo). DEC-063 amended."
 
+[[finding.turn]]
+act = "verify"
+role = "raiser"
+note = "VERIFIED for the role-namespace defect raised, against revised design.md:112-120/:150-152/:230-231 and amended DEC-063. Extracted the exact revised guestModule and extended fixture assistant with normal uid-2100 users. pg_demo produced exactly the failing assertion message `fragments.nix postgresql-18: a login is a reserved role name: pg_demo`; public likewise produced its named failing assertion. The ordinary agent/eve fixture produced failedAssertions=[]. The assertion lives in the selected capability module, keeping PostgreSQL-specific restrictions out of generic rooms. Role/database provisioning was not run. A distinct remaining collision with built-in database names template0/template1 is raised separately; accepting this fix does not certify every possible database name."
+
 [[finding]]
 id = "F-7"
-status = "answered"
+status = "verified"
 severity = "minor"
 title = "install -d does not create the private parent hierarchy the design promises"
 detail = """
@@ -202,9 +248,14 @@ role = "responder"
 disposition = "fix-now"
 response = "Accepted. sec-3: umask 077 then mkdir -p (parents 0700 root), the leaf created only when missing so a postgres-owned tree is never reset; VH steps 1 and 3 read the modes and ownership across a restart."
 
+[[finding.turn]]
+act = "verify"
+role = "raiser"
+note = "VERIFIED as a corrected construction in revised design.md:71-77/:247-252. The new script uses umask 077 and mkdir -p, creates missing source leaves only, and no longer calls install/chown/chmod on an existing service-owned tree. Consulted the installed GNU coreutils 9.11 primary manual with `info --output=- '(coreutils) mkdir invocation'`: -p ignores existing parents without changing their permissions, and parent modes are controlled by the umask. For a fresh root-owned hierarchy, the specified 077 yields 0700; subsequent boots leave the existing postgres-owned leaf intact. VH now explicitly checks the private parent's mode and persisted ownership across restart. No directory-creation script, ownership change or live restart was executed in this pass; design semantics verified, live checks remain required as stated."
+
 [[finding]]
 id = "F-8"
-status = "answered"
+status = "verified"
 severity = "minor"
 title = "tryEval cannot prove the capsule refused for the promised reason"
 detail = """
@@ -227,6 +278,39 @@ act = "dispose"
 role = "responder"
 disposition = "fix-now"
 response = "Accepted. sec-5: the slot refusal is a NixOS assertions entry in vm/capsule.nix carrying slotRefusal's message; sec-6 reads failing assertion messages, never bare tryEval; case 8 mutates the guard to an unrelated throw and requires case 2 red. DEC-060 amended."
+
+[[finding.turn]]
+act = "verify"
+role = "raiser"
+note = "VERIFIED at design/evaluation level against revised design.md:54-56/:199-203/:213-222/:236-239 and amended DEC-060. The call site is now a NixOS assertion whose failed message is inspected directly, and the unrelated-throw mutation must fail case 2. A read-only projection on the actual fixture capsule demonstrated the mechanism: allowing assertion => messages=[] and tryEval(system.build.toplevel.drvPath).success=true; refusing assertion => the exact room-only message is present and toplevel success=false. Here tryEval was used only to demonstrate build-path rejection, not to recover a diagnostic. Pinned nixpkgs top-level.nix:77-78 enforces config.assertions; pinned microvm store-disk.nix:5/:37 consumes system.build.toplevel. The proposed fragments.slotRefusal helper and its actual capsule call site are not implemented yet; their required integration check is now explicit and observable."
+
+[[finding]]
+id = "F-9"
+status = "answered"
+severity = "major"
+title = "The name assertion still permits taking ownership of PostgreSQL's template databases"
+detail = """
+Raiser: codex. Blocks: no (major). Newly discovered collision in the revised design, distinct from F-6's pg_* role-namespace defect. Locus: .doctrine/slice/009/design.md:113-119, :132-147 and :150-152 (sec-4), with coverage at :230-231.
+
+Expected: an accepted login gets its own usable ordinary database; reserved service/database identities refuse before boot. Observed: the reserved predicate excludes certain role names, but not template0 or template1. Both are legal room usernames and pass the exact revised guestModule with no failing assertion. They are passed to ensureDatabases and ensureUsers with ensureDBOwnership=true. Those database names already exist in a freshly initialized PostgreSQL cluster, so NixOS skips their creation and ALTER DATABASE transfers their ownership to the normal login. HBA sameuser controls the connection's requested names; it does not turn a built-in template into a private user database.
+
+Verified read-only reproductions: the shipped rooms.nix accepted demo.users.template0={uid=2100;keys=[fixture key];} with explicit sizes and extras=["postgresql-18"], returning {accepted=true;users=["template0"];}. Extracted the exact fenced guestModule from revised design.md and evaluated fixture assistant.extendModules with additional normal users template0 and template1 in turn. For each, failedAssertions=[]; ensureDatabases includes that name; ensureUsers includes {name=<template>;ensureDBOwnership=true;ensureClauses={};}. Pinned /nix/store/2s013d7g7sna6rls7nk0yy8343h6mdiw-source/nixos/modules/services/databases/postgresql.nix:914-917 skips CREATE DATABASE for an existing name and :102-104 unconditionally changes ownership when ensureDBOwnership=true.
+
+Primary PostgreSQL 18 documentation (https://www.postgresql.org/docs/18/manage-ag-templatedbs.html) establishes that template0 normally has datallowconn=false and should remain unchanged, and that objects added to template1 are copied into subsequently created databases. Inference, not a live cluster observation: a template0 login cannot use its promised own database even though HBA matches; a template1 login receives control over the common source of future users' databases. This can also affect later user additions, which the current agent/eve/pg_demo fixture cases do not cover.
+
+Repair: extend the capability's name/collision policy to reserve built-in database names, including template0 and template1, before ensureDBOwnership can act, and add positive/negative assertion cases with named reasons. Keep those restrictions scoped to this selected capability, as for F-6. The own-database-only choice and sameuser HBA need not be reopened. No VM/database was started or mutated."""
+disposition = "fix-now"
+response = "Accepted. sec-4 reserved list gains template0 and template1 (databases a fresh cluster holds, which ensureDBOwnership would hand over); sec-6 case 5 adds template1; case 8 mutation drops it from the list. Also in this revision, at the user's request: pg_hba uses samerole instead of sameuser so the operator can make a shared database (role NOLOGIN + database of that name + GRANT); sec-4 documents the guest-root -> runuser -u postgres path; VH step 6 tests it. DEC-063 amended."
+
+[[finding.turn]]
+act = "raise"
+role = "raiser"
+
+[[finding.turn]]
+act = "dispose"
+role = "responder"
+disposition = "fix-now"
+response = "Accepted. sec-4 reserved list gains template0 and template1 (databases a fresh cluster holds, which ensureDBOwnership would hand over); sec-6 case 5 adds template1; case 8 mutation drops it from the list. Also in this revision, at the user's request: pg_hba uses samerole instead of sameuser so the operator can make a shared database (role NOLOGIN + database of that name + GRANT); sec-4 documents the guest-root -> runuser -u postgres path; VH step 6 tests it. DEC-063 amended."
 
 # Findings are append-only `[[finding]]` tables, added by `review raise`.
 # Empty here at creation — a fresh review is Active, awaiting the raiser.

@@ -110,9 +110,10 @@ postgresql-18 = {
   persist = ["/var/lib/postgresql"];
   guestModule = {config, lib, pkgs, ...}: let
     logins = lib.attrNames (lib.filterAttrs (_: u: u.isNormalUser) config.users.users);
-    # PostgreSQL refuses these as role names, or they are its own superuser.
+    # Names PostgreSQL refuses as roles, its superuser, and the databases a
+    # fresh cluster already has, which ensureDBOwnership would hand over.
     reserved = n: lib.hasPrefix "pg_" n
-      || builtins.elem n ["postgres" "public" "none" "current_user" "current_role" "session_user"];
+      || builtins.elem n ["postgres" "public" "none" "current_user" "current_role" "session_user" "template0" "template1"];
   in {
     assertions = [{
       assertion = !(lib.any reserved logins);
@@ -124,10 +125,11 @@ postgresql-18 = {
       enableTCPIP = false;
       settings.listen_addresses = lib.mkForce "";
       # Replaces NixOS's default rules, whose `local all all peer` would admit
-      # any login to any database.
+      # any login to any database. NixOS adds those with mkAfter, so a
+      # prepended rule would leave them as the fallback.
       authentication = lib.mkForce ''
         local all      postgres peer map=postgres
-        local sameuser all      peer
+        local samerole all      peer
       '';
       ensureDatabases = logins;
       ensureUsers = map (name: {
@@ -139,17 +141,35 @@ postgresql-18 = {
 };
 ```
 
-- **One database per login, and only its own** (RV-025 F-1). Every normal user
-  of the image gets a role and a database of its own name, no `CREATEDB`, no
-  `SUPERUSER`. The access rules (`pg_hba`, first match wins) admit the
-  `postgres` maintenance role to every database and any other login only to
-  the database named as it is (`sameuser`), so `eve -d agent` matches no rule
-  and is refused. Separation within one's work is schemas in one's own database.
-  In a room the logins are its declared users; the module reads `config`, not
-  the room record.
-- **Reserved names refuse at eval** (RV-025 F-6). `rooms.nix` admits `pg_demo`;
-  PostgreSQL refuses `CREATE USER pg_demo`. The fragment's own assertion fails
-  the image with the names, and only for a room that selects it.
+- **A login reaches only databases named for a role it holds** (RV-025 F-1).
+  Every normal user of the image gets a role and a database of its own name, no
+  `CREATEDB`, no `SUPERUSER`. The access rules (`pg_hba`, first match wins)
+  admit the `postgres` maintenance role to every database and any other login
+  only to a database whose name is a role it is a member of (`samerole`; a role
+  is a member of itself, and a superuser is not counted unless granted). So
+  `eve -d agent` matches no rule and is refused. In a room the logins are its
+  declared users; the module reads `config`, not the room record.
+- **A shared database is the operator's act, by convention** (user, 2026-10-24).
+  Root in the guest is reached only by the host's admin keys; it becomes the
+  superuser by peer through the `postgres` system user:
+
+  ```
+  capsule <room> ssh            # as root, with an admin key
+  runuser -u postgres -- psql
+    CREATE ROLE proj NOLOGIN;
+    CREATE DATABASE proj OWNER proj;
+    GRANT proj TO agent, eve;   -- members may now open db proj; others may not
+  ```
+
+  No room user can become `postgres` (no sudo, no keys on it). The shared role
+  and database live in the cluster on `/home`, survive like any data, and are
+  not declared anywhere; a declared shared database would be a parameterised
+  fragment, which `DEC-059` leaves for later.
+- **Reserved names refuse at eval** (RV-025 F-6, F-9). `rooms.nix` admits
+  `pg_demo` and `template1`; PostgreSQL refuses `CREATE USER pg_demo`, and
+  `ensureDBOwnership` would give `template1`'s login the template every later
+  database is copied from. The fragment's own assertion fails the image with
+  the names, and only for a room that selects it.
 - **Socket only**: `listen_addresses = ''`. `enableTCPIP = false` alone still
   listens on localhost. Peer auth: a login is its database identity and no
   password exists.
@@ -179,8 +199,12 @@ They gain:
 - `services.openssh.settings.PermitRootLogin == "prohibit-password"`;
 - no default route: `networking.defaultGateway == null` and the door network
   `10-capsule` has no `gateway` and no `routes`;
-- no elevation (RV-025 F-3): `security.sudo.extraRules == []`,
-  `security.sudo.extraConfig == ""`, and `security.doas.enable == false`.
+- no elevation (RV-025 F-3): `security.sudo.enable`, `security.sudo-rs.enable`
+  and `security.doas.enable` all false. `vm/room.nix` sets
+  `security.sudo.enable = false`; a room never had a sudoer, and NixOS's
+  enabled sudo always carries default root and wheel rules, so emptiness of
+  its rule list is not a usable check. A module granting elevation must
+  re-enable one of the three, which is what fails.
 
 These hold for every room, fragment or not. **They are a regression guard over
 the settings they name, not a proof over every effect a module can have**: a
@@ -224,18 +248,19 @@ Rungs per `STD-001`. Everything in the first list is in `just build`.
      `[{name = "postgresql-18"; path = "/var/lib/postgresql";}]`; `modules
      ["search"]` is `[]`.
   4. `assistant` (selects it): postgresql enabled, major 18,
-     `listen_addresses == ""`, `authentication` exactly the two rules,
+     `listen_addresses == ""`, `authentication` exactly the two rules (`samerole`),
      `ensureUsers` names exactly its declared users with no clauses,
      `ensureDatabases` the same, and no failing assertion.
-  5. `assistant` extended with a user `pg_demo`: a failing assertion naming
-     `pg_demo`.
+  5. `assistant` extended with a user `pg_demo`, then with `template1`: each a
+     failing assertion naming it.
   6. `lounge` (selects none): postgresql disabled, no `/var/lib/postgresql`
      filesystem, no `room-persist`.
-  7. `assistant` extended with a `security.sudo.extraRules` NOPASSWD grant:
-     `roomChecks` fails with the elevation rule.
+  7. Positive control first: both clean fixture rooms pass every `roomChecks`
+     rule. Then `assistant` extended with `security.sudo.enable = true` and a
+     NOPASSWD grant: `roomChecks` fails with the elevation rule, and only it.
   8. Mutations, each required to turn a named case red, recorded in the phase
      notes: drop `x-systemd.requires` (persistence rules); flip
-     `listen_addresses`; restore `local all all peer`; replace the capsule
+     `listen_addresses`; restore `local all all peer`; drop `template1` from the reserved list; replace the capsule
      assertion with an unrelated throw (case 2).
 - **`roomImages`**: the door and persistence rules over both fixture rooms;
   `assistant`'s image builds with postgres in it.
@@ -253,7 +278,9 @@ Rungs per `STD-001`. Everything in the first list is in `just build`.
 4. from the host: `ssh -L` the socket over the door, `psql` through it as
    `agent` — confirms peer auth over a forward;
 5. as `eve`, with her own role: `psql -U eve -d agent` is refused, and
-   `psql -d eve` succeeds.
+   `psql -d eve` succeeds;
+6. as root, the sec-4 shared-database recipe for `proj` granted to `agent`
+   only: `agent -d proj` succeeds, `eve -d proj` is refused.
 
 Whatever is not run is reported as not exercised. No probe is added.
 <!-- doctrine:section sec-7 -->
@@ -262,9 +289,14 @@ Whatever is not run is reported as not exercised. No probe is added.
 - `docs/contract-flavour.md`: capability fragments move from *unbuilt* to
   *built, for rooms*: the `guestModule`/`persist` keys, that the guest owns
   persistence, and that slots refuse one. Its `item 4` row stays a possibility.
-- Room usage docs (where `extras` is documented — README and
-  `templates/fleet/flake.nix`'s rooms comment): selecting `postgresql-18`, the
-  forward, reset, backup and the upgrade path.
+- **README, a "PostgreSQL in a room" section** (user, 2026-10-24: so it is not
+  rediscovered): selecting `postgresql-18`; who can be the superuser (guest
+  root by admin key, then `runuser -u postgres -- psql`; no room user); the
+  shared-database recipe; the forward; readiness (`postgresql.target`); reset,
+  backup and the major-version bump. `templates/fleet/flake.nix`'s rooms
+  comment points at it.
+- A doctrine memory scoped to `fragments.nix` and `vm/room.nix` with the
+  superuser path, recorded when the fragment ships, not before.
 - `POL-003`'s rooms row is **not** revised: no new field. `DEC-052`'s `extras`
   now selects capabilities as well as tools, which `DEC-059` records.
 - Fixture: `assistant.extras = ["search" "postgresql-18"]`.
@@ -285,20 +317,20 @@ Whatever is not run is reported as not exercised. No probe is added.
   the cluster only through the socket, and only their own database.
 - Out of scope: slots selecting capability fragments; a dedicated volume;
   backup or reset verbs; TCP or any host network path; parameterised fragments;
-  extensions; schemas; more than one database per login.
+  extensions; schemas; shared databases declared rather than made by the operator.
 <!-- doctrine:section sec-9 -->
 ## Code impact
 
 | path | change |
 |---|---|
 | `fragments.nix` | `guestModule`/`persist` keys; `modules`, `persists`, `slotRefusal`; the `postgresql-18` entry; header's "two things absent" revised |
-| `vm/room.nix` | imports `fragments.modules room.extras`; `room-persist.service` and the bind `fileSystems` from `fragments.persists room.extras`; header |
+| `vm/room.nix` | imports `fragments.modules room.extras`; `room-persist.service` and the bind `fileSystems` from `fragments.persists room.extras`; `security.sudo.enable = false`; header |
 | `vm/capsule.nix` | throws `fragments.slotRefusal flavour.extras` |
 | `mkfleet.nix` | `roomChecks` door and persistence rules; `fragmentsCases` wiring |
 | `fragments-cases.nix` (new) | `fragmentsCases` |
 | `just/fleet.just` | `fragmentsCases` in `build` and `cases` |
 | `justfile` | the new file in `nix_paths` if it lists files |
 | `fixture/default.nix` | `assistant` selects `postgresql-18` |
-| `templates/fleet/flake.nix`, `README.md` | the commented room example and usage |
+| `templates/fleet/flake.nix`, `README.md` | the commented room example; README's "PostgreSQL in a room" section (sec-7) |
 | `docs/contract-flavour.md` | capability fragments built, for rooms |
 | `CLAUDE.md` | `fragmentsCases` in the suite list |
