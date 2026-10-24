@@ -60,9 +60,9 @@ reported as not exercised, never as passed.
 | finding | route | where |
 |---|---|---|
 | F-1 database exclusion | demonstrate | PHASE-05/EX-2 (VH steps 5-6); the HBA text is pinned by PHASE-03 case 4 |
-| F-2 fsType | control | PHASE-03/EX-2 |
+| F-2 fsType | control | PHASE-03/EX-2 (standing negative, case 9, and a mutation) |
 | F-3 elevation | control | PHASE-01/EX-3 |
-| F-4 requires edge | control | PHASE-03/EX-2 |
+| F-4 requires edge | control | PHASE-03/EX-2 (standing negative, case 9, and a mutation) |
 | F-5 readiness | demonstrate | PHASE-05/EX-1 |
 | F-6 / F-9 / F-11 reserved names | control | PHASE-03/EX-3 |
 
@@ -73,8 +73,17 @@ F-7, F-8 and F-10 have no route. They are built into PHASE-03's script, the
 
 - Design sec-9 says `vm/capsule.nix` "throws"; sec-5 governs, and it is an
   `assertions` entry. The plan follows sec-5.
-- PHASE-02 case 2 depends on `extendModules` accepting a `specialArgs.flavour`
-  override on an evaluated capsule. The fallback is named in the phase
-  objective.
+- PHASE-02 case 2 relies on `extendModules` accepting a `specialArgs.flavour`
+  override. Spiked at planning: the override is honoured and the other
+  specialArgs survive. The suite gets its capsule image in PHASE-01, so its
+  signature does not change in PHASE-02.
+- Case 9 (PHASE-03) is new, not one of design sec-6's numbered cases. It turns
+  the F-2/F-4 mutations into standing negatives over `roomChecks`. This adds
+  tests, not mechanism.
+- PHASE-05 step 3 runs its ownership check as root. Design sec-6 does not say
+  who runs it, and a login cannot traverse `/home/.fragments` (`0700`, root's,
+  sec-3).
+- PHASE-05's exits require the steps to run. A step the user defers is
+  recorded as a deferral, not as a pass (EX-5).
 - The research baseline's drift is only the slice's own scope and design
   files, not source; no research section needs refreshing.
