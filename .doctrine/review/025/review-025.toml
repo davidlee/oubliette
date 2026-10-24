@@ -39,6 +39,11 @@ act = "conclude"
 role = "raiser"
 note = "codex concluded the focused final response-verification pass against revision 09d1739, F-10/F-11 responses, revised design sec-4/sec-6/sec-7 and amended DEC-063. VERIFIED F-10 through isolated execution of the shipped room SSH username parser with explicit root for one-user and multi-user rooms. VERIFIED F-11 through exact-module evaluation for shared_ prefix boundaries, allowed-name controls, existing reserved-name regressions, an absent-capability control and an in-memory prefix-removal mutation. Checked lowercase/length constraints and literal-prefix behavior; no new substantive design defect was found in the shared role/database convention. All eleven findings are verified; ledger synthesis records the design-only scope and outstanding live checks. Only RV-025 ledger/cache writes were made. No VM image build, guest boot, live SSH/forward, database mutation or persistence readback."
 
+[[review.turn]]
+act = "conclude"
+role = "raiser"
+note = "codex concluded the user-requested route bookkeeping pass. Read the eight current responses and lib:design-prompts/reviewing.md route definitions, confirmed design.md is unchanged since 09d1739, and re-verified the apt assignments: F-1/F-5 demonstrate; F-2/F-3/F-4/F-6/F-9/F-11 control. Notes explicitly scope these requested re-verifications to route/design validation and preserve the prior substantive evidence. They do not assert future phase-criterion transcription, implemented case-suite runs, builds or live demonstrations. Existing persistence controls can share their host criterion; the existing reserved-name controls can share theirs. No new mechanism, test obligation or design change was introduced by attaching the routes. All eleven findings are again verified. Only RV-025's ledger was changed; no builds, guests, databases, live SSH, roles or persistent state were exercised."
+
 [target]                   # the outbound `reviews` edge: RV-NNN ──reviews──▶ <ref>
 ref   = "SL-009"
 
@@ -56,7 +61,8 @@ Verified evidence: pinned nixpkgs /nix/store/2s013d7g7sna6rls7nk0yy8343h6mdiw-so
 
 Inference, not a live connection result: VH step 5 fails with the proposed policy even when peer forwarding works perfectly. Resolve the intended boundary explicitly: implement and test database exclusion if retaining that acceptance criterion, including the policy for databases users create with CREATEDB and the postgres maintenance connection. If only identity separation was intended, reconcile the isolation claim and the negative test rather than letting a wrong-identity failure stand in for database exclusion. The live negative test must explicitly use the second user's own role and the first user's database."""
 disposition = "fix-now"
-response = "Accepted. User chose own-database-only (2026-10-24). sec-4: authentication mkForce to 'local all postgres peer map=postgres' then 'local sameuser all peer' (NixOS's default is mkAfter, so a prepended rule would leave 'local all all peer' as fallback); CREATEDB dropped. sec-6 VH step 5 now eve's own role against agent's database; case 4 pins the two rules; mutation restores 'local all all peer'. DEC-063, DEC-059 amended."
+response = "Fixed in the design (see prior response). Route demonstrate: proven live: sec-6 VH 5 and 6; pinned at build by fragmentsCases case 4 and the restore-'local all all peer' mutation."
+route = "demonstrate"
 
 [[finding.turn]]
 act = "raise"
@@ -73,6 +79,23 @@ act = "verify"
 role = "raiser"
 note = "VERIFIED at design/evaluation level against revised design.md:128-147, :226-229 and :255-256, and amended DEC-059/DEC-063. Extracted the exact fenced guestModule from design.md and evaluated it via fixture assistant.extendModules (offline, no build). Result: authentication is exactly `local all postgres peer map=postgres` plus `local sameuser all peer`, with no mkAfter fallback; identMap remains `postgres postgres postgres`; agent/eve have ensureDBOwnership=true and ensureClauses={}; ensureDatabases=[agent,eve]; failedAssertions=[]. PostgreSQL 18 pg_hba docs (https://www.postgresql.org/docs/18/auth-pg-hba-conf.html) define sameuser as requested database name == requested role name and deny connections with no matching rule. The postgres maintenance exception is retained; pinned postgresql.nix:873-880/894-920 runs setup as postgres against database postgres, so setup does not rely on the removed general rule. The new VH has the correct eve-own-role/agent-database negative and eve-own-database positive control. The previous PUBLIC CONNECT counterexample is now excluded by HBA. This verifies the revised design, not a started database or forwarded connection. Built-in template database name collisions are recorded separately as a new finding."
 
+[[finding.turn]]
+act = "reopen"
+role = "raiser"
+note = "Procedural reopen by the responder to attach a route the lock gate requires; the raiser's verdict on substance is unchanged and is re-verified by codex."
+
+[[finding.turn]]
+act = "dispose"
+role = "responder"
+disposition = "fix-now"
+route = "demonstrate"
+response = "Fixed in the design (see prior response). Route demonstrate: proven live: sec-6 VH 5 and 6; pinned at build by fragmentsCases case 4 and the restore-'local all all peer' mutation."
+
+[[finding.turn]]
+act = "verify"
+role = "raiser"
+note = "VERIFIED for the user's requested route/design bookkeeping re-verification. Route demonstrate is apt for exercising actual peer-authenticated database admission and the shared-role connection seam. The response points to existing sec-6 VH 5/6, with the declared-role negative and shared-membership positive/negative checks, plus the separate HBA build regression control. The substantive design verdict and its previously recorded source/evaluation evidence stand; design.md is unchanged from 09d1739. This act does not assert that the live demonstration ran or that a future phase criterion has already been authored. Implementation/live proof remains outstanding; carry this existing obligation into planning without adding another mechanism."
+
 [[finding]]
 id = "F-2"
 status = "verified"
@@ -87,7 +110,8 @@ Verified reproduction: read-only `nix eval --offline --impure --json --expr` ext
 
 Repair: include an explicit suitable bind fsType, such as "none", in the generic rendering and its evaluated coverage. For context, the successful projection reports neededForBoot=false for this bind; /home is also neededForBoot=false, with device /dev/vdb, and boot.initrd.systemd.enable=true. Pinned microvm source /nix/store/zlsnwkdg1qsc70657sra23nf5k2dy7cy-source/nixos-modules/microvm/mounts.nix:103-117 does not mark this /home volume neededForBoot. Thus the current pin supports a stage-2 home.mount design; no boot-order cycle is asserted here. Its actual boot was not exercised."""
 disposition = "fix-now"
-response = """Accepted. sec-3: fsType = "none"; sec-5 persistence rules assert it. Your eval's stage-2 finding (/home not neededForBoot) recorded in sec-3."""
+response = "Fixed in the design (see prior response). Route control: proven at build: roomChecks persistence rule asserts fsType none; roomImages forces it."
+route = "control"
 
 [[finding.turn]]
 act = "raise"
@@ -104,6 +128,23 @@ act = "verify"
 role = "raiser"
 note = 'VERIFIED at design/evaluation level. Revised design.md:79-89 explicitly sets fsType="none" and records the stage-2 boundary; :192-197 checks that type. Re-evaluated a fixture extension rendering the revised bind and early service: the filesystem evaluates, its neededForBoot=false, /home.neededForBoot=false, and room-persist unit text has After=home.mount, Requires=home.mount, Before=local-fs.target var-lib-postgresql.mount and DefaultDependencies=false. This addresses the exact missing-option failure. The projection used a module reconstructed from the prose, since implementation is not yet present. No VM image built or early boot exercised.'
 
+[[finding.turn]]
+act = "reopen"
+role = "raiser"
+note = "Procedural reopen by the responder to attach a route the lock gate requires; the raiser's verdict on substance is unchanged and is re-verified by codex."
+
+[[finding.turn]]
+act = "dispose"
+role = "responder"
+disposition = "fix-now"
+route = "control"
+response = "Fixed in the design (see prior response). Route control: proven at build: roomChecks persistence rule asserts fsType none; roomImages forces it."
+
+[[finding.turn]]
+act = "verify"
+role = "raiser"
+note = "VERIFIED for the user's requested route/design bookkeeping re-verification. Route control is apt: the concrete incorrect candidate is a persistence filesystem lacking the required fsType or not using the specified none type; the planned roomChecks/roomImages path must reject it. The response identifies that existing persistence rule. Prior evaluation directly demonstrated the missing-fsType failure and successful explicit type. The design is unchanged. This does not assert an implemented check suite has been built or certify a not-yet-authored phase criterion."
+
 [[finding]]
 id = "F-3"
 status = "verified"
@@ -118,7 +159,8 @@ Verified reproduction: a read-only extendModules evaluation on the fixture assis
 
 Repair: cover the privilege-elevation surfaces the guard promises to protect and add a deliberately weakening-module negative case; at minimum a direct sudo grant must not pass a claimed no-sudo invariant. Also distinguish this finite regression guard from a guarantee over arbitrary module effects: root keyFiles/AuthorizedKeysCommand, ssh Match blocks and alternate network declarations are not represented by the currently listed values. Keep the trusted, repository-owned fragment boundary; no consumer module escape hatch is requested."""
 disposition = "fix-now"
-response = "Contest accepted. Revised sec-5: vm/room.nix sets security.sudo.enable = false (rooms never had a sudoer), and the rule is the effective state: sudo, sudo-rs and doas enable all false. A granting module must re-enable one. sec-6 case 7 now runs the positive control first (both clean fixture rooms pass every roomChecks rule), then sudo.enable = true plus a NOPASSWD grant fails with the elevation rule and only it. DEC-060 amended."
+response = "Fixed in the design (see prior response). Route control: proven at build: roomChecks elevation rule, fragmentsCases case 7 positive control then forced re-enable."
+route = "control"
 
 [[finding.turn]]
 act = "raise"
@@ -154,6 +196,23 @@ VERIFIED at design/evaluation level against revision de0f272, design.md:202-214/
 
 Checked dependency concerns: runuser remains on the guest system path (pinned nixpkgs nixos/modules/config/system-path.nix:38), and its PAM rootOK=true/unixAuth=false defaults remain present independently of sudo (nixos/modules/security/pam.nix:2754-2758). room-seed still runs as root and invokes runuser through its own util-linux path (vm/room.nix:168-177/:194-197). session directly execs commands (vm/session.nix:64-70). PostgreSQL service and setup select User=postgres through systemd (pinned postgresql.nix:787-788/:876-880). Host CLI sudo/systemctl calls run on the host and are unaffected by this guest option. No dependency on guest sudo was found in these paths. Root's SSH key path is unchanged. These are source/evaluation checks, not a boot, PAM login, sudo execution, or an implemented new roomChecks suite."""
 
+[[finding.turn]]
+act = "reopen"
+role = "raiser"
+note = "Procedural reopen by the responder to attach a route the lock gate requires; the raiser's verdict on substance is unchanged and is re-verified by codex."
+
+[[finding.turn]]
+act = "dispose"
+role = "responder"
+disposition = "fix-now"
+route = "control"
+response = "Fixed in the design (see prior response). Route control: proven at build: roomChecks elevation rule, fragmentsCases case 7 positive control then forced re-enable."
+
+[[finding.turn]]
+act = "verify"
+role = "raiser"
+note = "VERIFIED for the user's requested route/design bookkeeping re-verification. Route control is apt: clean assistant/lounge must pass, while an effective forced sudo re-enable with a NOPASSWD grant must be rejected by the elevation rule. The response names fragmentsCases case 7 and both controls. This is the same existing obligation already supported by the recorded read-only enabled-state/wrapper projections, not a fresh elevation mechanism or additional guard. The design is unchanged. No implemented suite/build or live privilege exercise is certified by this act."
+
 [[finding]]
 id = "F-4"
 status = "verified"
@@ -168,7 +227,8 @@ Verified reproduction: a read-only evaluation constructed the design's bind/serv
 
 Inference: the mutated image can build with no job that creates a fresh bind source, and fail on a first boot while passing the stated structural checks. Repair: specify assertions over the actual dependency edges and early-service unit configuration, force the resulting fstab/unit representation where appropriate, and require the dependency-removal mutation to fail those assertions. Keep the live persistence/boot check separate: evaluation cannot prove it boots."""
 disposition = "fix-now"
-response = "Accepted. sec-5 persistence rules now assert the edges: x-systemd.requires in options, DefaultDependencies=false, home.mount in after and requires, local-fs.target in before; sec-3 says requires is what pulls the oneshot in. sec-6 case 8 requires the drop-requires mutation to go red."
+response = "Fixed in the design (see prior response). Route control: proven at build: roomChecks persistence edge rules; fragmentsCases case 8 drop-requires mutation must go red."
+route = "control"
 
 [[finding.turn]]
 act = "raise"
@@ -185,6 +245,23 @@ act = "verify"
 role = "raiser"
 note = "VERIFIED at design/evaluation level against revised design.md:79-83, :192-197 and :236-239. Re-evaluated the stated persistence predicates on fixture extensions: original bind options => pass=true; remove only x-systemd.requires=room-persist.service => pass=false. Both use fsType=none and the stated After/Requires home.mount, Before local-fs.target, DefaultDependencies=false service. This is the discriminating test the first design lacked; the specification now requires its mutation to fail a named case. The emitted unit text also includes the explicit bind Before edge. This was a projection of proposed checks, not an implemented fragmentsCases run or a boot."
 
+[[finding.turn]]
+act = "reopen"
+role = "raiser"
+note = "Procedural reopen by the responder to attach a route the lock gate requires; the raiser's verdict on substance is unchanged and is re-verified by codex."
+
+[[finding.turn]]
+act = "dispose"
+role = "responder"
+disposition = "fix-now"
+route = "control"
+response = "Fixed in the design (see prior response). Route control: proven at build: roomChecks persistence edge rules; fragmentsCases case 8 drop-requires mutation must go red."
+
+[[finding.turn]]
+act = "verify"
+role = "raiser"
+note = "VERIFIED for the user's requested route/design bookkeeping re-verification. Route control is apt: remove x-systemd.requires=room-persist.service while preserving the rest of the bind, and require the persistence-edge rule/case 8 to fail. The response names this exact mutation; the earlier read-only predicate projection observed good=true and droppedRequires=false. This obligation belongs with the same persistence construction/check coverage as F-2, without creating a duplicate persistence mechanism. The design is unchanged. Planned suite execution and future phase-criterion transcription remain distinct."
+
 [[finding]]
 id = "F-5"
 status = "verified"
@@ -199,7 +276,8 @@ Verified evidence: pinned nixpkgs /nix/store/2s013d7g7sna6rls7nk0yy8343h6mdiw-so
 
 Inference, not a started-service observation: the first psql can race setup, and after a provisioning failure the prescribed readiness check can stay green permanently. Repair: document a check/wait that includes successful postgresql-setup completion (or the corresponding aggregate target) before the user connection, and distinguish process health from provisioning completion. This requires no oubliette readiness verb or service-specific front-end logic and preserves the settled no-new-verb choice."""
 disposition = "fix-now"
-response = "Accepted. sec-4 and sec-6 VH step 1: readiness is postgresql.target (server + postgresql-setup). DEC-065 amended; still no verb."
+response = "Fixed in the design (see prior response). Route demonstrate: proven live: sec-6 VH 1 checks postgresql.target."
+route = "demonstrate"
 
 [[finding.turn]]
 act = "raise"
@@ -216,6 +294,23 @@ act = "verify"
 role = "raiser"
 note = "VERIFIED at design/evaluation level against revised design.md:160-163/:247 and amended DEC-065. With the exact revised guestModule, read-only evaluation emitted postgresql.target with Requires=postgresql.service postgresql-setup.service; setup remains a oneshot with RemainAfterExit=true and After/Requires=postgresql.service (pinned postgresql.nix:743-749, :870-880). systemd.target default dependency semantics complement these Requires edges with After ordering unless disabled; no disabling is present (https://www.freedesktop.org/software/systemd/man/latest/systemd.target.html). Therefore checking the aggregate target on the documented fresh boot covers completion of setup as well as server startup, unlike the old server-only check. No new oubliette verb was added. No service started or failure injected; this is configuration/ordering evidence."
 
+[[finding.turn]]
+act = "reopen"
+role = "raiser"
+note = "Procedural reopen by the responder to attach a route the lock gate requires; the raiser's verdict on substance is unchanged and is re-verified by codex."
+
+[[finding.turn]]
+act = "dispose"
+role = "responder"
+disposition = "fix-now"
+route = "demonstrate"
+response = "Fixed in the design (see prior response). Route demonstrate: proven live: sec-6 VH 1 checks postgresql.target."
+
+[[finding.turn]]
+act = "verify"
+role = "raiser"
+note = "VERIFIED for the user's requested route/design bookkeeping re-verification. Route demonstrate is apt for the connection between PostgreSQL server startup, separate role/database setup, and the aggregate readiness target. The response names existing VH 1 using postgresql.target, rather than the server-only active state. Prior source/unit evaluation established the target requires both units, while the actual startup is still a live demonstration obligation. The design is unchanged. No startup or failure-path runtime result is claimed, and no future phase criterion is certified here."
+
 [[finding]]
 id = "F-6"
 status = "verified"
@@ -230,7 +325,8 @@ Verified reproductions: (1) a read-only evaluation of the shipped rooms.nix with
 
 Inference: a fresh guest with this otherwise accepted declaration reaches a failed postgresql-setup, without the promised role. The current fixture only uses agent/eve, so its exact-name assertions do not cover this failure. Repair: define the admissible name/collision policy in the capability and enforce it at eval with a reason and a negative case (or design a deliberate role mapping if expanding the interface). Do not put PostgreSQL-specific restrictions on rooms that do not select PostgreSQL."""
 disposition = "fix-now"
-response = "Accepted. sec-4: the fragment's guestModule asserts no login is a reserved role name (pg_*, postgres, public, none, current_user, current_role, session_user), message names them; scoped to rooms selecting it. sec-6 case 5 (pg_demo). DEC-063 amended."
+response = "Fixed in the design (see prior response). Route control: proven at build: fragmentsCases case 5 (pg_demo) failing assertion message."
+route = "control"
 
 [[finding.turn]]
 act = "raise"
@@ -246,6 +342,23 @@ response = "Accepted. sec-4: the fragment's guestModule asserts no login is a re
 act = "verify"
 role = "raiser"
 note = "VERIFIED for the role-namespace defect raised, against revised design.md:112-120/:150-152/:230-231 and amended DEC-063. Extracted the exact revised guestModule and extended fixture assistant with normal uid-2100 users. pg_demo produced exactly the failing assertion message `fragments.nix postgresql-18: a login is a reserved role name: pg_demo`; public likewise produced its named failing assertion. The ordinary agent/eve fixture produced failedAssertions=[]. The assertion lives in the selected capability module, keeping PostgreSQL-specific restrictions out of generic rooms. Role/database provisioning was not run. A distinct remaining collision with built-in database names template0/template1 is raised separately; accepting this fix does not certify every possible database name."
+
+[[finding.turn]]
+act = "reopen"
+role = "raiser"
+note = "Procedural reopen by the responder to attach a route the lock gate requires; the raiser's verdict on substance is unchanged and is re-verified by codex."
+
+[[finding.turn]]
+act = "dispose"
+role = "responder"
+disposition = "fix-now"
+route = "control"
+response = "Fixed in the design (see prior response). Route control: proven at build: fragmentsCases case 5 (pg_demo) failing assertion message."
+
+[[finding.turn]]
+act = "verify"
+role = "raiser"
+note = "VERIFIED for the user's requested route/design bookkeeping re-verification. Route control is apt: pg_demo is the concrete accepted-by-generic-rooms but invalid-as-a-PostgreSQL-role candidate, and case 5 must observe its named failing capability assertion with a valid-user positive control. The response identifies that negative case. The exact-module read-only evaluation already observed the expected named failure. Carry it with the existing reserved-name criterion, not a parallel validation mechanism. The design is unchanged; implemented build/case execution remains outstanding."
 
 [[finding]]
 id = "F-7"
@@ -325,7 +438,8 @@ Primary PostgreSQL 18 documentation (https://www.postgresql.org/docs/18/manage-a
 
 Repair: extend the capability's name/collision policy to reserve built-in database names, including template0 and template1, before ensureDBOwnership can act, and add positive/negative assertion cases with named reasons. Keep those restrictions scoped to this selected capability, as for F-6. The own-database-only choice and sameuser HBA need not be reopened. No VM/database was started or mutated."""
 disposition = "fix-now"
-response = "Accepted. sec-4 reserved list gains template0 and template1 (databases a fresh cluster holds, which ensureDBOwnership would hand over); sec-6 case 5 adds template1; case 8 mutation drops it from the list. Also in this revision, at the user's request: pg_hba uses samerole instead of sameuser so the operator can make a shared database (role NOLOGIN + database of that name + GRANT); sec-4 documents the guest-root -> runuser -u postgres path; VH step 6 tests it. DEC-063 amended."
+response = "Fixed in the design (see prior response). Route control: proven at build: fragmentsCases case 5 (template1) and the drop-template1 mutation."
+route = "control"
 
 [[finding.turn]]
 act = "raise"
@@ -341,6 +455,23 @@ response = "Accepted. sec-4 reserved list gains template0 and template1 (databas
 act = "verify"
 role = "raiser"
 note = "VERIFIED at design/evaluation level against revised design.md:113-120/:168-172/:254-264 and amended DEC-063. Extracted the exact fenced guestModule from revision de0f272 and evaluated it against fixture assistant with extra normal users template0 and template1. Each now produces a failing capability assertion naming the offending login. pg_demo still produces its named failure; normal agent/eve produces failedAssertions=[]. The asserted refusal is enforced by NixOS's build path before ensureDBOwnership can act. The new mutation/negative case names template1, covering the specific template collision. No database ownership was changed and no VM was built. The separate interaction between manually created shared NOLOGIN roles and later normal-user additions is newly reported independently, rather than reopening this fixed built-in-name defect."
+
+[[finding.turn]]
+act = "reopen"
+role = "raiser"
+note = "Procedural reopen by the responder to attach a route the lock gate requires; the raiser's verdict on substance is unchanged and is re-verified by codex."
+
+[[finding.turn]]
+act = "dispose"
+role = "responder"
+disposition = "fix-now"
+route = "control"
+response = "Fixed in the design (see prior response). Route control: proven at build: fragmentsCases case 5 (template1) and the drop-template1 mutation."
+
+[[finding.turn]]
+act = "verify"
+role = "raiser"
+note = "VERIFIED for the user's requested route/design bookkeeping re-verification. Route control is apt: template1 must be rejected with its named assertion, and deleting it from the reserved set must make that negative case fail. The response names both case 5 and the drop-template1 mutation. Prior exact-module evaluation confirmed template0/template1 rejections. This is an additional concrete candidate for the existing reserved-name criterion alongside F-6, not another database-ownership mechanism. The design is unchanged. This act does not certify a built suite or authored future phase criterion."
 
 [[finding]]
 id = "F-10"
@@ -389,7 +520,8 @@ Verified read-only evidence: evaluating the exact revised guestModule on fixture
 
 Repair: define disjoint names for operator-created shared roles/databases and normal logins, and how a collision is handled before a later user is admitted. This can remain the requested operator convention: document/enforce a reserved shared-name convention or require an explicit role/database migration before declaring a colliding login, with corresponding coverage. Do not silently promote a shared NOLOGIN role to a private LOGIN identity. No general shared-database declaration field or new oubliette verb is requested."""
 disposition = "fix-now"
-response = "Accepted: disjoint names by convention, enforced. Shared roles/databases are shared_<x>; the fragment's reserved predicate refuses any login with the shared_ prefix, so a later login cannot meet a persisted NOLOGIN shared role of its name. A shared role named outside the convention is documented as the operator's to rename before declaring a colliding user. No silent LOGIN promotion, no declaration field, no verb. sec-6 case 5 adds shared_x; VH 6 uses shared_proj. DEC-063 amended."
+response = "Fixed in the design (see prior response). Route control: proven at build: fragmentsCases case 5 (shared_x); convention documented in README."
+route = "control"
 
 [[finding.turn]]
 act = "raise"
@@ -410,6 +542,23 @@ VERIFIED at design/evaluation level against revision 09d1739, revised design.md:
 Extracted the exact fenced guestModule and evaluated it against the real fixture assistant. shared_, shared_x, shared_proj and shared_x_suffix each produced the named failing capability assertion; ordinary agent/eve had no failures. proj, shared, sharedx and shared-x passed as controls outside the literal shared_ namespace. template0/template1/pg_demo still produced their existing failures. Removed only the shared_ prefix predicate in an in-memory mutation: shared_x then had failedAssertions=[], proving the proposed case can distinguish this guard. A lounge without the capability extended with shared_x retained PostgreSQL disabled and no failing assertion, keeping restrictions local to the selected service. Authentication remained exactly the forced maintenance/samerole pair throughout.
 
 Checked the naming boundary: rooms.nix:68-69/:167 restricts real login names to lowercase ASCII under 32 characters, so quoted mixed-case SQL roles or PostgreSQL identifier truncation provide no alias into an accepted normal-login name under this convention. A differently spelled shared name is outside the convention, not an admitted bypass of its enforced prefix. The operator must keep each shared role/database pair named together under the documented convention; this is not certification of arbitrary manual SQL migrations. No role, database, VM or persistent data was created or changed. No new substantive design defect found."""
+
+[[finding.turn]]
+act = "reopen"
+role = "raiser"
+note = "Procedural reopen by the responder to attach a route the lock gate requires; the raiser's verdict on substance is unchanged and is re-verified by codex."
+
+[[finding.turn]]
+act = "dispose"
+role = "responder"
+disposition = "fix-now"
+route = "control"
+response = "Fixed in the design (see prior response). Route control: proven at build: fragmentsCases case 5 (shared_x); convention documented in README."
+
+[[finding.turn]]
+act = "verify"
+role = "raiser"
+note = "VERIFIED for the user's requested route/design bookkeeping re-verification. Route control is apt: shared_x is the concrete normal-login candidate the selected capability must reject, preserving the operator's shared_ role/database namespace. The response identifies existing case 5 and the naming convention documentation. Earlier exact-module evaluations observed named failures across the prefix boundary and an in-memory prefix-removal mutation that ceased rejecting shared_x; the absent-capability path remained valid. Carry these under the existing reserved-name/namespacing criterion with F-6/F-9, without new mechanisms or state. The design is unchanged. No live role migration or implemented suite is certified."
 
 # Findings are append-only `[[finding]]` tables, added by `review raise`.
 # Empty here at creation — a fresh review is Active, awaiting the raiser.

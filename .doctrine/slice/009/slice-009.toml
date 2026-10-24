@@ -1,9 +1,9 @@
 id = 9
 slug = "postgresql-service-for-rooms"
 title = "PostgreSQL service for rooms"
-status = "design"
+status = "plan"
 created = "2026-10-23"
-updated = "2026-10-23"
+updated = "2026-10-24"
 tags = []
 
 [relationships]
