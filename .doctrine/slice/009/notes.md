@@ -211,3 +211,5 @@ Prose only; no `.nix` logic touched (one comment in the template).
 Verify: `just check` exit 0; `just` exit 0; `doctrine slice verify-vt 9`: PHASE-01..03 PASS, PHASE-04 VT-1..3 UNATTRIBUTABLE (keyword present; files uncommitted), as expected.
 
 Not exercised: no room booted. The forward command line was derived from docs, not run; `ASM-005` (bind ordering at boot) and `ASM-006` (peer auth over a forward) are stated in the README as not proven (PHASE-05). Reset/`microvm -u` wording rests on the memory body only. EX-4 (memory) is the orchestrator's.
+
+Follow-up: README "From the host." now reads "an `ssh -L` over the room's door" so VT-1 keyword `ssh -L` appears literally (it was only `-L` on the code block's second line); code block unchanged.

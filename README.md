@@ -622,8 +622,8 @@ skip creating and leave unable to log in. A shared role named outside the
 convention is the operator's to rename before a colliding user is declared.
 Nothing declares it; it lives in the cluster, on `/home`.
 
-**From the host.** Forward the socket over the room's door with the room-client
-bundle's `ssh` ([contract-room-client.md](docs/contract-room-client.md), which
+**From the host.** Forward the socket with an `ssh -L` over the room's door, using
+the room-client bundle's `ssh` ([contract-room-client.md](docs/contract-room-client.md), which
 refuses until a `push`, `ssh` or `collect` has learned the room's key):
 
 ```
