@@ -6,7 +6,7 @@ disposable phase sheet (`.doctrine/state/.../phase-NN.md`) that must survive
 
 ## Harvest
 <!-- single-copy: updated in place each harvest; ids only, never restated content -->
-fresh-as-of: 2026-10-24 · PHASE-01..05 completed, audited (RV-026 concluded), /reconcile next
+fresh-as-of: 2026-10-24 · closed (done); RV-026 reconciled c443156; IMP-026 resolved
 
 ### Produced
 - design locked: capability fragment `postgresql-18` for rooms; `design.md` sec-1..sec-9 (e5d94d3..7b5435e)
