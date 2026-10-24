@@ -6,7 +6,7 @@ disposable phase sheet (`.doctrine/state/.../phase-NN.md`) that must survive
 
 ## Harvest
 <!-- single-copy: updated in place each harvest; ids only, never restated content -->
-fresh-as-of: 2026-10-24 · PHASE-01..05 completed, /audit next · d5b942a (code last changed e07fb7b; only README prose since, `just check` green)
+fresh-as-of: 2026-10-24 · PHASE-01..05 completed, audited (RV-026 concluded), /reconcile next
 
 ### Produced
 - design locked: capability fragment `postgresql-18` for rooms; `design.md` sec-1..sec-9 (e5d94d3..7b5435e)
@@ -17,6 +17,7 @@ fresh-as-of: 2026-10-24 · PHASE-01..05 completed, /audit next · d5b942a (code 
 - `fragmentsCases` (new suite, 40 ok); `just check && just` green at e07fb7b; verify-vt PHASE-01..04 pass
 - friction observations: 8752487, d82bc95
 - PHASE-05 live run on `/srv/fleet` `assistant` (oubliette 67977f9; fleet bb3d889, f21ed36): six checks pass, quoted in `## PHASE-05 (live)`; README live-check passages updated
+- RV-026 audit (reconciliation): 6 findings verified — F-1..F-4 design-wrong (per-slice brief), F-5 follow-up IMP-027, F-6 aligned; gate green at c6e1c55 after the lock bump 67977f9
 - adaptations outside the design's file list: `fragments.nix` takes a required `lib` (imports recursion); `fragmentsCases` also takes `flavour` and `roomRecords`
 
 ### Learned
@@ -27,8 +28,8 @@ fresh-as-of: 2026-10-24 · PHASE-01..05 completed, /audit next · d5b942a (code 
 
 ### Open
 - ASM-005, ASM-006: validated 2026-10-24 (PHASE-05); DEC-064 carried out. Not exercised: TCP-port forward, recreated room volume
-- for /reconcile: design sec-4 says root is reached "only by the host's admin keys", which is false because the stop key is an unrestricted root key (vm/door.nix:86; README fixed in e07fb7b). Design sec-4/sec-7's forward "or `capsule <room> ssh`" is impossible: that verb takes no ssh options (host/cli.nix:1922-1948). Sec-9 omits `fragments.nix`'s `lib` argument
-- for /audit (coverage gaps, none required by the design): the password/root-login/default-route rules have no negative case; the bind's `.mount` in `room-persist.before` is unpinned; no case proves an unselected `guestModule` is never evaluated
+- for /reconcile: RV-026 `## Reconciliation Brief` (F-1..F-4, design.md sec-4, sec-6, sec-7, sec-9; no REV)
+- IMP-027: fragmentsCases coverage gaps (from RV-026 F-5)
 
 ## Design review passes
 
