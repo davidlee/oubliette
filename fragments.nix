@@ -48,8 +48,9 @@
   sources,
   # A room imports `modules`, and an `imports` list is read before `config`, so
   # it may not force the guest's `pkgs` (which is `config._module.args`).
-  # `vm/room.nix` hands its own module `lib`; every other caller takes the default.
-  lib ? pkgs.lib,
+  # Required: defaulting it to `pkgs.lib` is the expression that recurses for a
+  # module caller, so every caller passes its own.
+  lib,
 }: let
   inherit (pkgs.stdenv.hostPlatform) system;
 

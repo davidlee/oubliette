@@ -32,7 +32,7 @@
   # same derivation the rest of the closure is built from, and the composition
   # is one expression rather than a list assembled twice.
   fragments = import ../fragments.nix {
-    inherit pkgs;
+    inherit pkgs lib;
     inherit (flavour) sources;
   };
 

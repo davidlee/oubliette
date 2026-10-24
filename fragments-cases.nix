@@ -18,9 +18,14 @@
 # What it does not prove (STD-001): that any room boots, or that sshd answers
 # there; that `postgresql.target` comes up, that the bind is ordered after
 # `/home` as the unit text says, or that peer auth admits a login over a
-# forward (SL-009 PHASE-05, ASM-005/006). The door rules are a regression guard over *named settings* (sec-5):
-# a room that reaches the same end by another setting passes them, and a rule
-# that names a setting says nothing of what a booted guest does with it.
+# forward (SL-009 PHASE-05, ASM-005/006).
+#
+# The door rules are a regression guard over *named settings* (sec-5): a room
+# that reaches the same end by another setting passes them, and a rule that
+# names a setting says nothing of what a booted guest does with it.
+#
+# Cases are ordered by the phase that added them (1-3 and 7 first, then PHASE-03's
+# 4-6 and 9), not by design number.
 {
   pkgs,
   lib,
@@ -42,7 +47,7 @@
 }: let
   # The rules an image breaks, as their reasons.
   failing = name: cfg: map (c: c.reason) (lib.filter (c: !c.ok) (roomChecks name cfg));
-  reasonsOf = name: cfg: lib.concatStringsSep "; " (failing name cfg);
+  joinReasons = lib.concatStringsSep "; ";
   rooms = lib.attrNames roomVms;
 
   # A fixture room plus one change.
@@ -103,13 +108,11 @@
   # conflict with the room's `"none"` at eval and `options` concatenates.
   fsAuto = breakBind {fsType = lib.mkForce "auto";};
   noRequires = breakBind {options = lib.mkForce ["bind" "x-systemd.after=room-persist.service"];};
-  joined = lib.concatStringsSep "; ";
   json = builtins.toJSON;
 
   # The same capsule image selecting one more fragment.
-  baseFlavour = flavour;
   capsuleWithPg = capsuleImage.extendModules {
-    specialArgs.flavour = baseFlavour // {extras = baseFlavour.extras ++ ["postgresql-18"];};
+    specialArgs.flavour = flavour // {extras = flavour.extras ++ ["postgresql-18"];};
   };
 
   # `null` becomes "" so an absent refusal is a `has` FAIL, not an eval abort.
@@ -137,12 +140,12 @@ in
 
     # 2. A capsule image selecting it carries that refusal as a failing
     # assertion (read from config.assertions, RV-025 F-8). Control first.
-    ck "the fixture capsule refuses nothing" "" ${lib.escapeShellArg (lib.concatStringsSep "; " (refusals capsuleImage))}
+    ck "the fixture capsule refuses nothing" "" ${lib.escapeShellArg (joinReasons (refusals capsuleImage))}
     ck "a capsule selecting postgresql-18 has exactly one failing assertion" 1 ${toString (builtins.length (refusals capsuleWithPg))}
-    has "  and it names postgresql-18" postgresql-18 ${lib.escapeShellArg (lib.concatStringsSep "; " (refusals capsuleWithPg))}
-    ck "  and it is slotRefusal's own message" true ${lib.boolToString (lib.elem pgRefusal (refusals capsuleWithPg))}
-    # Liveness: the extended image evaluates past its assertions (no packages added).
-    ck "  and the extended image still evaluates its package set" ${toString (builtins.length capsuleImage.config.environment.systemPackages)} ${toString (builtins.length capsuleWithPg.config.environment.systemPackages)}
+    has "  and it names postgresql-18" postgresql-18 ${lib.escapeShellArg (joinReasons (refusals capsuleWithPg))}
+    ck "  and the capsule reports slotRefusal's message, not a second one" true ${lib.boolToString (lib.elem pgRefusal (refusals capsuleWithPg))}
+    # The fragment adds no packages to a capsule: the package count is unchanged.
+    ck "  and selecting it adds no packages to the capsule" ${toString (builtins.length capsuleImage.config.environment.systemPackages)} ${toString (builtins.length capsuleWithPg.config.environment.systemPackages)}
 
     # 3. The selections: paths in selection order, and no module for a package-only one.
     ck "persists names the fragment and its path" ${lib.escapeShellArg (builtins.toJSON [
@@ -163,14 +166,14 @@ in
     ck "  each owning its database" true ${lib.boolToString (lib.all (u: u.ensureDBOwnership) asPg.ensureUsers)}
     ck "  and carrying no clause" "[]" ${lib.escapeShellArg (json (lib.filter (c: c != {}) (map setClauses asPg.ensureUsers)))}
     ck "  ensureDatabases is the same list" ${lib.escapeShellArg (json declared)} ${lib.escapeShellArg (json asPg.ensureDatabases)}
-    ck "  and no assertion fails" "" ${lib.escapeShellArg (joined (refusals clean))}
+    ck "  and no assertion fails" "" ${lib.escapeShellArg (joinReasons (refusals clean))}
 
     # 5. A reserved login fails the fragment's assertion and only that one
     # (RV-025 F-6, F-9, F-11). The clean room above is the control.
     ${lib.concatMapStrings (user: ''
         ck ${lib.escapeShellArg "a login '${user}' fails exactly one assertion"} 1 ${toString (builtins.length (refusals (withLogin "assistant" user)))}
-        has ${lib.escapeShellArg "  and it names '${user}'"} ${lib.escapeShellArg user} ${lib.escapeShellArg (joined (refusals (withLogin "assistant" user)))}
-        has ${lib.escapeShellArg "  and it is the fragment's"} "fragments.nix postgresql-18:" ${lib.escapeShellArg (joined (refusals (withLogin "assistant" user)))}
+        has ${lib.escapeShellArg "  and it names '${user}'"} ${lib.escapeShellArg user} ${lib.escapeShellArg (joinReasons (refusals (withLogin "assistant" user)))}
+        has ${lib.escapeShellArg "  and it is the fragment's"} "fragments.nix postgresql-18:" ${lib.escapeShellArg (joinReasons (refusals (withLogin "assistant" user)))}
       '')
       ["pg_demo" "template1" "shared_x"]}
 
@@ -179,25 +182,25 @@ in
     ck "lounge does not enable postgresql" false ${lib.boolToString roomVms.lounge.config.services.postgresql.enable}
     ck "  has no filesystem at the bind" false ${lib.boolToString (roomVms.lounge.config.fileSystems ? "/var/lib/postgresql")}
     ck "  has no room-persist unit" false ${lib.boolToString (roomVms.lounge.config.systemd.services ? room-persist)}
-    ck "  and a login 'pg_demo' fails no assertion there" "" ${lib.escapeShellArg (joined (refusals (withLogin "lounge" "pg_demo")))}
+    ck "  and a login 'pg_demo' fails no assertion there" "" ${lib.escapeShellArg (joinReasons (refusals (withLogin "lounge" "pg_demo")))}
 
     # 9. The persistence rules (DEC-061, RV-025 F-2, F-4), each over one break.
     # Control first: the room as shipped fails none of them.
-    ck "assistant fails no persistence rule" "" ${lib.escapeShellArg (joined (persistenceFailing "assistant" clean))}
+    ck "assistant fails no persistence rule" "" ${lib.escapeShellArg (joinReasons (persistenceFailing "assistant" clean))}
     ck "a bind with fsType 'auto' fails exactly one persistence rule" 1 ${toString (builtins.length (persistenceFailing "assistant" fsAuto))}
-    has "  and it is the fsType rule" fsType ${lib.escapeShellArg (joined (persistenceFailing "assistant" fsAuto))}
+    has "  and it is the fsType rule" fsType ${lib.escapeShellArg (joinReasons (persistenceFailing "assistant" fsAuto))}
     ck "a bind without x-systemd.requires fails exactly one persistence rule" 1 ${toString (builtins.length (persistenceFailing "assistant" noRequires))}
-    has "  and it is the requires rule" x-systemd.requires ${lib.escapeShellArg (joined (persistenceFailing "assistant" noRequires))}
+    has "  and it is the requires rule" x-systemd.requires ${lib.escapeShellArg (joinReasons (persistenceFailing "assistant" noRequires))}
 
     # 7. The door's elevation rule (DEC-060, RV-025 F-3). Control first: every
     # fixture room passes every rule, and a failure prints why.
     ${lib.concatMapStrings (name: ''
-        ck ${lib.escapeShellArg "room '${name}' passes every roomChecks rule"} "" ${lib.escapeShellArg (reasonsOf name roomVms.${name})}
+        ck ${lib.escapeShellArg "room '${name}' passes every roomChecks rule"} "" ${lib.escapeShellArg (joinReasons (failing name roomVms.${name}))}
       '')
       rooms}
     # Then one change: the NOPASSWD sudo fails the elevation rule and only it.
     ck "a NOPASSWD sudo in a room fails exactly one rule" 1 ${toString (builtins.length (failing "assistant" nopasswdSudo))}
-    has "  and that rule is the elevation rule" "no elevation" ${lib.escapeShellArg (reasonsOf "assistant" nopasswdSudo)}
+    has "  and that rule is the elevation rule" "no elevation" ${lib.escapeShellArg (joinReasons (failing "assistant" nopasswdSudo))}
 
     cat "$log"
     exit "$fail"

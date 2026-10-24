@@ -93,7 +93,7 @@
   # The fragment vocabulary, bound once: the room decision reads its names and
   # `fragmentsCases` is handed the same value.
   fragments = import ./fragments.nix {
-    inherit pkgs;
+    inherit pkgs lib;
     inherit (flavour) sources;
   };
 
@@ -348,7 +348,7 @@
     in
       [(check (fs != null) "persistence: no filesystem at ${path} for fragment '${name}' (DEC-061)")]
       ++ lib.optionals (fs != null) [
-        (check (fs.device == "/home/.fragments/${name}${path}")
+        (check ((fs.device or null) == "/home/.fragments/${name}${path}")
           "persistence: ${path} is not bound from /home/.fragments/${name}${path}, so it would not live on the volume (DEC-061)")
         (check (fs.fsType == "none")
           "persistence: ${path} has an fsType other than \"none\"; a bind has no filesystem type (DEC-061, RV-025 F-2)")

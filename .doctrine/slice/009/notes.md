@@ -187,3 +187,11 @@ alejandra -c clean over all five files; `just check` green; `just` exit 0 (47s, 
 
 ### Not exercised
 No room booted; `postgresql.target`, the ordering premise (ASM-005) and peer auth over a forward (ASM-006) are PHASE-05's. The bind's mount-unit entry in `room-persist.before` is rendered and not pinned by a rule (roomChecks pins `local-fs.target`, as design sec-5). No consumer room (/srv/fleet) built; the persistence rules now run over every room there (vacuously for a room with no capability fragment). The dependency half has mutation evidence (M2a, M2b) but no standing negative case; cheap candidates: extensions with `requires = mkForce []` and `DefaultDependencies = true`. M3b is an abort and proves nothing of the rule.
+
+## Seat review fix-up
+Behaviour-preserving refactor, so no red step. `fragmentsCases` ok count 40 before, 40 after; `just check` exit 0, `just` exit 0.
+
+1. `fragments.nix`: `lib` is a required argument (dropped `? pkgs.lib`, the expression that recurses for a module caller); comment updated. `mkfleet.nix` and `vm/capsule.nix` now pass `lib` (`vm/room.nix` already did; no other importer).
+2. `mkfleet.nix` persistence rule reads `fs.device or null`, presence-guarded as roomChecks' header rule says.
+3. `fragments-cases.nix`: the slotRefusal-vs-slotRefusal case is relabelled as a wiring check ("the capsule reports slotRefusal's message, not a second one"); the "still evaluates" case is relabelled to what it pins, that selecting the fragment adds no packages to the capsule.
+4. `fragments-cases.nix` tidy: door-rules sentence is its own header paragraph; header states cases are ordered by phase, not design number; dead `baseFlavour` alias removed; `reasonsOf` and `joined` merged into `joinReasons`, uses replaced.
