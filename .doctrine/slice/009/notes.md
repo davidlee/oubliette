@@ -87,3 +87,52 @@ Non-zero build exit = a failing case fails the build (`.#fragmentsCases` is in `
 
 Gate: `just check` green; `just` exit 0 (includes roomImages over both rooms and fragmentsCases); `just cases` exit 0.
 Not exercised: no consumer room (/srv/fleet) built; no VM booted; the three non-elevation door rules have no negative case (design does not require one; the clean-room control covers their evaluation).
+## PHASE-02 (execute)
+
+Decision: `capsuleImage.config._module.specialArgs.flavour` is NOT readable. The `extendModules {specialArgs...}` seam holds; the base flavour reaches the suite as a new `flavour` argument from `mkfleet.nix` (the only mkfleet.nix change: `flavour` added to the `fragmentsCases` import's inherit). Also: `fragmentsCases` literal added to the suite header (PHASE-01 VT-2 carry-over).
+
+### Red and mutation evidence (from `nix build --no-link .#fragmentsCases`)
+
+1. Cases 1-3 red first. EVAL ABORT (not a FAIL line): `fragments.slotRefusal` does not exist, which stops the whole suite at case 1 (case 3's `persists`/`modules` are the same absence):
+```
+error: attribute 'slotRefusal' missing
+       at .../fragments-cases.nix:87:93:
+           87|     ck "slotRefusal of a package-only selection is null" true ${lib.boolToString (fragments.slotRefusal ["agents"] == null)}
+```
+
+2. With fragments.nix written, case 2's base-flavour read, EVAL ABORT (settles reachability):
+```
+error: attribute '_module' missing
+       at .../fragments-cases.nix:62:37:
+           62|   baseFlavour = capsuleImage.config._module.specialArgs.flavour;
+```
+Fixed by passing `flavour` in from mkfleet.nix. All 9 PHASE-02 lines (+ the 4 PHASE-01 ones) then `ok`.
+
+3. EX-4 variant A (attributable): capsule assertion replaced by `{assertion = false; message = "unrelated";}`:
+```
+> FAIL the fixture capsule refuses nothing: got 'unrelated', wanted ''
+> FAIL   and it names postgresql-18: 'unrelated' does not mention 'postgresql-18'
+> FAIL   and it is slotRefusal's own message: got 'false', wanted 'true'
+> ok   slotRefusal of a package-only selection is null
+> ok   slotRefusal names the capability fragment
+> ok   a capsule selecting postgresql-18 has exactly one failing assertion
+> ok     and the extended image still evaluates its package set
+> ok   persists names the fragment and its path
+> ok   modules of a package-only selection is empty
+error: builder for '...fragments-cases.drv' failed with exit code 1;
+```
+Cases 1 and 3 stay `ok`; the break is local to case 2 (the control also goes red, as the base capsule now has a failing assertion). This is the variant that satisfies EX-4.
+
+4. EX-4 variant B (the design's literal wording), `assertion = throw "unrelated";`: EVAL ABORT, not attributable (no FAIL line, build fails):
+```
+error: unrelated
+note: trace involved the following derivations:
+       derivation 'fragments-cases'
+```
+Restored `vm/capsule.nix` from a scratch copy after both; rebuilt green.
+
+### Gate
+`just check` green (alejandra complies); `just` exit 0; `just cases` exit 0. `doctrine slice verify-vt 9`: PHASE-01 VT-1..5 PASS; PHASE-02 VT-2 PASS, VT-1 and VT-3 UNATTRIBUTABLE (files not yet committed); no keyword-absent FAIL for PHASE-02 (PHASE-03 FAILs are for work not yet done).
+
+### Not exercised
+No room boots, no postgres runs. The `postgresql-18` module is evaluated nowhere except case 2's `config.assertions` path (it contributes only the refusal; the module itself is not imported by a capsule or a room). `roomImages` still excludes it; `vm/room.nix` untouched. No consumer (/srv/fleet) built.

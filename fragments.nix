@@ -24,15 +24,16 @@
 #     `tmux` are nobody's project, which is exactly why a target's file is the
 #     wrong home for them.
 #
-# Two things deliberately absent, so neither reads as an oversight:
+# An entry is `{packages = …;}`, and may carry two more keys, for rooms
+# (SL-009 design sec-2): `guestModule`, a NixOS module the room imports, and
+# `persist`, the absolute paths that must survive the guest's lifecycle. A slot
+# refuses both (`slotRefusal`, design sec-5): where a slot would persist is its
+# own design. `programs.nix-ld` is still not one of these — every
+# non-nix-native toolchain needs it, so it belongs in what the capsule
+# *supplies* (NOTES item 23).
 #
-#   - **Capability fragments.** The contract's fragment is packages *plus*
-#     guest capability, and `programs.nix-ld` is the standing example — but that
-#     one is already decided the other way: every non-nix-native toolchain needs
-#     it identically, so it belongs in what the capsule *supplies*, beside
-#     `TMPDIR` and the caches (NOTES item 23). Nothing else has asked, so the
-#     shape here is `{packages = …;}` — an attrset rather than a bare list,
-#     which is where a `guestModule` goes the day something wants one.
+# One thing deliberately absent, so it does not read as an oversight:
+#
 #   - **Per-slot selection.** `extras` is one list for the fleet, so every slot
 #     arrives at one composition and the one-image lever is untouched (NOTES
 #     item 21). Selection per assignment — and with it the record's `image`, the
@@ -94,9 +95,68 @@
     emacs = {
       packages = [pkgs.emacs];
     };
+
+    # A capability fragment, for rooms: a guest module and the paths that must
+    # survive. SL-009 design sec-4 (DEC-062, DEC-063, DEC-065, DEC-067) is the
+    # contract and this entry is transcribed from it; slots refuse it (sec-5).
+    postgresql-18 = {
+      packages = [];
+      persist = ["/var/lib/postgresql"];
+      guestModule = {
+        config,
+        lib,
+        pkgs,
+        ...
+      }: let
+        logins = lib.attrNames (lib.filterAttrs (_: u: u.isNormalUser) config.users.users);
+        # Names PostgreSQL refuses as roles, its superuser, and the databases a
+        # fresh cluster already has, which ensureDBOwnership would hand over.
+        # `shared_` is the operator's, for shared roles (below).
+        reserved = n:
+          lib.hasPrefix "pg_" n
+          || lib.hasPrefix "shared_" n
+          || builtins.elem n ["postgres" "public" "none" "current_user" "current_role" "session_user" "template0" "template1"];
+      in {
+        assertions = [
+          {
+            assertion = !(lib.any reserved logins);
+            message = "fragments.nix postgresql-18: a login is a reserved role name: ${toString (lib.filter reserved logins)}";
+          }
+        ];
+        services.postgresql = {
+          enable = true;
+          package = pkgs.postgresql_18;
+          enableTCPIP = false;
+          settings.listen_addresses = lib.mkForce "";
+          # Replaces NixOS's default rules, whose `local all all peer` would admit
+          # any login to any database. NixOS adds those with mkAfter, so a
+          # prepended rule would leave them as the fallback.
+          authentication = lib.mkForce ''
+            local all      postgres peer map=postgres
+            local samerole all      peer
+          '';
+          ensureDatabases = logins;
+          ensureUsers =
+            map (name: {
+              inherit name;
+              ensureDBOwnership = true;
+            })
+            logins;
+        };
+      };
+    };
   };
 
   known = lib.concatStringsSep ", " (builtins.attrNames vocabulary);
+
+  # One lookup, so every selection function refuses an unknown name alike. It
+  # reads a *selected* name only, so an unselected entry's module is never forced.
+  entry = name:
+    vocabulary.${name}
+    or (throw "fragments.nix: no fragment named '${name}' — the vocabulary is ${known}");
+
+  hasPersist = name: (entry name).persist or [] != [];
+  isCapability = name: (entry name) ? guestModule || hasPersist name;
 in {
   inherit vocabulary;
 
@@ -112,14 +172,24 @@ in {
     floor,
     extras,
   }:
-    floor
-    ++ lib.concatMap (
-      name:
-        (
-          vocabulary.${name}
-          or (throw "fragments.nix: no fragment named '${name}' — the vocabulary is ${known}")
-        )
-        .packages
-    )
+    floor ++ lib.concatMap (name: (entry name).packages) extras;
+
+  # The selected entries' guest modules, unparameterised (a room imports them).
+  modules = extras: lib.concatMap (name: lib.optional (entry name ? guestModule) (entry name).guestModule) extras;
+
+  # What the selection needs to survive its guest's lifecycle, one per path.
+  persists = extras:
+    lib.concatMap (name:
+      map (path: {inherit name path;}) ((entry name).persist or []))
     extras;
+
+  # Why a slot cannot take this selection, or null. A slot's volume is its
+  # checkout and a provision resets it, so where a capability would persist is
+  # its own design; `vm/capsule.nix` turns this into an assertion (design sec-5).
+  slotRefusal = extras: let
+    names = lib.filter isCapability extras;
+  in
+    if names == []
+    then null
+    else "a capsule image cannot select capability fragments ${lib.concatStringsSep ", " names}: a slot's volume is its checkout and a provision resets it, so where it would persist is its own design (SL-009 DEC-060, NOTES item 4)";
 }

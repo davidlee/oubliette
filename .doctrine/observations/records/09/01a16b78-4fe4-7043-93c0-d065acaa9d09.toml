@@ -1,0 +1,18 @@
+schema = "doctrine.observation"
+schema_version = 1
+uid = "01a16b78-4fe4-7043-93c0-d065acaa9d09"
+recorded_at = "2026-10-24T01:13:29.316717734Z"
+kind = "friction"
+summary = "doctrine slice notes only scaffolds; no verb appends evidence to an existing notes.md"
+detail = "SL-009 PHASE-01 worker: 'doctrine slice notes 9' refused to overwrite the existing notes.md, so quoted red evidence was appended by hand-editing notes.md."
+
+[facets.execution]
+schema_version = 1
+interface = "cli"
+interface_origin = "automatic"
+product_surface = "doctrine"
+product_surface_origin = "automatic"
+command = "observation record"
+command_origin = "automatic"
+repository_context = "primary"
+repository_context_origin = "automatic"

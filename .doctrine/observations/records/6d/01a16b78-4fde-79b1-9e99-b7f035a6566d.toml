@@ -1,0 +1,18 @@
+schema = "doctrine.observation"
+schema_version = 1
+uid = "01a16b78-4fde-79b1-9e99-b7f035a6566d"
+recorded_at = "2026-10-24T01:13:29.311005585Z"
+kind = "friction"
+summary = "verify-vt reports UNATTRIBUTABLE until the phase is flipped completed"
+detail = "SL-009 PHASE-01: after committing the phase, verify-vt still read every VT as 'keyword present but file not modified by this slice'; only the completed flip (automatic solo phase-binding) attributed the delta. The orchestrator loop commits then flips, so verify-vt before the flip is uninformative; nothing says so."
+
+[facets.execution]
+schema_version = 1
+interface = "cli"
+interface_origin = "automatic"
+product_surface = "doctrine"
+product_surface_origin = "automatic"
+command = "observation record"
+command_origin = "automatic"
+repository_context = "primary"
+repository_context_origin = "automatic"

@@ -112,6 +112,16 @@
 in {
   imports = [(lib.modules.importApply ./door.nix {inherit hostKeyDir;})];
 
+  # A slot refuses a capability fragment rather than take its packages and
+  # drop its module (design sec-5, RV-025 F-8). As an assertion so a suite reads
+  # the message from `config.assertions` instead of through `tryEval`.
+  assertions = [
+    {
+      assertion = fragments.slotRefusal flavour.extras == null;
+      message = fragments.slotRefusal flavour.extras;
+    }
+  ];
+
   microvm = {
     inherit (target.sizes) vcpu mem;
     # `microvm.kernelParams`, not `boot.kernelParams`: it reaches the runner's
