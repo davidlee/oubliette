@@ -6,21 +6,30 @@ disposable phase sheet (`.doctrine/state/.../phase-NN.md`) that must survive
 
 ## Harvest
 <!-- single-copy: updated in place each harvest; ids only, never restated content -->
-fresh-as-of: 2026-10-24 · plan (design locked) · 7b5435e
+fresh-as-of: 2026-10-24 · PHASE-01..04 completed, PHASE-05 (VH) next · e07fb7b
 
 ### Produced
-- design locked — capability fragment `postgresql-18` for rooms; `design.md` sec-1..sec-9 (commits e5d94d3..7b5435e)
-- DEC-059..DEC-068 — the settled answers; DEC-060, DEC-061, DEC-063, DEC-065, DEC-068 amended in-run
-- RV-025 — adversarial design review (codex), 11 findings, routes F-1/F-5 demonstrate, rest control
+- design locked: capability fragment `postgresql-18` for rooms; `design.md` sec-1..sec-9 (e5d94d3..7b5435e)
+- DEC-059..DEC-068: the settled answers (DEC-060, -061, -063, -065, -068 amended in-run)
+- RV-025: design review (codex), 11 findings, F-1/F-5 demonstrate, rest control
+- plan: 5 phases, reviewed by two pi agents (039c24f, 2a89c9d, af13f5e); ready b60823c
+- PHASE-01 b367b32 · PHASE-02 c13665d · PHASE-03 ee733f7 · seat fix-up 17d6ef2 · PHASE-04 c71f2bd, c7f4b35 · README root-path correction e07fb7b
+- `fragmentsCases` (new suite, 40 ok); `just check && just` green at e07fb7b; verify-vt PHASE-01..04 pass
+- friction observations: 8752487, d82bc95
+- adaptations outside the design's file list: `fragments.nix` takes a required `lib` (imports recursion); `fragmentsCases` also takes `flavour` and `roomRecords`
 
 ### Learned
-- mem.fact.oubliette.nixos-service-defaults-defeat-naive-overrides — ProtectHome, mkAfter pg_hba, sudo's default rules
-- mem.fact.oubliette.design-lock-needs-routed-findings — route severe findings at first dispose
+- mem.fact.oubliette.nixos-service-defaults-defeat-naive-overrides: ProtectHome, mkAfter pg_hba, sudo's default rules
+- mem.fact.oubliette.design-lock-needs-routed-findings: route severe findings at first dispose
+- mem.fact.oubliette.room-postgres-superuser-path: root (admin keys or the stop key) → `runuser -u postgres -- psql`; `shared_` rule; forward via the room-client bundle
+- mem.fact.oubliette.imports-may-not-force-pkgs: a module's imports may not force `pkgs`, so pass `lib`
 
 ### Open
-- ASM-005 — room-persist / bind / postgresql.target boot ordering, live only
-- ASM-006 — peer auth over an ssh -L forward, and samerole, live only
-- DEC-064 — the six VH steps are the user's to run
+- ASM-005: room-persist / bind / postgresql.target boot ordering, live only (PHASE-05 steps 1-3)
+- ASM-006: peer auth over an ssh -L forward, and samerole, live only (PHASE-05 steps 4-6)
+- DEC-064: the six VH steps are the user's to run
+- for /reconcile: design sec-4 says root is reached "only by the host's admin keys", which is false because the stop key is an unrestricted root key (vm/door.nix:86; README fixed in e07fb7b). Design sec-4/sec-7's forward "or `capsule <room> ssh`" is impossible: that verb takes no ssh options (host/cli.nix:1922-1948). Sec-9 omits `fragments.nix`'s `lib` argument
+- for /audit (coverage gaps, none required by the design): the password/root-login/default-route rules have no negative case; the bind's `.mount` in `room-persist.before` is unpinned; no case proves an unselected `guestModule` is never evaluated
 
 ## Design review passes
 

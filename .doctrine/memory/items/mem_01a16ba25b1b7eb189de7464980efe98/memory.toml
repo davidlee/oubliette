@@ -1,0 +1,46 @@
+memory_uid = "mem_01a16ba25b1b7eb189de7464980efe98"
+memory_key = "mem.fact.oubliette.imports-may-not-force-pkgs"
+schema_version = 1
+memory_type = "fact"
+status = "active"
+title = "A module's imports may not force its pkgs argument"
+summary = "computing a NixOS module's imports from anything that forces the module-arg pkgs (even pkgs.lib) is infinite recursion; take lib from the module args"
+created = "2026-10-24"
+updated = "2026-10-24"
+
+[scope]
+paths = ["fragments.nix", "vm/room.nix"]
+globs = []
+commands = []
+tags = ["gotcha", "nix"]
+workspace = "default"
+repo = "github.com/davidlee/oubliette"
+repo_id_kind = "remote"
+repo_id_confidence = "high"
+
+[git]
+anchor_kind = "checkout_state"
+commit = ""
+tree = "051b4b99737c2eaeb2b2b1539d01790558c1dea0"
+ref_name = "refs/heads/main"
+checkout_state_id = "194eebef93490046f8e2da050c1c7088b07dce8e1f8b9d40d538ac2ae78fe7da"
+base_commit = "e07fb7b1dd14136c0a782d4b1ea4491198cd401e"
+verified_sha = ""
+normalizer = "forget.checkout.v1"
+
+[review]
+verification_state = "unverified"
+reviewed = ""
+review_by = ""
+
+[trust]
+trust_level = "medium"
+
+[ranking]
+severity = "none"
+weight = 0
+
+[[source]]
+kind = "commit"
+ref = "ee733f7"
+
