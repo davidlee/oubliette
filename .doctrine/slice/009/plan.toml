@@ -1,0 +1,288 @@
+# Implementation plan for SL-009 — the authored, durable phase plan.
+#
+# This is the single source of each phase's objective, criteria, verification,
+# and links. Runtime status lives separately under .doctrine/state/ (phase
+# tracking) — never record progress here. Hand-edit freely: the tool reads this
+# file but does not rewrite it.
+schema  = "doctrine.plan.overview"
+version = 1
+slice   = "SL-009"
+
+[specs]
+primary       = []
+collaborators = []
+
+[requirements]
+targets      = []
+dependencies = []
+
+# One [[phase]] per ordered phase, in execution order.
+[[phase]]
+id        = "PHASE-01"
+name      = "Every room's door is guarded, rooms turn sudo off, and fragmentsCases exists"
+objective = """
+Design sec-5 (door rules), sec-6 case 7, `DEC-066`, RV-025 F-3. Independent of
+the fragment work; lands green alone.
+
+`vm/room.nix` sets `security.sudo.enable = false` (header and the users comment
+say why: NixOS's enabled sudo always carries default root and wheel rules).
+`mkfleet.nix`'s `roomChecks` gains four rules, each with a reason naming its
+decision:
+- `services.openssh.settings.PasswordAuthentication == false`;
+- `services.openssh.settings.PermitRootLogin == "prohibit-password"`;
+- no default route: `networking.defaultGateway == null`, and network
+  `10-capsule` has no `gateway` and no `routes`;
+- no elevation: `security.sudo.enable`, `security.sudo-rs.enable` and
+  `security.doas.enable` all false.
+
+New suite `fragmentsCases` (`fragments-cases.nix`, root level beside
+`fragments.nix`, its subject). Its header says it is handed evaluated fixture
+rooms and `roomChecks`, not a render of its own. `mkfleet.nix` passes it
+`roomChecks` and `roomVms`; negative cases come from `extendModules` on a fixture
+room. A verdict is read as the failing rule's reason, never a bare `tryEval`.
+The suite is wired into the flake's exported suites, `just build`, `just cases`
+and `justfile`'s `nix_paths`.
+
+Case 7, positive control first: `lounge` and `assistant` pass every
+`roomChecks` rule. Then `assistant` extended with `security.sudo.enable = true`
+plus a NOPASSWD rule fails the elevation rule and only that rule. Red first: the
+case is written before the rule and fails on its absence.
+
+Disruption, flagged rather than designed around (auto-memory
+`forward-design-over-live-capsules`): sudo off and the new rules apply to every
+consumer room that `roomChecks` reaches, `/srv/fleet`'s included. A consumer
+room that set any of these settings goes red at its next `roomImages`."""
+entrance_criteria = [
+  { id = "EN-1", text = "SL-009 design locked (run rev 40); the plan is approved by the user" },
+  { id = "EN-2", text = "`just check` and `just` green at the phase's base commit" },
+]
+exit_criteria = [
+  { id = "EX-1", text = "`vm/room.nix` sets `security.sudo.enable = false`; `vm/door.nix:72`'s no-sudo comment is still true" },
+  { id = "EX-2", text = "`roomChecks` carries the password-auth, root-login, default-route and elevation rules; both fixture rooms pass all of them in `roomImages`" },
+  { id = "EX-3", text = "RV-025 F-3 (control): case 7's NOPASSWD-sudo extension of `assistant` fails the elevation rule, and only that rule, asserted by its reason; the clean positive control passes first" },
+  { id = "EX-4", text = "`fragmentsCases` is in the flake's exported suites, `just build`, `just cases` and `nix_paths`; its failure fails `just build` (NOTES item 51 step 3)" },
+  { id = "EX-5", text = "Mutation recorded in the phase notes: with the elevation rule removed, case 7 goes red for that reason" },
+  { id = "EX-6", text = "`just check` and `just` green; alejandra clean" },
+]
+verification = [
+  { id = "VT-1", expects = "roomChecks carries the four door rules", test_file = "mkfleet.nix", keywords = ["PasswordAuthentication", "prohibit-password", "defaultGateway", "sudo-rs", "doas", "fragmentsCases"], waived = false },
+  { id = "VT-2", expects = "fragmentsCases case 7: positive control over both rooms, then the NOPASSWD extension fails only the elevation rule", test_file = "fragments-cases.nix", keywords = ["fragmentsCases", "roomChecks", "extendModules", "NOPASSWD", "lounge", "assistant"], waived = false },
+  { id = "VT-3", expects = "the suite is built by just build and run by just cases", test_file = "just/fleet.just", keywords = ["fragmentsCases"], waived = false },
+  { id = "VT-4", expects = "rooms turn sudo off", test_file = "vm/room.nix", keywords = ["security.sudo.enable = false"], waived = false },
+  { id = "VA-1", text = "`justfile`'s `nix_paths` names `fragments-cases.nix`, and `just check` reports parsing it" },
+]
+specs        = []
+requirements = []
+
+[[phase]]
+id        = "PHASE-02"
+name      = "A fragment may carry a guest module and persist paths, postgresql-18 is one, and a slot refuses it"
+objective = """
+Design sec-2, sec-4 (the entry), sec-5 (slot refusal), sec-6 cases 1-3, `DEC-059`,
+`DEC-060`, RV-025 F-8.
+
+`fragments.nix`: an entry may carry `guestModule` (a NixOS module) and
+`persist` (absolute paths, default `[]`) beside `packages`. Three new functions
+of a selection, next to `compose`. Each reads key names only until an entry is
+selected, so an unselected entry's module is never evaluated, and an unknown
+name keeps `compose`'s refusal:
+- `modules extras`: the selected entries' `guestModule`s;
+- `persists extras`: `[{name; path;}]`;
+- `slotRefusal extras`: null, or a message naming each selected entry that has
+  a `guestModule` or `persist`.
+
+The `postgresql-18` entry goes in exactly as sec-4 writes it: `packages = []`,
+`persist`, the reserved-name assertion, the socket-only `services.postgresql`
+config with the two `mkForce`d rules, and `ensureDatabases`/`ensureUsers` read
+from the guest's normal users. The header's "Two things deliberately absent"
+is revised: capability fragments are now built, for rooms.
+
+`vm/capsule.nix` adds `{assertion = fragments.slotRefusal flavour.extras ==
+null; message = …;}` to `assertions` (design sec-5; sec-9's "throws" is
+shorthand for this).
+
+No room imports a module yet: `vm/room.nix` is untouched, and no fixture room
+selects `postgresql-18`. Until PHASE-03, a room that selects the name gets its
+packages, which are none, and no service; it does not get a database on
+tmpfs. PHASE-03 follows straight on, and no consumer push sits between them.
+
+Cases 1-3 in `fragmentsCases`, red first:
+1. `slotRefusal ["agents"]` is null; with `postgresql-18` the message names it.
+2. A capsule image with `postgresql-18` in `flavour.extras` has a failing
+   `config.assertions` entry carrying that message. Built with `extendModules`
+   and `specialArgs.flavour` overridden on an evaluated fixture capsule. If that
+   seam does not hold, use `mkVm` with a second flavour and record why in the
+   notes.
+3. `persists ["search" "postgresql-18"]` is exactly
+   `[{name = "postgresql-18"; path = "/var/lib/postgresql";}]`, and
+   `modules ["search"]` is `[]`."""
+entrance_criteria = [
+  { id = "EN-1", text = "PHASE-01 complete and committed (fragmentsCases exists and is wired)" },
+]
+exit_criteria = [
+  { id = "EX-1", text = "`fragments.nix` exports `modules`, `persists`, `slotRefusal`; the vocabulary carries `postgresql-18` exactly as design sec-4" },
+  { id = "EX-2", text = "`vm/capsule.nix` asserts `slotRefusal flavour.extras == null` with its message; the fixture capsule images still evaluate and build" },
+  { id = "EX-3", text = "Cases 1-3 green, each written and seen red first; case 2 reads the message from `config.assertions` (RV-025 F-8)" },
+  { id = "EX-4", text = "Mutation recorded in the phase notes: replacing the capsule assertion with an unrelated throw turns case 2 red for the message, not merely for a failure" },
+  { id = "EX-5", text = "`fragments.nix`'s header no longer lists capability fragments as absent" },
+  { id = "EX-6", text = "`just check` and `just` green; alejandra clean" },
+]
+verification = [
+  { id = "VT-1", expects = "the three selection functions and the postgresql-18 entry", test_file = "fragments.nix", keywords = ["guestModule", "persist", "modules", "persists", "slotRefusal", "postgresql-18", "postgresql_18", "samerole", "listen_addresses", "shared_", "template1"], waived = false },
+  { id = "VT-2", expects = "cases 1-3: slotRefusal, the capsule's failing assertion message, persists/modules shape", test_file = "fragments-cases.nix", keywords = ["slotRefusal", "persists", "modules", "config.assertions", "/var/lib/postgresql"], waived = false },
+  { id = "VT-3", expects = "capsules refuse a capability fragment", test_file = "vm/capsule.nix", keywords = ["slotRefusal", "assertions"], waived = false },
+]
+specs        = []
+requirements = []
+
+[[phase]]
+id        = "PHASE-03"
+name      = "A room persists what its fragments declare, and the assistant fixture runs postgresql-18"
+objective = """
+Design sec-3, sec-5 (persistence rules), sec-6 cases 4-6 and 8, `DEC-061`,
+`DEC-063`, `DEC-065`, `DEC-068`, RV-025 F-2, F-4, F-6, F-7, F-9, F-11.
+
+`vm/room.nix` imports `fragments.modules room.extras` and, for every entry in
+`fragments.persists room.extras`, renders:
+- one `room-persist.service`: `DefaultDependencies = false`; after and requires
+  `home.mount`; before `local-fs.target` and each bind's mount unit. Its script
+  runs under `umask 077`, `mkdir -p /home/.fragments`, and makes each
+  `/home/.fragments/<name><path>` only when it is missing (F-7). The unit is
+  absent when there are no entries.
+- `fileSystems.<path>`: device `/home/.fragments/<name><path>`, `fsType =
+  "none"` (F-2), options `bind`, `x-systemd.requires=room-persist.service`,
+  `x-systemd.after=room-persist.service`.
+The header gains a paragraph on fragments.
+
+`roomChecks` gains the generic persistence rules for each `persists` entry (the
+device, fsType, options; `room-persist`'s dependencies) and requires
+`room-persist` to exist exactly when there are entries.
+`fixture/default.nix`: `assistant.extras = ["search" "postgresql-18"]`;
+`lounge` stays the absent path. Its comment says so.
+
+Cases in `fragmentsCases`, red first:
+4. `assistant`: postgresql enabled at major 18; `listen_addresses == ""`;
+   `authentication` is exactly the two rules; `ensureUsers` names exactly its
+   declared users with no clauses; `ensureDatabases` is the same list; no
+   failing assertion.
+5. `assistant` extended with a user `pg_demo`, then `template1`, then
+   `shared_x`: each gives a failing assertion naming that user, while the clean
+   room passes (F-6, F-9, F-11).
+6. `lounge`: postgresql disabled, no `/var/lib/postgresql` filesystem, no
+   `room-persist`.
+8. Mutations, each required to turn a named case red, recorded in the phase
+   notes:
+   - drop `x-systemd.requires` (the persistence rule; F-4);
+   - drop `fsType` or set it to something other than `none` (F-2);
+   - flip `listen_addresses` (case 4);
+   - restore `local all all peer` (case 4);
+   - drop `template1` from the reserved list (case 5; F-9);
+   - drop the `shared_` prefix (case 5; F-11).
+   The capsule-assertion mutation was PHASE-02/EX-4.
+
+`assistant`'s image now carries postgres's closure, so `roomImages` gets
+slower; that is expected and noted."""
+entrance_criteria = [
+  { id = "EN-1", text = "PHASE-02 complete and committed" },
+  { id = "EN-2", text = "Memories retrieved: `mem.fact.oubliette.nixos-service-defaults-defeat-naive-overrides`, `pattern.oubliette.forcing-is-not-building`" },
+]
+exit_criteria = [
+  { id = "EX-1", text = "`vm/room.nix` imports the selected modules and renders `room-persist` and the bind `fileSystems` per design sec-3; nothing is rendered for a room with no entries" },
+  { id = "EX-2", text = "RV-025 F-2 / F-4 (control): `roomChecks` persistence rules reject a bind without `fsType = \"none\"` and one without `x-systemd.requires=room-persist.service`; both mutations recorded red" },
+  { id = "EX-3", text = "RV-025 F-6 / F-9 / F-11 (control): case 5 gets a named failing assertion for `pg_demo`, `template1` and `shared_x`, with the clean `assistant` as positive control; dropping `template1` or the `shared_` prefix turns it red" },
+  { id = "EX-4", text = "Cases 4 and 6 green, each seen red first; the listen_addresses and `local all all peer` mutations turn case 4 red" },
+  { id = "EX-5", text = "`assistant` selects `postgresql-18`; `roomImages` builds both fixture rooms through every rule (a build, not a boot: STD-001)" },
+  { id = "EX-6", text = "`just check` and `just` green; alejandra clean" },
+]
+verification = [
+  { id = "VT-1", expects = "room persistence render and module import", test_file = "vm/room.nix", keywords = ["room-persist", "fragments.modules", "fragments.persists", "/home/.fragments", "x-systemd.requires=room-persist.service", "fsType = \"none\"", "umask 077", "DefaultDependencies"], waived = false },
+  { id = "VT-2", expects = "roomChecks persistence rules", test_file = "mkfleet.nix", keywords = ["room-persist", "x-systemd.requires=room-persist.service", "/home/.fragments"], waived = false },
+  { id = "VT-3", expects = "cases 4-6: assistant's service contract, reserved names, lounge's absent path", test_file = "fragments-cases.nix", keywords = ["pg_demo", "template1", "shared_x", "listen_addresses", "ensureUsers", "ensureDatabases", "samerole", "room-persist"], waived = false },
+  { id = "VT-4", expects = "the fixture assistant room selects postgresql-18", test_file = "fixture/default.nix", keywords = ["postgresql-18"], waived = false },
+  { id = "VA-1", text = "Phase notes record each case-8 mutation, the case it turned red and the reason it showed" },
+]
+specs        = []
+requirements = []
+
+[[phase]]
+id        = "PHASE-04"
+name      = "The contract, README, CLAUDE.md and a memory say what shipped"
+objective = """
+Design sec-7. Docs come after the fragment ships, not before.
+
+- `docs/contract-flavour.md`: capability fragments move from unbuilt to built,
+  for rooms. It describes the `guestModule`/`persist` keys, that the guest owns
+  persistence, and that slots refuse one. The `item 4` row stays a possibility.
+- README, a new section "PostgreSQL in a room" (user, 2026-10-24) covering:
+  selecting `postgresql-18`; each login's own database and the `samerole`
+  rule; who can be the superuser (guest root by admin key via
+  `capsule <room> ssh root`, then `runuser -u postgres -- psql`; no room user
+  can); the shared-database recipe and its `shared_` naming rule; the
+  `ssh -L` forward; readiness via `postgresql.target`; reset, backup and the
+  major-version bump; and that the data shares `/home`.
+- `templates/fleet/flake.nix`: the rooms comment points to that section.
+- `CLAUDE.md`: `fragmentsCases` joins the suite list, and the fixture count
+  goes from "Seventeen" to "Eighteen", with a clause saying the new suite is
+  handed evaluated fixture rooms.
+- `doctrine memory record`: the superuser path, scoped to `fragments.nix` and
+  `vm/room.nix`."""
+entrance_criteria = [
+  { id = "EN-1", text = "PHASE-03 complete and committed" },
+]
+exit_criteria = [
+  { id = "EX-1", text = "`docs/contract-flavour.md` says capability fragments are built for rooms and refused by slots; nothing in it still calls them unbuilt" },
+  { id = "EX-2", text = "README has \"PostgreSQL in a room\" with every topic listed in the objective, and the template's rooms comment points to it" },
+  { id = "EX-3", text = "`CLAUDE.md` lists `fragmentsCases` and its fixture count and clause are updated" },
+  { id = "EX-4", text = "A doctrine memory with the superuser path exists, scoped to `fragments.nix` and `vm/room.nix`; `doctrine memory validate` clean" },
+  { id = "EX-5", text = "`just check` green (the template still evaluates under `template-cases`)" },
+]
+verification = [
+  { id = "VT-1", expects = "README section with the superuser path and shared_ rule", test_file = "README.md", keywords = ["PostgreSQL in a room", "postgresql-18", "runuser -u postgres", "shared_", "postgresql.target", "ssh -L"], waived = false },
+  { id = "VT-2", expects = "CLAUDE.md suite list carries the new suite", test_file = "CLAUDE.md", keywords = ["fragmentsCases", "Eighteen"], waived = false },
+  { id = "VT-3", expects = "flavour contract says capability fragments are built for rooms", test_file = "docs/contract-flavour.md", keywords = ["guestModule", "persist", "slotRefusal"], waived = false },
+  { id = "VA-1", text = "Read `docs/contract-flavour.md`, `fragments.nix`'s header and `vm/room.nix`'s header together: no remaining claim that capability fragments are unbuilt, or that a room has sudo" },
+]
+specs        = []
+requirements = []
+
+[[phase]]
+id        = "PHASE-05"
+name      = "Live: the user runs the six checks on a room selecting postgresql-18"
+objective = """
+Design sec-6 live list, `DEC-064`, RV-025 F-1 and F-5 (route demonstrate).
+These validate `ASM-005` (systemd orders the bind after `/home`, and postgres
+after the bind) and `ASM-006` (a forwarded connection reaches peer auth as the
+logged-in user). They need a live room host, so the user runs them. The agent
+writes the commands up, records the result at the rung reached (STD-001),
+settles ASM-005/006 on the evidence, and reports any step not run as not
+exercised.
+
+1. Start the room; check `systemctl is-active postgresql.target`, that
+   `findmnt /var/lib/postgresql` has its source on `/home`, and that
+   `stat -c %a /home/.fragments` is `700`.
+2. As `agent`: `psql -c 'create table t(x int); insert into t values (1)'`.
+3. Stop and start the room; `psql -c 'select * from t'` returns `1`, and
+   `/home/.fragments/postgresql-18/var/lib/postgresql` is still owned by
+   postgres.
+4. From the host: `ssh -L` the socket over the door, then `psql` through it as
+   `agent`.
+5. As `eve` with her own role: `psql -U eve -d agent` is refused, and
+   `psql -d eve` succeeds.
+6. As root, run the sec-4 recipe for `shared_proj`, granted to `agent` only:
+   `agent -d shared_proj` succeeds and `eve -d shared_proj` is refused."""
+entrance_criteria = [
+  { id = "EN-1", text = "PHASE-04 complete and committed; a host with the room module can build and start a room selecting `postgresql-18`" },
+]
+exit_criteria = [
+  { id = "EX-1", text = "RV-025 F-5 (demonstrate): step 1 shows `postgresql.target` active, the bind sourced from `/home`, and `/home/.fragments` mode 700 — or is reported not exercised" },
+  { id = "EX-2", text = "RV-025 F-1 (demonstrate): steps 5 and 6 show own-role/other-database refusal and shared-role membership admission/refusal — or are reported not exercised" },
+  { id = "EX-3", text = "ASM-005 and ASM-006 settled (validated or refuted) through `doctrine knowledge` on the evidence from steps 1-4, or left open with what was not run" },
+  { id = "EX-4", text = "The results, and the rung each reached, are recorded in the phase notes" },
+]
+verification = [
+  { id = "VH-1", text = "User runs steps 1-3 (ordering, readiness, persistence across stop/start) and reports output" },
+  { id = "VH-2", text = "User runs step 4 (peer auth through a forward over the door) and reports output" },
+  { id = "VH-3", text = "User runs steps 5-6 (database exclusion and shared-role membership) and reports output" },
+]
+specs        = []
+requirements = []
