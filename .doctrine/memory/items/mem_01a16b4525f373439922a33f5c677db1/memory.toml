@@ -1,0 +1,50 @@
+memory_uid = "mem_01a16b4525f373439922a33f5c677db1"
+memory_key = "mem.fact.oubliette.nixos-service-defaults-defeat-naive-overrides"
+schema_version = 1
+memory_type = "fact"
+status = "active"
+title = "NixOS service defaults that defeat a naive override in a guest: postgres ProtectHome, mkAfter pg_hba, sudo's built-in rules"
+summary = "A dataDir under /home is hidden (ProtectHome); a prepended pg_hba rule leaves 'local all all peer' as fallback (mkAfter); an enabled sudo always has root/wheel rules, so emptiness is no check"
+created = "2026-10-24"
+updated = "2026-10-24"
+
+[scope]
+paths = ["fragments.nix", "vm/room.nix", "mkfleet.nix"]
+globs = []
+commands = []
+tags = ["gotcha"]
+workspace = "default"
+repo = "github.com/davidlee/oubliette"
+repo_id_kind = "remote"
+repo_id_confidence = "high"
+
+[git]
+anchor_kind = "checkout_state"
+commit = ""
+tree = "e796b93b644d6ae4509efce13285f4a7e9b3bf8c"
+ref_name = "refs/heads/main"
+checkout_state_id = "74a3ebb7ba7e0d2af9397b3d13ef1cd86d84d67d9408b67b178ee1017885ce36"
+base_commit = "7b5435e8d277cbf44ce26b7dfd41a7f9dcbddf4b"
+verified_sha = ""
+normalizer = "forget.checkout.v1"
+
+[review]
+verification_state = "unverified"
+reviewed = ""
+review_by = ""
+
+[trust]
+trust_level = "medium"
+
+[ranking]
+severity = "medium"
+weight = 0
+
+[[source]]
+kind = "review"
+ref = "RV-025"
+
+[[source]]
+kind = "decision"
+ref = "DEC-061"
+

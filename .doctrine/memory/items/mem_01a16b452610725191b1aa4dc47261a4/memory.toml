@@ -1,0 +1,46 @@
+memory_uid = "mem_01a16b452610725191b1aa4dc47261a4"
+memory_key = "mem.fact.oubliette.design-lock-needs-routed-findings"
+schema_version = 1
+memory_type = "fact"
+status = "active"
+title = "A design run will not lock until every severe RV finding carries a route — give --route when disposing"
+summary = "review-disposed gates on a route per blocker/major; adding one after the raiser verifies needs reopen + re-dispose + re-verify; section-reviewed is declared as att-N records, not a checkpoint act"
+created = "2026-10-24"
+updated = "2026-10-24"
+
+[scope]
+paths = []
+globs = []
+commands = ["doctrine review dispose", "doctrine design apply"]
+tags = ["gotcha"]
+workspace = "default"
+repo = "github.com/davidlee/oubliette"
+repo_id_kind = "remote"
+repo_id_confidence = "high"
+
+[git]
+anchor_kind = "checkout_state"
+commit = ""
+tree = "e796b93b644d6ae4509efce13285f4a7e9b3bf8c"
+ref_name = "refs/heads/main"
+checkout_state_id = "3a9b9d4ea83b1edcbe9a176730b98ae1804bba0e70144c68dffe388f7346f330"
+base_commit = "7b5435e8d277cbf44ce26b7dfd41a7f9dcbddf4b"
+verified_sha = ""
+normalizer = "forget.checkout.v1"
+
+[review]
+verification_state = "unverified"
+reviewed = ""
+review_by = ""
+
+[trust]
+trust_level = "high"
+
+[ranking]
+severity = "low"
+weight = 0
+
+[[source]]
+kind = "review"
+ref = "RV-025"
+
