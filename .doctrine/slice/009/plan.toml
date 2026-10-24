@@ -44,8 +44,9 @@ The suite is wired into the flake's exported suites, `just build`, `just cases`
 and `justfile`'s `nix_paths`.
 
 Case 7, positive control first: `lounge` and `assistant` pass every
-`roomChecks` rule. Then `assistant` extended with `security.sudo.enable = true`
-plus a NOPASSWD rule fails the elevation rule and only that rule. Red first: the
+`roomChecks` rule. Then `assistant` extended with `security.sudo.enable = lib.mkForce
+true` (a plain `true` would conflict with the room's `false` at eval, which is
+a different failure) plus a NOPASSWD rule fails the elevation rule and only that rule. Red first: the
 case is written before the rule and fails on its absence.
 
 Disruption, flagged rather than designed around (auto-memory
@@ -173,7 +174,9 @@ Cases in `fragmentsCases`, red first:
 8. Mutations, each required to turn a named case red, recorded in the phase
    notes:
    - drop `x-systemd.requires` (the persistence rule; F-4);
-   - drop `fsType` or set it to something other than `none` (F-2);
+   - set `fsType = "auto"` (the persistence rule; F-2). Dropping `fsType`
+     fails at eval, since the option has no default: record that as well, but
+     it does not exercise the rule;
    - flip `listen_addresses` (case 4);
    - restore `local all all peer` (case 4);
    - drop `template1` from the reserved list (case 5; F-9);
@@ -188,7 +191,7 @@ entrance_criteria = [
 ]
 exit_criteria = [
   { id = "EX-1", text = "`vm/room.nix` imports the selected modules and renders `room-persist` and the bind `fileSystems` per design sec-3; nothing is rendered for a room with no entries" },
-  { id = "EX-2", text = "RV-025 F-2 / F-4 (control): `roomChecks` persistence rules reject a bind without `fsType = \"none\"` and one without `x-systemd.requires=room-persist.service`; both mutations recorded red" },
+  { id = "EX-2", text = "RV-025 F-2 / F-4 (control): `roomChecks` persistence rules reject a bind with `fsType = \"auto\"` and one without `x-systemd.requires=room-persist.service`; both mutations recorded red" },
   { id = "EX-3", text = "RV-025 F-6 / F-9 / F-11 (control): case 5 gets a named failing assertion for `pg_demo`, `template1` and `shared_x`, with the clean `assistant` as positive control; dropping `template1` or the `shared_` prefix turns it red" },
   { id = "EX-4", text = "Cases 4 and 6 green, each seen red first; the listen_addresses and `local all all peer` mutations turn case 4 red" },
   { id = "EX-5", text = "`assistant` selects `postgresql-18`; `roomImages` builds both fixture rooms through every rule (a build, not a boot: STD-001)" },
