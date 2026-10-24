@@ -593,19 +593,21 @@ local samerole all      peer
 postgresql-18: a login is a reserved role name: …`), and only for a room that
 selects the fragment.
 
-**Who can be the superuser.** Guest root, reached only by the host's admin keys
-(`access.adminKeys`; `prohibit-password`, no password login), is the superuser
-by peer through the `postgres` system user:
+**Who can be the superuser.** Guest root, reached by the host's admin keys
+(`access.adminKeys`) and by the host's stop key (the root credential the
+`microvm@` units use to ask the guest to reboot, `vm/door.nix`; unrestricted,
+so a full root login), with `prohibit-password` and no password login, is the
+superuser by peer through the `postgres` system user:
 
 ```
-capsule <room> ssh root          # needs a host admin key (access.adminKeys)
+capsule <room> ssh root          # a host admin key (access.adminKeys) or the stop key
 runuser -u postgres -- psql
 ```
 
 No room user can become `postgres`: a room has no sudo (`security.sudo` is off,
 `DEC-060`), the door's elevation rules refuse sudo-rs and doas (`roomChecks`),
-and `postgres` has no keys. A room whose `adminKeys` is empty has no superuser
-path at all.
+and `postgres` has no keys. A room whose `adminKeys` is empty has the host's stop
+key as its only root credential.
 
 **A shared database** is the operator's act, by convention, run inside that
 `psql`:
@@ -628,7 +630,7 @@ refuses until a `push`, `ssh` or `collect` has learned the room's key):
 
 ```
 b=$(nix build --print-out-paths .#room-client-<room>)
-"$b/bin/ssh" -F "$b/etc/ssh_config" \
+"$b/bin/ssh" -F "$b/etc/ssh_config" -N \
   -L 5432:/run/postgresql/.s.PGSQL.5432 <user>@room-<room>
 ```
 
@@ -647,11 +649,13 @@ reports.
 
 **Reset, backup and the major version** are the operator's; there is no verb.
 Reset is `dropdb` and re-create as `postgres` (`runuser -u postgres`), or, with
-the room stopped, root removing `/home/.fragments/postgresql-18`. Backup is
+the room stopped, on the host, deleting `.fragments/postgresql-18` from the
+room's `room-home.img`. Backup is
 `pg_dump`, over the forward or as `postgres` in the guest. The major is in the
 fragment's name and NixOS's data directory is
-`/var/lib/postgresql/<psqlSchema>` under the persisted path, so selecting
-`postgresql-19` starts an empty cluster beside the old one; carry the data with
+`/var/lib/postgresql/<psqlSchema>` under the persisted path, so a future
+`postgresql-19` fragment (none exists; `fragments.nix` refuses unknown names)
+would start an empty cluster beside the old one; carry the data with
 `pg_upgrade`, or `pg_dump` and restore. A new image reaches a room only once
 its runner is moved: after a switch `current` still names the old one, and
 `microvm -u <room>` (what `just refresh-build <room>` runs) moves it, then

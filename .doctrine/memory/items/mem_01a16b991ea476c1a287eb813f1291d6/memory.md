@@ -1,9 +1,11 @@
 In a room selecting `postgresql-18` (SL-009, `fragments.nix`, `vm/room.nix`):
 
 **Superuser path.** Only guest root is the superuser, by peer auth through the
-`postgres` system user:
+`postgres` system user. Root is reached by the host's admin keys
+(`access.adminKeys`) and by the host's stop key (the `microvm@` units' reboot
+credential, `vm/door.nix`; no `command=` restriction, so a full root login):
 
-    capsule <room> ssh root        # needs a host admin key (access.adminKeys)
+    capsule <room> ssh root        # a host admin key or the stop key
     runuser -u postgres -- psql
 
 pg_hba is exactly `local all postgres peer map=postgres` then
@@ -11,7 +13,7 @@ pg_hba is exactly `local all postgres peer map=postgres` then
 
 **No room user can be superuser.** A room has no sudo (`security.sudo` off,
 DEC-060); roomChecks' elevation rule refuses sudo-rs/doas; `postgres` has no
-keys. A room with `adminKeys = []` has no superuser path at all. Do not "fix"
+keys. A room with `adminKeys = []` still has the stop key as its only root credential. Do not "fix"
 a missing superuser by granting a login sudo: that breaks the door rule.
 
 **`shared_` rule.** A shared database is the operator's act: `CREATE ROLE
@@ -28,3 +30,4 @@ the remote command); forward the socket with the room-client bundle:
 Readiness is `postgresql.target`, not `postgresql.service`. User-facing
 detail: README.md "PostgreSQL in a room". Not live-verified until SL-009
 PHASE-05 (ASM-005/006).
+
