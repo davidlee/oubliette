@@ -46,9 +46,12 @@
   # The flake inputs a fragment is built from (mkFleet's `flavour.sources`):
   # the host's tool sources, never the whole of anyone's `inputs`.
   sources,
+  # A room imports `modules`, and an `imports` list is read before `config`, so
+  # it may not force the guest's `pkgs` (which is `config._module.args`).
+  # `vm/room.nix` hands its own module `lib`; every other caller takes the default.
+  lib ? pkgs.lib,
 }: let
   inherit (pkgs.stdenv.hostPlatform) system;
-  inherit (pkgs) lib;
 
   # The agent CLIs, from llm-agents rather than from nixpkgs. Same derivations
   # `~/flakes/pub`'s `unjailed` exports — that attrset is `inherit

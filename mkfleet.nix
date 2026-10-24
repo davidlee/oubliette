@@ -324,6 +324,50 @@
             "no volume 'room-work.img' of sizes.work at ${targets.volumePath} (DEC-043)")
         ]
         ++ lib.concatMap repoChecks room.repos.targets;
+    # What a fragment persists is bound from the room's `/home` by one
+    # oneshot that makes the sources first (DEC-061, sec-5). One check per
+    # aspect, each reason tagged `persistence:`, so a case can count the failing
+    # ones and name the aspect. `room-persist` exists iff there are entries.
+    entries = fragments.persists room.extras;
+    persistUnit = c.systemd.services.room-persist or null;
+    persistDeps = unit: [
+      (check (!(unit.unitConfig.DefaultDependencies or true))
+        "persistence: room-persist does not set DefaultDependencies = false; it would wait on a target that waits on it (DEC-061)")
+      (check (builtins.elem "home.mount" unit.after)
+        "persistence: room-persist is not after home.mount; its sources would be made under the mount (DEC-061)")
+      (check (builtins.elem "home.mount" unit.requires)
+        "persistence: room-persist does not require home.mount; /home may not be there to make them in (DEC-061)")
+      (check (builtins.elem "local-fs.target" unit.before)
+        "persistence: room-persist is not before local-fs.target; a unit could start before its bind exists (DEC-061)")
+    ];
+    persistChecks = {
+      path,
+      name,
+    }: let
+      fs = c.fileSystems.${path} or null;
+    in
+      [(check (fs != null) "persistence: no filesystem at ${path} for fragment '${name}' (DEC-061)")]
+      ++ lib.optionals (fs != null) [
+        (check (fs.device == "/home/.fragments/${name}${path}")
+          "persistence: ${path} is not bound from /home/.fragments/${name}${path}, so it would not live on the volume (DEC-061)")
+        (check (fs.fsType == "none")
+          "persistence: ${path} has an fsType other than \"none\"; a bind has no filesystem type (DEC-061, RV-025 F-2)")
+        (check (builtins.elem "bind" fs.options)
+          "persistence: ${path} is not a bind mount (DEC-061)")
+        (check (builtins.elem "x-systemd.requires=room-persist.service" fs.options)
+          "persistence: ${path} lacks x-systemd.requires=room-persist.service; 'after' alone does not pull the oneshot in (DEC-061, RV-025 F-4)")
+      ];
+    persistRules =
+      [
+        (check ((persistUnit != null) == (entries != []))
+          "persistence: room-persist is ${
+            if persistUnit == null
+            then "absent"
+            else "present"
+          }, but the room's fragments persist ${toString (builtins.length entries)} path(s) (DEC-061)")
+      ]
+      ++ lib.optionals (persistUnit != null) (persistDeps persistUnit)
+      ++ lib.concatMap persistChecks entries;
   in
     [
       (check (c.networking.hostName == "capsule")
@@ -347,7 +391,8 @@
     ++ lib.optional reading
     (check ((c.users.groups.${readersGroup.name}.gid or null) == readersGroup.gid)
       "the readers' group '${readersGroup.name}' is absent or its gid is not ${toString readersGroup.gid}; an allocated one moves with name order (RSK-012, IMP-023)")
-    ++ repoRules;
+    ++ repoRules
+    ++ persistRules;
 
   # Every room's runner, built — the first gate in `just build` that builds a VM
   # image at all (RV-014 F-7). Forcing a link's `path` forces every check above
@@ -945,7 +990,7 @@
   # The fragment vocabulary's selections and the door rules, against the fixture
   # rooms and one capsule image (fragments-cases.nix).
   fragmentsCases = import ./fragments-cases.nix {
-    inherit pkgs lib fragments roomChecks roomVms flavour;
+    inherit pkgs lib fragments roomChecks roomVms flavour roomRecords;
     capsuleImage = bound.images.${probeTarget};
   };
 

@@ -92,10 +92,12 @@ in {
   };
 
   # Two rooms, nobody's: `lounge` is Plan E's shape (several people on one
-  # box) and the absent path of repos, policy, a work volume and extras;
-  # `assistant` is Plan F's door (one agent) and the case with all four, over
-  # both targets, selecting `search` into its base (DEC-052), with `eve` a
-  # reader of its repos who may not write them (IMP-023).
+  # box) and the absent path of repos, policy, a work volume, extras and
+  # fragments; `assistant` is Plan F's door (one agent) and the case with all
+  # five, over both targets, selecting `search` into its base (DEC-052) and the
+  # capability fragment `postgresql-18` (so persistence and its module are
+  # exercised, SL-009), with `eve` a reader of its repos who may not write them
+  # (IMP-023).
   # No addressing — a room has no uplink — and off the probe fabric by its
   # `room-` prefix. The keys are
   # strings nobody holds.
@@ -136,7 +138,7 @@ in {
         readers = ["eve"];
       };
       policy = "build";
-      extras = ["search"];
+      extras = ["search" "postgresql-18"];
       sizes = sizes // {work = 1024;};
     };
   };

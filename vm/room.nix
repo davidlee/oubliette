@@ -24,6 +24,18 @@
 # `safe.directory`: running git in a repo another user owns runs that user's
 # config as the reader, so opting in is the reader's act, not the room's.
 #
+# A room may select a capability fragment (SL-009, `fragments.nix`): a guest
+# module, which this imports, and `persist` paths, which this renders. The
+# root fs is tmpfs and `/home` is the one volume every room has, so each
+# persisted path is a bind from `/home/.fragments/<name><path>`, and
+# `room-persist` makes those sources, before the binds and as root under
+# `umask 077`, only when missing (DEC-061, RV-025 F-7). The room orders it, not
+# the fragment, so a fragment never names a room unit (`room-seed` runs after
+# `local-fs.target`, so after this). What survives: stop/start, an image
+# rebuild and a host switch keep `/home`, so the data; deleting `room-home.img`
+# loses it, with the homes. A dedicated volume per fragment is not built
+# (DEC-068).
+#
 # What it deliberately lacks, against `vm/capsule.nix`: no egress (a room has
 # no uplink), so no proxy; no repo's tool set on the login `PATH` — one is
 # reached only through `session` (DEC-049), and only the base is everyone's
@@ -34,6 +46,9 @@
 {
   lib,
   pkgs,
+  # nixpkgs' own utils: the mount unit a bind becomes is named by
+  # `escapeSystemdPath`, not by a hand-spelled string.
+  utils,
   room,
   # The derived targets (targets/default.nix), their flakes, the one `session`
   # construction (mkfleet.nix) and the work branch: read only for a room with
@@ -52,7 +67,7 @@
 }: let
   # The vocabulary, resolved against this guest's pkgs, as `vm/capsule.nix` does.
   fragments = import ../fragments.nix {
-    inherit pkgs;
+    inherit pkgs lib;
     inherit (flavour) sources;
   };
   # The room's base (DEC-052): the floor and its extras, one tree. Collisions
@@ -64,6 +79,10 @@
       inherit (room) extras;
     };
   };
+  # What the room's fragments need to survive (DEC-061): one entry per path.
+  entries = fragments.persists room.extras;
+  # An entry's source, under the volume `/home`.
+  sourceOf = e: "/home/.fragments/${e.name}${e.path}";
   users = lib.attrNames room.users;
   repos =
     if room.repos == null
@@ -89,7 +108,52 @@
     else targetFlakes.${r.name}.packages.${pkgs.stdenv.hostPlatform.system}.${target.toolsPackage};
 in {
   # Host keys on the volume, beside the homes, for the reason the door gives.
-  imports = [(lib.modules.importApply ./door.nix {hostKeyDir = "/home/.ssh-host-keys";})];
+  imports =
+    [(lib.modules.importApply ./door.nix {hostKeyDir = "/home/.ssh-host-keys";})]
+    ++ fragments.modules room.extras;
+
+  # Each path a fragment persists is a bind from `/home/.fragments`, and
+  # `room-persist` makes the sources first (DEC-061, DEC-068). Nothing is
+  # rendered for a room with no entries.
+  fileSystems = lib.listToAttrs (map (e:
+    lib.nameValuePair e.path {
+      device = sourceOf e;
+      # No default, and a bind has no filesystem type (RV-025 F-2).
+      fsType = "none";
+      # `requires` pulls the oneshot into the boot transaction; `after` alone
+      # only orders it (RV-025 F-4).
+      options = ["bind" "x-systemd.requires=room-persist.service" "x-systemd.after=room-persist.service"];
+    })
+  entries);
+
+  systemd.services.room-persist = lib.mkIf (entries != []) {
+    description = "Make the directories a room's fragments persist, on /home";
+    # A mount unit's own dependencies would make this wait on a target that
+    # waits on it, so it declares exactly what it needs.
+    unitConfig.DefaultDependencies = false;
+    after = ["home.mount"];
+    requires = ["home.mount"];
+    before = ["local-fs.target"] ++ map (e: "${utils.escapeSystemdPath e.path}.mount") entries;
+    serviceConfig = {
+      Type = "oneshot";
+      RemainAfterExit = true;
+    };
+    path = [pkgs.coreutils];
+    # Under umask 077 every parent `mkdir -p` makes is root's `0700`, and an
+    # existing directory is never touched: a service-owned tree is not reset
+    # each boot (RV-025 F-7).
+    script =
+      ''
+        umask 077
+        mkdir -p /home/.fragments
+      ''
+      + lib.concatMapStrings (e: let
+        dir = lib.escapeShellArg (sourceOf e);
+      in ''
+        [ -d ${dir} ] || mkdir -p ${dir}
+      '')
+      entries;
+  };
 
   # No default for any size: a room that omits one fails here, at eval
   # (SL-005 PHASE-01 EX-5). Exec on `/home` stays permitted (DEC-037).

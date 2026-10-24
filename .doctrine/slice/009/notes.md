@@ -136,3 +136,54 @@ Restored `vm/capsule.nix` from a scratch copy after both; rebuilt green.
 
 ### Not exercised
 No room boots, no postgres runs. The `postgresql-18` module is evaluated nowhere except case 2's `config.assertions` path (it contributes only the refusal; the module itself is not imported by a capsule or a room). `roomImages` still excludes it; `vm/room.nix` untouched. No consumer (/srv/fleet) built.
+
+## PHASE-03 (execute)
+
+Base commit c13665d. Model: sonnet (standing SL-009 policy). Files: `vm/room.nix` (imports, `fileSystems`, `room-persist`, header paragraph, `utils` argument), `mkfleet.nix` (`persistRules`, `roomRecords` into `fragmentsCases`), `fragments.nix` (optional `lib ? pkgs.lib`; outside the design's file list), `fragments-cases.nix` (cases 4, 5, 6, 9), `fixture/default.nix` (`assistant.extras = ["search" "postgresql-18"]`, comment). `rooms.nix` unchanged.
+
+### Spike: imports recursion
+`imports = [door] ++ fragments.modules room.extras` with `fragments` built from the module's `pkgs`: `nix eval .#nixosConfigurations.assistant.config.networking.hostName` -> `error: infinite recursion encountered` (trace: "you probably reference `config` in `imports`"). Fixed with `lib ? pkgs.lib` on `fragments.nix`, and `vm/room.nix` passes `inherit pkgs lib`; re-eval -> `"capsule"`. mkfleet.nix and vm/capsule.nix pass no `lib` (default; same store path).
+
+### Red first
+After writing cases 4, 5, 6, 9 (before the module): eval aborts while a read precedes its feature (`The option services.postgresql.package' was accessed but has no value defined`, then `attribute 'listen_addresses' missing`, then `fileSystems.<no persist entry>.fsType' was accessed but has no value defined`); each was guarded (`optionalString`, `or`, a no-op extension when there are no entries) so the red is FAIL lines. Suite red:
+```
+FAIL assistant enables postgresql: got 'false', wanted 'true'
+FAIL   at major 18: got '', wanted '18'
+FAIL   listening on no address: got '<unset>', wanted ''
+FAIL   with exactly the two access rules: got '', wanted 'local all      postgres peer map=postgres ...
+FAIL   ensureUsers names exactly the declared users: got '[]', wanted '["agent","eve"]'
+FAIL   ensureDatabases is the same list: got '[]', wanted '["agent","eve"]'
+FAIL a login 'pg_demo' fails exactly one assertion: got '0', wanted '1'   (same for template1, shared_x)
+FAIL a bind with fsType 'auto' fails exactly one persistence rule: got '0', wanted '1'
+FAIL a bind without x-systemd.requires fails exactly one persistence rule: got '0', wanted '1'
+```
+With rules and fixture but no render: `error: The option fileSystems."/var/lib/postgresql".fsType' was accessed but has no value defined` (case 9's extensions define a lone entry; an abort, quoted, gone once the render exists). Case 6 was born green (no fragment on lounge, nothing to render): all four lines `ok` at first run. After the render: 40 `ok`, no FAIL.
+
+### Mutations (each restored from a copy, `cmp`'d; tree rebuilt green, 40 ok)
+| mutation | red | reason line |
+|---|---|---|
+| M1 drop `x-systemd.requires` (room.nix) | case 9 control; case 7's assistant control; 9a (fsAuto) 2 reasons; case 7 sudo "exactly one" 2 | `FAIL assistant fails no persistence rule: got '... persistence: /var/lib/postgresql lacks x-systemd.requires=room-persist.service; 'after' alone does not pull the oneshot in (DEC-061, RV-025 F-4)'` |
+| M2a `requires = []` | same controls; 9a, 9b, sudo count 2 | `... persistence: room-persist does not require home.mount; /home may not be there to make them in (DEC-061)` |
+| M2b `DefaultDependencies = true` | same | `... persistence: room-persist does not set DefaultDependencies = false; it would wait on a target that waits on it (DEC-061)` |
+| M3 `fsType = "auto"` | 9 control, case 7 control, 9b 2 reasons, sudo count 2 | `... persistence: /var/lib/postgresql has an fsType other than "none"; a bind has no filesystem type (DEC-061, RV-025 F-2)` |
+| M3b delete the `fsType` line | EVAL ABORT only, no FAIL line; does not exercise the rule | `error: The option fileSystems."/var/lib/postgresql".fsType' was accessed but has no value defined. Try setting the option.` |
+| M4 `listen_addresses = mkForce "localhost"` | case 4 only | `FAIL   listening on no address: got 'localhost', wanted ''` |
+| M5 add `local all      all      peer` | case 4 only | `FAIL   with exactly the two access rules: got 'local all      postgres peer map=postgres` (multi-line, shows the extra rule) |
+| M6 drop `template1` | case 5 template1 lines only | `FAIL a login 'template1' fails exactly one assertion: got '0', wanted '1'`; `FAIL   and it names 'template1': '' does not mention 'template1'` |
+| M7 drop `shared_` prefix | case 5 shared_x lines only | `FAIL a login 'shared_x' fails exactly one assertion: got '0', wanted '1'`; `FAIL   and it names 'shared_x': ...` |
+
+M1's 9b stays ok (its `mkForce` already drops the option); M3's 9a stays ok (forces "auto" either way). Cases 4 and 5 stay ok under M1-M3 and vice versa under M4-M7.
+Case 6 mutation: `lounge.extras = ["postgresql-18"]` (fixture) ->
+```
+FAIL lounge does not enable postgresql: got 'true', wanted 'false'
+FAIL   has no filesystem at the bind: got 'true', wanted 'false'
+FAIL   has no room-persist unit: got 'true', wanted 'false'
+FAIL   and a login 'pg_demo' fails no assertion there: got 'fragments.nix postgresql-18: a login is a reserved role name: pg_demo', wanted ''
+```
+Restored; no other case moved.
+
+### Gate
+alejandra -c clean over all five files; `just check` green; `just` exit 0 (47s, warm cache; `roomImages` builds `assistant` and `lounge`, so the runner with postgres builds); `just cases` exit 0; `doctrine slice verify-vt 9`: PHASE-03 VT-1..3 PASS, VT-4 UNATTRIBUTABLE (fixture file uncommitted), no keyword-absent FAIL; `git diff --stat -- rooms.nix` empty.
+
+### Not exercised
+No room booted; `postgresql.target`, the ordering premise (ASM-005) and peer auth over a forward (ASM-006) are PHASE-05's. The bind's mount-unit entry in `room-persist.before` is rendered and not pinned by a rule (roomChecks pins `local-fs.target`, as design sec-5). No consumer room (/srv/fleet) built; the persistence rules now run over every room there (vacuously for a room with no capability fragment). The dependency half has mutation evidence (M2a, M2b) but no standing negative case; cheap candidates: extensions with `requires = mkForce []` and `DefaultDependencies = true`. M3b is an abort and proves nothing of the rule.
