@@ -1,0 +1,46 @@
+memory_uid = "mem_01a16b991ea476c1a287eb813f1291d6"
+memory_key = "mem.fact.oubliette.room-postgres-superuser-path"
+schema_version = 1
+memory_type = "fact"
+status = "active"
+title = "A room's postgres superuser is guest root by admin key; no room user can be, and shared roles are shared_*"
+summary = "Superuser in a postgresql-18 room: capsule <room> ssh root, then runuser -u postgres -- psql. No room user can (no sudo, DEC-060). Shared roles are named shared_<x>, a prefix no login may take."
+created = "2026-10-24"
+updated = "2026-10-24"
+
+[scope]
+paths = ["fragments.nix", "vm/room.nix"]
+globs = []
+commands = []
+tags = ["gotcha", "postgresql", "rooms"]
+workspace = "default"
+repo = "github.com/davidlee/oubliette"
+repo_id_kind = "remote"
+repo_id_confidence = "high"
+
+[git]
+anchor_kind = "checkout_state"
+commit = ""
+tree = "38279645fc513c8cfcabe143236e75eeaa750155"
+ref_name = "refs/heads/main"
+checkout_state_id = "bd2198de05637037a7ea0422c89d9b8dc2c88e2d61427dfbdd7e3626e6254d73"
+base_commit = "17d6ef24844bf4b8bc8c11735d5886bd92764209"
+verified_sha = ""
+normalizer = "forget.checkout.v1"
+
+[review]
+verification_state = "unverified"
+reviewed = ""
+review_by = ""
+
+[trust]
+trust_level = "medium"
+
+[ranking]
+severity = "none"
+weight = 0
+
+[[source]]
+kind = "slice"
+ref = "SL-009"
+

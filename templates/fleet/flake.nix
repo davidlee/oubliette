@@ -74,7 +74,9 @@
       # `session <repo> -- <cmd>` in the room, never on its base PATH. Every
       # room has a base: the floor `git bash coreutils-full which` plus its
       # `extras` (names from the fragment vocabulary), on a login's PATH and
-      # behind a repo's tools in `session` (DEC-052). `policy`
+      # behind a repo's tools in `session` (DEC-052). An extra may also be a
+      # capability fragment, `postgresql-18`, which a room persists on its
+      # `/home`; see README.md's "PostgreSQL in a room". `policy`
       # names one in policies.nix; it bounds and permits what
       # `capsule assistant collect <repo> <branch>` fetches back, into
       # /var/lib/capsule/collect/assistant/<repo>.git, and its allowlist is

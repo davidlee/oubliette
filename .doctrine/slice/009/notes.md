@@ -195,3 +195,19 @@ Behaviour-preserving refactor, so no red step. `fragmentsCases` ok count 40 befo
 2. `mkfleet.nix` persistence rule reads `fs.device or null`, presence-guarded as roomChecks' header rule says.
 3. `fragments-cases.nix`: the slotRefusal-vs-slotRefusal case is relabelled as a wiring check ("the capsule reports slotRefusal's message, not a second one"); the "still evaluates" case is relabelled to what it pins, that selecting the fragment adds no packages to the capsule.
 4. `fragments-cases.nix` tidy: door-rules sentence is its own header paragraph; header states cases are ordered by phase, not design number; dead `baseFlavour` alias removed; `reasonsOf` and `joined` merged into `joinReasons`, uses replaced.
+
+## PHASE-04 (execute)
+
+Prose only; no `.nix` logic touched (one comment in the template).
+
+- `docs/contract-flavour.md`: opening paragraph now says capability fragments are built, for rooms (`SL-009`, `DEC-059`, `DEC-060`) and drops them from **Unbuilt**; new `### Capability fragments, built for rooms` (keys table, guest owns persistence `DEC-061`/`DEC-068`, slots refuse via `slotRefusal`, vocabulary is oubliette's); capability table row reworded, `item 4` kept a possibility; `## Open` guest-services bullet says built for rooms, item 4 open for slots. `docs/index.md` line 18 ("selection unbuilt") is about per-assignment selection and stays true; unchanged.
+- `README.md`: new `## PostgreSQL in a room` after `## Rooms`, plus a pointer line in `## Rooms` after the `extras` paragraph. Every VT-1 keyword present. Superuser path is exactly `capsule <room> ssh root` then `runuser -u postgres -- psql`.
+- `templates/fleet/flake.nix`: one comment sentence pointing at the section.
+- `CLAUDE.md`: `fragmentsCases` in the run-list, `Seventeen` -> `Eighteen` (count re-done by eye: 17 before, 18 now), fixture clause for `fragments-cases.nix` appended, one "and" kept. Looseness: the run-list's defining clause ("run a program's own text") fits `fragmentsCases` loosely, since its subject is the shipped vocabulary and rules over evaluated images; the clause was not rewritten.
+- T5 wiring: `fragmentsCases` present in `mkfleet.nix` (992, 1989), `just/fleet.just` (80, 118). T6: `fragments.nix` and `vm/room.nix` headers make no unbuilt/sudo claim; no edit.
+
+`-L` through `capsule <room> ssh`: not possible (`host/cli.nix` ssh verb: first argument is the user, the rest is the remote command). README says so plainly and documents the forward through the room-client bundle: `"$b/bin/ssh" -F "$b/etc/ssh_config" -L 5432:/run/postgresql/.s.PGSQL.5432 <user>@room-<room>`, the destination form being `docs/contract-room-client.md`'s own example (`Host *` matches any name).
+
+Verify: `just check` exit 0; `just` exit 0; `doctrine slice verify-vt 9`: PHASE-01..03 PASS, PHASE-04 VT-1..3 UNATTRIBUTABLE (keyword present; files uncommitted), as expected.
+
+Not exercised: no room booted. The forward command line was derived from docs, not run; `ASM-005` (bind ordering at boot) and `ASM-006` (peer auth over a forward) are stated in the README as not proven (PHASE-05). Reset/`microvm -u` wording rests on the memory body only. EX-4 (memory) is the orchestrator's.

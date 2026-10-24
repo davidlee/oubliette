@@ -508,6 +508,9 @@ declares (names from `fragments.nix`'s vocabulary, `extras = [...]`, optional on
 any room). It is on a login's `PATH`, and `session` puts it behind a repo's tool
 set and ahead of the caller's `PATH` (`DEC-052`).
 
+`extras` may also select a capability fragment, `postgresql-18` today; see
+[PostgreSQL in a room](#postgresql-in-a-room).
+
 ```
 capsule <room> ssh [user] [-- cmd]
 capsule <room> start
@@ -557,6 +560,117 @@ mounts a jail needs as the `binds` attribute. It checks the room's key and never
 writes it, so it refuses until a `push`, `ssh` or `collect` has learned it, and
 it runs as the module's owner. [docs/contract-room-client.md](docs/contract-room-client.md)
 is the contract (`DEC-056`, `DEC-057`).
+
+## PostgreSQL in a room
+
+`extras = ["postgresql-18"]` on a room (optionally beside `search`) runs
+PostgreSQL 18 in that room (`SL-009`; `DEC-059`, `DEC-060`, `DEC-062`). It is
+the one capability fragment: a guest module plus a path that must survive,
+which a room persists on its `/home` and a slot refuses
+([contract-flavour.md](docs/contract-flavour.md)). A room that selects nothing
+is unchanged, as `lounge`; a slot whose `flavour.extras` names it fails to
+build (`slotRefusal`). The server listens on its unix socket only
+(`listen_addresses = ""`, no TCP) and no password exists.
+
+**Each login's own database.** Every normal user the room declares gets a role
+and a database of its own name, owns that database, and has neither `CREATEDB`
+nor `SUPERUSER`. `psql` with no arguments, as that login, connects over the
+socket by peer authentication. The access rules are exactly two, first match
+wins, and they replace NixOS's default `local all all peer`, which would
+otherwise remain as the fallback:
+
+```
+local all      postgres peer map=postgres
+local samerole all      peer
+```
+
+`samerole` admits a login only to a database named for a role it is a member of
+(every role is a member of itself), so `psql -U eve -d agent` is refused.
+
+**Reserved names.** A login named `pg_*`, `shared_*`, `postgres`, `public`,
+`none`, `current_user`, `current_role`, `session_user`, `template0` or
+`template1` fails the room's image at eval, naming them (`fragments.nix
+postgresql-18: a login is a reserved role name: …`), and only for a room that
+selects the fragment.
+
+**Who can be the superuser.** Guest root, reached only by the host's admin keys
+(`access.adminKeys`; `prohibit-password`, no password login), is the superuser
+by peer through the `postgres` system user:
+
+```
+capsule <room> ssh root          # needs a host admin key (access.adminKeys)
+runuser -u postgres -- psql
+```
+
+No room user can become `postgres`: a room has no sudo (`security.sudo` is off,
+`DEC-060`), the door's elevation rules refuse sudo-rs and doas (`roomChecks`),
+and `postgres` has no keys. A room whose `adminKeys` is empty has no superuser
+path at all.
+
+**A shared database** is the operator's act, by convention, run inside that
+`psql`:
+
+```
+CREATE ROLE shared_proj NOLOGIN;
+CREATE DATABASE shared_proj OWNER shared_proj;
+GRANT shared_proj TO agent, eve;   -- members may open it; others may not
+```
+
+A shared role is named `shared_<x>`, and no login may be: a user declared later
+then never meets an existing `NOLOGIN` role of its own name, which NixOS would
+skip creating and leave unable to log in. A shared role named outside the
+convention is the operator's to rename before a colliding user is declared.
+Nothing declares it; it lives in the cluster, on `/home`.
+
+**From the host.** Forward the socket over the room's door with the room-client
+bundle's `ssh` ([contract-room-client.md](docs/contract-room-client.md), which
+refuses until a `push`, `ssh` or `collect` has learned the room's key):
+
+```
+b=$(nix build --print-out-paths .#room-client-<room>)
+"$b/bin/ssh" -F "$b/etc/ssh_config" \
+  -L 5432:/run/postgresql/.s.PGSQL.5432 <user>@room-<room>
+```
+
+(or a local socket path in place of `5432`). `capsule <room> ssh` takes no ssh
+options: its first argument is the user and everything after is the remote
+command, so there is no `-L` through it. Peer authentication makes a forwarded
+connection the logged-in ssh user, which is how it is meant to work; the live
+check is `ASM-006`'s, not yet made. The door's sshd is NixOS-default and
+permits stream-local forwarding, and the forward adds nothing to the perimeter.
+
+**Readiness is `postgresql.target`.** `postgresql.service` is only the server;
+roles and databases are made by `postgresql-setup` after it, and
+`postgresql.target` requires both. As root over the door,
+`systemctl is-active postgresql.target` asks. No `capsule` verb waits or
+reports.
+
+**Reset, backup and the major version** are the operator's; there is no verb.
+Reset is `dropdb` and re-create as `postgres` (`runuser -u postgres`), or, with
+the room stopped, root removing `/home/.fragments/postgresql-18`. Backup is
+`pg_dump`, over the forward or as `postgres` in the guest. The major is in the
+fragment's name and NixOS's data directory is
+`/var/lib/postgresql/<psqlSchema>` under the persisted path, so selecting
+`postgresql-19` starts an empty cluster beside the old one; carry the data with
+`pg_upgrade`, or `pg_dump` and restore. A new image reaches a room only once
+its runner is moved: after a switch `current` still names the old one, and
+`microvm -u <room>` (what `just refresh-build <room>` runs) moves it, then
+`capsule <room> start`.
+
+**The data shares `/home`.** The cluster is a bind onto `/var/lib/postgresql`
+from `/home/.fragments/postgresql-18/var/lib/postgresql` on the room's `/home`
+volume, made first by `room-persist` (`DEC-061`). `/home/.fragments` is root's
+`0700`, outside every home, so a login reaches the cluster only through the
+socket and only its own database. Stop and start, an image rebuild and a host
+switch keep it; deleting `room-home.img` loses it with the homes. The database
+shares `/home`'s size (`sizes.volume`), so a full `/home` stops both a login's
+writes and postgres, and the image grows by postgres' closure. A dedicated
+volume per fragment is `DEC-068`, not built.
+
+**Not proven.** `fragmentsCases` pins the rules, the image and the module's
+settings. No room has been booted with it: that the bind is ordered after
+`/home` at boot (`ASM-005`) and that a forward reaches peer auth as the login
+(`ASM-006`) are the live rung's (`STD-001`).
 
 ## Moving one capsule's work to another slot
 

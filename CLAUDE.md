@@ -48,7 +48,7 @@ evaluates). `just` (default) runs the build, units, and fmt.
 the NixOS module — what it says, including its programs, since a unit graph does
 not mention them. `guardCases`, `netnsCases`, `briefCases`, `snapshotCases`, `refreshCases`, `observeCases`,
 `baselineCases`, `policyCases`, `profileCases`, `vmCases`, `gitChannelCases`, `roomGitCases`, `quarantineCases`,
-`volumeRootCases`, `resetHomeCases`, `sessionCases`, `volumeCases`, `fleetCases`, `stateDirCases`, `roomsCases`, `fabricCases`, `roomClientCases` and `roomVerbsCases` *run* a
+`volumeRootCases`, `resetHomeCases`, `sessionCases`, `volumeCases`, `fleetCases`, `stateDirCases`, `roomsCases`, `fabricCases`, `fragmentsCases`, `roomClientCases` and `roomVerbsCases` *run* a
 program's own text with a substitute for the one thing tying it to this host
 (`just cases`), and are the answer whenever the interesting branches are ones a
 live host can only reach destructively or expensively — the guard's by unnaming a
@@ -106,7 +106,7 @@ written, wired into `just cases`, and left out of `just build` for a session
 (NOTES item 51 step 3). **One suite per file, beside the program it pins** —
 `host/<name>-cases.nix`, or `vm/<name>-cases.nix` for a guest program, a function of `pkgs`, `lib` and **the store path the
 program ships**, with a short `import` in `mkfleet.nix` (NOTES item 51 step 0).
-Seventeen of them are handed a fixture instead and say so in their headers: the
+Eighteen of them are handed a fixture instead and say so in their headers: the
 guard's stubbed kernel, the namespace program's stubbed kernel and scratch
 `/etc/netns` (a build sandbox's `/etc` is read-only, and the program's path is
 fixed at build), the front end's pool that is not this host's (three times,
@@ -121,8 +121,11 @@ a fixture `sshd -i` stands behind it (`host/fixture-sshd.nix`), the room
 client's state root `/build/state` and the same sshd (`room-client-cases.nix`),
 the state root's refusal values that are nobody's (`state-dir-cases.nix`), the
 fleet's targets and slots that are nobody's (`fleet-cases.nix`), the
-quarantine's policy vocabulary that is no host's (`quarantine-cases.nix`), and the rooms and
-probe fabric that are nobody's (`rooms-cases.nix`, `fabric-cases.nix`). A new suite goes in
+quarantine's policy vocabulary that is no host's (`quarantine-cases.nix`), the rooms and
+probe fabric that are nobody's (`rooms-cases.nix`, `fabric-cases.nix`), and the
+fixture rooms and one capsule image that `fragmentsCases` is handed evaluated, to
+extend with one module each for its negative cases rather than render a second
+copy of what they pin (`fragments-cases.nix`). A new suite goes in
 its own file and takes its subject as an argument — never a second render of the
 text it claims to pin. **A suite whose subject is a *library* rather than a
 program** takes the fragment its callers get and splices it into the smallest

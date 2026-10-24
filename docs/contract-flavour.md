@@ -9,10 +9,15 @@ composes it onto the target's floor — so the two owners below are two files
 rather than a paragraph. A **room** selects its own, `rooms.<r>.extras`, from
 the same vocabulary, and `vm/room.nix` composes them onto a floor that is the
 **room's**, not a target's (`git bash coreutils-full which`, `DEC-052`); a
-repo's tool set is never unioned with it. Slots are unchanged. **Unbuilt:** per-assignment extras, the store-path
-identity and the gcroot that retains it, the refusal to change a composition
-under a dirty volume, and capability fragments. Read the rest as design with
-that line drawn through it.
+repo's tool set is never unioned with it. Slots are unchanged. **Capability
+fragments are built, for rooms** (`SL-009`, `DEC-059`, `DEC-060`): an entry may
+carry `guestModule` and `persist`, the room imports the module and persists the
+paths, and a slot refuses both
+([below](#capability-fragments-built-for-rooms); the one such fragment is
+[PostgreSQL in a room](../README.md#postgresql-in-a-room)). **Unbuilt:**
+per-assignment extras, the store-path identity and the gcroot that retains it,
+and the refusal to change a composition under a dirty volume. Read the rest as
+design with that line drawn through it.
 
 This is the design being fixed alongside
 [contract-assignment.md](./contract-assignment.md), and it is the *build-time*
@@ -112,7 +117,7 @@ exactly one owner:
 | --- | --- | --- | --- |
 | base | the floor | host operator, from a shared tool repo or the target's flake | a node/nextjs environment; doctrine's `dev-tools` |
 | project | the floor | the project, if it has anything the base lacks | one linter |
-| capability | either | host operator | `nix-ld`; a language server; a guest service, if [item 4](./ledger/004-live-postgres.md) ever lands |
+| capability | either | host operator | `nix-ld`; a language server; a guest service (`postgresql-18` is one, for rooms; a live database for a slot's tests stays [item 4](./ledger/004-live-postgres.md)'s possibility) |
 | convenience | the extras | **the host operator, declared** | the two below |
 
 Two real cross-project extras, which are what the vocabulary is expected to look
@@ -166,6 +171,31 @@ both, so neither should be invented here:
   list order.
 - **ordering** — the list is ordered for legibility and for priority, not for
   semantics; nothing should depend on where in it a fragment sits.
+
+### Capability fragments, built for rooms
+
+An entry in `fragments.nix` may carry, beside `packages`, two more keys
+(`SL-009`, `DEC-059`):
+
+| key | type | meaning |
+| --- | --- | --- |
+| `guestModule` | a NixOS module | plain guest config, imported unparameterised. It reads what it needs from the guest's own `config` and is never told room, slot, or where persistence lives |
+| `persist` | list of absolute paths, default `[]` | what must survive the guest's lifecycle. The guest decides how |
+
+**The guest owns persistence** (`DEC-061`). A room binds each `persist` path
+from `/home/.fragments/<name><path>`, on its `/home` volume, and
+`room-persist.service` makes the sources first, as root, only when missing; a
+fragment never names a room unit. A dedicated volume per path is `DEC-068`, not
+built. **Slots refuse** (`slotRefusal`, an `assertions` entry in
+`vm/capsule.nix`): a capsule's volume is its checkout and its provision resets
+tracked files, so where a slot would persist is its own design, and a capsule
+image naming a capability fragment fails to build with that message rather than
+carrying a package-only half.
+
+**The vocabulary is oubliette's**, so a consumer supplies no module and
+`DEC-034` is not reopened. `postgresql-18` is the one capability fragment; its
+behaviour is the README's, and what it was and was not run against is
+`fragments-cases.nix`'s header.
 
 ### What the assigner may compose, and whether it may build
 
@@ -287,6 +317,8 @@ that they are the same kind of event is not.
   the guest closure or nowhere ([item 4](./ledger/004-live-postgres.md), open
   and unhit). Under this split it is a capability fragment, which is the first
   concrete thing the fragment list buys that a single exported package cannot.
+  That is now built for rooms (`postgresql-18`); item 4, a database for a
+  *slot's* tests, stays open because slots refuse capability fragments.
 - **What a fragment reference looks like in a profile.** The floor is a list of
   fragment names from the host's vocabulary, which is enough for every case
   named here — but a project that wants *a version* of something has no way to
