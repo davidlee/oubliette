@@ -19,3 +19,29 @@ read-only Nix evaluations and upstream primary documentation. Runtime outcomes
 derived from source are explicitly marked inference. No VM images built, no
 guest started, no live database or forwarding connection exercised. Only this
 review ledger is edited.
+
+## Synthesis
+
+**Overall:** acceptable as a design, with the stated live checks outstanding.
+
+**Synopsis:** All eleven findings are verified against the revised design,
+through revision `09d1739`. Persistence has an explicit filesystem type and
+checked dependency edges; elevation checks inspect disabled mechanisms rather
+than NixOS's default rule lists; PostgreSQL uses peer identity and role-based
+database admission, protects built-in names, and reserves `shared_` for
+operator-created shared role/database pairs. The admin recipe names root
+explicitly. The vocabulary remains repository-owned, and the guard explicitly
+covers a finite set of settings.
+
+Evidence is source inspection, focused read-only Nix evaluations, mutation
+projections and isolated execution of the shipped SSH argument parser. The
+design's module snippet evaluates; this review does not certify an implemented
+fragment or case suite. No VM image was built, guest booted, database or role
+mutated, live forwarding connection attempted, or persistence read back.
+Those claims retain the design's separate live verification obligations.
+
+**Haiku:**
+
+Names divide the rooms  
+Keys turn toward the quiet door  
+Boot must prove the rest
