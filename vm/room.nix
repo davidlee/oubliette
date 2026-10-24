@@ -27,7 +27,8 @@
 # What it deliberately lacks, against `vm/capsule.nix`: no egress (a room has
 # no uplink), so no proxy; no repo's tool set on the login `PATH` — one is
 # reached only through `session` (DEC-049), and only the base is everyone's
-# (DEC-052); no marker on the kernel command line; and no `reset-home`. Nothing
+# (DEC-052); no marker on the kernel command line; no `reset-home`; and no
+# sudo (DEC-060), so a user's login is the whole of its authority. Nothing
 # here learns what a room is for — `room.users`, `room.sizes`, `room.repos` and
 # `room.extras` are values (POL-002).
 {
@@ -116,7 +117,7 @@ in {
   # NixOS's uid map would not help — it lives on the root fs, and `/home` is
   # mounted after activation. `createHome = false` for the same reason: the
   # seed makes the home instead. No groups but the readers' one: nothing here
-  # is sudo.
+  # is sudo (`security.sudo.enable` is off below).
   users.users =
     lib.mapAttrs (user: decl: {
       inherit (decl) uid;
@@ -141,6 +142,11 @@ in {
   # The same lock a capsule takes, for the reason `vm/capsule.nix` gives.
   security.lockKernelModules = true;
   security.protectKernelImage = true;
+
+  # No elevation, in the image rather than only in the keys: an *enabled* NixOS
+  # sudo always carries default root and wheel rules, so it is turned off and
+  # not emptied (DEC-060, RV-025 F-3). `roomChecks` asserts it.
+  security.sudo.enable = false;
 
   # The base for every room, and `session` for running in a repo (DEC-049,
   # DEC-052). No repo's tool set: those are reached only through the

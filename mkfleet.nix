@@ -90,6 +90,13 @@
   # it stays in `net`.
   capsules = import ./capsules.nix {inherit policies;} fleet;
 
+  # The fragment vocabulary, bound once: the room decision reads its names and
+  # `fragmentsCases` is handed the same value.
+  fragments = import ./fragments.nix {
+    inherit pkgs;
+    inherit (flavour) sources;
+  };
+
   # Each declared room's guest record — name, namespace, socket, no uplink —
   # the function (rooms.nix) applied to the caller's `rooms` and the declared
   # slot names, which a room may not take. Not called `rooms`: that is the
@@ -99,12 +106,7 @@
   # declares extras.
   roomDecision = import ./rooms.nix {inherit lib;} {
     inherit rooms targets policies;
-    fragmentNames =
-      lib.attrNames
-      (import ./fragments.nix {
-        inherit pkgs;
-        inherit (flavour) sources;
-      }).vocabulary;
+    fragmentNames = lib.attrNames fragments.vocabulary;
     slotNames = lib.attrNames fleet.slots;
   };
   roomRecords = roomDecision.instances;
@@ -275,6 +277,39 @@
       ++ lib.optional (tools != null)
       (check (!builtins.elem (toString tools.source) onPath)
         "repo '${r.name}': its tool set is in environment.systemPackages, where two repos' tools would meet on one PATH (DEC-052)");
+    # The door's rules (sec-5, DEC-066), each a named setting read off the
+    # image and guarded on presence, so a missing option is its own reason and
+    # not an abort. A regression guard over those names, not proof of the
+    # perimeter (POL-001 limb 3).
+    sshd = c.services.openssh.settings;
+    link = c.systemd.network.networks."10-capsule" or null;
+    # No elevation: NixOS's enabled sudo always carries default root and wheel
+    # rules, so it is turned off rather than emptied and the rule reads `enable`
+    # (DEC-060, RV-025 F-3).
+    elevations = ["sudo" "sudo-rs" "doas"];
+    elevationChecks = tool: let
+      present = c.security.${tool} ? enable;
+    in
+      [(check present "security.${tool}.enable is not an option of the image; no elevation cannot be asserted (DEC-060)")]
+      ++ lib.optional present
+      (check (!c.security.${tool}.enable)
+        "security.${tool}.enable is on; a room has no elevation (DEC-060, RV-025 F-3)");
+    doorRules =
+      [
+        (check ((sshd.PasswordAuthentication or null) == false)
+          "sshd allows passwords; the door is key-only (DEC-066, POL-001 limb 3)")
+        (check ((sshd.PermitRootLogin or null) == "prohibit-password")
+          "sshd's PermitRootLogin is not 'prohibit-password' (DEC-066, POL-001 limb 3)")
+        (check (c.networking.defaultGateway == null)
+          "networking.defaultGateway is set; a room has no default route (DEC-066, POL-001 limb 1)")
+        (check (link != null)
+          "network '10-capsule' is not declared; its routes cannot be asserted absent (DEC-066)")
+      ]
+      ++ lib.optionals (link != null) [
+        (check ((link.gateway or null) == [] && (link.routes or null) == [])
+          "network '10-capsule' carries a gateway or routes; a room has no default route (DEC-066, POL-001 limb 1)")
+      ]
+      ++ lib.concatMap elevationChecks elevations;
     repoRules =
       if room.repos == null
       then [
@@ -307,6 +342,7 @@
       (check (c.security.lockKernelModules && c.security.protectKernelImage)
         "kernel modules or the kernel image are not locked (vm/room.nix)")
     ]
+    ++ doorRules
     ++ lib.concatMap userChecks (lib.attrNames room.users)
     ++ lib.optional reading
     (check ((c.users.groups.${readersGroup.name}.gid or null) == readersGroup.gid)
@@ -904,6 +940,13 @@
     inherit pkgs lib;
     rooms = import ./rooms.nix;
     targetsOf = import ./targets;
+  };
+
+  # The fragment vocabulary's selections and the door rules, against the fixture
+  # rooms and one capsule image (fragments-cases.nix).
+  fragmentsCases = import ./fragments-cases.nix {
+    inherit pkgs lib fragments roomChecks roomVms;
+    capsuleImage = bound.images.${probeTarget};
   };
 
   # Which names a probe's fabric may not borrow (NOTES item 38), against a slot
@@ -1898,7 +1941,7 @@ in {
       # The checks that need no root and no host: what the module says, what the
       # guard decides, and which policy a slot resolves to.
       inherit hostModuleUnits hostModulePrograms guardCases netnsCases policyCases observeCases;
-      inherit profileCases gitChannelCases roomGitCases quarantineCases vmCases wrapCases volumeRootCases resetHomeCases sessionCases volumeCases fleetCases stateDirCases roomsCases fabricCases roomVerbsCases roomClientCases;
+      inherit profileCases gitChannelCases roomGitCases quarantineCases vmCases wrapCases volumeRootCases resetHomeCases sessionCases volumeCases fleetCases stateDirCases roomsCases fragmentsCases fabricCases roomVerbsCases roomClientCases;
       # Every declared room's image, checked and built (RV-014 F-7).
       inherit roomImages;
       # The rendered run-time half of every target, so a human can read what a
