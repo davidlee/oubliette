@@ -1,0 +1,18 @@
+schema = "doctrine.observation"
+schema_version = 1
+uid = "01a16b9a-dd0b-7fe3-81f4-ec44d05f9906"
+recorded_at = "2026-10-24T01:51:13.675046677Z"
+kind = "friction"
+summary = "verify-vt attributes a phase's VT files only after the phase is flipped completed"
+detail = "SL-009 PHASE-04: verify-vt before the flip reported UNATTRIBUTABLE for all three VTs (even after commit), so a literal-keyword miss (VT-1 'ssh -L', present only split across a code-block continuation) surfaced only after the phase was completed, needing a follow-up commit (c7f4b35). A pre-flip mode that checks keywords against the working tree would catch it before completion."
+
+[facets.execution]
+schema_version = 1
+interface = "cli"
+interface_origin = "automatic"
+product_surface = "doctrine"
+product_surface_origin = "automatic"
+command = "observation record"
+command_origin = "automatic"
+repository_context = "primary"
+repository_context_origin = "automatic"
