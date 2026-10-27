@@ -35,7 +35,10 @@
     # The host-side bwrap jails a human runs agents in while working on this
     # repo (`jailed-*`, below). Nothing to do with a capsule: these confine an
     # agent on this host, and no consumer gets them.
-    agents.url = "github:davidlee/nix-config?dir=flakes/agents";
+    agents = {
+      url = "github:davidlee/nix-config?dir=flakes/agents";
+      inputs.nixpkgs.follows = "nixpkgs";
+    };
   };
 
   # Oubliette's own fleet: its builder (mkfleet.nix) applied to the fixture,
