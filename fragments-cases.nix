@@ -25,7 +25,12 @@
 # names a setting says nothing of what a booted guest does with it.
 #
 # Cases are ordered by the phase that added them (1-3 and 7 first, then PHASE-03's
-# 4-6 and 9), not by design number.
+# 4-6 and 9, then ISS-027's 10), not by design number.
+#
+# Case 10 reads the door's sshd settings off every fixture room and the capsule
+# image. It does not prove that sshd honours the exemption, nor that penalties
+# were what refused ISS-027's pushes: a fixture `sshd -i` takes one connection
+# and keeps no penalty table, so no sandbox can reach that branch.
 {
   pkgs,
   lib,
@@ -44,6 +49,9 @@
   # Case 4 derives a room's declared users from here, not from the module's own
   # expression over `config.users.users`, which would agree with itself.
   roomRecords,
+  # The caller's `net`: the door exempts `net.host` from sshd's penalties, and
+  # an evaluated image does not expose it.
+  net,
 }: let
   # The rules an image breaks, as their reasons.
   failing = name: cfg: map (c: c.reason) (lib.filter (c: !c.ok) (roomChecks name cfg));
@@ -201,6 +209,27 @@ in
     # Then one change: the NOPASSWD sudo fails the elevation rule and only it.
     ck "a NOPASSWD sudo in a room fails exactly one rule" 1 ${toString (builtins.length (failing "assistant" nopasswdSudo))}
     has "  and that rule is the elevation rule" "no elevation" ${lib.escapeShellArg (joinReasons (failing "assistant" nopasswdSudo))}
+
+    # 10. The door exempts the host from sshd's per-source penalties (ISS-027):
+    # every connection through it comes from `net.host`, so a run of banner-only
+    # pre-flights would otherwise lock this host out of the guest.
+    ${lib.concatMapStrings ({
+        what,
+        cfg,
+      }: ''
+        ck ${lib.escapeShellArg "${what} exempts net.host from sshd's penalties"} ${lib.escapeShellArg net.host} ${lib.escapeShellArg (cfg.config.services.openssh.settings.PerSourcePenaltyExemptList or "<unset>")}
+      '')
+      ([
+          {
+            what = "the capsule image";
+            cfg = capsuleImage;
+          }
+        ]
+        ++ map (name: {
+          what = "room '${name}'";
+          cfg = roomVms.${name};
+        })
+        rooms)}
 
     cat "$log"
     exit "$fail"

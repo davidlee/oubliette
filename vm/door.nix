@@ -58,6 +58,11 @@
     settings = {
       PasswordAuthentication = false;
       PermitRootLogin = "prohibit-password";
+      # Every connection through the door comes from `net.host`, so sshd's
+      # per-source penalties can only ever lock out this host: a run of
+      # banner-only pre-flights (host/room-git.nix) adds a `noauth` penalty
+      # each, and about fifteen in a row refuse the next push (ISS-027).
+      PerSourcePenaltyExemptList = net.host;
     };
     # /etc is tmpfs here, so keys kept there would be regenerated every boot
     # and your known_hosts would fight it. Park them on the volume.

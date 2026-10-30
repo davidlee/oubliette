@@ -990,7 +990,7 @@
   # The fragment vocabulary's selections and the door rules, against the fixture
   # rooms and one capsule image (fragments-cases.nix).
   fragmentsCases = import ./fragments-cases.nix {
-    inherit pkgs lib fragments roomChecks roomVms flavour roomRecords;
+    inherit pkgs lib fragments roomChecks roomVms flavour roomRecords net;
     capsuleImage = bound.images.${probeTarget};
   };
 
