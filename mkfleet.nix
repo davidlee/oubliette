@@ -1,12 +1,8 @@
 # oubliette's own inputs — never the caller's. What a fleet is built *with*:
-# the guest's nixpkgs, microvm.nix, and the governance CLI the devshell carries.
+# the guest's nixpkgs and microvm.nix.
 {
   nixpkgs,
   microvm,
-  # The governance CLI the devshell carries (design sec-1's `doctrine*`): an
-  # input of oubliette's, not a target. Design sec-10's curry names only the two
-  # above; this one is closed over for the same reason as `microvm`.
-  doctrine,
 }:
 # The caller's declarations, one argument per owner (design sec-10), all
 # required: an omitted one fails at eval naming it, and an unexpected one is
@@ -2042,7 +2038,6 @@ in {
       capsule-refresh
       capsule-adopt
       capsule-brief
-      doctrine.packages.${system}.default
       # Takes a file and nothing else — no state, no transport, no name to
       # resolve — so the devshell copy and the module's are the same store path
       # and neither needs the wrapper.

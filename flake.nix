@@ -16,7 +16,7 @@
       inputs.nixpkgs.follows = "nixpkgs";
     };
 
-    # The governance CLI the devshell carries (mkfleet.nix closes over it). Not a
+    # The governance CLI this repo's room takes (`capsule-tools`, below). Not a
     # target: oubliette confines no repo of its own, and a host's targets are
     # declared in its consumer flake (SL-004).
     doctrine.url = "github:davidlee/doctrine/edge";
@@ -48,7 +48,7 @@
   outputs = inputs: let
     system = "x86_64-linux";
     pkgs = inputs.nixpkgs.legacyPackages.${system};
-    mkFleet = import ./mkfleet.nix {inherit (inputs) nixpkgs microvm doctrine;};
+    mkFleet = import ./mkfleet.nix {inherit (inputs) nixpkgs microvm;};
 
     # The builder and the two functions it applies, unapplied, for a flake that
     # declares its own fleet. One value: exported below, and the `lib` the
@@ -78,9 +78,18 @@
     # `dev-tools` is this repo's tool set as a room repo (CHR-018): what
     # `just check` runs, the guest supplying `nix`. Here and not in mkFleet,
     # since it is this repo's and no consumer's.
+    devToolPkgs = with pkgs; [just alejandra shellcheck jq];
     dev-tools = pkgs.buildEnv {
       name = "oubliette-dev-tools";
-      paths = with pkgs; [just alejandra shellcheck jq];
+      paths = devToolPkgs;
+    };
+
+    # What the room takes: `dev-tools` plus Doctrine, as a room has no host install
+    # (flakes:DEC-130).
+    capsule-tools = pkgs.buildEnv {
+      name = "oubliette-capsule-tools";
+      paths = devToolPkgs ++ [inputs.doctrine.packages.${system}.default];
+      ignoreCollisions = true;
     };
 
     # Every jail shares one posture; only the agent differs. A jail supplies
@@ -126,7 +135,7 @@
       packages.${system} =
         fleet.packages.${system}
         // jailPkgs
-        // {inherit templateCases dev-tools;};
+        // {inherit templateCases dev-tools capsule-tools;};
 
       # mkFleet's devshell, which every consumer gets, plus this repo's jails.
       devShells.${system}.default = pkgs.mkShellNoCC {
