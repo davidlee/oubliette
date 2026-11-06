@@ -31,14 +31,6 @@
     # cache against their own pin, and re-pointing nixpkgs rebuilds them here
     # for no gain.
     llm-agents.url = "github:numtide/llm-agents.nix";
-
-    # The host-side bwrap jails a human runs agents in while working on this
-    # repo (`jailed-*`, below). Nothing to do with a capsule: these confine an
-    # agent on this host, and no consumer gets them.
-    agents = {
-      url = "github:davidlee/nix-config?dir=flakes/agents";
-      inputs.nixpkgs.follows = "nixpkgs";
-    };
   };
 
   # Oubliette's own fleet: its builder (mkfleet.nix) applied to the fixture,
@@ -75,13 +67,14 @@
       };
     };
 
-    # `dev-tools` is this repo's tool set as a room repo (CHR-018): what
-    # `just check` runs, the guest supplying `nix`. Here and not in mkFleet,
-    # since it is this repo's and no consumer's.
+    # `dev-tools` is this repo's tool set (CHR-018): what `just check` runs, and
+    # what the dev-envs jails take. They have no `nix`, so it is added here; a
+    # room's guest supplies its own, so `capsule-tools` omits it. Here and not in
+    # mkFleet, since it is this repo's and no consumer's.
     devToolPkgs = with pkgs; [just alejandra shellcheck jq];
     dev-tools = pkgs.buildEnv {
       name = "oubliette-dev-tools";
-      paths = devToolPkgs;
+      paths = devToolPkgs ++ [pkgs.nix];
     };
 
     # What the room takes: `dev-tools` plus Doctrine, as a room has no host install
@@ -90,40 +83,6 @@
       name = "oubliette-capsule-tools";
       paths = devToolPkgs ++ [inputs.doctrine.packages.${system}.default];
       ignoreCollisions = true;
-    };
-
-    # Every jail shares one posture; only the agent differs. A jail supplies
-    # its own `nix`, as the room guest does. No provider key enters a jail:
-    # each reaches models through the LLM gateway on the shared `pi` key, and
-    # the agents flake binds the host's doctrine install itself.
-    jailLib = inputs.agents.lib.${system}.mkJailedAgents {};
-    mkJail = maker: args:
-      maker ({
-          profile = "specDev";
-          extraPkgs = [dev-tools pkgs.nix];
-          gateway = jailLib.gatewayClient "pi";
-        }
-        // args);
-    jailPkgs = {
-      jailed-pi = mkJail jailLib.makeJailedPi {
-        allowSelfAsSubagent = true;
-        maxSubagentDepth = 2;
-      };
-      jailed-pi-research = mkJail jailLib.makeJailedPi {
-        name = "pi-research";
-        profile = "research";
-        allowSelfAsSubagent = true;
-      };
-      jailed-claude = mkJail jailLib.makeJailedClaude {
-        allowSelfAsSubagent = true;
-        subagents = ["pi"];
-        maxSubagentDepth = 2;
-      };
-      jailed-shell = mkJail jailLib.makeJailedAgent {
-        name = "shell";
-        agent = pkgs.zsh;
-        subagents = ["pi" "claude"];
-      };
     };
   in
     fleet
@@ -134,14 +93,7 @@
       # replace the whole `packages` attribute.
       packages.${system} =
         fleet.packages.${system}
-        // jailPkgs
         // {inherit templateCases dev-tools capsule-tools;};
-
-      # mkFleet's devshell, which every consumer gets, plus this repo's jails.
-      devShells.${system}.default = pkgs.mkShellNoCC {
-        inputsFrom = [fleet.devShells.${system}.default];
-        packages = builtins.attrValues jailPkgs;
-      };
 
       # `nix flake init -t github:davidlee/oubliette`: a consumer confining
       # doctrine, every file commented as the reference for its field (DEC-030).
