@@ -2,12 +2,15 @@
 # DEC-066 (the door's rules), DEC-060 (sudo is off, not emptied), RV-025 F-3.
 #
 # The subject is a *composition*: `fragments.nix`' selections and `roomChecks`'
-# rules, applied to the images mkfleet.nix evaluates. **Handed evaluated fixture
-# images, not a render of its own**: `roomChecks` and `roomVms` are the shipped
-# rule list and the fixture rooms `lounge` and `assistant`, and `capsuleImage` is
-# one evaluated capsule image. A negative case is `extendModules` on a fixture
-# room, so what fails is the shipped image plus one deliberate change, and a
-# verdict is read as the failing rule's `reason`, never a bare `tryEval`.
+# rules, applied to the images mkfleet.nix evaluates. **Handed evaluated images,
+# not a render of its own**: `roomChecks` is the shipped rule list, `capsuleImage`
+# one evaluated capsule image, and `roomVms` the rooms the caller declared. Those
+# are the fixture's `lounge` and `assistant` in oubliette's own build and a
+# consumer's otherwise, since every consumer builds this suite (ISS-028). So a
+# case picks its room by what the room selects, and where none fits the log says
+# `skip`. A negative case is `extendModules` on a declared room, so what fails is
+# the shipped image plus one deliberate change, and a verdict is read as the
+# failing rule's `reason`, never a bare `tryEval`.
 #
 # Cases 4-6 and 9 (PHASE-03) read a room's postgresql-18 fragment and its
 # persistence: the module's settings off the evaluated image, its reserved-name
@@ -58,12 +61,24 @@
   joinReasons = lib.concatStringsSep "; ";
   rooms = lib.attrNames roomVms;
 
-  # A fixture room plus one change.
+  # The room each group of cases reads, or null where the caller declares none.
+  anyRoom = lib.findFirst (_: true) null rooms;
+  pgRoom = lib.findFirst (n: builtins.elem "postgresql-18" roomRecords.${n}.extras) null rooms;
+  bareRoom = lib.findFirst (n: roomRecords.${n}.extras == []) null rooms;
+  # A group's cases, or the line saying why it has none.
+  over = room: what: cases:
+    if room == null
+    then ''
+      echo "skip ${what}: no room fits" >>"$log"
+    ''
+    else cases;
+
+  # A declared room plus one change.
   extended = name: module: roomVms.${name}.extendModules {modules = [module];};
 
-  # `assistant` made an elevation: sudo forced on (a plain `true` would conflict
+  # A room made an elevation: sudo forced on (a plain `true` would conflict
   # with the room's `false` at eval, a different failure) with a NOPASSWD rule.
-  nopasswdSudo = extended "assistant" {
+  nopasswdSudo = extended anyRoom {
     security.sudo.enable = lib.mkForce true;
     security.sudo.extraRules = [
       {
@@ -81,9 +96,9 @@
   # An image's refusal reasons: the messages of its failing assertions.
   refusals = cfg: map (a: a.message) (lib.filter (a: !a.assertion) cfg.config.assertions);
 
-  # PHASE-03: the fixture room that selects postgresql-18, the one that selects
-  # no fragment, and a login added to either (a reserved role name, or not).
-  clean = roomVms.assistant;
+  # PHASE-03: the room that selects postgresql-18, and a login added to it or to
+  # the room that selects no fragment (a reserved role name, or not).
+  clean = roomVms.${pgRoom};
   withLogin = room: name:
     extended room {
       users.users.${name} = {
@@ -93,7 +108,7 @@
     };
   asPg = clean.config.services.postgresql;
   # The room's declared users, from the record rather than the module.
-  declared = lib.attrNames roomRecords.assistant.users;
+  declared = lib.attrNames roomRecords.${pgRoom}.users;
   # What case 4 pins about the access rules: the suite's own text, one rule per
   # line, not an import of the fragment's.
   wantedAuthentication = ''
@@ -107,9 +122,9 @@
   # The bind's path, read off the vocabulary and not retyped. A room with no
   # entry gets a no-op extension, so a missing render reads as FAIL lines (the
   # extension breaks no rule) and not as an abort over a half-declared entry.
-  binds = fragments.persists roomRecords.assistant.extras;
+  binds = fragments.persists roomRecords.${pgRoom}.extras;
   breakBind = attrs:
-    extended "assistant" (lib.optionalAttrs (binds != []) {
+    extended pgRoom (lib.optionalAttrs (binds != []) {
       fileSystems.${(lib.head binds).path} = attrs;
     });
   # One persistence rule broken each: `mkForce`, since a plain `"auto"` would
@@ -164,51 +179,59 @@ in
     ])} ${lib.escapeShellArg (builtins.toJSON (fragments.persists ["search" "postgresql-18"]))}
     ck "modules of a package-only selection is empty" "[]" ${lib.escapeShellArg (builtins.toJSON (fragments.modules ["search"]))}
 
-    # 4. `assistant` selects postgresql-18: the module's settings off the
-    # evaluated image (merged values, so a default that wins would show).
-    ck "assistant enables postgresql" true ${lib.boolToString asPg.enable}
-    ck "  at major 18" 18 ${lib.optionalString asPg.enable (lib.versions.major asPg.package.version)}
-    ck "  listening on no address" "" ${lib.escapeShellArg (asPg.settings.listen_addresses or "<unset>")}
-    ck "  with exactly the two access rules" ${lib.escapeShellArg wantedAuthentication} ${lib.escapeShellArg asPg.authentication}
-    ck "  ensureUsers names exactly the declared users" ${lib.escapeShellArg (json declared)} ${lib.escapeShellArg (json (map (u: u.name) asPg.ensureUsers))}
-    ck "  each owning its database" true ${lib.boolToString (lib.all (u: u.ensureDBOwnership) asPg.ensureUsers)}
-    ck "  and carrying no clause" "[]" ${lib.escapeShellArg (json (lib.filter (c: c != {}) (map setClauses asPg.ensureUsers)))}
-    ck "  ensureDatabases is the same list" ${lib.escapeShellArg (json declared)} ${lib.escapeShellArg (json asPg.ensureDatabases)}
-    ck "  and no assertion fails" "" ${lib.escapeShellArg (joinReasons (refusals clean))}
+    ${over pgRoom "cases 4-5" ''
+      # 4. The room selecting postgresql-18: the module's settings off the
+      # evaluated image (merged values, so a default that wins would show).
+      ck "a room selecting postgresql-18 enables it" true ${lib.boolToString asPg.enable}
+      ck "  at major 18" 18 ${lib.optionalString asPg.enable (lib.versions.major asPg.package.version)}
+      ck "  listening on no address" "" ${lib.escapeShellArg (asPg.settings.listen_addresses or "<unset>")}
+      ck "  with exactly the two access rules" ${lib.escapeShellArg wantedAuthentication} ${lib.escapeShellArg asPg.authentication}
+      ck "  ensureUsers names exactly the declared users" ${lib.escapeShellArg (json declared)} ${lib.escapeShellArg (json (map (u: u.name) asPg.ensureUsers))}
+      ck "  each owning its database" true ${lib.boolToString (lib.all (u: u.ensureDBOwnership) asPg.ensureUsers)}
+      ck "  and carrying no clause" "[]" ${lib.escapeShellArg (json (lib.filter (c: c != {}) (map setClauses asPg.ensureUsers)))}
+      ck "  ensureDatabases is the same list" ${lib.escapeShellArg (json declared)} ${lib.escapeShellArg (json asPg.ensureDatabases)}
+      ck "  and no assertion fails" "" ${lib.escapeShellArg (joinReasons (refusals clean))}
 
-    # 5. A reserved login fails the fragment's assertion and only that one
-    # (RV-025 F-6, F-9, F-11). The clean room above is the control.
-    ${lib.concatMapStrings (user: ''
-        ck ${lib.escapeShellArg "a login '${user}' fails exactly one assertion"} 1 ${toString (builtins.length (refusals (withLogin "assistant" user)))}
-        has ${lib.escapeShellArg "  and it names '${user}'"} ${lib.escapeShellArg user} ${lib.escapeShellArg (joinReasons (refusals (withLogin "assistant" user)))}
-        has ${lib.escapeShellArg "  and it is the fragment's"} "fragments.nix postgresql-18:" ${lib.escapeShellArg (joinReasons (refusals (withLogin "assistant" user)))}
-      '')
-      ["pg_demo" "template1" "shared_x"]}
+      # 5. A reserved login fails the fragment's assertion and only that one
+      # (RV-025 F-6, F-9, F-11). The clean room above is the control.
+      ${lib.concatMapStrings (user: ''
+          ck ${lib.escapeShellArg "a login '${user}' fails exactly one assertion"} 1 ${toString (builtins.length (refusals (withLogin pgRoom user)))}
+          has ${lib.escapeShellArg "  and it names '${user}'"} ${lib.escapeShellArg user} ${lib.escapeShellArg (joinReasons (refusals (withLogin pgRoom user)))}
+          has ${lib.escapeShellArg "  and it is the fragment's"} "fragments.nix postgresql-18:" ${lib.escapeShellArg (joinReasons (refusals (withLogin pgRoom user)))}
+        '')
+        ["pg_demo" "template1" "shared_x"]}
+    ''}
 
-    # 6. `lounge` selects no fragment: nothing of it is rendered, and the
-    # reserved names bind only a room that selects it.
-    ck "lounge does not enable postgresql" false ${lib.boolToString roomVms.lounge.config.services.postgresql.enable}
-    ck "  has no filesystem at the bind" false ${lib.boolToString (roomVms.lounge.config.fileSystems ? "/var/lib/postgresql")}
-    ck "  has no room-persist unit" false ${lib.boolToString (roomVms.lounge.config.systemd.services ? room-persist)}
-    ck "  and a login 'pg_demo' fails no assertion there" "" ${lib.escapeShellArg (joinReasons (refusals (withLogin "lounge" "pg_demo")))}
+    ${over bareRoom "case 6" ''
+      # 6. A room selecting no fragment: nothing of it is rendered, and the
+      # reserved names bind only a room that selects it.
+      ck "a room selecting no fragment does not enable postgresql" false ${lib.boolToString roomVms.${bareRoom}.config.services.postgresql.enable}
+      ck "  has no filesystem at the bind" false ${lib.boolToString (roomVms.${bareRoom}.config.fileSystems ? "/var/lib/postgresql")}
+      ck "  has no room-persist unit" false ${lib.boolToString (roomVms.${bareRoom}.config.systemd.services ? room-persist)}
+      ck "  and a login 'pg_demo' fails no assertion there" "" ${lib.escapeShellArg (joinReasons (refusals (withLogin bareRoom "pg_demo")))}
+    ''}
 
-    # 9. The persistence rules (DEC-061, RV-025 F-2, F-4), each over one break.
-    # Control first: the room as shipped fails none of them.
-    ck "assistant fails no persistence rule" "" ${lib.escapeShellArg (joinReasons (persistenceFailing "assistant" clean))}
-    ck "a bind with fsType 'auto' fails exactly one persistence rule" 1 ${toString (builtins.length (persistenceFailing "assistant" fsAuto))}
-    has "  and it is the fsType rule" fsType ${lib.escapeShellArg (joinReasons (persistenceFailing "assistant" fsAuto))}
-    ck "a bind without x-systemd.requires fails exactly one persistence rule" 1 ${toString (builtins.length (persistenceFailing "assistant" noRequires))}
-    has "  and it is the requires rule" x-systemd.requires ${lib.escapeShellArg (joinReasons (persistenceFailing "assistant" noRequires))}
+    ${over pgRoom "case 9" ''
+      # 9. The persistence rules (DEC-061, RV-025 F-2, F-4), each over one break.
+      # Control first: the room as shipped fails none of them.
+      ck "the room fails no persistence rule" "" ${lib.escapeShellArg (joinReasons (persistenceFailing pgRoom clean))}
+      ck "a bind with fsType 'auto' fails exactly one persistence rule" 1 ${toString (builtins.length (persistenceFailing pgRoom fsAuto))}
+      has "  and it is the fsType rule" fsType ${lib.escapeShellArg (joinReasons (persistenceFailing pgRoom fsAuto))}
+      ck "a bind without x-systemd.requires fails exactly one persistence rule" 1 ${toString (builtins.length (persistenceFailing pgRoom noRequires))}
+      has "  and it is the requires rule" x-systemd.requires ${lib.escapeShellArg (joinReasons (persistenceFailing pgRoom noRequires))}
+    ''}
 
     # 7. The door's elevation rule (DEC-060, RV-025 F-3). Control first: every
-    # fixture room passes every rule, and a failure prints why.
+    # declared room passes every rule, and a failure prints why.
     ${lib.concatMapStrings (name: ''
         ck ${lib.escapeShellArg "room '${name}' passes every roomChecks rule"} "" ${lib.escapeShellArg (joinReasons (failing name roomVms.${name}))}
       '')
       rooms}
-    # Then one change: the NOPASSWD sudo fails the elevation rule and only it.
-    ck "a NOPASSWD sudo in a room fails exactly one rule" 1 ${toString (builtins.length (failing "assistant" nopasswdSudo))}
-    has "  and that rule is the elevation rule" "no elevation" ${lib.escapeShellArg (joinReasons (failing "assistant" nopasswdSudo))}
+    ${over anyRoom "the NOPASSWD case" ''
+      # Then one change: the NOPASSWD sudo fails the elevation rule and only it.
+      ck "a NOPASSWD sudo in a room fails exactly one rule" 1 ${toString (builtins.length (failing anyRoom nopasswdSudo))}
+      has "  and that rule is the elevation rule" "no elevation" ${lib.escapeShellArg (joinReasons (failing anyRoom nopasswdSudo))}
+    ''}
 
     # 10. The door exempts the host from sshd's per-source penalties (ISS-027):
     # every connection through it comes from `net.host`, so a run of banner-only

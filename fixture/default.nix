@@ -5,9 +5,10 @@
 #
 # `fixture`'s optional target fields are all absent, spelled as their absent
 # values (docs/contract-target.md, "Configuration"), so the build exercises
-# each absent path; `tooled` is the same target with a tool set, read only by
-# the assistant room, so a room's image shows a repo with a set beside one
-# without (SL-006 design sec-7). Two slots, because two is what makes "one
+# each absent path; `fixture-tooled` is the same target with a tool set, read
+# only by the assistant room, so a room's image shows a repo with a set beside
+# one without (SL-006 design sec-7). Its name extends the other's, as a real
+# fleet's do, because such a pair sorts differently from its filenames. Two slots, because two is what makes "one
 # image per target, N slots" something a build can show. Every address is off the live fabric
 # (10.100/10.101) and off the probe fabric (10.110/10.111).
 #
@@ -67,11 +68,11 @@ in {
       inherit decl;
       flake = stub;
     };
-    tooled = {
+    fixture-tooled = {
       decl =
         decl
         // {
-          path = "/nonexistent/tooled";
+          path = "/nonexistent/fixture-tooled";
           toolsPackage = "tools";
         };
       flake = stub;
@@ -134,7 +135,7 @@ in {
       };
       repos = {
         user = "agent";
-        targets = ["fixture" "tooled"];
+        targets = ["fixture" "fixture-tooled"];
         readers = ["eve"];
       };
       policy = "build";

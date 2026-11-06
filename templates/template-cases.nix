@@ -16,8 +16,9 @@
 #
 # What is forced is every slot runner's `drvPath`, with `deepSeq`, so a throw
 # inside an attrset is seen (CLAUDE.md, "force what you pin"); and the devshell's,
-# which carries every host program and the shellHook. Forcing proves the
-# template *evaluates*; nothing here is built, booted or locked, and the
+# which carries every host program and the shellHook; and `fragmentsCases`',
+# since every consumer gets that suite and this one declares no room. Forcing
+# proves the template *evaluates*; nothing here is built, booted or locked, and the
 # template's justfile, `.envrc` and README are not run at all. **Only names
 # reach the output**: a drvPath string carries its derivation as context, and
 # putting one in the text would make every runner a build input of this suite,
@@ -61,6 +62,7 @@
   forced = {
     inherit runners;
     devShell = outputs.devShells.${pkgs.stdenv.hostPlatform.system}.default.drvPath;
+    fragmentsCases = outputs.packages.${pkgs.stdenv.hostPlatform.system}.fragmentsCases.drvPath;
   };
 in
   # An empty fleet would force nothing and pass.

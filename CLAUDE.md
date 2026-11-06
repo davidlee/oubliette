@@ -123,7 +123,7 @@ the state root's refusal values that are nobody's (`state-dir-cases.nix`), the
 fleet's targets and slots that are nobody's (`fleet-cases.nix`), the
 quarantine's policy vocabulary that is no host's (`quarantine-cases.nix`), the rooms and
 probe fabric that are nobody's (`rooms-cases.nix`, `fabric-cases.nix`), and the
-fixture rooms and one capsule image that `fragmentsCases` is handed evaluated, to
+declared rooms and one capsule image that `fragmentsCases` is handed evaluated, to
 extend with one module each for its negative cases rather than render a second
 copy of what they pin (`fragments-cases.nix`). A new suite goes in
 its own file and takes its subject as an argument — never a second render of the

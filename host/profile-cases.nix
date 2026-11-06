@@ -333,8 +333,10 @@ in
     # No CAPSULE_PROFILE_DIR, so the baked default is what answers — the shipped
     # render read by the shipped reader.
     # Every target this host declares, and the directory holds exactly those.
+    # Sorted as filenames, as the glob is: `a-b.json` precedes `a.json`, though
+    # `a` precedes `a-b` (ISS-028).
     ck "this host's render holds one document per declared target" \
-      ${lib.escapeShellArg (lib.concatStringsSep " " (map (n: "${n}.json") names))} \
+      ${lib.escapeShellArg (lib.concatStringsSep " " (lib.sort lib.lessThan (map (n: "${n}.json") names)))} \
       "$(cd ${dir} && echo *)"
     for n in ${lib.escapeShellArgs names}; do
       run "$n"

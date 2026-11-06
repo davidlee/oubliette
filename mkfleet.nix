@@ -987,7 +987,7 @@
     targetsOf = import ./targets;
   };
 
-  # The fragment vocabulary's selections and the door rules, against the fixture
+  # The fragment vocabulary's selections and the door rules, against the declared
   # rooms and one capsule image (fragments-cases.nix).
   fragmentsCases = import ./fragments-cases.nix {
     inherit pkgs lib fragments roomChecks roomVms flavour roomRecords net;
