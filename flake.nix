@@ -19,7 +19,6 @@
     # The governance CLI this repo's room takes (`capsule-tools`, below). Not a
     # target: oubliette confines no repo of its own, and a host's targets are
     # declared in its consumer flake (SL-004).
-    doctrine.url = "github:davidlee/doctrine/edge";
 
     # The fixture's fragment source: where the agent CLIs of its `agents`
     # fragment come from (fixture/, fragments.nix). A real fleet's sources are
@@ -77,11 +76,12 @@
       paths = devToolPkgs ++ [pkgs.nix];
     };
 
-    # What the room takes: `dev-tools` plus Doctrine, as a room has no host install
+    # What the room takes: `dev-tools`
     # (flakes:DEC-130).
     capsule-tools = pkgs.buildEnv {
       name = "oubliette-capsule-tools";
-      paths = devToolPkgs ++ [inputs.doctrine.packages.${system}.default];
+      # paths = devToolPkgs ++ [inputs.doctrine.packages.${system}.default];
+      paths = devToolPkgs;
       ignoreCollisions = true;
     };
   in
@@ -95,11 +95,11 @@
         fleet.packages.${system}
         // {inherit templateCases dev-tools capsule-tools;};
 
-      # `nix flake init -t github:davidlee/oubliette`: a consumer confining
-      # doctrine, every file commented as the reference for its field (DEC-030).
+      # `nix flake init -t github:davidlee/oubliette`: a consumer,
+      # every file commented as the reference for its field (DEC-030).
       templates.default = {
         path = ./templates/fleet;
-        description = "a capsule fleet confining doctrine: the declarations a consumer hands lib.mkFleet";
+        description = "a capsule fleet: the declarations a consumer hands lib.mkFleet";
       };
     };
 }
