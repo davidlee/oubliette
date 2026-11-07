@@ -6,7 +6,7 @@ disposable phase sheet (`.doctrine/state/.../phase-NN.md`) that must survive
 
 ## Harvest
 <!-- single-copy: updated in place each harvest; ids only, never restated content -->
-fresh-as-of: 2026-11-08 · design/drafting (rev 17) · 82ca16d+notes
+fresh-as-of: 2026-11-08 · design/drafting (rev 23, forward to reviewing unblocked) · 51c0d64+draft
 
 ### Produced
 - DEC-069, DEC-070, DEC-071, DEC-072, DEC-073 (design run inq-1..inq-5)
@@ -14,12 +14,16 @@ fresh-as-of: 2026-11-08 · design/drafting (rev 17) · 82ca16d+notes
 - IMP-029 (optional proxy/uplink for a slot; needs SL-010)
 - QUE-003 answered (an injected credential lasts about a year, user's estimate)
 - IDE-003 widened to a capsule or room
+- design.md sec-1..sec-9 (drafted from DEC-069..DEC-073); 26 design-target selectors
+- ISS-029 (a moved declared default does not reach an existing render; policy link and model door)
 
 ### Learned
 - research.md (gitignored, `.doctrine/slice/010/research/`); its ✓ rows are verified
 
 ### Open
-- Drafting concerns D-1..D-6 below (not in the run)
+- Review of sec-1..sec-9, then advance to reviewing
+- D-1..D-6 resolved in sections: D-1 sec-4, D-2 sec-4, D-3 sec-4, D-4 sec-2, D-5 sec-5, D-6 sec-3
+- POL-003 table revision (net + slots rows) proposed for reconcile (sec-7)
 
 ## Drafting concerns carried from inquiry (not represented in the run)
 

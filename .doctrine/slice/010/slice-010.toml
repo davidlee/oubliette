@@ -12,11 +12,11 @@ after = []                      # slice→work soft sequence: { to, rank }
 
 [[selector]]
 selector = "host/services.nix"
-intent = "scope-relevant"
+intent = "design-target"
 
 [[selector]]
 selector = "capsules.nix"
-intent = "scope-relevant"
+intent = "design-target"
 
 [[selector]]
 selector = "fleet.nix"
@@ -32,7 +32,7 @@ intent = "scope-relevant"
 
 [[selector]]
 selector = "mkfleet.nix"
-intent = "scope-relevant"
+intent = "design-target"
 
 [[selector]]
 selector = "templates/fleet/**"
@@ -48,23 +48,99 @@ intent = "scope-relevant"
 
 [[selector]]
 selector = "docs/plan-f-assistant.md"
-intent = "scope-relevant"
+intent = "design-target"
 
 [[selector]]
 selector = "host/cli.nix"
-intent = "scope-relevant"
+intent = "design-target"
 
 [[selector]]
 selector = "state-dir.nix"
-intent = "scope-relevant"
+intent = "design-target"
 
 [[selector]]
 selector = "docs/probes.md"
-intent = "scope-relevant"
+intent = "design-target"
 
 [[selector]]
 selector = "fixture/**"
 intent = "scope-relevant"
+
+[[selector]]
+selector = "host-path.nix"
+intent = "design-target"
+
+[[selector]]
+selector = "model-door.nix"
+intent = "design-target"
+
+[[selector]]
+selector = "model-door-cases.nix"
+intent = "design-target"
+
+[[selector]]
+selector = "host/proxy-restart.nix"
+intent = "design-target"
+
+[[selector]]
+selector = "host/unit-command.nix"
+intent = "design-target"
+
+[[selector]]
+selector = "host/record.nix"
+intent = "design-target"
+
+[[selector]]
+selector = "host/wrap.nix"
+intent = "design-target"
+
+[[selector]]
+selector = "host/policy-cases.nix"
+intent = "design-target"
+
+[[selector]]
+selector = "host/wrap-cases.nix"
+intent = "design-target"
+
+[[selector]]
+selector = "just/fleet.just"
+intent = "design-target"
+
+[[selector]]
+selector = "justfile"
+intent = "design-target"
+
+[[selector]]
+selector = "fixture/default.nix"
+intent = "design-target"
+
+[[selector]]
+selector = "templates/fleet/net.nix"
+intent = "design-target"
+
+[[selector]]
+selector = "templates/fleet/capsules.nix"
+intent = "design-target"
+
+[[selector]]
+selector = "templates/fleet/setup.nix"
+intent = "design-target"
+
+[[selector]]
+selector = "templates/fleet/README.md"
+intent = "design-target"
+
+[[selector]]
+selector = "docs/contract-target.md"
+intent = "design-target"
+
+[[selector]]
+selector = "docs/contract-assignment.md"
+intent = "design-target"
+
+[[selector]]
+selector = "CLAUDE.md"
+intent = "design-target"
 
 [[relation]]
 label = "governed_by"
