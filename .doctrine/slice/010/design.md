@@ -235,9 +235,16 @@ The condition is a small shipped program, `capsule-model-door-open
 <declared> <override-file>`:
 
 ```bash
-if [ -e "$2" ]; then exec grep -qx on -- "$2"; fi   # an override decides
-[ "$1" = on ]                                       # otherwise the declaration
+if [ -e "$2" ]; then                       # an override decides
+  c=$(cat -- "$2" && echo .) || exit 1     # the '.' keeps trailing newlines; unreadable closes
+  [ "$c" = $'on\n.' ]; exit                # exactly the verb's "on\n" opens; anything else closes
+fi
+[ "$1" = on ]                              # otherwise the declaration
 ```
+
+The override is compared whole, not searched: a file holding `on` on one
+line among others (`on\noff\n`) is malformed and closes. The verb writes
+only `on\n` or `off\n`, so the strict match costs nothing.
 
 ```mermaid
 stateDiagram-v2
@@ -331,13 +338,20 @@ record's lock:
 
 - **`recordAlso`**, before the record is committed:
   1. remember the override's previous content, or that there was no file, and
-     write the new value;
+     publish the new value: write a temporary file in `modelDoorDir`, then
+     `mv` it over the override, so the condition reads the old bytes or the
+     new ones and never a partial write. If either step fails, remove the
+     temporary file and return 1 before any unit command: the override, the
+     relay and the record are all as they were, and the refusal says the
+     override could not be written;
   2. `off`: `unitDo stop capsule-model-relay-<n>`. `on`: if `vmmState` is
      `running`, `unitDo start capsule-model-relay-<n>`; otherwise done, since
      the next start reads the override;
   3. if the unit command fails: put the previous content back (or remove the
-     file if there was none) and return 1. `recordWrite` then writes no
-     record, and the refusal says the door did not move. The `off` case is
+     file if there was none), by the same temporary-file-and-`mv` publication,
+     and return 1. `recordWrite` then writes no record, and the refusal says
+     the door did not move; if the restore failed too, it says instead that
+     the door's state is unknown, as `recordUndo`'s does. The `off` case is
      why: a record saying `off` over a running door is fail-open (NOTES item
      41's rule for the proxy).
 - **`recordUndo`** (new, optional), only when the final `mv` fails after
@@ -558,6 +572,10 @@ and its `vmmState` can be told the VM is running. Rounds:
   override and the log agree;
 - **VM activating** (`vmmState` neither running nor stopped): `off` still
   issues the stop; `on` issues no start;
+- **override write fails** (the fixture's `modelDoorDir` is made
+  unwritable): no unit command is logged, no record is written, the override
+  is as it was, and the refusal names the override write. Run for `on` and
+  `off`, from both an existing and an absent override;
 - **unit command fails:** the override is restored to its previous content,
   or removed if there was none, and no record is written. This is run for `on`
   and for `off`, from both an existing and an absent override;
@@ -570,14 +588,19 @@ and its `vmmState` can be told the VM is running. Rounds:
 **Mutation check for each:** the hook is broken on purpose and its round must
 go red. The breakages are: no restore when the stop fails; restoring `on`
 where there was no file; an `off` that skips the stop because the VM is not
-running; an undo that restores the relay to up.
+running; an undo that restores the relay to up; a hook that ignores a failed
+override write and carries on to the unit command and the commit.
 
 ### `modelDoorOpenCases`
 
 The condition program, run as shipped against files in the sandbox: declared
-`on` or `off`, each with no override, an `on` override, an `off` override, an
-override holding anything else, and an unreadable override. The exit status is
-asserted for each. Its mutation is the declared branch inverted.
+`on` or `off`, each with no override, an `on\n` override, an `off\n`
+override, an override holding anything else, `on` without its newline,
+`on\noff\n`, `off\non\n`, `on\n\n`, an empty override and an unreadable one.
+Only no override with declared `on`, and an `on\n` override, exit 0. The exit
+status is asserted for each. Its mutations are the declared branch inverted and
+the comparison weakened to a line search (`grep -qx on`), which `on\noff\n`
+must catch.
 
 ### Live, the user's (`exercise`)
 
@@ -687,7 +710,7 @@ Out of scope:
 |---|---|
 | `host-path.nix` (new) | the path predicate and character set, moved out of `state-dir.nix` |
 | `state-dir.nix` | builds its unchanged message from `host-path.nix` |
-| `model-door.nix` (new) | the four refusals; `reasons`, `value` |
+| `model-door.nix` (new) | the five refusals; `reasons`, `value` |
 | `model-door-cases.nix` (new) | `modelDoorCases` |
 | `capsules.nix` | `recordOf` carries `modelDoor ? null` |
 | `host/services.nix` | `modelRelayServices`; shared `relayHardening`; the drop-in's `wants`; `modelDoorDir` option; tmpfiles `d`; the two grants per declaring slot; `paths` to the wrapper |

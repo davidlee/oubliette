@@ -22,6 +22,18 @@ act = "conclude"
 role = "raiser"
 note = "Follow-up raiser pass against commit 51de6e0 / unchanged HEAD: independently compared each of the eight responses with revised design.md, corrected research and DEC-073 projections, and the cited shipped record, CLI lifecycle/setup/reset/inject/transport, policyCases, guest HOME/reset/environment, relay-hardening and namespace code. Design-level repairs F-1, F-2, F-5, F-6, F-7 and F-8 accepted/verified with explicit limits in their notes. F-3 contested as partly repaired: repurpose does not automatically reset HOME, ordinary reset-home does not scrub .env, and it reinjects HOME payloads immediately. F-4 contested as partly repaired: rollback seams improved, but actual start/lock/VM-request composition is still outside the promised cases and commit-failure expectations conflict. Raised only revision-exposed F-9 (major): the new declared-change criterion fails for an already-running VM/relay because rendering off does not stop an already-active relay. Re-ran the export child-process probe successfully without file writes; consulted primary systemd documentation for F-9. This pass establishes design/source adjudication, not implementation, suite, build, integration, or runtime proof. No Nix builds, live guest/unit/network changes, credential reads or file edits outside doctrine review verbs. Pass concluded; F-3/F-4 await amended responses and F-9 awaits disposition."
 
+[[review.turn]]
+act = "conclude"
+role = "raiser"
+note = '''
+Verification pass over responder answers to F-3, F-4 and F-9 and current SL-010 design sections sec-1..sec-9, against DEC-069..DEC-073, scope, POL-001..POL-005, STD-001 and CLAUDE.md. F-3 verified as a corrected payload-lifecycle account against inject/start/reassignment/reset/scrub source. F-9 verified as a revised design commitment: declared default in unit text, default restartIfChanged semantics, already-running live criterion and explicit inference boundary. Citation clarification for its verify note: the local reference switch-to-configuration.pl stop/start scheduling is at :554-567; :530-543 is socket handling, not the intended non-socket stop/start reference. Exact deployed consumer switch behavior remains unexercised.
+
+F-4 contested only for the remaining override-publication failure/negative-control gap. The revised seams and explicit rollback outcomes are accepted; host/policy-cases.nix:455-470 already demonstrates how an independently blocked state path is tested apart from a unit-command failure. No demand remains to test the removed start-time render. Instrument-route closure must still follow lib:design-prompts/reviewing.md's post-slice-phases criterion-verification rule.
+
+New F-10 (minor) records an executed, no-filesystem-write reproduction of the literal condition at design.md:238-239: declared off with override on\noff\n returns success. Valid on/off and invalid-without-on controls were also run. This proves the snippet's acceptance defect, not a live unit/network exposure.
+
+Only RV-027 review verbs wrote project records; git diff --name-only after the finding turns showed only .doctrine/review/027/review-027.toml. No design/code/other record edits, Nix builds/evaluations, switch, guest reset, credential reads, network or systemd mutations were performed. This concludes this verification pass; the ledger remains active awaiting the responder on F-4 and F-10.'''
+
 [target]                   # the outbound `reviews` edge: RV-NNN ──reviews──▶ <ref>
 ref   = "SL-010"
 
@@ -125,7 +137,7 @@ note = "VERIFIED as a design repair, not implementation proof. Compared the actu
 
 [[finding]]
 id = "F-3"
-status = "answered"
+status = "verified"
 severity = "major"
 title = "Normal restarts preserve injected keys and pi configuration instead of refreshing them"
 detail = """
@@ -180,6 +192,11 @@ Contest accepted; verified at host/cli.nix 2483-2484 (a repurpose is not a reset
 Refresh, second sweep. sec-5 now carries a table by event: start, re-assignment by setup, volume reset-home, a clone's first inject, and inject with force, each split into the payloads under HOME and .env outside it, with the citations above. Refresh commands are written as capsule n inject name --force, which names the slot through the front end. The live legs use the same form. DEC-073's rationale is corrected again to say HOME persists across starts and re-assignments, and is replaced by reset-home (which re-injects at once), a clone scrub, or a forced inject. The research row says only what the code does and needs no further change. The slot-owned key decision is unchanged: a re-assignment keeps HOME, so the key stays the slot's.
 """
 
+[[finding.turn]]
+act = "verify"
+role = "raiser"
+note = "VERIFIED at refresh/design scope. Re-read sec-5's event table and named-slot commands (.doctrine/slice/010/design.md:416-440), preserved settings caveat (:489-490), and live preservation-versus-force leg (:603-606). They now distinguish start, reassignment, ordinary HOME reset and clone scrub correctly. Source: vm/capsule.nix:44-46,51-72,254-272; host/inject.nix:127-141 (write-if-absent versus force); host/cli.nix:795-806 (clone marker and --scrub),2137-2151 (start inject),2261-2266 (ordinary reset without --scrub then immediate inject),2483-2484,2517-2518 (reassignment preserves HOME); vm/reset-home.nix:85-89,129-143 (HOME always removed on successful reset; external scrub paths only with --scrub). The named frontend inject form resolves the earlier guest-ssh.nix:90-115 ambiguity. DEC-073's show projection now agrees that HOME persists across starts and reassignments and replacement requires reset, scrub or force; the corrected research.md:146-154,219-222 no longer supplies the false every-start premise. This preserves DEC-073 consumer/slot ownership and POL-002. No guest, credential, inject, reset or two-start live experiment was run: acceptance is of the corrected account and verification obligation, per STD-001."
+
 [[finding]]
 id = "F-4"
 status = "answered"
@@ -196,11 +213,13 @@ Repair: extend or generalize the existing injected control seam for relay comman
 disposition = "fix-now"
 route = "control"
 response = """
-Contest accepted on both points, and the first is resolved by removing what it tested rather than by adding a seam.
+Contest accepted: the plan failed no override write, and a hook that discards that write's status would pass every listed case.
 
-Start's call site: the revision drops the start-time render entirely (sec-4, which also answers F-9). The declared value now sits in the relay unit's text as an argument to its ExecCondition, and only an override is a file, written only by the model verb under the record lock. Start writes nothing about the door, so there is no start composition, lock or ordering left to drive. The verb's interleaving with a VM start is between the verb and systemd's activation, and the verb's part of it (off always writes and then stops, whatever vmmState says; on starts only when vmmState is running; an activating VM gets a stop on off and no start on on) runs through the unitControl and vmmState seams in policyCases. The condition program is new and has its own suite, modelDoorOpenCases, over its shipped text, one row per input state.
+Design change (rev 31, sec-4 recordAlso step 1): the override is published by writing a temporary file in modelDoorDir and mv-ing it over the override, so the condition sees old or new bytes and never a partial write. If either step fails, the hook removes the temporary file and returns 1 before any unit command: override, relay and record are as they were, and the refusal names the override write. Step 3's restore uses the same publication; if the restore itself fails, the refusal says the door's state is unknown (as recordUndo's does) instead of "did not move".
 
-Criterion contradiction: fixed. sec-4 now has an undo table by request and starting state. A failed candidate write is before the hook, so nothing moves. A failed mv runs recordUndo, which restores the previous override and always stops the relay, so on from relay up ends fail-closed with record and relay disagreeing until on is run again. This is stated as the intended outcome, not as leaving things as they were. sec-6's rounds assert each row from its stated starting state, and the mutation list adds an undo that restores the relay to up.
+Criterion (sec-6, policyCases): a new round "override write fails" — the fixture's modelDoorDir made unwritable — run for on and off, from an existing and an absent override, asserting no unitDo logged, no record written, the override unchanged, and the refusal's reason. Added mutation: a hook that ignores a failed override write and carries on to the unit command and commit; its round must go red (the log would show the unit command and the record would move). The commit-failure undo table is unchanged.
+
+Acknowledged: verification of a control-route finding is deferred until the obligation is transcribed onto a phase criterion after slice phases; /plan will carry these rounds and mutations onto the host phase's VT criteria.
 """
 
 [[finding.turn]]
@@ -245,6 +264,31 @@ Contest accepted on both points, and the first is resolved by removing what it t
 Start's call site: the revision drops the start-time render entirely (sec-4, which also answers F-9). The declared value now sits in the relay unit's text as an argument to its ExecCondition, and only an override is a file, written only by the model verb under the record lock. Start writes nothing about the door, so there is no start composition, lock or ordering left to drive. The verb's interleaving with a VM start is between the verb and systemd's activation, and the verb's part of it (off always writes and then stops, whatever vmmState says; on starts only when vmmState is running; an activating VM gets a stop on off and no start on on) runs through the unitControl and vmmState seams in policyCases. The condition program is new and has its own suite, modelDoorOpenCases, over its shipped text, one row per input state.
 
 Criterion contradiction: fixed. sec-4 now has an undo table by request and starting state. A failed candidate write is before the hook, so nothing moves. A failed mv runs recordUndo, which restores the previous override and always stops the relay, so on from relay up ends fail-closed with record and relay disagreeing until on is run again. This is stated as the intended outcome, not as leaving things as they were. sec-6's rounds assert each row from its stated starting state, and the mutation list adds an undo that restores the relay to up.
+"""
+
+[[finding.turn]]
+act = "contest"
+role = "raiser"
+note = """
+PARTLY REPAIRED; CONTEST the remaining control coverage. I accept deletion of the start-time renderer: design.md:218-279 now has the declaration in ExecCondition and the model verb as the only override writer, so the old start-render composition/lock test is no longer an obligation. The unitControl/vmmState seam (:379-387) fits the real host/cli.nix:127-129,235-238 and host/policy-cases.nix:103-118,426-450; sec-6:555-568 now covers running/down/activating VMs and distinguishes candidate-write failure from post-hook mv failure, consistently with sec-4's undo table (:343-366). Those parts resolve the previous contest.
+
+The original complaint also included a failed state write. The revised hook still changes the override before systemctl (design.md:332-342), but the listed cases (:551-568) fail the unit command, candidate write and final mv only; they do not fail publication of the override itself or name a negative control for continuing after that failure. An unwritable override path is independent of an unwritable record candidate: they are different directories (:229-232 versus host/record.nix:96-106). A concrete incorrect candidate that ignores failure writing off, successfully stops the relay and commits record off can pass every listed successful-write case. On the next activation the preserved old on override admits the relay (:237-239). This is an inference about the verification plan's discrimination, not a claim that unimplemented code already ignores that failure.
+
+Add an executable override-write failure criterion, from both existing and absent override states, requiring failure/no record commit and a safe, accurately reported file/unit outcome. Name the mutation that discards that write's status and require its rejection; the host phase needs the shipped model hook plus the injected state directory and unitControl. Preserve the now-correct commit-failure outcome table. Under lib:design-prompts/reviewing.md (Raisers, on an instrument-routed finding), control-route verification is deferred until its obligation is transcribed onto a phase criterion after slice phases; no such phase criterion/control execution was verified here. No Nix build, suite or live systemd operation was run."""
+
+[[finding.turn]]
+act = "dispose"
+role = "responder"
+disposition = "fix-now"
+route = "control"
+response = """
+Contest accepted: the plan failed no override write, and a hook that discards that write's status would pass every listed case.
+
+Design change (rev 31, sec-4 recordAlso step 1): the override is published by writing a temporary file in modelDoorDir and mv-ing it over the override, so the condition sees old or new bytes and never a partial write. If either step fails, the hook removes the temporary file and returns 1 before any unit command: override, relay and record are as they were, and the refusal names the override write. Step 3's restore uses the same publication; if the restore itself fails, the refusal says the door's state is unknown (as recordUndo's does) instead of "did not move".
+
+Criterion (sec-6, policyCases): a new round "override write fails" — the fixture's modelDoorDir made unwritable — run for on and off, from an existing and an absent override, asserting no unitDo logged, no record written, the override unchanged, and the refusal's reason. Added mutation: a hook that ignores a failed override write and carries on to the unit command and commit; its round must go red (the log would show the unit command and the record would move). The commit-failure undo table is unchanged.
+
+Acknowledged: verification of a control-route finding is deferred until the obligation is transcribed onto a phase criterion after slice phases; /plan will carry these rounds and mutations onto the host phase's VT criteria.
 """
 
 [[finding]]
@@ -387,7 +431,7 @@ note = "VERIFIED as a correction of the verification design. design.md:547-556 n
 
 [[finding]]
 id = "F-9"
-status = "answered"
+status = "verified"
 severity = "major"
 title = "The new declared-change live test leaves an already-running door open"
 detail = """
@@ -424,6 +468,52 @@ Design change (sec-4, sec-6). The render is gone. The relay's ExecCondition is c
 
 Live leg 9 is replaced. With the VM and relay up and no override, switch the declaration from on to off: the door is refused with no VM restart. Then model on opens it, and switching back to on leaves the override in charge. The switch behaviour is inference until that leg runs, and sec-8 says so.
 """
+
+[[finding.turn]]
+act = "verify"
+role = "raiser"
+note = """
+VERIFIED as a design repair, not switch/runtime proof. design.md:146 and sec-4:218-262 now put the declaration in ExecCondition's argument and leave only an override in the file; start no longer renders a default (:250-252,281-283). Thus on->off changes the active relay's unit definition, rather than writing a bit that an already-active unit never rereads. Sec-6:516-519 pins that differing argument at module evaluation, and live leg 9 (:607-611) now begins with VM and relay up/no override and tests closure at the switch without a VM restart or frontend start. Sec-8:661-665 explicitly bounds the off->on behavior and marks active-relay switch behavior inferred until exercised. This removes the counterexample involving host/cli.nix:2106-2119's ordinary systemctl start no-op. The relay's dependency/hardening model remains consistent with host/services.nix:342-384 and DEC-070/072; no dependency back from the VMM requiring its own restart is proposed (sec-3:143-144,195-202). ISS-029's show projection now explicitly excludes the door's new shape.
+
+Restart premise cross-check: local NixOS reference source /nix/store/0c7qm6wkgdg9dd3ws34vvg9xacdwa0dq-source/nixos/lib/systemd-unit-options.nix:548-554 defaults restartIfChanged to true; /nix/store/0d3h8gi2q46fb4l563h6pginjw2a90r4-source/nixos/modules/system/activation/switch-to-configuration.pl:489-505,530-543 schedules changed services for restart or stop/start unless opted out. These are source references, not proof they are the consumer's precise deployed revision. Upstream's switch sequence likewise reloads definitions before restart/start: https://github.com/NixOS/nixpkgs/blob/master/nixos/doc/manual/development/what-happens-during-a-system-switch.chapter.md . Live leg 9 remains the required deployed-composition evidence (STD-001). No switch, VM restart, Nix evaluation or build was performed."""
+
+[[finding]]
+id = "F-10"
+status = "answered"
+severity = "minor"
+title = "The new condition accepts malformed overrides containing an on line"
+detail = '''
+Expected: sec-4's override contract is one on/off value (design.md:229-239); an existing override holding anything but on skips the relay (:265-266), with malformed inputs covered by modelDoorOpenCases (:575-580).
+
+Observed and reproduced: the new literal condition at .doctrine/slice/010/design.md:238 uses grep -qx on. This checks whether ANY entire line matches on, not whether the complete override contains only that value. I extracted the two condition lines directly from the current design, passed each fixture to bash over an inherited pipe exposed as /dev/fd/<fd> (no filesystem writes), and used declared=off. Results: override on\n -> exit 0; off\n -> exit 1; invalid\n -> exit 1; on\noff\n -> exit 0. Thus the malformed two-value override is admitted even though the declaration is off. GNU grep documents line matching and -q's any-match success: https://www.gnu.org/s/grep/manual/grep.html . This reproduces the specified condition's exit status only; actual systemd activation/door exposure is inferred, not run.
+
+Consequence: a damaged/noncanonical override containing an on line can open a declared-off door at activation, contradicting the new fail-closed contract. Severity minor: the normal verb is specified to write a canonical single value, and this review has not established that an ordinary successful verb produces such malformed content or that the guest can edit the host file.
+
+Repair: validate the complete override as a single allowed value and close on all other content/read errors. Add the explicit on-plus-extra-line counterexample (including on followed by off) to the shipped-text condition suite; a plain invalid-token fixture alone would pass with the current bug. Keep valid on, valid off and absent-override controls.'''
+disposition = "fix-now"
+response = '''
+Verified and reproduced independently: grep -qx on admits on\noff\n.
+
+Design change (rev 29, sec-4): the condition compares the whole override with the verb's exact bytes: c=$(cat -- "$2" && echo .) || exit 1; [ "$c" = $'on\n.' ]; exit. The sentinel keeps trailing newlines, so on\n\n also closes; an unreadable file exits 1 (skip). Run here under set -euo pipefail over: none, on\n, off\n, x\n, on (no newline), on\noff\n, off\non\n, on\n\n, empty, unreadable, each with declared on and off. Only "none + declared on" and "on\n" exit 0. This exercised the two-branch text in bash, not systemd's use of the status.
+
+Criterion (sec-6, modelDoorOpenCases): those fixtures are the rows, and a second mutation, the comparison weakened back to a line search (grep -qx on), must be caught by on\noff\n.
+'''
+
+[[finding.turn]]
+act = "raise"
+role = "raiser"
+
+[[finding.turn]]
+act = "dispose"
+role = "responder"
+disposition = "fix-now"
+response = '''
+Verified and reproduced independently: grep -qx on admits on\noff\n.
+
+Design change (rev 29, sec-4): the condition compares the whole override with the verb's exact bytes: c=$(cat -- "$2" && echo .) || exit 1; [ "$c" = $'on\n.' ]; exit. The sentinel keeps trailing newlines, so on\n\n also closes; an unreadable file exits 1 (skip). Run here under set -euo pipefail over: none, on\n, off\n, x\n, on (no newline), on\noff\n, off\non\n, on\n\n, empty, unreadable, each with declared on and off. Only "none + declared on" and "on\n" exit 0. This exercised the two-branch text in bash, not systemd's use of the status.
+
+Criterion (sec-6, modelDoorOpenCases): those fixtures are the rows, and a second mutation, the comparison weakened back to a line search (grep -qx on), must be caught by on\noff\n.
+'''
 
 # Findings are append-only `[[finding]]` tables, added by `review raise`.
 # Empty here at creation — a fresh review is Active, awaiting the raiser.
