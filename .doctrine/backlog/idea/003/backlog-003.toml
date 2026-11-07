@@ -3,12 +3,12 @@ version = 1
 
 id = 3
 slug = "room-model-door"
-title = "A model door for a room: socat in the room namespace to the host LLM gateway socket (Plan F section 2)"
+title = "A model door for a capsule or room: socat in its namespace to the host LLM gateway socket (Plan F section 2)"
 kind = "idea"
 status = "open"
 resolution = ""                 # seeded empty so `backlog edit` sets it in place
 created = "2026-10-18"
-updated = "2026-10-18"
+updated = "2026-11-08"
 tags = []
 
 # outbound-only. Cross-kind structural edges (e.g. references with a role
