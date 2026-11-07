@@ -46,6 +46,14 @@ F-10: VERIFIED for its original multiline acceptance defect by executing the ext
 
 No Nix builds/evaluations, shipped-suite runs, systemd/network/guest mutations, credential reads or edits outside RV-027. Pass concluded with F-4 answered pending post-planning control-route verification and F-11 open for the responder."""
 
+[[review.turn]]
+act = "conclude"
+role = "raiser"
+note = """
+Follow-up verification of the responder's F-11 answer and design revision 33's materialised sec-4 condition (design.md:234-251) and sec-6 modelDoorOpenCases rows/mutations (:599-611). Verified F-11 after independently executing the extracted comparator on 26 canonical/malformed/absent/read-error cases and reproducing the old NUL bug versus the replacement. Checked both named mutations: lossy command substitution admits the embedded NUL; omitting the trailing exit defeats a valid override over declared off. Executions used inherited pipes only, with no fixture-file writes. No new finding established in this bounded repair review.
+
+F-4 intentionally remains answered pending transcription to a phase criterion and control-route verification, as the user explicitly directed. Only RV-027 review verbs change project records. No Nix build/evaluation, shipped-suite run, systemd/network/guest operation or credential access. This pass is concluded; shell-snippet evidence does not establish live ExecCondition/relay behavior."""
+
 [target]                   # the outbound `reviews` edge: RV-NNN ──reviews──▶ <ref>
 ref   = "SL-010"
 
@@ -534,7 +542,7 @@ note = "VERIFIED for the original line-search defect. Current design.md:238-247 
 
 [[finding]]
 id = "F-11"
-status = "answered"
+status = "verified"
 severity = "minor"
 title = "The whole-file condition drops NUL bytes before validating an override"
 detail = """
@@ -571,6 +579,16 @@ Design change (rev 33, sec-4): the condition no longer reads the override into a
 
 Criterion (sec-6, modelDoorOpenCases): the three NUL rows join the fixtures; added mutations are command-substitution comparison (caught by o\0n\n) and the dropped trailing exit (caught by on\n over declared off). Not exercised: systemd's handling of the status.
 '''
+
+[[finding.turn]]
+act = "verify"
+role = "raiser"
+note = '''
+VERIFIED at design/snippet scope. The revised literal condition in design.md:238-241 uses printf 'on\n' | cmp -s -- - "$2" followed by exit; file bytes no longer pass through a Bash variable. Sec-4:244-251 explicitly supplies diffutils in runtimeInputs and explains the exit boundary. Sec-6:601-611 adds the three NUL-bearing rows and concrete command-substitution/dropped-exit mutations.
+
+Independently extracted the current condition directly from materialised design.md and ran bash -euo pipefail against readable fixtures delivered through inherited pipes at /dev/fd/<fd>, with no filesystem writes. All 26 matrix verdicts matched: for each declared on/off, canonical on+LF alone returned 0; off+LF, x+LF, on without LF, both multiline permutations, extra LF, embedded/trailing/leading NUL and empty returned 1; absent override followed the declaration; an existing directory causing a cmp read error returned 2. The directory is a read-error control, not a permission-denial reproduction.
+
+Re-ran the original o,NUL,n,LF counterexample against the prior sentinel/command-substitution condition (0 with Bash's ignored-null warning) and the revised comparator (1). The named mutation using command substitution returned 0 for that malformed payload, while removing the trailing exit returned 1 for canonical on+LF over declared off instead of the required 0. Thus the specified rows discriminate both named faults. This verifies the repair's shell semantics and test design; it does not run the future shipped modelDoorOpenCases suite, prove dependency wiring, exercise systemd's status handling, or open a live relay. No new defect established.'''
 
 # Findings are append-only `[[finding]]` tables, added by `review raise`.
 # Empty here at creation — a fresh review is Active, awaiting the raiser.

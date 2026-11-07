@@ -72,6 +72,20 @@ section, or raises it as a new inquiry.
     (DEC-070).
   - The consumer is `/srv/fleet`; the user rebuilds it, and `~/flakes`, themselves.
 
+## Further review passes (written after RV-027's last pass, 2026-11-08)
+
+None is needed before lock. RV-027 ran six raiser rounds (Codex, gpt-6.1-sol,
+high) and its last two raised one minor each, both on the condition's few lines,
+now verified. What a further pass would probe, if one is wanted later, is
+what no design reading can settle, and each has an owner already:
+
+- **systemd's use of the condition's status** (exit 1 and 2 skip, 255 fails),
+  and whether a switch restarts a changed active relay: live legs in sec-6.
+- **F-4's control route**: verifiable only once `/plan` transcribes its
+  rounds and mutations onto a host phase's VT criteria; re-verify on RV-027
+  then.
+- **`IPAddressAllow` support on this host** (live leg 2's red case).
+
 ## Session process notes
 
 - Quotient's allowlisted roots exclude `/home/david`. Run pi workers from
