@@ -1,0 +1,348 @@
+# Implementation plan for SL-010 — the authored, durable phase plan.
+#
+# This is the single source of each phase's objective, criteria, verification,
+# and links. Runtime status lives separately under .doctrine/state/ (phase
+# tracking) — never record progress here. Hand-edit freely: the tool reads this
+# file but does not rewrite it.
+schema  = "doctrine.plan.overview"
+version = 1
+slice   = "SL-010"
+
+[specs]
+primary       = []
+collaborators = []
+
+[requirements]
+targets      = []
+dependencies = []
+
+# One [[phase]] per ordered phase, in execution order. Ids are immutable.
+[[phase]]
+id        = "PHASE-01"
+name      = "The declaration evaluates and refuses: host-path.nix, model-door.nix, modelDoorCases"
+objective = """
+Design sec-2, sec-6 (`modelDoorCases`, `stateDirCases`), `DEC-069`, `DEC-071`.
+Pure eval; nothing on the host moves.
+
+- `host-path.nix` (new, root): `{lib}: {allowed; why;}`, the predicate and
+  character set moved out of `state-dir.nix`. `state-dir.nix` keeps its
+  interface and its exact message, built from `why`. `stateDirCases` is
+  unchanged and is the regression check on the move.
+- `model-door.nix` (new, root): `{lib}: {modelDoor, slots, proxyPort}:
+  {reasons; value;}`, the five refusals of sec-2 in order, each message naming
+  the field, the value and the decision; `value` throws the first reason.
+- `capsules.nix`'s `recordOf` gains `modelDoor ? null` and carries it into the
+  instance record.
+- `mkfleet.nix` reads `model-door.nix`'s `value` where it reads `stateDir`'s,
+  so every caller's eval refuses. `net.modelDoor` stays optional: absent means
+  no door anywhere, and every existing caller (fixture, template, consumer)
+  evaluates unchanged.
+- `modelDoorCases` (`model-door-cases.nix`, root, beside its subject): one
+  round per sec-6 row, `builtins.tryEval` over `deepSeq`, asserting verdict
+  and reason; plus an accepted declaration whose `value` is the input. Wired
+  into the flake's suites, `just build`, `just cases` and `justfile`'s
+  `nix_paths` in the same commit (NOTES item 51 step 3)."""
+entrance_criteria = [
+  { id = "EN-1", text = "SL-010 design locked (run rev 39); the plan is approved by the user" },
+  { id = "EN-2", text = "`just check` and `just` green at the phase's base commit" },
+  { id = "EN-3", text = "Memories retrieved: `mem.pattern.oubliette.forcing-is-not-building` and the dirty-flake gotcha (a new file is invisible to a `git+file:` eval until `git add`)" },
+]
+exit_criteria = [
+  { id = "EX-1", text = "`host-path.nix` holds the predicate; `state-dir.nix` builds its unchanged message from it; `stateDirCases` green with no edit" },
+  { id = "EX-2", text = "`model-door.nix` refuses each of sec-2's five cases with its reason; `mkfleet.nix` forces its `value` beside `stateDir`'s" },
+  { id = "EX-3", text = "`modelDoorCases` green, each round written red first; wired into `just build`, `just cases` and `nix_paths`, and its failure fails `just build`" },
+  { id = "EX-4", text = "Mutation recorded in the phase notes: dropping the masked-tree refusal (5) and widening the port floor to 1 each turn their round red for the reason" },
+  { id = "EX-5", text = "The fixture, the template and every existing suite evaluate unchanged (no `net.modelDoor` declared yet)" },
+  { id = "EX-6", text = "`just check` and `just` green; alejandra clean" },
+]
+verification = [
+  { id = "VT-1", expects = "model-door.nix carries the five refusals and the reasons/value shape", test_file = "model-door.nix", keywords = ["reasons", "value", "proxyPort", "1024", "65535", "ProtectHome", "PrivateTmp", "host-path.nix"], waived = false },
+  { id = "VT-2", expects = "modelDoorCases asserts each verdict and its reason", test_file = "model-door-cases.nix", keywords = ["modelDoorCases", "tryEval", "deepSeq", "/run/user", "/var/tmp", "65536"], waived = false },
+  { id = "VT-3", expects = "state-dir.nix reads its predicate from host-path.nix", test_file = "state-dir.nix", keywords = ["host-path.nix", "why"], waived = false },
+  { id = "VT-4", expects = "recordOf carries the field", test_file = "capsules.nix", keywords = ["modelDoor ? null"], waived = false },
+  { id = "VT-5", expects = "the suite is in just build and just cases", test_file = "just/fleet.just", keywords = ["modelDoorCases"], waived = false },
+  { id = "VT-6", expects = "the new root files are parsed and formatted by just check", test_file = "justfile", keywords = ["host-path.nix", "model-door.nix", "model-door-cases.nix"], waived = false },
+]
+specs        = []
+requirements = []
+
+[[phase]]
+id        = "PHASE-02"
+name      = "The condition program, and modelDoorOpenCases over its shipped text"
+objective = """
+Design sec-4 (D-1 resolved, the condition), sec-6 (`modelDoorOpenCases`),
+RV-027 F-10 and F-11. Independent of PHASE-01; nothing calls it yet.
+
+- `host/model-door-open.nix` (new): `writeShellApplication` named
+  `capsule-model-door-open`, `runtimeInputs = [diffutils]`, args `<declared>
+  <override-file>`, text exactly sec-4's four lines (override compared byte for
+  byte with `cmp` against `on\\n`, the trailing `exit`, then the declaration).
+- `host/model-door-open-cases.nix` (new): a function of `pkgs`, `lib` and the
+  shipped store path. Fixture override files written in the sandbox with
+  `printf` (NUL rows included); every row of sec-6's list asserted by exit
+  status for declared `on` and `off`; only no-override+`on` and `on\\n` exit 0.
+  The unreadable row needs a non-root reader: the build sandbox's uid is not
+  root, so `chmod 000` holds; the case asserts that precondition first and
+  fails, not skips, if it does not.
+- Wired from `mkfleet.nix` by a short `import`, into the flake's suites,
+  `just build` and `just cases`."""
+entrance_criteria = [
+  { id = "EN-1", text = "SL-010 design locked; plan approved" },
+  { id = "EN-2", text = "`just check` and `just` green at the phase's base commit" },
+]
+exit_criteria = [
+  { id = "EX-1", text = "`capsule-model-door-open` ships sec-4's text; shellcheck passes at build" },
+  { id = "EX-2", text = "`modelDoorOpenCases` green over the shipped store path, every sec-6 row for both declared values, written red first" },
+  { id = "EX-3", text = "RV-027 F-10/F-11 (minor, design-verified): each of the four mutations of sec-6 — declared branch inverted, `grep -qx on`, command-substitution comparison, trailing `exit` dropped — turns its named row red; recorded in the phase notes" },
+  { id = "EX-4", text = "The unreadable row's precondition (the file really is unreadable to the case) is asserted, not assumed" },
+  { id = "EX-5", text = "`just check` and `just` green; alejandra clean" },
+]
+verification = [
+  { id = "VT-1", expects = "the condition program compares bytes and exits explicitly", test_file = "host/model-door-open.nix", keywords = ["capsule-model-door-open", "diffutils", "cmp -s", "exit"], waived = false },
+  { id = "VT-2", expects = "the suite covers the malformed and NUL rows over the shipped path", test_file = "host/model-door-open-cases.nix", keywords = ["modelDoorOpenCases", "on\\noff", "\\0n", "chmod 000"], waived = false },
+  { id = "VT-3", expects = "the suite is in just build and just cases", test_file = "just/fleet.just", keywords = ["modelDoorOpenCases"], waived = false },
+]
+specs        = []
+requirements = []
+
+[[phase]]
+id        = "PHASE-03"
+name      = "One spelling of a unit command, and the front end's unitControl seam"
+objective = """
+Design sec-4 (the grant, the seam). A refactor: no behaviour changes, and the
+policy verb's rounds are the proof.
+
+- `host/proxy-restart.nix` becomes `host/unit-command.nix`, `verb: unit:
+  "/run/current-system/sw/bin/systemctl ${verb} ${unit}"`; its header keeps
+  NOTES item 44's reasoning. Every importer (`host/cli.nix`,
+  `host/services.nix`, `mkfleet.nix`) moves to it.
+- `host/cli.nix`'s `proxyControl` becomes `unitControl`: `unitActive <unit>`
+  and `unitDo <verb> <unit>` (`sudo` of `unit-command.nix`'s spelling). The
+  policy verb's proxy query and restart call them.
+- `host/policy-cases.nix`'s substitute moves to `unitControl`: `unitDo` logs
+  `<verb> <unit>` and can be told to fail. The existing policy rounds pass
+  with only the log line's spelling changed.
+- `mkfleet.nix`'s `unrestartable` becomes `ungranted`, its message unchanged
+  in meaning; the proxy restart is its only member until PHASE-05."""
+entrance_criteria = [
+  { id = "EN-1", text = "PHASE-01 complete and committed" },
+  { id = "EN-2", text = "Memories retrieved: `mem.fact.oubliette.policy-verb-is-owner-only`, `mem.fact.oubliette.two-copies-refuse-in-different-orders`" },
+]
+exit_criteria = [
+  { id = "EX-1", text = "`host/proxy-restart.nix` is gone; `host/unit-command.nix` is the one spelling, imported by the front end, the grant and the check" },
+  { id = "EX-2", text = "No `proxyControl`, `proxyActive` or `proxyRestart` remains in `host/`, `mkfleet.nix` or the suites" },
+  { id = "EX-3", text = "`policyCases` green with its policy rounds unchanged except the log spelling; `hostModuleUnits` green; the shipped sudoers command text is byte-identical to before (compared in the phase notes)" },
+  { id = "EX-4", text = "`just check` and `just` green; alejandra clean" },
+]
+verification = [
+  { id = "VT-1", expects = "one spelling of verb and unit", test_file = "host/unit-command.nix", keywords = ["verb: unit:", "/run/current-system/sw/bin/systemctl"], waived = false },
+  { id = "VT-2", expects = "the front end's seam is unitControl", test_file = "host/cli.nix", keywords = ["unitControl", "unitActive", "unitDo", "unit-command.nix"], waived = false },
+  { id = "VT-3", expects = "the suite substitutes unitControl", test_file = "host/policy-cases.nix", keywords = ["unitControl", "unitDo"], waived = false },
+  { id = "VT-4", expects = "the grant check is ungranted", test_file = "mkfleet.nix", keywords = ["ungranted", "unit-command.nix"], waived = false },
+  { id = "VA-1", text = "The rendered sudoers rule for the fixture's proxies is diffed before/after the rename and is identical" },
+]
+specs        = []
+requirements = []
+
+[[phase]]
+id        = "PHASE-04"
+name      = "recordWrite writes the candidate before the hook, and takes an optional undo"
+objective = """
+Design sec-4 (`recordWrite`'s order, `recordUndo`, the record), RV-027 F-2's
+record half.
+
+`host/record.nix`'s `recordWrite`: read, transform and write the candidate;
+then `recordAlso`; then `mv`. If the `mv` fails after `recordAlso` succeeded,
+call `recordUndo` when defined, and exit non-zero either way. The skeleton
+gains `.model_door = (.model_door // null)`. The header comment's "Before, not
+after" reasoning is rewritten for the new order (the hook still runs before the
+commit, now after the candidate). The policy verb declares no undo and needs no
+change.
+
+Cases (in `policyCases`, through the policy verb, which is the only hook user
+until PHASE-06): a malformed current record and an unwritable candidate each
+fail with the hook never called (its link unmoved, `unitDo` not logged); a
+failing `mv` after a successful hook returns non-zero with no generation
+printed. `docs/contract-assignment.md` gains `model_door`."""
+entrance_criteria = [
+  { id = "EN-1", text = "PHASE-03 complete and committed" },
+]
+exit_criteria = [
+  { id = "EX-1", text = "`recordWrite` order is read, transform, candidate, `recordAlso`, `mv`; `recordUndo` runs only on a failed `mv` after a successful hook" },
+  { id = "EX-2", text = "Every record written carries `model_door` (null unless set); `docs/contract-assignment.md` says so" },
+  { id = "EX-3", text = "RV-027 F-2 (probe, record half): cases make the current record malformed, the candidate unwritable, and the `mv` fail; the first two never call the hook, the third calls `recordUndo` and fails; each red first" },
+  { id = "EX-4", text = "Mutation recorded: moving the hook back ahead of the candidate write turns the unwritable-candidate round red" },
+  { id = "EX-5", text = "Every existing `policyCases`, `volumeCases` and `roomVerbsCases` round green; `just check` and `just` green" },
+]
+verification = [
+  { id = "VT-1", expects = "the new order and the undo hook", test_file = "host/record.nix", keywords = ["recordUndo", "recordAlso", "model_door"], waived = false },
+  { id = "VT-2", expects = "commit-failure rounds through the policy verb", test_file = "host/policy-cases.nix", keywords = ["recordUndo", "malformed", "candidate"], waived = false },
+  { id = "VT-3", expects = "the contract names the field", test_file = "docs/contract-assignment.md", keywords = ["model_door"], waived = false },
+]
+specs        = []
+requirements = []
+
+[[phase]]
+id        = "PHASE-05"
+name      = "The relay unit, its place in the drop-in, its state directory and its grant"
+objective = """
+Design sec-3, sec-4 (state directory, the grant, the wrapper), sec-6
+(`hostModuleUnits` cases, `wrapCases`), `DEC-070`, `DEC-072`.
+
+`host/services.nix`:
+- `relayHardening`: the ssh relay's keys `UMask` … `RestartSec` lifted into one
+  attrset both relays merge; the ssh relay keeps `RuntimeDirectory`;
+  `RestrictAddressFamilies = AF_INET AF_UNIX` for both. The ssh relay's
+  rendered unit is otherwise unchanged (compared in the notes).
+- `modelRelayServices`, `perInstance` over slots with `modelDoor != null`,
+  exactly sec-3's unit (`ExecCondition` with the declared value and
+  `<modelDoorDir>/<n>`; the one-line socat `ExecStart`; `bindsTo`/`after` the
+  netns and tap only; `User = owner`; `IPAddressAllow` guest/32).
+- the `microvm@` drop-in `wants` it for every declaring slot, independent of
+  `uplink`.
+- option `modelDoorDir` (default `/var/lib/capsule-model-door`, description
+  naming the masked-tree misconfiguration); tmpfiles `d … 0755 owner users`.
+- two sudoers commands per declaring slot (`start`, `stop`), by
+  `unit-command.nix`, in the proxy's `mkAfter` rule; `ungranted` covers them.
+- `paths.modelDoorDir` to `host/wrap.nix`, exported as
+  `CAPSULE_MODEL_DOOR_DIR`; `wrapCases` asserts it survives.
+
+The fixture (`fixture/default.nix`) declares `net.modelDoor` on a nobody's
+socket (`/run/fixture-model-door/api.sock`) and slots for `on`, `off` and
+undeclared. It has two slots today; the phase plan decides between a third
+fixture slot and a second module eval, after grepping which suites enumerate
+the fixture's slots (`fleet-cases.nix`, `host/profile-cases.nix`,
+`host/git-channel-cases.nix`, `host/room-git-cases.nix`,
+`host/room-verbs-cases.nix` name `beta`). Preference: a third slot, if no suite
+pins the slot count."""
+entrance_criteria = [
+  { id = "EN-1", text = "PHASE-01, PHASE-02 and PHASE-03 complete and committed" },
+  { id = "EN-2", text = "Memories retrieved: `mem.fact.oubliette.a-bind-is-not-an-access`, `mem.fact.oubliette.newline-in-a-unit-directive`, `mem.fact.oubliette.wrap-hard-exports-defeat-the-caller`, `mem.fact.oubliette.dead-guest-is-not-a-dead-vm`" },
+  { id = "EN-3", text = "Fixture-slot choice made and recorded in the phase sheet, with the grep that justified it" },
+]
+exit_criteria = [
+  { id = "EX-1", text = "`hostModuleUnits` pins every sec-6 bullet: units for `on` and `off` only; exact `ExecStart` and `ExecCondition`; `bindsTo`/`after` exactly netns+tap; `User`, `IPAddressAllow`, `IPAddressDeny`, `SuccessExitStatus`; shared hardening equal to the ssh relay's; the drop-in's `wants`; tmpfiles `d` and no file rule; `ungranted` empty" },
+  { id = "EX-2", text = "Each `hostModuleUnits` assertion written red first; mutation recorded: an `after` naming another unit, and a missing grant, each turn their assertion red" },
+  { id = "EX-3", text = "`wrapCases` asserts `CAPSULE_MODEL_DOOR_DIR` survives to the program" },
+  { id = "EX-4", text = "The ssh relay's rendered unit is identical before and after `relayHardening` apart from `RestrictAddressFamilies` (diff in the notes)" },
+  { id = "EX-5", text = "No gateway name, port or path in `host/` (POL-002): grep recorded in the notes" },
+  { id = "EX-6", text = "`just check` and `just` green; alejandra clean" },
+]
+verification = [
+  { id = "VT-1", expects = "the relay unit, hardening share, drop-in, option, tmpfiles and grant", test_file = "host/services.nix", keywords = ["modelRelayServices", "relayHardening", "capsule-model-relay-", "modelDoorDir", "ExecCondition", "TCP-LISTEN", "UNIX-CONNECT", "nodelay"], waived = false },
+  { id = "VT-2", expects = "hostModuleUnits pins the unit", test_file = "mkfleet.nix", keywords = ["capsule-model-relay-", "ExecCondition", "IPAddressAllow", "ungranted"], waived = false },
+  { id = "VT-3", expects = "the wrapper exports the directory", test_file = "host/wrap.nix", keywords = ["CAPSULE_MODEL_DOOR_DIR", "modelDoorDir"], waived = false },
+  { id = "VT-4", expects = "the wrapper case covers it", test_file = "host/wrap-cases.nix", keywords = ["CAPSULE_MODEL_DOOR_DIR"], waived = false },
+  { id = "VT-5", expects = "the fixture declares a door", test_file = "fixture/default.nix", keywords = ["modelDoor", "/run/fixture-model-door/api.sock"], waived = false },
+]
+specs        = []
+requirements = []
+
+[[phase]]
+id        = "PHASE-06"
+name      = "capsule <n> model on|off, the status column, and the rounds that pin them"
+objective = """
+Design sec-4 (the verb, its hooks, the concurrent-start rules, D-3), sec-6
+(`policyCases` extended), RV-027 F-1, F-2, F-4.
+
+`host/cli.nix`:
+- `capsule <n> model [on|off]`, refusals 1–5 of sec-4's table in `policy`'s
+  order; `effectiveModelDoor` (override from the record, else the declaration,
+  `-` for none).
+- `recordAlso`: remember the previous override; publish the new one by
+  temp-file + `mv` in `$CAPSULE_MODEL_DOOR_DIR`, refusing before any unit
+  command if that fails; `off` → `unitDo stop`, always; `on` → `unitDo start`
+  only when `vmmState` is `running`; a failed unit command restores the
+  previous override (or removes it) by the same publication, and a failed
+  restore reports an unknown state.
+- `recordUndo`: restore the previous override, stop the relay; a failure
+  names the slot and says the state is unknown.
+- `capsule all status` gains the `model` column after `relay` (`--`,
+  `inactive`, `running`). IMP-009 gets a note; the table is not reshaped.
+
+`host/policy-cases.nix`: the fixture pool gains `modelDoor` on two slots and
+`net.modelDoor`; `vmmState` can be told running / stopped / activating. Every
+round listed in sec-6, and every mutation listed there."""
+entrance_criteria = [
+  { id = "EN-1", text = "PHASE-03, PHASE-04 and PHASE-05 complete and committed" },
+  { id = "EN-2", text = "RV-027 F-1, F-2, F-4 re-read on the ledger (`doctrine review show RV-027 --full -f F-1 -f F-2 -f F-4`); this phase's EX rows are their transcription" },
+]
+exit_criteria = [
+  { id = "EX-1", text = "The verb's five-row table holds in `policy`'s order, each refusal asserted with its reason in `policyCases`, including refusal 4 on a copy with no `CAPSULE_MODEL_DOOR_DIR`" },
+  { id = "EX-2", text = "RV-027 F-1 (probe; adapted to the locked design, where `start` writes nothing): with `vmmState` stopped, running and activating, `off` always logs `stop` and writes record and override `off`; `on` logs `start` only when running. Asserted invariant across every round: never a record `off` with a `start` as the last relay command. Pausing at a lock boundary is not needed because the verb is the only writer (design sec-4)" },
+  { id = "EX-3", text = "RV-027 F-2 (probe, verb half): a failed `mv` after the hook runs each row of sec-4's undo table from its stated starting state — override as before, relay stopped (logged `stop`), record unchanged; a failed undo reports an unknown state" },
+  { id = "EX-4", text = "RV-027 F-4 (control): rounds for a failed override write (unwritable `modelDoorDir`; `on` and `off`; from an existing and an absent override) asserting no `unitDo` logged, no record, override unchanged, reason named; a failed unit command restoring or removing the override with no record; a failed candidate write moving nothing" },
+  { id = "EX-5", text = "RV-027 F-4 (control) mutations, each turning its round red, recorded in the phase notes: no restore when the stop fails; restoring `on` where there was no file; an `off` that skips the stop when the VM is not running; an undo that restores the relay to up; a hook that ignores a failed override write" },
+  { id = "EX-6", text = "`capsule all status` prints the `model` column in every row; IMP-009 carries the note" },
+  { id = "EX-7", text = "`just check` and `just` green; alejandra clean; RV-027 F-4 re-submitted to the raiser for verification against EX-4/EX-5" },
+]
+verification = [
+  { id = "VT-1", expects = "the verb, its hooks and the status column", test_file = "host/cli.nix", keywords = ["effectiveModelDoor", "recordUndo", "CAPSULE_MODEL_DOOR_DIR", "capsule-model-relay-", "declares no model door"], waived = false },
+  { id = "VT-2", expects = "the transcribed F-1/F-2/F-4 rounds", test_file = "host/policy-cases.nix", keywords = ["model on", "model off", "activating", "recordUndo", "modelDoorDir", "unitDo"], waived = false },
+  { id = "VA-1", text = "Reviewer reads each EX-2..EX-5 round against sec-4's text and the RV-027 response it transcribes, and confirms none tests a weaker property than the finding asked for" },
+]
+specs        = []
+requirements = []
+
+[[phase]]
+id        = "PHASE-07"
+name      = "The consumer's half and the text that moves"
+objective = """
+Design sec-5 and sec-7, `DEC-073`.
+
+- `fixture/default.nix`: a live inject example (gateway key, `pi-models`,
+  the env lines) so its shape evaluates.
+- `templates/fleet/`: `net.nix` and `capsules.nix` commented declarations;
+  `setup.nix` the two inject entries and the env lines as sec-5, importing
+  `./net.nix` for address and port; `README.md` a short "a model door"
+  section: the two declarations, the issued key, the env lines, the
+  `cfg.owner` = socket owner requirement, and the refresh table.
+- `docs/contract-target.md:324` and `:336` restated; `docs/plan-f-assistant.md`
+  §2 annotated; `CLAUDE.md`'s suite list gains `modelDoorCases` and
+  `modelDoorOpenCases` (and the fixture count in its header prose).
+
+Not here: POL-003's table rows (`doctrine revision` at reconcile, sec-7)."""
+entrance_criteria = [
+  { id = "EN-1", text = "PHASE-05 complete (the fixture's `net.modelDoor` exists)" },
+]
+exit_criteria = [
+  { id = "EX-1", text = "The template and fixture inject examples evaluate; `hostModuleUnits` and the template's eval stay green" },
+  { id = "EX-2", text = "The README's section names the owner-equals-socket-owner requirement and the `--force` refresh table" },
+  { id = "EX-3", text = "`docs/contract-target.md` no longer says no host service is reachable by address; it names the declared model door" },
+  { id = "EX-4", text = "`CLAUDE.md` lists both new suites; `docs/plan-f-assistant.md` §2 points at SL-010" },
+  { id = "EX-5", text = "`just check` and `just` green" },
+]
+verification = [
+  { id = "VT-1", expects = "the template's inject example", test_file = "templates/fleet/setup.nix", keywords = ["gateway-key", "pi-models", "PI_OFFLINE", "modelDoor"], waived = false },
+  { id = "VT-2", expects = "the contract names the door", test_file = "docs/contract-target.md", keywords = ["model door"], waived = false },
+  { id = "VT-3", expects = "CLAUDE.md lists the suites", test_file = "CLAUDE.md", keywords = ["modelDoorCases", "modelDoorOpenCases"], waived = false },
+  { id = "VT-4", expects = "the README section", test_file = "templates/fleet/README.md", keywords = ["model door", "--force"], waived = false },
+]
+specs        = []
+requirements = []
+
+[[phase]]
+id        = "PHASE-08"
+name      = "The user's live run, recorded in docs/probes.md"
+objective = """
+Design sec-6 (live legs 1–9). The user rebuilds `/srv/fleet` (and `~/flakes`
+if needed) with a door on one slot and runs the legs; the agent writes the
+verdicts into `docs/probes.md` per `ADR-003`/`STD-001`, saying what each does
+not prove. Settles the inferences sec-8 lists as verified only live:
+`connect()` under `ProtectSystem=strict`, Bearer with `authHeader: true`,
+`ExecCondition`'s skip leaving `microvm@` unaffected, a switch restarting a
+changed active relay, and `IPAddressAllow` support on this host."""
+entrance_criteria = [
+  { id = "EN-1", text = "PHASE-01..PHASE-07 complete, committed and pushed where the consumer reads them" },
+  { id = "EN-2", text = "A gateway key issued for one slot on the host (the user's step)" },
+]
+exit_criteria = [
+  { id = "EX-1", text = "Each of the nine legs has a verdict in `docs/probes.md`, with its control leg, and says what it does not prove" },
+  { id = "EX-2", text = "Any red leg is a backlog item or a design reopen, not a silent pass" },
+]
+verification = [
+  { id = "VH-1", text = "The user runs legs 1–9 of sec-6 on this host and reports each result" },
+  { id = "VA-1", text = "The agent records the verdicts in `docs/probes.md` and checks each against the leg's stated pass condition" },
+]
+specs        = []
+requirements = []
