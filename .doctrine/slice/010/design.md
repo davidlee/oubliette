@@ -235,16 +235,21 @@ The condition is a small shipped program, `capsule-model-door-open
 <declared> <override-file>`:
 
 ```bash
-if [ -e "$2" ]; then                       # an override decides
-  c=$(cat -- "$2" && echo .) || exit 1     # the '.' keeps trailing newlines; unreadable closes
-  [ "$c" = $'on\n.' ]; exit                # exactly the verb's "on\n" opens; anything else closes
+if [ -e "$2" ]; then                         # an override decides
+  printf 'on\n' | cmp -s -- - "$2"; exit     # exactly the verb's "on\n" opens
 fi
-[ "$1" = on ]                              # otherwise the declaration
+[ "$1" = on ]                                # otherwise the declaration
 ```
 
-The override is compared whole, not searched: a file holding `on` on one
-line among others (`on\noff\n`) is malformed and closes. The verb writes
-only `on\n` or `off\n`, so the strict match costs nothing.
+The override is compared byte for byte (`cmp`, so `diffutils` is in the
+program's `runtimeInputs`), never searched or read into a shell variable: a
+line search admits `on` among other lines (`on\noff\n`), and command
+substitution drops NUL bytes (`o\0n\n`). Any other content exits 1 and an
+unreadable file exits 2, and `ExecCondition` skips the unit on both (only 255
+is a failure). The trailing `exit` matters: the pipeline's last command runs
+in a subshell, so without it a matching override would fall through to the
+declared value. The verb writes only `on\n` or `off\n`, so the strict match
+costs nothing.
 
 ```mermaid
 stateDiagram-v2
@@ -596,11 +601,14 @@ override write and carries on to the unit command and the commit.
 The condition program, run as shipped against files in the sandbox: declared
 `on` or `off`, each with no override, an `on\n` override, an `off\n`
 override, an override holding anything else, `on` without its newline,
-`on\noff\n`, `off\non\n`, `on\n\n`, an empty override and an unreadable one.
+`on\noff\n`, `off\non\n`, `on\n\n`, NUL-bearing `o\0n\n`, `on\0\n` and
+`\0on\n`, an empty override and an unreadable one.
 Only no override with declared `on`, and an `on\n` override, exit 0. The exit
-status is asserted for each. Its mutations are the declared branch inverted and
+status is asserted for each. Its mutations are the declared branch inverted;
 the comparison weakened to a line search (`grep -qx on`), which `on\noff\n`
-must catch.
+must catch; the comparison through command substitution
+(`[ "$(cat -- "$2")" = on ]`), which `o\0n\n` must catch; and the trailing
+`exit` dropped, which an `on\n` override over declared `off` must catch.
 
 ### Live, the user's (`exercise`)
 

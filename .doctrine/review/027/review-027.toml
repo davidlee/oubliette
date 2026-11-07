@@ -34,6 +34,18 @@ New F-10 (minor) records an executed, no-filesystem-write reproduction of the li
 
 Only RV-027 review verbs wrote project records; git diff --name-only after the finding turns showed only .doctrine/review/027/review-027.toml. No design/code/other record edits, Nix builds/evaluations, switch, guest reset, credential reads, network or systemd mutations were performed. This concludes this verification pass; the ledger remains active awaiting the responder on F-4 and F-10.'''
 
+[[review.turn]]
+act = "conclude"
+role = "raiser"
+note = """
+Follow-up pass over responder answers to F-4 and F-10, materialised SL-010 design sec-4 and sec-6 (authored changes through revision 31; read-only design show currently reports revision 32, materialised, no changes since revision 31). Examined only the requested repairs and their immediate consequences.
+
+F-4: design repair ACCEPTED; leave the finding ANSWERED under its control route. design.md:339-356 now specifies atomic temporary-file/rename publication, return-before-unit-command on publication failure, unchanged prior state, explicit failure reason, and unknown-state reporting if restoration fails. Sec-6:575-578 covers failed override publication from both prior-file states and for both requests, separately from unit-command, candidate and record-rename failures (:579-586); :588-592 names the concrete mutation ignoring publication failure and continuing to command/commit. This addresses my last contest: an ignored-write-status candidate is now explicitly required to turn a round red. The real hook failure boundary remains host/record.nix:99-102,126-129 (explicit returns required because checked calls disable errexit); policyCases already demonstrates independent state-path refusal at host/policy-cases.nix:455-470. UnitControl and vmmState remain the previously accepted test seams. No further design change is requested for F-4. There is no SL-010 phase plan/criterion to verify yet. lib:design-prompts/reviewing.md, 'Raisers, on an instrument-routed finding', explicitly says verify happens after slice phases and to conclude the pass with instrument-routed findings answered. The responder now acknowledges that placement obligation; no false criterion-transcription attestation or control execution is recorded in this pass.
+
+F-10: VERIFIED for its original multiline acceptance defect by executing the extracted revised snippet and rerunning the old snippet with the same payloads. New F-11 (minor) separately records a revision-introduced acceptance: o,NUL,n,LF is rejected by the old line search but admitted after Bash command substitution strips the NUL. Canonical, malformed-text, absent-path and cat-read-error controls were exercised over inherited file descriptors without filesystem writes; this was shell-snippet evidence only.
+
+No Nix builds/evaluations, shipped-suite runs, systemd/network/guest mutations, credential reads or edits outside RV-027. Pass concluded with F-4 answered pending post-planning control-route verification and F-11 open for the responder."""
+
 [target]                   # the outbound `reviews` edge: RV-NNN ──reviews──▶ <ref>
 ref   = "SL-010"
 
@@ -479,7 +491,7 @@ Restart premise cross-check: local NixOS reference source /nix/store/0c7qm6wkgdg
 
 [[finding]]
 id = "F-10"
-status = "answered"
+status = "verified"
 severity = "minor"
 title = "The new condition accepts malformed overrides containing an on line"
 detail = '''
@@ -513,6 +525,51 @@ Verified and reproduced independently: grep -qx on admits on\noff\n.
 Design change (rev 29, sec-4): the condition compares the whole override with the verb's exact bytes: c=$(cat -- "$2" && echo .) || exit 1; [ "$c" = $'on\n.' ]; exit. The sentinel keeps trailing newlines, so on\n\n also closes; an unreadable file exits 1 (skip). Run here under set -euo pipefail over: none, on\n, off\n, x\n, on (no newline), on\noff\n, off\non\n, on\n\n, empty, unreadable, each with declared on and off. Only "none + declared on" and "on\n" exit 0. This exercised the two-branch text in bash, not systemd's use of the status.
 
 Criterion (sec-6, modelDoorOpenCases): those fixtures are the rows, and a second mutation, the comparison weakened back to a line search (grep -qx on), must be caught by on\noff\n.
+'''
+
+[[finding.turn]]
+act = "verify"
+role = "raiser"
+note = "VERIFIED for the original line-search defect. Current design.md:238-247 compares the complete textual value with a trailing-newline sentinel; sec-6:596-603 names both original two-line cases, missing/extra newlines, empty input and the old grep mutation. I extracted the condition directly from the materialised design and ran it with bash -euo pipefail, passing readable fixtures over inherited pipes at /dev/fd/<fd> without filesystem writes, with each declared value. on+LF returned 0; off+LF, invalid+LF, on without LF, on+LF+off+LF, off+LF+on+LF, on+LF+LF and empty all returned 1. Absent override returned 0 only with declared on. An existing path whose cat fails (directory /dev/fd) returned 1 under both declarations; that is a read-error test, not a Unix permission-denial test. Re-running the old literal line-search condition admitted on+LF+off+LF while the replacement rejected it. The new NUL-stripping defect is a separate revision-exposed finding, raised on this pass; this verify does not certify arbitrary-byte validation. Only the specified shell snippet was run, not the shipped future suite, systemd or a network relay."
+
+[[finding]]
+id = "F-11"
+status = "answered"
+severity = "minor"
+title = "The whole-file condition drops NUL bytes before validating an override"
+detail = """
+Revision-exposed defect in the F-10 repair. Expected: design.md:239-247 opens only for the exact bytes on+LF and rejects malformed overrides; sec-6:596-603 says only that override or absent+declared-on exits 0.
+
+Observed, reproduced from the current literal condition (.doctrine/slice/010/design.md:238-242): c=$(cat -- "$2" && echo .) captures file content in a Bash variable. Bash strips NUL bytes during command substitution. With declared off and override bytes o, NUL, n, LF (hex 6f 00 6e 0a), the revised condition returns 0, with stderr 'warning: command substitution: ignored null byte in input'. The same payload returns 1 under the old grep -qx on condition. Thus this is a new acceptance introduced by the replacement, rather than the original multiline counterexample. Another malformed payload on, NUL, LF also returns 0 under the replacement (it was also accepted by the old line-search condition).
+
+Reproduction: extracted the condition text directly from design.md; used Python os.pipe to pass those exact bytes as an inherited /dev/fd/<fd> argument to bash -euo pipefail -c <condition> probe off <fd-path>, with no filesystem writes. Positive on+LF returned 0; off+LF, invalid+LF, and the original on+LF+off+LF counterexample returned 1. This establishes snippet exit statuses, not actual unit/guest exposure. Inference: ExecCondition would admit the relay for that malformed override despite declared off.
+
+Severity minor, consistent with F-10: the normal verb writes canonical values, and no guest write access or ordinary successful command producing NUL content is established. The defect is in the advertised malformed-state contract.
+
+Repair: perform a byte-preserving comparison with canonical on+LF, or explicitly detect/reject NUL bytes before any lossy shell-variable conversion. Include the embedded-NUL counterexample with canonical on/off controls in modelDoorOpenCases, and require a mutation back to the current command-substitution comparison to fail that row. Do not infer byte equality from a Bash string comparison."""
+disposition = "fix-now"
+response = '''
+Verified: $(…) drops NULs, so o\0n\n compared equal.
+
+Design change (rev 33, sec-4): the condition no longer reads the override into a shell variable. It is `printf 'on\n' | cmp -s -- - "$2"; exit`, byte for byte, with diffutils in runtimeInputs. Run here under set -euo pipefail over none, on\n, off\n, x\n, on, on\noff\n, off\non\n, on\n\n, empty, o\0n\n, on\0\n, \0on\n and unreadable, each with declared on and off: exit 0 only for none+declared on and for on\n; unreadable exits 2, which ExecCondition treats as a skip like 1 (255 is the failure status). My first draft used `exec cmp` inside the pipeline, which falls through to the declared value because the pipeline's last command runs in a subshell; the trailing `exit` is load-bearing and sec-4 says so.
+
+Criterion (sec-6, modelDoorOpenCases): the three NUL rows join the fixtures; added mutations are command-substitution comparison (caught by o\0n\n) and the dropped trailing exit (caught by on\n over declared off). Not exercised: systemd's handling of the status.
+'''
+
+[[finding.turn]]
+act = "raise"
+role = "raiser"
+
+[[finding.turn]]
+act = "dispose"
+role = "responder"
+disposition = "fix-now"
+response = '''
+Verified: $(…) drops NULs, so o\0n\n compared equal.
+
+Design change (rev 33, sec-4): the condition no longer reads the override into a shell variable. It is `printf 'on\n' | cmp -s -- - "$2"; exit`, byte for byte, with diffutils in runtimeInputs. Run here under set -euo pipefail over none, on\n, off\n, x\n, on, on\noff\n, off\non\n, on\n\n, empty, o\0n\n, on\0\n, \0on\n and unreadable, each with declared on and off: exit 0 only for none+declared on and for on\n; unreadable exits 2, which ExecCondition treats as a skip like 1 (255 is the failure status). My first draft used `exec cmp` inside the pipeline, which falls through to the declared value because the pipeline's last command runs in a subshell; the trailing `exit` is load-bearing and sec-4 says so.
+
+Criterion (sec-6, modelDoorOpenCases): the three NUL rows join the fixtures; added mutations are command-substitution comparison (caught by o\0n\n) and the dropped trailing exit (caught by on\n over declared off). Not exercised: systemd's handling of the status.
 '''
 
 # Findings are append-only `[[finding]]` tables, added by `review raise`.
