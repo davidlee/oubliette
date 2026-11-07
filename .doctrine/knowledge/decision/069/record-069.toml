@@ -1,0 +1,33 @@
+schema = "doctrine.knowledge"
+version = 1
+
+id = 69
+slug = "a-slots-model-door-is-its-own-per-slot-axis-beside-its-policy-and-not-bundled-with-it"
+title = "A slot's model door is its own per-slot axis, beside its policy and not bundled with it"
+record_kind = "decision"
+status = "accepted"
+created = "2026-11-07"
+updated = "2026-11-07"
+tags = []
+
+[facet]                         # every field typed; seeded empty (captured later)
+context = "SL-010 inq-2. A model door carries guest content to a provider, so it is egress in substance though not a route. Three homes were weighed: fleet-wide in net; a policy field; a slot field."
+choice = """B-prime: a slot declares modelDoor = "on" | "off" (its state at start); an absent field means no unit and no way to switch one on. A run-time verb toggles it, recording the override in the slot's live record as the policy verb does. The host side (port, socket path) is the caller's net.modelDoor; absent means no slot has a door."""
+alternatives = ["A: fleet-wide in net, the key the only control; a sealed slot would get a way out", "B: a policy field; sealed stays sealed by construction, but the vocabulary multiplies as allowlist x door pairs", "C: a static slot field with no run-time switch"]
+rationale = "Transport is separate from access: the gateway key travels per capsule and opaquely through inject, and is inert without a door. Keeping the door off the policy avoids multiplying the vocabulary."
+consequences = ["Nothing enforces that a sealed slot has no door. It is checkable: at eval by a consumer assertion naming its own policy, or at run time from status.", "An optional policy ceiling (modelDoor = false meaning forbids) remains available later without new policies; not in SL-010.", "capsules.nix recordOf must destructure the new field, or it is silently dropped."]
+decided_by = "user (session 2026-11-08)"
+decided_on = "2026-11-08"
+
+[evidence]                      # free-text citations (supports / contradicts / notes)
+supports    = []
+contradicts = []
+notes       = []
+
+[relationships]                 # verb-written edges (set by doctrine supersede)
+supersedes    = []   # record ids this one replaces (set by doctrine supersede)
+superseded_by = []   # set on superseded predecessor (verb-written)
+
+[[relation]]
+label = "shapes"
+target = "SL-010"

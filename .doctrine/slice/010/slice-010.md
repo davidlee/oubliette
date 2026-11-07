@@ -32,29 +32,36 @@ host root ns                          slot ns cap-<name>
 
 ## Scope & Objectives
 
-1. **The door unit.** A per-slot systemd unit joined to the slot's namespace
-   (`NetworkNamespacePath=`), hardened like the relay and the proxy:
-   `DynamicUser`, no capabilities, `SupplementaryGroups=llm-gateway`, address
-   families AF_INET and AF_UNIX only. A `microvm@` drop-in `wants` it, as it
-   already does the proxy and the relay.
-2. **Declared, not implied (POL-003).** Whether a slot has a door is a
-   declaration (per slot or per policy; design picks). It has a working absent
-   path: no declaration means no unit and no listener. The socket path and
-   port are values from the caller, not constants a generic file spells
-   (POL-002: no gateway name in generic code beyond what the caller supplies).
-3. **The guest side.** pi in the guest is pointed at
-   `http://<net.host>:<port>`. That config is declared (a fragment's
-   `guestModule` or the caller's), never copied from `$HOME`. pi is already in
-   the `agents` fragment (`fragments.nix`), so this is configuration rather
-   than a new package.
-4. **The key.** A gateway key from `llm-gateway issue` is delivered by the
-   existing inject path (`host/inject.nix`) as a declared payload. The
-   `produce` fragment and the issuing are the consumer's; oubliette learns no
-   key format.
-5. **Tests.** A `*Cases` suite or `hostModuleUnits` coverage for the unit's
-   presence and absence and its hardening. Whether a fixture can carry the
-   forwarder end to end (socat to a fixture unix listener) is a design
-   question.
+Settled in design (DEC-069 to DEC-073):
+
+1. **The relay unit** (DEC-070, DEC-072). `capsule-model-relay-<n>` runs
+   `socat TCP-LISTEN` on `net.host:<port>` to `UNIX-CONNECT:<socket>`, as the
+   owner, in the slot's namespace. It is bound to the namespace and the tap,
+   allows only the guest's address, and copies the ssh relay's hardening. The
+   `microvm@` drop-in `wants` it when the slot's door is on.
+2. **The declaration** (DEC-069, DEC-071). A slot declares
+   `modelDoor = "on" | "off"`, its state at start. An absent field means no
+   unit. The host side is an optional `net.modelDoor = {port; socket;}`.
+   Evaluation refuses:
+   - `modelDoor` on a slot when `net.modelDoor` is absent;
+   - a port equal to `proxyPort` or 22;
+   - a socket path failing `state-dir.nix`'s path refusal.
+3. **The verb** (DEC-072). `capsule <n> model on|off` is owner-only, like
+   `policy`. It records the override in the live record (`-` means "as
+   declared") and starts or stops the unit. The status table gains a `model`
+   column.
+4. **The guest side is the consumer's** (DEC-073). Inject entries carry the
+   gateway key (per `$capsule`, opaque), pi's `models.json`
+   (`apiKey: "!cat …"`) and `PI_OFFLINE=1`. The template and the fixture carry
+   examples. Oubliette ships no guest code for it.
+5. **Text that moves.** `docs/contract-target.md:324` and `:336` are restated,
+   and Plan F §2 is annotated.
+6. **Tests.**
+   - `hostModuleUnits`: the unit exists only for declaring slots, with its
+     hardening, tap binding and one-line `ExecStart` pinned.
+   - Negative cases for each refusal, with the reason asserted.
+   - A cases suite for the verb.
+   - The user's live run, recorded in `docs/probes.md`.
 
 ## Non-Goals
 
@@ -78,7 +85,8 @@ host root ns                          slot ns cap-<name>
 - `capsules.nix` / `fleet.nix` (or `policies`): the declaration.
 - `templates/fleet/`: the consumer template's declaration and its inject
   entry.
-- `fragments.nix` / `vm/capsule.nix`: pi's base URL in the guest.
+- `host/cli.nix`: the `model` verb and the status column.
+- `state-dir.nix`: the reused path refusal (read, not changed, if it fits).
 - `mkfleet.nix`: wiring and the suites in `just build`.
 - `docs/contract-target.md` or a new contract section, if the boundary moves.
 - `docs/plan-f-assistant.md` §2 points at this slice.

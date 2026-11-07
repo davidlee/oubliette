@@ -1,0 +1,33 @@
+schema = "doctrine.knowledge"
+version = 1
+
+id = 70
+slug = "the-model-relay-is-socat-as-the-owner-from-the-slots-namespace-to-a-socket-the-owner-can-open"
+title = "The model relay is socat as the owner, from the slot's namespace to a socket the owner can open"
+record_kind = "decision"
+status = "accepted"
+created = "2026-11-07"
+updated = "2026-11-07"
+tags = []
+
+[facet]                         # every field typed; seeded empty (captured later)
+context = "SL-010 inq-1. The host gateway's own socket is gated by group llm-gateway on a 0750 directory; ~/flakes' relay also exposes a user-owned client socket (flakes:DEC-075)."
+choice = "socat TCP-LISTEN on net.host:<port> (bound, fork) to UNIX-CONNECT:<socket>, as cfg.owner, NetworkNamespacePath the slot's, bound to the namespace and the tap, IPAddressAllow the guest only, hardening copied from the ssh relay. The socket is the caller's value; on this host it is /run/llm-gateway-client/api.sock."
+alternatives = ["socat as a throwaway user joining group llm-gateway, to the gateway socket", "a socket unit plus systemd-socket-proxyd, as ~/flakes' relay does"]
+rationale = "Oubliette's code assumes only a unix socket the owner can open, which is what the ssh relay already assumes; no group mechanism and no DynamicUser enter this tree. The coupling to ~/flakes is consumer-side, through a value."
+consequences = ["The consumer depends on flakes' relay listener, not on the gateway itself.", "The unit must not order itself after any gateway unit, which would name a flakes unit in generic code.", "If flakes:IDE-008 moves the gateway here, the socket path becomes oubliette's own."]
+decided_by = "user (session 2026-11-08)"
+decided_on = "2026-11-08"
+
+[evidence]                      # free-text citations (supports / contradicts / notes)
+supports    = []
+contradicts = []
+notes       = []
+
+[relationships]                 # verb-written edges (set by doctrine supersede)
+supersedes    = []   # record ids this one replaces (set by doctrine supersede)
+superseded_by = []   # set on superseded predecessor (verb-written)
+
+[[relation]]
+label = "shapes"
+target = "SL-010"

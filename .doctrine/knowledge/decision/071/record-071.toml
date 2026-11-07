@@ -1,0 +1,33 @@
+schema = "doctrine.knowledge"
+version = 1
+
+id = 71
+slug = "the-model-doors-host-side-is-netmodeldoor-optional-with-three-eval-time-refusals"
+title = "The model door's host side is net.modelDoor, optional, with three eval-time refusals"
+record_kind = "decision"
+status = "accepted"
+created = "2026-11-07"
+updated = "2026-11-07"
+tags = []
+
+[facet]                         # every field typed; seeded empty (captured later)
+context = "SL-010 inq-3; POL-002 (no gateway name in generic code), POL-003 (one home, no default)."
+choice = "net.modelDoor = {port; socket;} is optional; absent means no slot has a door. Eval refuses: a slot declaring modelDoor when net.modelDoor is absent; a port equal to net.proxyPort or 22; a socket path that fails state-dir.nix's existing path refusal (reused, not rewritten)."
+alternatives = ["a module option for the socket path beside stopKey", "per-slot port"]
+rationale = "The address is already one constant in every namespace; the port and the socket are addressing, which is net's axis. Both paths (devshell, module) read net."
+consequences = ["A refusal names its reason, pinned by a negative case.", "The consumer's net.nix carries the flakes client socket path."]
+decided_by = "user (session 2026-11-08)"
+decided_on = "2026-11-08"
+
+[evidence]                      # free-text citations (supports / contradicts / notes)
+supports    = []
+contradicts = []
+notes       = []
+
+[relationships]                 # verb-written edges (set by doctrine supersede)
+supersedes    = []   # record ids this one replaces (set by doctrine supersede)
+superseded_by = []   # set on superseded predecessor (verb-written)
+
+[[relation]]
+label = "shapes"
+target = "SL-010"

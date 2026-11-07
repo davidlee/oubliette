@@ -1,0 +1,33 @@
+schema = "doctrine.knowledge"
+version = 1
+
+id = 72
+slug = "the-host-unit-is-capsule-model-relay-n-the-slot-field-modeldoor-the-verb-capsule-n-model-onoff"
+title = "The host unit is capsule-model-relay-<n>, the slot field modelDoor, the verb capsule <n> model on|off"
+record_kind = "decision"
+status = "accepted"
+created = "2026-11-07"
+updated = "2026-11-07"
+tags = []
+
+[facet]                         # every field typed; seeded empty (captured later)
+context = "SL-010 inq-4. 'door' already names the ssh way in (vm/door.nix, host/room-door.nix, DEC-055)."
+choice = "Unit capsule-model-relay-<n> via unitOf; slot field modelDoor; verb capsule <n> model on|off, owner-only like policy, recording the override in the live record with '-' meaning as-declared, then starting or stopping the unit."
+alternatives = ["capsule-gateway-<n>", "capsule-model-door-<n>"]
+rationale = "'door' is what the guest sees and 'relay' is the host unit that crosses a namespace boundary with socat, matching the ssh door and the ssh relay."
+consequences = ["The status table gains a model column.", "The verb follows the policy verb's shape and refusals, so the two refuse in the same order."]
+decided_by = "user (session 2026-11-08)"
+decided_on = "2026-11-08"
+
+[evidence]                      # free-text citations (supports / contradicts / notes)
+supports    = []
+contradicts = []
+notes       = []
+
+[relationships]                 # verb-written edges (set by doctrine supersede)
+supersedes    = []   # record ids this one replaces (set by doctrine supersede)
+superseded_by = []   # set on superseded predecessor (verb-written)
+
+[[relation]]
+label = "shapes"
+target = "SL-010"

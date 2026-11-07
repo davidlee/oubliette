@@ -1,0 +1,33 @@
+schema = "doctrine.knowledge"
+version = 1
+
+id = 73
+slug = "pis-guest-config-and-the-gateway-key-are-the-consumers-inject-payloads-oubliette-ships-no-guest"
+title = "pi's guest config and the gateway key are the consumer's inject payloads; oubliette ships no guest code for them"
+record_kind = "decision"
+status = "accepted"
+created = "2026-11-07"
+updated = "2026-11-07"
+tags = []
+
+[facet]                         # every field typed; seeded empty (captured later)
+context = "SL-010 inq-5. A slot refuses a guestModule fragment (fragments.nix:193-198); inject's produce sees only $capsule and its output is opaque."
+choice = "The consumer declares inject entries: the key (produce reads a pre-issued per-$capsule file; dest under $HOME), pi's models.json with apiKey '!cat <key path>', and PI_OFFLINE=1 via .env. The template and the fixture carry examples."
+alternatives = ["a fragment guestModule (refused for slots by DEC-060)", "oubliette rendering pi's config in vm/capsule.nix"]
+rationale = "Oubliette passes the credential per capsule without understanding it (POL-002); a $HOME dest is reset and re-injected every start, and a cloned volume is scrubbed before inject."
+consequences = ["The key belongs to the slot, not the assignment.", "Rooms need an inject path before they can take a key."]
+decided_by = "user (session 2026-11-08)"
+decided_on = "2026-11-08"
+
+[evidence]                      # free-text citations (supports / contradicts / notes)
+supports    = []
+contradicts = []
+notes       = []
+
+[relationships]                 # verb-written edges (set by doctrine supersede)
+supersedes    = []   # record ids this one replaces (set by doctrine supersede)
+superseded_by = []   # set on superseded predecessor (verb-written)
+
+[[relation]]
+label = "shapes"
+target = "SL-010"
