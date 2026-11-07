@@ -99,10 +99,16 @@ host root ns                          slot ns cap-<name>
   replaces only the first. So a slot whose policy fetches nothing beyond the
   model needs no proxy, and possibly no uplink at all: its namespace would be
   shaped like a room's, which `capsule-netns` already builds (SL-005). The door
-  is what makes a sealed slot usable for agent work. Design decides whether that
-  is expressed as policy (a sealed allowlist with a door), as the slot's uplink
-  becoming optional, or neither in this slice. The door must not depend on the
-  uplink either way: it reaches the host through a socket, not a route.
+  is what makes a sealed slot usable for agent work. **Direction (user): the
+  proxy becomes optional for a slot.** Evidence it is cheap: the unit graph
+  already has a working `uplink = null` path, which rooms use (no proxy, no
+  aggregator; `host/services.nix`, `rooms.nix:217`). A slot always gets one
+  today (`capsules.nix:141`), so the change is mostly in the declaration.
+  Design questions: does an uplink-less slot keep its declared index (the /30
+  is carved from it); what the `policy` verb and status do for a slot that has
+  no proxy to re-point; and whether "no uplink" is a slot field or a policy
+  value (POL-003: one home). The door must not depend on the uplink: it
+  reaches the host through a socket, not a route.
 - **Risk:** a second way out beside the proxy. The gateway limits models and
   budget per key, but a guest with a door can spend that budget. The key's
   limits are the control, and they are host-side.
