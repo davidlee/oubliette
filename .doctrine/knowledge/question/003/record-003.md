@@ -15,3 +15,11 @@ copy taken at time T, at what point does it stop working?
 What would answer it: one capsule, one injected token, and a periodic use until
 it fails — a duration, landed in the observation ledger. Cheap, and nobody has
 paid for it because a `--force` re-inject costs seconds.
+
+
+## Answered (2026-11-08)
+
+The user's estimate: an injected copy stays good for about a year, so freshness is not
+the concern. That is an account, not a measurement (STD-001): no observation
+was taken. What remains is the copy's *value* if it leaks, which is RSK-013,
+and its way out is IDE-004.
