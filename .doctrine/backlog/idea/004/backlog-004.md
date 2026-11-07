@@ -25,3 +25,12 @@ Unknowns for design:
   (Plan F §2 says it serves only those today).
 
 Mitigates RSK-013.
+
+## Finding from SL-010 research (2026-11-08)
+
+The gateway's routes are a closed allow-list: `/v1/chat/completions`,
+`/v1/models` and `/v1/systemone` only (`~/flakes`
+`features/agents/gateway/gateway_hooks.py:82-88`). claude speaks
+`/v1/messages` and codex speaks `/v1/responses`, so this item needs those
+routes, or a translation, in the gateway. That is more `~/flakes` work than
+OAuth handling alone.
