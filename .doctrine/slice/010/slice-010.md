@@ -93,6 +93,16 @@ host root ns                          slot ns cap-<name>
   Policy is the perimeter's axis, which argues for policy.
 - **Open:** the port. One constant across slots (the address already is), from
   the caller's `net`.
+- **Open: does a slot with a door still need a proxy?** (user, 2026-11-08)
+  The proxy carries two kinds of traffic: model API calls and the target's
+  own fetches (registries, git remotes, per its policy's allowlist). The door
+  replaces only the first. So a slot whose policy fetches nothing beyond the
+  model needs no proxy, and possibly no uplink at all: its namespace would be
+  shaped like a room's, which `capsule-netns` already builds (SL-005). The door
+  is what makes a sealed slot usable for agent work. Design decides whether that
+  is expressed as policy (a sealed allowlist with a door), as the slot's uplink
+  becoming optional, or neither in this slice. The door must not depend on the
+  uplink either way: it reaches the host through a socket, not a route.
 - **Risk:** a second way out beside the proxy. The gateway limits models and
   budget per key, but a guest with a door can spend that budget. The key's
   limits are the control, and they are host-side.
