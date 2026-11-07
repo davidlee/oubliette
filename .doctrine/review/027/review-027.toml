@@ -1,0 +1,310 @@
+id    = 27
+slug  = "design-review-of-sl-010"
+title = "design review of SL-010"
+# no status — a review's status is DERIVED from its findings, so
+# it is never stored (the storage rule forbids derived data in authored files).
+
+[review]
+facet     = "design"     # scope|design|plan|phase-plan|implementation|code-review|reconciliation
+raiser    = "raiser"
+responder = "responder"
+rounds_base = 0
+contests_base = 0
+concluded = true
+
+[[review.turn]]
+act = "conclude"
+role = "raiser"
+note = "Hostile design pass over SL-010 design.md sec-1 through sec-9, against accepted DEC-069..DEC-073, the full SL-010 scope projection, POL-001..POL-005, STD-001, ADR-001..ADR-003 and CLAUDE.md. Inspected the cited relay/drop-in/tmpfiles/sudoers construction, front-end start/policy/status and control seams, recordWrite ordering, wrapper, proxy command spelling, capsule records, mkFleet/module checks, policyCases, inject and the guest's persistent-home/seed/environment lifecycle, namespace rules, fixture/template and assembled research. Independently checked the installed pi 1.5.0 documentation and the host gateway socket declaration; consulted primary systemd/kernel documentation for lifecycle, filtering, path sandbox and privileged-port semantics. Reproduced the missing environment exports without file writes and illustrated the specified start/off interleaving in memory; the latter is an algorithmic counterexample, not live unit verification. Raised F-1..F-8: one blocker, three major, four minor. Runtime consequences are marked as inference where not exercised. No Nix builds, live unit/network changes, credential access or file edits outside doctrine review verbs were performed. Pass concluded; findings remain open for the responder."
+
+[target]                   # the outbound `reviews` edge: RV-NNN ──reviews──▶ <ref>
+ref   = "SL-010"
+
+[[finding]]
+id = "F-1"
+status = "answered"
+severity = "blocker"
+title = "A completed model off can be overwritten by a concurrent start"
+detail = """
+Expected: after an owner successfully selects off, a concurrent front-end start must not leave a running model relay over a record that says off (DEC-069/DEC-072; sec-4 explicitly calls that fail-open).
+
+Observed: .doctrine/slice/010/design.md:235-239 adds a second writer of the rendered bit, at start, but only the model verb's hook participates in the record lock (:270-278). The existing start path holds only the shared volume lock (host/cli.nix:2078-2092), then starts the VM (:2117-2119); no shared start/model enforcement protocol is designed. The hook treats every not-active VM as safe to leave alone, even though a start can be pending.
+
+Counterexample, inferred from the specified algorithm, not a live reproduction: start resolves the old effective on; model off obtains the record lock, writes off, sees an inactive VM, commits off and returns success; start then writes its previously resolved on and starts the VM. ExecCondition reads on, so the door opens while the record remains off. A small in-memory schedule of these exact abstract steps reached {record: off, render: on, vm: active, relay: running}; this demonstrates the algorithmic interleaving only. Even locking the render alone is insufficient: relay activation may already have passed ExecCondition while the VMM is still activating, and the off hook then skips the stop. Sec-3 orders the relay against netns/tap, not against an active VMM (:136-139, :188-196).
+
+Repair: define one serialization/reconciliation protocol for start and model changes, including pending/activating VM and relay jobs; resolve the record inside that protocol, publish the bit atomically, and ensure a completed off cannot be followed by an older start decision. Merely adding a lock around the file write does not establish that invariant. Add deterministic cases for both interleavings and their reverse directions. This finding concerns ordinary authorized front-end commands, not the separately disclosed bare-systemctl stale-render residual."""
+disposition = "fix-now"
+route = "probe"
+response = """
+Verified. The start verb (host/cli.nix 2070-2151) takes only the shared volume lock, and the design's hook decided on the VM's state, so both interleavings the raiser describes are reachable as specified. Accepted at the raiser's severity.
+
+Design change (sec-4): the protocol becomes three rules. (1) The start-time render runs under the slot's record lock, before the VM start is asked for, and the lock is released before the start; the render is the same function the verb's hook uses. (2) off always writes the bit and then always stops the relay, whatever the VM is doing; stopping an inactive unit is a no-op and stopping an activating one cancels it, so an off never depends on reading the VM's state. (3) on writes the bit and starts the relay only when the VM is active; an on that races a VM start can end with the relay skipped (fail-closed), never open, and re-running the verb repairs it. Last writer under the lock wins the bit, and the only writer that can open the relay is an on, which is also the last record write.
+
+Probe. Must hold against: two front-end commands by the owner on one slot, start and model off or model on, in either order and overlapping at any step, including a relay already past its ExecCondition while the VMM is activating. Need not hold against: a bare systemctl start microvm@ (ISS-029), root editing the state file, or a second host.
+
+Criterion: deterministic cases in the front-end suite, through the injected unit-control seam (F-4), that drive each interleaving by pausing one command at its lock boundary, and assert the end state never has record off with relay running. Host phase constraint: needs the unit-control seam and the shared render function to exist first.
+"""
+
+[[finding.turn]]
+act = "raise"
+role = "raiser"
+
+[[finding.turn]]
+act = "dispose"
+role = "responder"
+disposition = "fix-now"
+route = "probe"
+response = """
+Verified. The start verb (host/cli.nix 2070-2151) takes only the shared volume lock, and the design's hook decided on the VM's state, so both interleavings the raiser describes are reachable as specified. Accepted at the raiser's severity.
+
+Design change (sec-4): the protocol becomes three rules. (1) The start-time render runs under the slot's record lock, before the VM start is asked for, and the lock is released before the start; the render is the same function the verb's hook uses. (2) off always writes the bit and then always stops the relay, whatever the VM is doing; stopping an inactive unit is a no-op and stopping an activating one cancels it, so an off never depends on reading the VM's state. (3) on writes the bit and starts the relay only when the VM is active; an on that races a VM start can end with the relay skipped (fail-closed), never open, and re-running the verb repairs it. Last writer under the lock wins the bit, and the only writer that can open the relay is an on, which is also the last record write.
+
+Probe. Must hold against: two front-end commands by the owner on one slot, start and model off or model on, in either order and overlapping at any step, including a relay already past its ExecCondition while the VMM is activating. Need not hold against: a bare systemctl start microvm@ (ISS-029), root editing the state file, or a second host.
+
+Criterion: deterministic cases in the front-end suite, through the injected unit-control seam (F-4), that drive each interleaving by pausing one command at its lock boundary, and assert the end state never has record off with relay running. Host phase constraint: needs the unit-control seam and the shared render function to exist first.
+"""
+
+[[finding]]
+id = "F-2"
+status = "answered"
+severity = "major"
+title = "The record hook can open the relay before a record commit that subsequently fails"
+detail = """
+Expected: the record, rendered bit and unit transition either agree on the new selection or the failed command leaves a safe, accurately reported state (sec-4:270-279; sec-6:418-420).
+
+Observed: the design restores the previous bit only when systemctl fails (.doctrine/slice/010/design.md:272-277), and its sole record.nix change is the skeleton field (:294-295, :523). But the actual recordWrite calls recordAlso first (host/record.nix:99-102), before even reading/transforming the current record (:103-105), writing the candidate (:131-142), or renaming it (:144). A successful hook has no compensation callback if any later step fails.
+
+Failure scenario (source-backed inference; not fault-injected here): the old record says off; model on writes on and successfully starts the relay; writing the larger assignment candidate fails with ENOSPC, or the final mv fails. recordWrite returns failure while the old off record survives and the render/relay remain on. The designed undo path is never reached. A malformed existing record exposes the same ordering problem before candidate serialization. Holding flock does not make these external effects transactional.
+
+Repair: specify failure handling across the complete record commit, not just the systemctl call. Prepare and validate the candidate before applying external effects, and define compensation or recoverable reconciliation for a failed final commit, including how to fail closed and report any unsuccessful compensation. Include post-hook write/rename failures in the transition cases. The inherited policy hook's similar exposure is evidence about the mechanism; this raise is against SL-010's new reliance on it."""
+disposition = "fix-now"
+route = "probe"
+response = """
+Verified. host/record.nix runs recordAlso (line 99-102) before reading the current record, transforming it and moving it into place (103-144), so a hook that succeeded is never compensated when a later step fails. The policy hook has the same exposure today.
+
+Design change (sec-4, and host/record.nix in sec-9): recordWrite computes and writes the candidate first, then runs the hook, then moves the candidate into place. Only the final mv can fail after the hook. For that one step, an optional recordUndo hook is called when the mv fails after recordAlso succeeded; the model verb's undo restores the previous bit and stops the relay, which is fail-closed whichever way the selection went. A failed undo is reported and exits non-zero naming the slot. The policy verb gets the same ordering for free and may declare an undo later; that is noted, not done here.
+
+Probe. Must hold against: any step of the record commit failing after the hook succeeded (an unreadable or malformed current record, a failed candidate write, a failed mv). Need not hold against: the host losing power mid-commit.
+
+Criterion: cases that make the candidate write fail (unwritable record directory) and the mv fail, and assert that a failed on leaves the bit and the relay as they were, and a failed off leaves the relay stopped. Host phase constraint: lands with or after the record.nix reordering.
+"""
+
+[[finding.turn]]
+act = "raise"
+role = "raiser"
+
+[[finding.turn]]
+act = "dispose"
+role = "responder"
+disposition = "fix-now"
+route = "probe"
+response = """
+Verified. host/record.nix runs recordAlso (line 99-102) before reading the current record, transforming it and moving it into place (103-144), so a hook that succeeded is never compensated when a later step fails. The policy hook has the same exposure today.
+
+Design change (sec-4, and host/record.nix in sec-9): recordWrite computes and writes the candidate first, then runs the hook, then moves the candidate into place. Only the final mv can fail after the hook. For that one step, an optional recordUndo hook is called when the mv fails after recordAlso succeeded; the model verb's undo restores the previous bit and stops the relay, which is fail-closed whichever way the selection went. A failed undo is reported and exits non-zero naming the slot. The policy verb gets the same ordering for free and may declare an undo later; that is noted, not done here.
+
+Probe. Must hold against: any step of the record commit failing after the hook succeeded (an unreadable or malformed current record, a failed candidate write, a failed mv). Need not hold against: the host losing power mid-commit.
+
+Criterion: cases that make the candidate write fail (unwritable record directory) and the mv fail, and assert that a failed on leaves the bit and the relay as they were, and a failed off leaves the relay stopped. Host phase constraint: lands with or after the record.nix reordering.
+"""
+
+[[finding]]
+id = "F-3"
+status = "answered"
+severity = "major"
+title = "Normal restarts preserve injected keys and pi configuration instead of refreshing them"
+detail = """
+Expected: the consumer-owned inject design must state the real credential/configuration refresh lifecycle; sec-5 promises that a revoked or reissued key arrives on the next start without --force (.doctrine/slice/010/design.md:318-321).
+
+Verified source contradiction: vm/capsule.nix:44-46 places HOME on the persistent volume and explicitly says it survives reboots. Lines 51-72 construct the separately host-invoked reset-home program; they do not arrange a reset at boot. The boot seed only creates/chowns HOME (:254-272), and the MOTD repeats its persistence (:306). The real front-end start waits for SSH and invokes inject (host/cli.nix:2137-2151); inject skips an existing destination unless --force (host/inject.nix:127-135). The research row marked verified (.doctrine/slice/010/research/research.md:146-150) confused inclusion in an explicit scrub with execution of that scrub on every start.
+
+Consequences, inferred from those shipped branches: after key K1 has been injected, changing the host producer to K2 and stopping/starting the VM retains K1. Revoking K1 therefore leaves pi failing authentication, and replacing models.json or adding offline settings is also skipped. The request-time !cat reads the stale guest file. Existing settings.json/packages may persist too, so sec-5:357 cannot establish their absence merely by not injecting a settings.json.
+
+Repair while retaining DEC-073's consumer ownership and unchanged guest code: document and exercise explicit per-payload --force rotation/config refresh, or design an explicit generic refresh mechanism if automatic next-start replacement is required. Do not implicitly erase HOME on every boot. Correct the evidentiary premise in design/research and add a two-start, changed-payload criterion that distinguishes preservation from replacement."""
+disposition = "design-wrong"
+route = "refresh"
+response = """
+Verified, and it defeats a claim I made. vm/capsule.nix 44-46 puts HOME on the volume and says it survives reboots; the reset is the host's volume reset-home verb over the admin door (vm/capsule.nix 51-72, host/cli.nix 202-211), not a step of every start; inject skips an existing dest without --force (host/inject.nix 127-135). Research row 4 in Thread 2 was marked verified and conflated scrub membership with scrub execution.
+
+Refresh. The code is right; the records are wrong. Edits: design sec-5 states the real lifecycle (a payload lands once, at the first start after the volume is new or HOME is reset; a re-issued key or a changed models.json reaches the guest by capsule-inject with --force for that payload; a repurpose's volume reset-home removes both). sec-6's live sequence gains a two-start, changed-payload leg that tells preservation from replacement. research.md's row is corrected in place with a note. Records citing the false premise, swept: DEC-073's rationale (a HOME dest is reset and re-injected every start) and the slice notes. DEC-073's choice is unaffected; its rationale is corrected, and the user is told.
+"""
+
+[[finding.turn]]
+act = "raise"
+role = "raiser"
+
+[[finding.turn]]
+act = "dispose"
+role = "responder"
+disposition = "design-wrong"
+route = "refresh"
+response = """
+Verified, and it defeats a claim I made. vm/capsule.nix 44-46 puts HOME on the volume and says it survives reboots; the reset is the host's volume reset-home verb over the admin door (vm/capsule.nix 51-72, host/cli.nix 202-211), not a step of every start; inject skips an existing dest without --force (host/inject.nix 127-135). Research row 4 in Thread 2 was marked verified and conflated scrub membership with scrub execution.
+
+Refresh. The code is right; the records are wrong. Edits: design sec-5 states the real lifecycle (a payload lands once, at the first start after the volume is new or HOME is reset; a re-issued key or a changed models.json reaches the guest by capsule-inject with --force for that payload; a repurpose's volume reset-home removes both). sec-6's live sequence gains a two-start, changed-payload leg that tells preservation from replacement. research.md's row is corrected in place with a note. Records citing the false premise, swept: DEC-073's rationale (a HOME dest is reset and re-injected every start) and the slice notes. DEC-073's choice is unaffected; its rationale is corrected, and the user is told.
+"""
+
+[[finding]]
+id = "F-4"
+status = "answered"
+severity = "major"
+title = "The verification plan excludes transition and rollback branches despite an existing test seam"
+detail = """
+Expected: cases exercise the shipped front-end control flow for both live-unit transitions and failure/undo, substituting the thing tying it to this host, as CLAUDE.md:140-145 and POL-004 require. Actual sudo/systemd integration can remain a separate live obligation.
+
+Observed: .doctrine/slice/010/design.md:416-429 tests only the down-VM mutation, query/refusal paths and start rendering, then declares the running-VM branch and its rollback unreachable because sudo/systemctl are runtimeInputs. That is precisely the obstacle the existing front end already solves: host/cli.nix:214-238 takes proxyControl as an injected fragment; host/policy-cases.nix:103-118 supplies controlled active/success/failure results; :426-450 actually drives the running proxy branch and asserts rollback of both the record and link. volumeControl also injects the VMM-state query (host/cli.nix:117-129). These are shipped-code seams, not PATH shadowing or copied test implementations.
+
+The planned live sequence (design.md:436-443) contains only successful on/off operations; it does not deliberately fail a grant, state write or record commit. Consequently the core undo promise has no verifying instrument anywhere, and the start/off interleavings in F-1 are also absent. The assertion that every new case is mutation-checked (:367-369) cannot fill branches deliberately excluded from the cases.
+
+Repair: extend or generalize the existing injected control seam for relay commands and VM state, and use policyCases to test on/off while running, unavailable commands, restoration of an absent versus existing bit, and failed post-hook record commits. Add a usable seam/criterion for the start-time render and its serialization rather than promising a start round that still has to execute the un-substituted lifecycle systemctl calls. Keep module checks for the literal sudo command spelling and live evidence for the real grant/wire. This is a design/testing requirement, not a claim that any Nix build or suite was run in this review."""
+disposition = "fix-now"
+route = "control"
+response = """
+Verified, and it defeats a claim I made: sec-6 said the running-VM branch is unreachable, but host/cli.nix 214-238 takes proxyControl as an argument precisely so policyCases (host/policy-cases.nix 103-118) can drive the running proxy and its rollback, and volumeControl already injects vmmState (host/cli.nix 117-129).
+
+Design change: proxyControl generalises to unitControl, with unitActive and unitDo verb unit, the latter spelled by host/unit-command.nix; the model hook reads the VM's state through vmmState. policyCases supplies both. sec-6 drops the unreachable claim.
+
+Control. Concrete incorrect candidates the cases must reject: a hook that does not restore the previous bit when the relay stop fails; a hook that restores to on when the previous file was absent rather than removing it; an off that skips the stop because vmmState says inactive. Each is built as a mutation of the shipped hook and must turn its round red.
+
+Partly contested: a start-path seam. The start verb's own systemctl calls are not behind a seam, and adding one for the whole start is beyond this finding's need. The start-time render is the same function the hook calls, so cases reach it through the verb; the start's single call site is covered by the live run (a declared-value change followed by a front-end start). Host phase constraint: the seam lands before the verb's cases.
+"""
+
+[[finding.turn]]
+act = "raise"
+role = "raiser"
+
+[[finding.turn]]
+act = "dispose"
+role = "responder"
+disposition = "fix-now"
+route = "control"
+response = """
+Verified, and it defeats a claim I made: sec-6 said the running-VM branch is unreachable, but host/cli.nix 214-238 takes proxyControl as an argument precisely so policyCases (host/policy-cases.nix 103-118) can drive the running proxy and its rollback, and volumeControl already injects vmmState (host/cli.nix 117-129).
+
+Design change: proxyControl generalises to unitControl, with unitActive and unitDo verb unit, the latter spelled by host/unit-command.nix; the model hook reads the VM's state through vmmState. policyCases supplies both. sec-6 drops the unreachable claim.
+
+Control. Concrete incorrect candidates the cases must reject: a hook that does not restore the previous bit when the relay stop fails; a hook that restores to on when the previous file was absent rather than removing it; an off that skips the stop because vmmState says inactive. Each is built as a mutation of the shipped hook and must turn its round red.
+
+Partly contested: a start-path seam. The start verb's own systemctl calls are not behind a seam, and adding one for the whole start is beyond this finding's need. The start-time render is the same function the hook calls, so cases reach it through the verb; the start's single call site is covered by the live run (a declared-value change followed by a front-end start). Host phase constraint: the seam lands before the verb's cases.
+"""
+
+[[finding]]
+id = "F-5"
+status = "answered"
+severity = "minor"
+title = "The pi environment example does not export its offline controls"
+detail = """
+Expected: the child pi process receives PI_OFFLINE, PI_SKIP_VERSION_CHECK and PI_TELEMETRY from the consumer's .env payload (DEC-073; sec-5).
+
+Observed: .doctrine/slice/010/design.md:329,346-347 tells the consumer to add plain assignments to .env. The guest sources that file with an ordinary dot command (vm/capsule.nix:294-297), without set -a; plain shell assignments do not export previously unexported variables. The existing guest example explicitly uses export for the same reason (vm/capsule.nix:313-314).
+
+Reproduced without writing files: env -u PI_OFFLINE -u PI_SKIP_VERSION_CHECK -u PI_TELEMETRY bash --noprofile --norc -c '<the three assignments>; bash --noprofile --norc -c <print child variables>' printed child: PI_OFFLINE=unset PI_SKIP_VERSION_CHECK=unset PI_TELEMETRY=unset. Thus source-level documentation that pi supports these variables does not prove this delivery example supplies them. The inference is that a fresh interactive launch retains pi's default automatic-network behavior.
+
+Repair: show explicit export assignments in the payload and verify the environment at the actual pi launch boundary, including the intended worker/noninteractive path if that is the consumer. The rotation/write-if-absent correction in F-3 also applies when updating an already-injected .env."""
+disposition = "fix-now"
+response = """
+Verified: vm/capsule.nix 294-297 sources .env with a plain dot, and its own MOTD example uses export. The raiser's reproduction stands. sec-5 shows export for all three lines and states the boundary: .env is read by interactive login shells only (programs.bash.interactiveShellInit), so a non-interactive launcher, such as a quotient worker started over ssh, must source it or set the variables itself. The live run checks the variables at pi's actual launch.
+"""
+
+[[finding.turn]]
+act = "raise"
+role = "raiser"
+
+[[finding.turn]]
+act = "dispose"
+role = "responder"
+disposition = "fix-now"
+response = """
+Verified: vm/capsule.nix 294-297 sources .env with a plain dot, and its own MOTD example uses export. The raiser's reproduction stands. sec-5 shows export for all three lines and states the boundary: .env is read by interactive login shells only (programs.bash.interactiveShellInit), so a non-interactive launcher, such as a quotient worker started over ssh, must source it or set the variables itself. The live run checks the variables at pi's actual launch.
+"""
+
+[[finding]]
+id = "F-6"
+status = "answered"
+severity = "minor"
+title = "The accepted port range includes ports the capability-free owner cannot bind"
+detail = """
+Expected: accepted modelDoor endpoints are usable with the designed owner/hardening model, or evaluation clearly refuses the unsupported range.
+
+Observed: .doctrine/slice/010/design.md:84-89 accepts every integer port in 1-65535 except 22 and proxyPort. The relay runs as cfg.owner (:141) and inherits empty CapabilityBoundingSet and AmbientCapabilities from host/services.nix:360-366. Unlike the ssh relay, whose TCP leg connects outward, this unit must bind a TCP listener. host/netns.nix configures forwarding/addressing but never lowers ip_unprivileged_port_start (repository search found no such setting).
+
+The kernel documents that this threshold is per network namespace, defaults to 1024, and ports below it require root or CAP_NET_BIND_SERVICE: https://docs.kernel.org/networking/ip-sysctl.html#ip-variables . Therefore a perfectly accepted declaration such as port=443 fails bind on the default namespace configuration. This is an inference from the specified unit and documented kernel defaults, not a privileged-port runtime probe or a claim about every host's custom sysctls.
+
+Repair: make the supported port contract agree with the capability-free service: conventionally refuse ports below 1024 and pin that reason with a negative case, or explicitly design and verify the required privilege/sysctl mechanism. Do not rely on an undeclared host sysctl."""
+disposition = "fix-now"
+response = """
+Verified: the relay inherits an empty capability bounding set and nothing lowers ip_unprivileged_port_start (no such setting in the tree). model-door.nix refuses ports below 1024, replacing the 1-65535 range check, with a negative case for 443.
+"""
+
+[[finding.turn]]
+act = "raise"
+role = "raiser"
+
+[[finding.turn]]
+act = "dispose"
+role = "responder"
+disposition = "fix-now"
+response = """
+Verified: the relay inherits an empty capability bounding set and nothing lowers ip_unprivileged_port_start (no such setting in the tree). model-door.nix refuses ports below 1024, replacing the 1-65535 range check, with a negative case for 443.
+"""
+
+[[finding]]
+id = "F-7"
+status = "answered"
+severity = "minor"
+title = "Socket validation accepts endpoints hidden by the shared relay sandbox"
+detail = """
+Expected: the stated assumption that the owner can open the caller's Unix socket is sufficient for accepted socket values, or the contract identifies and refuses additional visibility restrictions (DEC-070; sec-2/sec-3).
+
+Observed: .doctrine/slice/010/design.md:93-113 reuses only state-dir.nix's lexical absolute-path test. It accepts /home/operator/gateway/api.sock, /run/user/1000/gateway/api.sock and /tmp/gateway/api.sock. Sec-3:165-174 describes ownership/access and ProtectSystem=strict as the pertinent constraints, while :180-184 inherits the ssh relay's entire hardening. That block includes ProtectHome=tmpfs and PrivateTmp=true (host/services.nix:364-366), with no corresponding bind exposing the destination in the proposed unit (:138-145).
+
+Documented systemd semantics: ProtectHome=tmpfs masks /home, /root and /run/user; PrivateTmp gives the unit private /tmp and /var/tmp. See https://www.freedesktop.org/software/systemd/man/latest/systemd.exec.html#ProtectHome= and https://www.freedesktop.org/software/systemd/man/latest/systemd.exec.html#PrivateTmp= . Consequently a socket the owner can successfully open outside the unit may not exist in the unit's mount namespace. The expected ENOENT failure for these otherwise valid declarations is inferred, not exercised live. This does not allege a problem for the proposed /run/llm-gateway-client path.
+
+Repair: define the supported socket-location contract and pin refusals for masked locations, or explicitly expose the needed endpoint/parent while preserving the intended sandbox and socket-recreation behavior. The same visibility question applies to the newly configurable modelDoorDir used by ExecCondition; missing it fails closed rather than providing a usable door."""
+disposition = "fix-now"
+response = """
+Verified: the shared hardening includes ProtectHome tmpfs and PrivateTmp (host/services.nix 364-366). model-door.nix refuses a socket under /home, /root, /run/user, /tmp or /var/tmp, with a reason naming the masking setting; negative cases for each. The modelDoorDir option fails closed when masked, and its description says it must sit outside those trees.
+"""
+
+[[finding.turn]]
+act = "raise"
+role = "raiser"
+
+[[finding.turn]]
+act = "dispose"
+role = "responder"
+disposition = "fix-now"
+response = """
+Verified: the shared hardening includes ProtectHome tmpfs and PrivateTmp (host/services.nix 364-366). model-door.nix refuses a socket under /home, /root, /run/user, /tmp or /var/tmp, with a reason naming the masking setting; negative cases for each. The modelDoorDir option fails closed when masked, and its description says it must sit outside those trees.
+"""
+
+[[finding]]
+id = "F-8"
+status = "answered"
+severity = "minor"
+title = "The live denial leg cannot verify the claimed guest-only listener restriction"
+detail = """
+Expected: evidence for the DEC-070 guest-only listener distinguishes enforcement of IPAddressAllow/IPAddressDeny from an unreachable or empty endpoint (ADR-003, STD-001).
+
+Observed: .doctrine/slice/010/design.md:175-178 makes the per-unit IP filter the control that bounds who reaches the listener. But hostModuleUnits only asserts the configured fields (:388-389), and the live negative leg tries another host port (:436-438). host/netns.nix:259-262 accepts tap traffic to any port on net.host; a refusal at an unoccupied other port is the kernel reporting no listener, not evidence of this unit's source restriction. Removing both IPAddress directives could leave every planned live step green. systemd additionally documents that these IP filters have no effect where the needed eBPF support is unavailable: https://www.freedesktop.org/software/systemd/man/latest/systemd.resource-control.html#IPAddressAllow= . This review has not established that support is absent on this host.
+
+Repair: retain the positive request from the guest, and add a negative request to the SAME listening door with a non-guest source and otherwise valid gateway authentication, e.g. from the slot namespace's host address. Establish that the negative source/path is viable, so routing failure cannot masquerade as filtering. Define how unsupported filtering is detected/refused if guest-only admission is a product guarantee. The existing another-port check can remain as a separate observation, with its narrower evidentiary meaning."""
+disposition = "fix-now"
+response = """
+Accepted: a refusal on another port shows no listener there, not that the source filter works. sec-6's live sequence gains a leg against the same door from a non-guest source: from the slot namespace itself (source net.host) the door must refuse, with a positive control that a throwaway listener on net.host at another port in the same namespace accepts the same client, so the path is viable and the refusal is the filter. The another-port leg stays with its narrower meaning. If IP filtering is unsupported on the host, the negative leg goes red, which is the detection; the module does not try to detect eBPF support.
+"""
+
+[[finding.turn]]
+act = "raise"
+role = "raiser"
+
+[[finding.turn]]
+act = "dispose"
+role = "responder"
+disposition = "fix-now"
+response = """
+Accepted: a refusal on another port shows no listener there, not that the source filter works. sec-6's live sequence gains a leg against the same door from a non-guest source: from the slot namespace itself (source net.host) the door must refuse, with a positive control that a throwaway listener on net.host at another port in the same namespace accepts the same client, so the path is viable and the refusal is the filter. The another-port leg stays with its narrower meaning. If IP filtering is unsupported on the host, the negative leg goes red, which is the detection; the module does not try to detect eBPF support.
+"""
+
+# Findings are append-only `[[finding]]` tables, added by `review raise`.
+# Empty here at creation — a fresh review is Active, awaiting the raiser.

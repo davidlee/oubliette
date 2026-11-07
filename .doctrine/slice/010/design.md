@@ -83,10 +83,17 @@ Refused, each with a message naming the field, the value and the decision:
 
 1. a slot's `modelDoor` that is not `"on"` or `"off"`;
 2. a slot declaring `modelDoor` while `net.modelDoor` is absent;
-3. a port that is not an integer in 1–65535, or equals `net.proxyPort` or 22 —
-   the range check is an addition to `DEC-071`'s list, conventional and
-   reversible, made because the port is spliced into socat's address text;
-4. a socket path that fails the host-path refusal below.
+3. a port that is not an integer in 1024–65535, or equals `net.proxyPort` or
+   22. The range is an addition to `DEC-071`'s list. The upper bound is there
+   because the port is spliced into socat's address text. The lower bound is
+   there because the relay runs with an empty capability set and nothing
+   lowers the namespace's `ip_unprivileged_port_start`, so a port below 1024
+   would pass eval and fail to bind;
+4. a socket path that fails the host-path refusal below;
+5. a socket path under `/home`, `/root`, `/run/user`, `/tmp` or `/var/tmp`.
+   The relay's hardening (`ProtectHome = "tmpfs"`, `PrivateTmp`) hides those
+   trees from the unit, so the owner could open such a socket and the relay
+   could not see it. The reason names the setting that masks it.
 
 ### D-4 resolved: the path refusal fits, its message does not
 
@@ -234,21 +241,59 @@ stateDiagram-v2
 
 - **Who writes it.** tmpfiles `f <modelDoorDir>/<n> 0644 owner users - <declared>`
   seeds it once (create-if-absent, so an override survives a reboot, as the
-  allowlist link's `L` does). The front end writes the *effective* value —
-  the record's `model_door` override, else the declared value — at
-  `capsule <n> model on|off` and at every `capsule <n> start`, before the VM.
+  allowlist link's `L` does). After that, only the front end writes it, and
+  only through one function, `renderModelDoor <n> <value>`, always under the
+  slot's record lock. The value is the record's `model_door` override, else
+  the declared value. The function is called by `capsule <n> model on|off` and
+  at every `capsule <n> start`.
 - **Who reads it.** Only the relay's `ExecCondition`, which resolves nothing:
   `grep -qx on`. A missing or unreadable file skips the unit, so the absent
   path is closed. A skipped condition leaves the unit `inactive`, not `failed`,
-  and `Restart=on-failure` does not fire.
+  and `Restart=on-failure` does not fire. The `modelDoorDir` option must sit
+  outside the trees the hardening masks (sec-2's refusal 5); if it does not,
+  the relay never runs, which is fail-closed.
 - **Why the front end also renders at start.** A seed that is create-if-absent
   never learns that the operator changed a slot's declared value from `on` to
-  `off`; without the re-render that slot keeps its door, which is the fail-open
-  direction. Writing at `start` closes it for every start through the front
+  `off`. Without a re-render that slot keeps its door, which is the fail-open
+  direction. Rendering at `start` closes it for every start through the front
   end. **Residual, stated:** a bare `systemctl start microvm@<n>` after such a
   change, with no front-end start since, reads the stale render. The policy
-  link has the same residual today (its `L` keeps an old link when the declared
-  default moves); that is recorded as a backlog item, not fixed here.
+  link has the same residual today (ISS-029).
+
+### Start and the verb, run at once
+
+The owner can run `capsule <n> start` and `capsule <n> model off` at the same
+time. Neither may leave a running relay under a record that says `off`. Three
+rules ensure that:
+
+1. **Start renders under the lock, then starts.** `start` takes the record
+   lock, renders the effective value, releases the lock, and then asks for
+   the VM. So whichever of the two commands writes the bit last under the lock
+   decides it.
+2. **`off` always stops.** It writes the bit, then runs
+   `stop capsule-model-relay-<n>` whatever the VM is doing. Stopping an
+   inactive unit does nothing, and stopping an activating one cancels it. So
+   `off` does not depend on reading the VM's state, and a relay that passed
+   its `ExecCondition` just before the write is stopped anyway.
+3. **`on` starts only a running VM's relay.** It writes the bit, then starts
+   the relay only when `vmmState` says the VM is `running`. Starting it
+   otherwise would pull its `bindsTo` tap and namespace up with no VM. If `on`
+   races a VM start, the relay may already have read the old `off` and stayed
+   down. That is fail-closed, and running `on` again fixes it.
+
+```mermaid
+sequenceDiagram
+  participant S as capsule n start
+  participant L as record lock
+  participant M as capsule n model off
+  participant R as relay unit
+  S->>L: take, render (on), release
+  M->>L: take, write off, record off
+  M->>R: stop (no-op or cancels)
+  M->>L: release
+  S->>S: systemctl start microvm@n
+  Note over R: wants → ExecCondition reads off → skipped
+```
 
 Resolution stays the front end's act (`POL-003`); the unit only reads what it
 was told, as the proxy reads only its link.
@@ -267,27 +312,52 @@ devshell's (`mem.fact.oubliette.two-copies-refuse-in-different-orders`):
 | 4 | `CAPSULE_MODEL_DOOR_DIR` unset (not the module's copy) | refuse, naming `/run/current-system/sw/bin/capsule`; the devshell path has no door |
 | 5 | otherwise | `recordWrite n '.model_door = $v'` with a `recordAlso` hook |
 
-The hook, under the record's lock, before the record is written:
+The verb's work happens in two hooks that `recordWrite` calls under the
+record's lock:
 
-1. remember the file's previous content, write the new value;
-2. if `microvm@<n>` is not active: done — the next start reads it. Starting
-   the relay now would pull its `bindsTo` tap and namespace up with no VM;
-3. else `sudo systemctl start|stop capsule-model-relay-<n>`;
-4. if that fails: restore the previous content, return 1, so no record is
-   written and the refusal says the door did not move. The `off` case is why:
-   a record saying `off` over a running door is fail-open (NOTES item 41's
-   rule for the proxy).
+- **`recordAlso`**, before the record is committed:
+  1. remember the bit's previous content, or that there was no file, and call
+     `renderModelDoor`;
+  2. `off`: `unitDo stop capsule-model-relay-<n>`. `on`: if `vmmState` is
+     `running`, `unitDo start capsule-model-relay-<n>`; otherwise done, since
+     the next start reads the bit;
+  3. if the unit command fails: put the previous content back (or remove the
+     file if there was none) and return 1. `recordWrite` then writes no
+     record, and the refusal says the door did not move. The `off` case is
+     why: a record saying `off` over a running door is fail-open (NOTES item
+     41's rule for the proxy).
+- **`recordUndo`** (new, optional), only when the commit fails after
+  `recordAlso` succeeded. It puts the previous bit back and stops the relay,
+  which is fail-closed whichever way the selection went. If the undo itself
+  fails, the refusal names the slot and says the door's state is unknown.
+
+**`recordWrite`'s order changes to make that one step** (`host/record.nix`).
+Today it calls the hook before reading and transforming the record, so a
+malformed record or a failed candidate write comes after effects that nothing
+undoes. The new order is: read the record, transform it, write the candidate,
+then call `recordAlso`, then `mv` the candidate into place. Only the `mv` can
+fail after the hook, and `recordUndo` covers it. The policy verb gets the same
+order without any change of its own. It declares no undo, so its exposure
+narrows from every commit step to the `mv` alone.
 
 Everything prints to stderr, as in `policy`'s hook, because the hook runs
 inside `gen=$(recordWrite …)`.
 
-**The grant.** Step 3 needs root: two literal sudoers commands per slot that
+**The grant.** The unit commands need root: two literal sudoers commands per slot that
 declares a door, `systemctl start` and `systemctl stop` of its relay, in the
 same `mkAfter` rule as the proxy restart (NOTES item 43). `host/proxy-restart.nix`
-becomes `host/unit-command.nix`, `verb: unit: "/run/current-system/sw/bin/systemctl ${verb} ${unit}"`
-— one spelling for the front end, the grant and the check — and
+becomes `host/unit-command.nix`, `verb: unit: "/run/current-system/sw/bin/systemctl ${verb} ${unit}"`.
+That gives the front end, the grant and the check one spelling.
 `mkfleet.nix`'s `unrestartable` becomes `ungranted`, covering the proxy restart
-and both relay verbs. The verb is owner-only in fact, as `policy` is
+and both relay verbs.
+
+**The seam.** `host/cli.nix`'s `proxyControl` argument becomes `unitControl`
+with two functions: `unitActive <unit>` and `unitDo <verb> <unit>`, the latter
+`sudo` of `unit-command.nix`'s spelling. The policy verb's restart and the
+model verb's start and stop both go through it, and the VM's state is read
+through `volumeControl`'s existing `vmmState`. Both arguments exist so a suite
+can stand in for systemd, whose binary is in `runtimeInputs` and cannot be
+stubbed on `PATH`. The verb is owner-only in fact, as `policy` is
 (`mem.fact.oubliette.policy-verb-is-owner-only`): the record's lock, the
 state directory and the grant all name `cfg.owner`.
 
@@ -316,9 +386,25 @@ reshape the table.
 Oubliette ships no guest code for pi or the key: a slot may not select a
 `guestModule` fragment (`fragments.nix`'s `slotRefusal`, `DEC-060`), and
 `guestConfig` is not a target field. Inject already moves opaque, per-`$capsule`
-payloads, and a `dest` under `$HOME` is removed by the guest's home reset and
-written again at every start, so a revoked or re-issued key reaches the guest
-at the next start without `--force`.
+payloads.
+
+**When a payload lands.** `$HOME` is on the volume and survives reboots
+(`vm/capsule.nix:44-46`). `capsule <n> start` runs inject, which writes a
+payload only if its `dest` is absent (`host/inject.nix:127-135`). So the key and
+`models.json` land once: at the first start on a new volume, or the first
+start after `capsule <n> volume reset-home`, which a repurpose runs. After
+that a start leaves them alone:
+
+| change on the host | how it reaches the guest |
+|---|---|
+| a re-issued or rotated key | `capsule-inject gateway-key --force` for that slot |
+| a changed `models.json` (new model ids, a new port) | `capsule-inject pi-models --force` |
+| a changed `.env` | `capsule-inject env --force` |
+| a revoked key, not replaced | nothing needed: the gateway refuses it, and pi fails authentication |
+| the slot repurposed | `volume reset-home` removes all three; the next start injects fresh ones |
+
+`--force` discards whatever the guest wrote to that file. For these three
+files that is intended, since the agent has no reason to edit them.
 
 The template (`templates/fleet/setup.nix`) carries the example, commented as
 its `claude-credentials` entry is; the fixture carries a live one so the shape
@@ -343,8 +429,8 @@ and port rather than spelling them a second time.
       models: [ … the consumer's model ids … ] } } }' '';
   tools = ["jq"];
 }
-# and in the env entry's file (<volumePath>/.env, sourced at login):
-#   PI_OFFLINE=1  PI_SKIP_VERSION_CHECK=1  PI_TELEMETRY=0
+# and in the env entry's file (<volumePath>/.env):
+#   export PI_OFFLINE=1 PI_SKIP_VERSION_CHECK=1 PI_TELEMETRY=0
 ```
 
 ### D-5 resolved: what each line rests on
@@ -353,10 +439,19 @@ and port rather than spelling them a second time.
 |---|---|---|
 | `apiKey: "!cat …"` reads the key at request time | pi 1.5.0 `docs/models.md:65` (research ✓) | read |
 | `authHeader: true` | default is `false` (`models-configuration.md:22`, ✓); the host's working provider omits it, so Bearer-without-it is **inferred**. Setting it explicitly makes the example rest on the documented behaviour rather than the inference | read; verified only by the live run |
-| `PI_OFFLINE`, `PI_SKIP_VERSION_CHECK`, `PI_TELEMETRY=0` | `environment-variables.md:84-87`, `settings.md:171` (✓) | read |
+| `PI_OFFLINE`, `PI_SKIP_VERSION_CHECK`, `PI_TELEMETRY=0` | `environment-variables.md:84-87`, `settings.md:171` (✓). `export` because the guest sources `.env` with a plain `.` (`vm/capsule.nix:294-297`), and a plain assignment does not reach pi | read; the live run checks pi's environment |
 | no `packages` in `settings.json` | pi tries npm at startup, warns, skips and runs on (`packages.md:19`, ✓); the example ships no `settings.json`, so there is nothing to try | read |
 | the base URL bypasses the proxy | `vm/capsule.nix:178-183` puts `net.host` in `NO_PROXY` | read |
 | `models.json`'s outer shape (`providers.<name>.{baseUrl, api, apiKey, models}`) | the host's own file, structure only (✓) | read |
+
+**`.env` reaches interactive shells only.** It is sourced from
+`programs.bash.interactiveShellInit`. A launcher that starts pi without an
+interactive shell, such as a quotient worker over `ssh … pi`, must source it
+or set the three variables itself. Without them pi's startup network calls go
+to the proxy and are refused, which is noise, not a leak.
+
+A guest that already has a `~/.pi/agent/settings.json` with `packages` keeps
+it, because `$HOME` persists. pi skips packages it cannot fetch and runs on.
 
 The model ids are the consumer's and must be a subset of what the key was
 issued for; the gateway refuses the rest.
@@ -373,7 +468,7 @@ its subject and watching it go red.
 | `hostModuleUnits` | evaluates the module | over a fixture net with `modelDoor` on a nobody's socket (`/run/fixture-model-door/api.sock`) and three fixture slots — `on`, `off`, undeclared | anything at run time |
 | `modelDoorCases` (new, `model-door-cases.nix`) | eval verdicts, `builtins.tryEval` + `deepSeq`, asserted in the shell | each refusal of sec-2 and its exact reason | — |
 | `stateDirCases` | unchanged | `state-dir.nix`'s verdicts and messages after the predicate moves to `host-path.nix` | — |
-| `policyCases` (extended) | runs the shipped front end's text over a fixture pool | the verb's refusals in order, and the record and state file moving together | the `sudo systemctl` leg (below) |
+| `policyCases` (extended) | runs the shipped front end's text over a fixture pool, with `unitControl` and `vmmState` substituted | the verb's refusals in order; the record, the bit and the relay moving together; every rollback; start and the verb run at once | the real sudo grant and systemd (live) |
 | `wrapCases` | composition | `CAPSULE_MODEL_DOOR_DIR` survives the wrapper | — |
 | live, the user's | exercise | the wire | — |
 
@@ -397,8 +492,9 @@ its subject and watching it go red.
 ### `modelDoorCases`
 
 One round per refusal in sec-2 (bad slot value; slot door with no
-`net.modelDoor`; port 22, `proxyPort`, 0, 65536, a string; a socket that is
-relative, holds `,`, holds `:`, holds `..`), each asserting the verdict and the
+`net.modelDoor`; port 22, `proxyPort`, 443, 0, 65536, a string; a socket that
+is relative, holds `,`, holds `:`, holds `..`, or sits under `/home`, `/root`,
+`/run/user`, `/tmp` or `/var/tmp`), each asserting the verdict and the
 message, plus an accepted declaration whose `value` is the input. Its subject
 is `model-door.nix` itself, handed fixture values no host declares, and it is
 wired into `just build` and `just cases` in the same commit (NOTES item 51
@@ -411,22 +507,37 @@ lock, same hook shape — so its rounds go in the suite that already renders the
 front end over a fixture pool, rather than a fourth render of it
 (`policyCases`, `volumeCases` and `roomVerbsCases` already render their own).
 The fixture pool gains `modelDoor` on two of its slots and a `net.modelDoor`.
-Rounds:
+The fixture's `unitControl` logs each `unitDo` and can be told to fail it,
+and its `vmmState` can be told the VM is running. Rounds:
 
 - each of refusals 1–4 in order, with its reason, including refusal 3 for a
   slot that declares no door and refusal 4 on a copy with no state directory;
-- `on`/`off` on a slot whose VM is not running writes the record's
-  `model_door` and the state file together, prints the not-running line, and
-  leaves no other trace;
 - no argument prints the declared value before any override and the override
   after one;
-- `start` renders the state file from the declaration when the record holds no
-  override.
+- **VM down:** `on` writes the record and the bit and issues no start; `off`
+  writes both and issues a stop;
+- **VM running:** `on` issues a start and `off` a stop, and record, bit and
+  log agree;
+- **unit command fails:** the bit is restored to its previous content, or
+  removed if there was none, and no record is written. This is run for `on` and
+  for `off`;
+- **commit fails after the hook** (an unwritable record directory for the
+  candidate, then a failed `mv`): a failed `on` leaves the bit and the relay as
+  they were, and a failed `off` leaves the relay stopped;
+- **start and the verb at once:** each command is paused at its lock boundary
+  and the two are interleaved in both orders, including a relay that read its
+  condition just before the `off`. No end state has record `off` with the relay
+  started and not stopped;
+- `renderModelDoor` writes the declared value when the record holds no
+  override (the function `start` calls).
 
-**Not reachable in the sandbox, named:** the running-VM branch — `sudo
-systemctl start|stop` and the undo when it fails. `systemctl` and `sudo` are in
-the front end's `runtimeInputs`, so no stub can stand in, and that boundary is
-respected rather than worked around. The live run covers it.
+**Mutation check for each:** the hook is broken on purpose and its round must
+go red. The breakages are: no restore when the stop fails; restoring `on`
+where there was no file; an `off` that skips the stop because the VM is down;
+a render outside the lock.
+
+The start verb's own `systemctl` calls have no seam, so its one call to
+`renderModelDoor` is covered by the live run, not by a case.
 
 ### Live, the user's (`exercise`)
 
@@ -435,12 +546,27 @@ verdicts land in `docs/probes.md`, each leg in both directions (`ADR-003`):
 
 1. in the slot, `curl` with the key to `http://net.host:<port>/v1/models` → 200;
    without the key → the gateway's 401 (the door carries, the gateway gates);
-2. `net.host:<another port>` → refused (the door is one port, not the host);
-3. pi completes one request through the door;
-4. `capsule <n> model off` with the VM up → the port is refused and status says
+2. **guest-only admission.** From the slot's namespace itself (`ip netns exec`,
+   so the source is `net.host`, not the guest), the same request to the door
+   is refused. The control: in the same namespace, a throwaway listener on
+   `net.host` at another port accepts the same client, so the path works and
+   the refusal is the source filter. If the host lacks the eBPF support
+   `IPAddressAllow` needs, this leg goes red, and that is how it is detected;
+3. `net.host:<another port>` from the guest → refused. This shows only that
+   nothing else listens there;
+4. pi completes one request through the door, and `/proc/<pid>/environ` of
+   that pi holds the three `PI_*` variables;
+5. `capsule <n> model off` with the VM up → the port is refused and status says
    `inactive`; `capsule <n> model on` → it answers again;
-5. `microvm@<n>` restarted while `off` → still refused (D-1's condition);
-6. a slot with no `modelDoor` → refused on the port, status `--`.
+6. `microvm@<n>` restarted while `off` → still refused (D-1's condition);
+7. a slot with no `modelDoor` → refused on the port, status `--`;
+8. **a payload refresh.** Change the slot's key file on the host, then stop
+   and start. The guest still holds the old key. Then run
+   `capsule-inject gateway-key --force`, and the guest holds the new one. This
+   tells a preserved payload from a replaced one;
+9. **a declared change.** Change a slot from `on` to `off` in `capsules.nix`,
+   rebuild, then `capsule <n> start`. The door is refused, which shows the
+   start-time render.
 
 <!-- doctrine:section sec-7 -->
 ## Contracts and governance text that moves
@@ -491,8 +617,11 @@ Governance readings, not edits:
   `ProtectSystem=strict`; that pi sends Bearer with `authHeader: true`; that
   `ExecCondition`'s skip leaves the `microvm@` start unaffected.
 - **The stale-render residual** (sec-4): a bare `systemctl start microvm@<n>`
-  after a declared-value change, with no front-end start between. Shared with
-  the policy link; a backlog item for both.
+  after a declared-value change, with no front-end start between. The policy
+  link has the same residual (ISS-029).
+- **Payloads do not refresh at start** (sec-5). A rotated key needs
+  `--force`. Until then pi in the guest fails authentication, which is
+  fail-closed.
 - **Status width** (IMP-009): one column wider.
 
 Out of scope:
@@ -519,10 +648,10 @@ Out of scope:
 | `capsules.nix` | `recordOf` carries `modelDoor ? null` |
 | `host/services.nix` | `modelRelayServices`; shared `relayHardening`; the drop-in's `wants`; `modelDoorDir` option; tmpfiles `d` + `f`; the two grants per declaring slot; `paths` to the wrapper |
 | `host/unit-command.nix` (renamed from `proxy-restart.nix`) | `verb: unit:` |
-| `host/cli.nix` | the `model` verb; `effectiveModelDoor`; the render at `start`; the `model` status column and header; the proxy restart through `unit-command.nix` |
-| `host/record.nix` | `model_door` in the skeleton |
+| `host/cli.nix` | the `model` verb; `effectiveModelDoor`; `renderModelDoor` and its call at `start` under the record lock; `proxyControl` → `unitControl`; the `model` status column and header |
+| `host/record.nix` | `model_door` in the skeleton; the candidate is written before `recordAlso`; the optional `recordUndo` |
 | `host/wrap.nix` | `CAPSULE_MODEL_DOOR_DIR` from `paths.modelDoorDir` |
-| `host/policy-cases.nix` | the model verb's rounds; fixture slots and `net.modelDoor` |
+| `host/policy-cases.nix` | the model verb's rounds; fixture slots and `net.modelDoor`; `unitControl` and `vmmState` substitutes; the policy rounds moved to `unitControl` |
 | `host/wrap-cases.nix` | the new variable survives |
 | `mkfleet.nix` | `model-door.nix`'s `value` read beside `stateDir`'s; `hostModuleUnits` fixture and cases; `ungranted`; `modelDoorCases` wiring |
 | `just/fleet.just` | `modelDoorCases` in `build` and `cases` |

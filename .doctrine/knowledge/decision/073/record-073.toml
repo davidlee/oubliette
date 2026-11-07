@@ -14,7 +14,7 @@ tags = []
 context = "SL-010 inq-5. A slot refuses a guestModule fragment (fragments.nix:193-198); inject's produce sees only $capsule and its output is opaque."
 choice = "The consumer declares inject entries: the key (produce reads a pre-issued per-$capsule file; dest under $HOME), pi's models.json with apiKey '!cat <key path>', and PI_OFFLINE=1 via .env. The template and the fixture carry examples."
 alternatives = ["a fragment guestModule (refused for slots by DEC-060)", "oubliette rendering pi's config in vm/capsule.nix"]
-rationale = "Oubliette passes the credential per capsule without understanding it (POL-002); a $HOME dest is reset and re-injected every start, and a cloned volume is scrubbed before inject."
+rationale = "Oubliette passes the credential per capsule without understanding it (POL-002). $HOME is on the volume and persists: a payload lands at the first start on a fresh volume or after volume reset-home (which a repurpose runs, and which removes it), and a rotated key or changed config reaches the guest by capsule-inject --force (corrected 2026-11-08 per RV-027 F-3; the earlier text said a $HOME dest is reset and re-injected every start, which vm/capsule.nix contradicts)."
 consequences = ["The key belongs to the slot, not the assignment.", "Rooms need an inject path before they can take a key."]
 decided_by = "user (session 2026-11-08)"
 decided_on = "2026-11-08"
