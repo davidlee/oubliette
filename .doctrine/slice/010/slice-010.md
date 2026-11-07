@@ -63,6 +63,8 @@ host root ns                          slot ns cap-<name>
 - **Rooms.** The same unit should serve a room unchanged, because one
   `capsule-netns` serves both (SL-005). But wiring a room, and POL-005's
   reading ("a room never fetches"), is a follow-up.
+- **An optional proxy / uplink for a slot.** IMP-029 (user's call,
+  2026-11-08). The door must work without depending on the uplink.
 - **The devshell path** (`capsule-host`). The host gateway is a module-path
   service; whether the devshell path gets a door is a design question, and the
   default is no.
@@ -100,7 +102,7 @@ host root ns                          slot ns cap-<name>
   model needs no proxy, and possibly no uplink at all: its namespace would be
   shaped like a room's, which `capsule-netns` already builds (SL-005). The door
   is what makes a sealed slot usable for agent work. **Direction (user): the
-  proxy becomes optional for a slot.** Evidence it is cheap: the unit graph
+  proxy becomes optional for a slot. Out of this slice, tracked as IMP-029.** Evidence it is cheap: the unit graph
   already has a working `uplink = null` path, which rooms use (no proxy, no
   aggregator; `host/services.nix`, `rooms.nix:217`). A slot always gets one
   today (`capsules.nix:141`), so the change is mostly in the declaration.
@@ -131,5 +133,6 @@ host gateway socket, plus pi's declared base URL and an injected gateway key.
 
 ## Follow-Ups
 
+- IMP-029: a slot with a door and nothing else to fetch drops its proxy.
 - A room's door (the IDE-003 remainder), with POL-005's reading.
 - IDE-004 / RSK-013: route claude and codex through the gateway too.
