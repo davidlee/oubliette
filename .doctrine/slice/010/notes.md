@@ -6,7 +6,7 @@ disposable phase sheet (`.doctrine/state/.../phase-NN.md`) that must survive
 
 ## Harvest
 <!-- single-copy: updated in place each harvest; ids only, never restated content -->
-fresh-as-of: 2026-11-08 · design/drafting (rev 23, forward to reviewing unblocked) · 51c0d64+draft
+fresh-as-of: 2026-11-08 · design/reviewing (rev 28) · 29d9d63
 
 ### Produced
 - DEC-069, DEC-070, DEC-071, DEC-072, DEC-073 (design run inq-1..inq-5)
@@ -14,14 +14,17 @@ fresh-as-of: 2026-11-08 · design/drafting (rev 23, forward to reviewing unblock
 - IMP-029 (optional proxy/uplink for a slot; needs SL-010)
 - QUE-003 answered (an injected credential lasts about a year, user's estimate)
 - IDE-003 widened to a capsule or room
-- design.md sec-1..sec-9 (drafted from DEC-069..DEC-073); 26 design-target selectors
+- design.md sec-1..sec-9 (drafted from DEC-069..DEC-073); 28 design-target selectors
+- RV-027 (GPT hostile pass; F-1..F-9; rounds 1-2 integrated)
 - ISS-029 (a moved declared default does not reach an existing render; policy link and model door)
 
 ### Learned
+- research.md Thread 2 fact 4 was wrong ($HOME persists; reset is a host verb); corrected, and DEC-073 rationale with it
 - research.md (gitignored, `.doctrine/slice/010/research/`); its ✓ rows are verified
 
 ### Open
-- Review of sec-1..sec-9, then advance to reviewing
+- RV-027: F-3, F-4, F-9 answered, awaiting raiser round 3
+- Section attestations (user), review-disposed, design-accepted; review.scope (slice-010.md vs revised design) and review.selectors runbook steps
 - D-1..D-6 resolved in sections: D-1 sec-4, D-2 sec-4, D-3 sec-4, D-4 sec-2, D-5 sec-5, D-6 sec-3
 - POL-003 table revision (net + slots rows) proposed for reconcile (sec-7)
 
