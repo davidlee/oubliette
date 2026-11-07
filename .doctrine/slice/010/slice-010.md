@@ -37,19 +37,28 @@ Settled in design (DEC-069 to DEC-073):
 1. **The relay unit** (DEC-070, DEC-072). `capsule-model-relay-<n>` runs
    `socat TCP-LISTEN` on `net.host:<port>` to `UNIX-CONNECT:<socket>`, as the
    owner, in the slot's namespace. It is bound to the namespace and the tap,
-   allows only the guest's address, and copies the ssh relay's hardening. The
-   `microvm@` drop-in `wants` it when the slot's door is on.
+   allows only the guest's address, and shares the ssh relay's hardening. The
+   `microvm@` drop-in `wants` it for every slot that declares a door; its
+   `ExecCondition` (`capsule-model-door-open`) reads the override file, else
+   the declared value, and skips the relay when the door is off.
 2. **The declaration** (DEC-069, DEC-071). A slot declares
    `modelDoor = "on" | "off"`, its state at start. An absent field means no
    unit. The host side is an optional `net.modelDoor = {port; socket;}`.
-   Evaluation refuses:
+   Evaluation refuses (`model-door.nix`, each with its reason):
+   - a slot `modelDoor` that is not `"on"` or `"off"`;
    - `modelDoor` on a slot when `net.modelDoor` is absent;
-   - a port equal to `proxyPort` or 22;
-   - a socket path failing `state-dir.nix`'s path refusal.
+   - a port outside 1024–65535, or equal to `proxyPort` or 22;
+   - a socket path failing the host-path predicate (moved out of
+     `state-dir.nix` into `host-path.nix`; `state-dir.nix`'s message is
+     unchanged);
+   - a socket path under `/home`, `/root`, `/run/user`, `/tmp` or `/var/tmp`,
+     which the relay's hardening masks.
 3. **The verb** (DEC-072). `capsule <n> model on|off` is owner-only, like
-   `policy`. It records the override in the live record (`-` means "as
-   declared") and starts or stops the unit. The status table gains a `model`
-   column.
+   `policy`. Under the slot's record lock it writes the override file the
+   condition reads and the live record's `model_door` (`-` means "as
+   declared"), then starts or stops the unit: `off` always stops, `on` starts
+   only a running VM's relay, and a failed step is rolled back. The status
+   table gains a `model` column.
 4. **The guest side is the consumer's** (DEC-073). Inject entries carry the
    gateway key (per `$capsule`, opaque), pi's `models.json`
    (`apiKey: "!cat …"`) and `PI_OFFLINE=1`. The template and the fixture carry
@@ -58,9 +67,13 @@ Settled in design (DEC-069 to DEC-073):
    and Plan F §2 is annotated.
 6. **Tests.**
    - `hostModuleUnits`: the unit exists only for declaring slots, with its
-     hardening, tap binding and one-line `ExecStart` pinned.
-   - Negative cases for each refusal, with the reason asserted.
-   - A cases suite for the verb.
+     hardening, tap binding, condition and one-line `ExecStart` pinned.
+   - `modelDoorCases`: each eval refusal, with the reason asserted;
+     `stateDirCases` unchanged as the regression check on the predicate move.
+   - `policyCases` extended for the verb: its refusals, the record, override
+     and relay moving together, and every rollback.
+   - `modelDoorOpenCases`: the condition program over fixture override files.
+   - `wrapCases`: `CAPSULE_MODEL_DOOR_DIR` survives the wrapper.
    - The user's live run, recorded in `docs/probes.md`.
 
 ## Non-Goals
@@ -81,12 +94,19 @@ Settled in design (DEC-069 to DEC-073):
 
 ## Affected surface
 
+The design's sec-9 is the full code-impact table; this list is the outline.
+
 - `host/services.nix`: the door unit and the `microvm@` drop-in's `wants`.
 - `capsules.nix` / `fleet.nix` (or `policies`): the declaration.
 - `templates/fleet/`: the consumer template's declaration and its inject
   entry.
 - `host/cli.nix`: the `model` verb and the status column.
-- `state-dir.nix`: the reused path refusal (read, not changed, if it fits).
+- `host-path.nix` (new) and `state-dir.nix`: the path predicate moves out;
+  `state-dir.nix`'s message does not change.
+- `model-door.nix` (new): the eval refusals.
+- `host/record.nix`, `host/wrap.nix`, `host/unit-command.nix` (renamed from
+  `proxy-restart.nix`): the verb's record write, the state directory's
+  variable, and one start/stop spelling.
 - `mkfleet.nix`: wiring and the suites in `just build`.
 - `docs/contract-target.md` or a new contract section, if the boundary moves.
 - `docs/plan-f-assistant.md` §2 points at this slice.
