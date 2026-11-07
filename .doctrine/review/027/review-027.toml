@@ -17,12 +17,17 @@ act = "conclude"
 role = "raiser"
 note = "Hostile design pass over SL-010 design.md sec-1 through sec-9, against accepted DEC-069..DEC-073, the full SL-010 scope projection, POL-001..POL-005, STD-001, ADR-001..ADR-003 and CLAUDE.md. Inspected the cited relay/drop-in/tmpfiles/sudoers construction, front-end start/policy/status and control seams, recordWrite ordering, wrapper, proxy command spelling, capsule records, mkFleet/module checks, policyCases, inject and the guest's persistent-home/seed/environment lifecycle, namespace rules, fixture/template and assembled research. Independently checked the installed pi 1.5.0 documentation and the host gateway socket declaration; consulted primary systemd/kernel documentation for lifecycle, filtering, path sandbox and privileged-port semantics. Reproduced the missing environment exports without file writes and illustrated the specified start/off interleaving in memory; the latter is an algorithmic counterexample, not live unit verification. Raised F-1..F-8: one blocker, three major, four minor. Runtime consequences are marked as inference where not exercised. No Nix builds, live unit/network changes, credential access or file edits outside doctrine review verbs were performed. Pass concluded; findings remain open for the responder."
 
+[[review.turn]]
+act = "conclude"
+role = "raiser"
+note = "Follow-up raiser pass against commit 51de6e0 / unchanged HEAD: independently compared each of the eight responses with revised design.md, corrected research and DEC-073 projections, and the cited shipped record, CLI lifecycle/setup/reset/inject/transport, policyCases, guest HOME/reset/environment, relay-hardening and namespace code. Design-level repairs F-1, F-2, F-5, F-6, F-7 and F-8 accepted/verified with explicit limits in their notes. F-3 contested as partly repaired: repurpose does not automatically reset HOME, ordinary reset-home does not scrub .env, and it reinjects HOME payloads immediately. F-4 contested as partly repaired: rollback seams improved, but actual start/lock/VM-request composition is still outside the promised cases and commit-failure expectations conflict. Raised only revision-exposed F-9 (major): the new declared-change criterion fails for an already-running VM/relay because rendering off does not stop an already-active relay. Re-ran the export child-process probe successfully without file writes; consulted primary systemd documentation for F-9. This pass establishes design/source adjudication, not implementation, suite, build, integration, or runtime proof. No Nix builds, live guest/unit/network changes, credential reads or file edits outside doctrine review verbs. Pass concluded; F-3/F-4 await amended responses and F-9 awaits disposition."
+
 [target]                   # the outbound `reviews` edge: RV-NNN ──reviews──▶ <ref>
 ref   = "SL-010"
 
 [[finding]]
 id = "F-1"
-status = "answered"
+status = "verified"
 severity = "blocker"
 title = "A completed model off can be overwritten by a concurrent start"
 detail = """
@@ -64,9 +69,14 @@ Probe. Must hold against: two front-end commands by the owner on one slot, start
 Criterion: deterministic cases in the front-end suite, through the injected unit-control seam (F-4), that drive each interleaving by pausing one command at its lock boundary, and assert the end state never has record off with relay running. Host phase constraint: needs the unit-control seam and the shared render function to exist first.
 """
 
+[[finding.turn]]
+act = "verify"
+role = "raiser"
+note = "VERIFIED at the design-repair scope requested for this follow-up, against 51de6e0 and current source. Revised design.md:242-248,269-282,315-328 resolves the effective value while holding the same per-slot record lock used by the model verb, releases it before requesting the VM, and makes off stop the relay regardless of VM state. Rechecking the original schedules: off before the locked start render makes start read the committed off; off after that render overwrites the bit before any later activation reads it; off after the relay passed ExecCondition stops/cancels that activation. The old not-active-VMM escape no longer applies. Compared with the real lock/commit boundary in host/record.nix:93-146 and lifecycle in host/cli.nix:2070-2151. This accepts the revised protocol, not implemented/running code: the probe/control execution remains future work, and F-4 separately contests whether the promised start-composition cases can be reached. The newly exposed repeated-start/default-change case is distinct and will be raised separately."
+
 [[finding]]
 id = "F-2"
-status = "answered"
+status = "verified"
 severity = "major"
 title = "The record hook can open the relay before a record commit that subsequently fails"
 detail = """
@@ -108,6 +118,11 @@ Probe. Must hold against: any step of the record commit failing after the hook s
 Criterion: cases that make the candidate write fail (unwritable record directory) and the mv fail, and assert that a failed on leaves the bit and the relay as they were, and a failed off leaves the relay stopped. Host phase constraint: lands with or after the record.nix reordering.
 """
 
+[[finding.turn]]
+act = "verify"
+role = "raiser"
+note = "VERIFIED as a design repair, not implementation proof. Compared the actual recordWrite order (host/record.nix:99-105,131-145) with revised design.md:318-341 and code-impact :651. The revision prepares/transforms/writes the candidate before recordAlso, then supplies an explicit recordUndo for a failed final rename. For the original old-record-off -> requested-on -> rename-failure scenario, undo restores the old off/absent bit and stops the relay. It also explicitly reports failed compensation as unknown rather than claiming nothing moved. The acknowledged absence of policy-verb undo is outside the new model-door contract; preparing its candidate first narrows the existing exposure without pretending to close it. The proposed record implementation and fault-injection cases do not exist yet and were not run. F-4's test-plan contest includes the need to distinguish no-effects candidate failures from post-hook rename failures and to state fail-closed versus exact-restoration expectations consistently."
+
 [[finding]]
 id = "F-3"
 status = "answered"
@@ -124,9 +139,9 @@ Repair while retaining DEC-073's consumer ownership and unchanged guest code: do
 disposition = "design-wrong"
 route = "refresh"
 response = """
-Verified, and it defeats a claim I made. vm/capsule.nix 44-46 puts HOME on the volume and says it survives reboots; the reset is the host's volume reset-home verb over the admin door (vm/capsule.nix 51-72, host/cli.nix 202-211), not a step of every start; inject skips an existing dest without --force (host/inject.nix 127-135). Research row 4 in Thread 2 was marked verified and conflated scrub membership with scrub execution.
+Contest accepted; verified at host/cli.nix 2483-2484 (a repurpose is not a reset), 2244-2266 (reset-home calls guestResetHome without the scrub flag and re-injects at once), vm/reset-home.nix 85-89 (the scrub paths, .env among them, go only under the scrub flag), host/cli.nix 787-806 (the scrub runs only on a clone marker), and host/guest-ssh.nix 90-115 (bare capsule-inject needs a name).
 
-Refresh. The code is right; the records are wrong. Edits: design sec-5 states the real lifecycle (a payload lands once, at the first start after the volume is new or HOME is reset; a re-issued key or a changed models.json reaches the guest by capsule-inject with --force for that payload; a repurpose's volume reset-home removes both). sec-6's live sequence gains a two-start, changed-payload leg that tells preservation from replacement. research.md's row is corrected in place with a note. Records citing the false premise, swept: DEC-073's rationale (a HOME dest is reset and re-injected every start) and the slice notes. DEC-073's choice is unaffected; its rationale is corrected, and the user is told.
+Refresh, second sweep. sec-5 now carries a table by event: start, re-assignment by setup, volume reset-home, a clone's first inject, and inject with force, each split into the payloads under HOME and .env outside it, with the citations above. Refresh commands are written as capsule n inject name --force, which names the slot through the front end. The live legs use the same form. DEC-073's rationale is corrected again to say HOME persists across starts and re-assignments, and is replaced by reset-home (which re-injects at once), a clone scrub, or a forced inject. The research row says only what the code does and needs no further change. The slot-owned key decision is unchanged: a re-assignment keeps HOME, so the key stays the slot's.
 """
 
 [[finding.turn]]
@@ -142,6 +157,27 @@ response = """
 Verified, and it defeats a claim I made. vm/capsule.nix 44-46 puts HOME on the volume and says it survives reboots; the reset is the host's volume reset-home verb over the admin door (vm/capsule.nix 51-72, host/cli.nix 202-211), not a step of every start; inject skips an existing dest without --force (host/inject.nix 127-135). Research row 4 in Thread 2 was marked verified and conflated scrub membership with scrub execution.
 
 Refresh. The code is right; the records are wrong. Edits: design sec-5 states the real lifecycle (a payload lands once, at the first start after the volume is new or HOME is reset; a re-issued key or a changed models.json reaches the guest by capsule-inject with --force for that payload; a repurpose's volume reset-home removes both). sec-6's live sequence gains a two-start, changed-payload leg that tells preservation from replacement. research.md's row is corrected in place with a note. Records citing the false premise, swept: DEC-073's rationale (a HOME dest is reset and re-injected every start) and the slice notes. DEC-073's choice is unaffected; its rationale is corrected, and the user is told.
+"""
+
+[[finding.turn]]
+act = "contest"
+role = "raiser"
+note = """
+PARTLY REPAIRED; CONTEST the remaining lifecycle claims. The main every-start premise is corrected in design.md:391-403, research.md:146-154,219-222, and DEC-073's show projection. Explicit --force refresh and persisted settings are now correctly described. But the replacement assertion that a repurpose runs volume reset-home (design.md:395,404 and DEC-073 rationale) is false against the shipped code: setup ends with provisionSlot, work inject and optional baseline (host/cli.nix:2512-2527); it does not reset HOME. Its own refusal says 'A repurpose is still not a reset' (:2483-2484). scrubPending is conditional on a cloned-volume marker (:787-806), not a general repurpose reset.
+
+There is a second concrete mismatch in the new table: volume reset-home does NOT remove all three payloads. host/cli.nix:2261 calls guestResetHome without --scrub; vm/reset-home.nix:85-89,129-143 deletes HOME but removes scrubPaths (including volumePath/.env) only under --scrub. The .env is outside HOME, and the immediately following work inject (host/cli.nix:2266) skips that existing file. Keys/models under HOME are re-injected by that same command, rather than waiting for a next start.
+
+Correct the design and corrected DEC rationale to distinguish reassignment, explicit HOME reset, and clone scrubbing, keeping the slot-owned-key decision intact. Use named-slot executable refresh examples (capsule <n> inject gateway-key --force, or capsule-inject --capsule <n> ...) in the new lifecycle/live instructions; bare capsule-inject refuses when CAPSULE_NAME is unset (host/guest-ssh.nix:90-115). Source inspection establishes these discrepancies; no guest reset, credential access, or live refresh was performed."""
+
+[[finding.turn]]
+act = "dispose"
+role = "responder"
+disposition = "design-wrong"
+route = "refresh"
+response = """
+Contest accepted; verified at host/cli.nix 2483-2484 (a repurpose is not a reset), 2244-2266 (reset-home calls guestResetHome without the scrub flag and re-injects at once), vm/reset-home.nix 85-89 (the scrub paths, .env among them, go only under the scrub flag), host/cli.nix 787-806 (the scrub runs only on a clone marker), and host/guest-ssh.nix 90-115 (bare capsule-inject needs a name).
+
+Refresh, second sweep. sec-5 now carries a table by event: start, re-assignment by setup, volume reset-home, a clone's first inject, and inject with force, each split into the payloads under HOME and .env outside it, with the citations above. Refresh commands are written as capsule n inject name --force, which names the slot through the front end. The live legs use the same form. DEC-073's rationale is corrected again to say HOME persists across starts and re-assignments, and is replaced by reset-home (which re-injects at once), a clone scrub, or a forced inject. The research row says only what the code does and needs no further change. The slot-owned key decision is unchanged: a re-assignment keeps HOME, so the key stays the slot's.
 """
 
 [[finding]]
@@ -160,13 +196,11 @@ Repair: extend or generalize the existing injected control seam for relay comman
 disposition = "fix-now"
 route = "control"
 response = """
-Verified, and it defeats a claim I made: sec-6 said the running-VM branch is unreachable, but host/cli.nix 214-238 takes proxyControl as an argument precisely so policyCases (host/policy-cases.nix 103-118) can drive the running proxy and its rollback, and volumeControl already injects vmmState (host/cli.nix 117-129).
+Contest accepted on both points, and the first is resolved by removing what it tested rather than by adding a seam.
 
-Design change: proxyControl generalises to unitControl, with unitActive and unitDo verb unit, the latter spelled by host/unit-command.nix; the model hook reads the VM's state through vmmState. policyCases supplies both. sec-6 drops the unreachable claim.
+Start's call site: the revision drops the start-time render entirely (sec-4, which also answers F-9). The declared value now sits in the relay unit's text as an argument to its ExecCondition, and only an override is a file, written only by the model verb under the record lock. Start writes nothing about the door, so there is no start composition, lock or ordering left to drive. The verb's interleaving with a VM start is between the verb and systemd's activation, and the verb's part of it (off always writes and then stops, whatever vmmState says; on starts only when vmmState is running; an activating VM gets a stop on off and no start on on) runs through the unitControl and vmmState seams in policyCases. The condition program is new and has its own suite, modelDoorOpenCases, over its shipped text, one row per input state.
 
-Control. Concrete incorrect candidates the cases must reject: a hook that does not restore the previous bit when the relay stop fails; a hook that restores to on when the previous file was absent rather than removing it; an off that skips the stop because vmmState says inactive. Each is built as a mutation of the shipped hook and must turn its round red.
-
-Partly contested: a start-path seam. The start verb's own systemctl calls are not behind a seam, and adding one for the whole start is beyond this finding's need. The start-time render is the same function the hook calls, so cases reach it through the verb; the start's single call site is covered by the live run (a declared-value change followed by a front-end start). Host phase constraint: the seam lands before the verb's cases.
+Criterion contradiction: fixed. sec-4 now has an undo table by request and starting state. A failed candidate write is before the hook, so nothing moves. A failed mv runs recordUndo, which restores the previous override and always stops the relay, so on from relay up ends fail-closed with record and relay disagreeing until on is run again. This is stated as the intended outcome, not as leaving things as they were. sec-6's rounds assert each row from its stated starting state, and the mutation list adds an undo that restores the relay to up.
 """
 
 [[finding.turn]]
@@ -188,9 +222,34 @@ Control. Concrete incorrect candidates the cases must reject: a hook that does n
 Partly contested: a start-path seam. The start verb's own systemctl calls are not behind a seam, and adding one for the whole start is beyond this finding's need. The start-time render is the same function the hook calls, so cases reach it through the verb; the start's single call site is covered by the live run (a declared-value change followed by a front-end start). Host phase constraint: the seam lands before the verb's cases.
 """
 
+[[finding.turn]]
+act = "contest"
+role = "raiser"
+note = """
+PARTLY REPAIRED; CONTEST the unresolved composition/criterion gap. Generalizing proxyControl to unitControl and using existing vmmState is the right repair for running-unit/rollback cases (design.md:354-360,510-523; actual seams host/cli.nix:117-129,214-238 and host/policy-cases.nix:103-118,426-450). I accept that part.
+
+The same revised document nevertheless promises actual start/model interleavings through policyCases (design.md:471,527-530), mutation-checking a render moved outside the lock (:534-537), while explicitly leaving start's systemctl path un-substituted and its render CALL SITE outside the cases (:539-540). Testing renderModelDoor through the model hook cannot establish that start calls it at all, calls it inside the lock, or orders the VM request after it. Removing/moving that call only in start leaves those hook-based cases green. The real start still crosses direct systemctl and sudo operations (host/cli.nix:2106-2119), so the response has not supplied a way to drive the two shipped command paths as promised. The new sequential live leg 9 is not a deterministic concurrency/mutation check.
+
+There is also a contradiction in the new commit-failure criterion (:524-526): an unwritable candidate fails BEFORE the reordered hook (:334-339), whereas recordUndo after failed mv always stops the relay (:329-332). Thus an on requested when the relay was already on cannot both leave the relay 'as it was' and always stop it. State the initial states and expected safe outcomes separately.
+
+Repair the criterion and provide a bounded seam/extracted shipped composition for the start/lock/VM-request interaction, or explicitly assign an equally discriminating executable instrument. This does not require substituting unrelated guest injection or every lifecycle step. Do not present testing the shared render in another caller as evidence for the start caller's locking/order. No suites or builds were run."""
+
+[[finding.turn]]
+act = "dispose"
+role = "responder"
+disposition = "fix-now"
+route = "control"
+response = """
+Contest accepted on both points, and the first is resolved by removing what it tested rather than by adding a seam.
+
+Start's call site: the revision drops the start-time render entirely (sec-4, which also answers F-9). The declared value now sits in the relay unit's text as an argument to its ExecCondition, and only an override is a file, written only by the model verb under the record lock. Start writes nothing about the door, so there is no start composition, lock or ordering left to drive. The verb's interleaving with a VM start is between the verb and systemd's activation, and the verb's part of it (off always writes and then stops, whatever vmmState says; on starts only when vmmState is running; an activating VM gets a stop on off and no start on on) runs through the unitControl and vmmState seams in policyCases. The condition program is new and has its own suite, modelDoorOpenCases, over its shipped text, one row per input state.
+
+Criterion contradiction: fixed. sec-4 now has an undo table by request and starting state. A failed candidate write is before the hook, so nothing moves. A failed mv runs recordUndo, which restores the previous override and always stops the relay, so on from relay up ends fail-closed with record and relay disagreeing until on is run again. This is stated as the intended outcome, not as leaving things as they were. sec-6's rounds assert each row from its stated starting state, and the mutation list adds an undo that restores the relay to up.
+"""
+
 [[finding]]
 id = "F-5"
-status = "answered"
+status = "verified"
 severity = "minor"
 title = "The pi environment example does not export its offline controls"
 detail = """
@@ -218,9 +277,14 @@ response = """
 Verified: vm/capsule.nix 294-297 sources .env with a plain dot, and its own MOTD example uses export. The raiser's reproduction stands. sec-5 shows export for all three lines and states the boundary: .env is read by interactive login shells only (programs.bash.interactiveShellInit), so a non-interactive launcher, such as a quotient worker started over ssh, must source it or set the variables itself. The live run checks the variables at pi's actual launch.
 """
 
+[[finding.turn]]
+act = "verify"
+role = "raiser"
+note = "VERIFIED as a design/example repair. design.md:432-433 now exports all three variables; :447-450 correctly identifies programs.bash.interactiveShellInit as an interactive-shell boundary and requires an actual noninteractive launcher to supply/source them. Compared against vm/capsule.nix:294-297. Re-ran the earlier no-file-write child-process probe using the revised export: the child received PI_OFFLINE=1 PI_SKIP_VERSION_CHECK=1 PI_TELEMETRY=0. The proposed live criterion (:557-558) checks the actual pi process environment as well as a request. This verifies shell-export behavior and the revised obligation, not a guest or quotient launch."
+
 [[finding]]
 id = "F-6"
-status = "answered"
+status = "verified"
 severity = "minor"
 title = "The accepted port range includes ports the capability-free owner cannot bind"
 detail = """
@@ -248,9 +312,14 @@ response = """
 Verified: the relay inherits an empty capability bounding set and nothing lowers ip_unprivileged_port_start (no such setting in the tree). model-door.nix refuses ports below 1024, replacing the 1-65535 range check, with a negative case for 443.
 """
 
+[[finding.turn]]
+act = "verify"
+role = "raiser"
+note = "VERIFIED at design scope. design.md:86-91 now requires an integer in 1024-65535 and explains the capability-free binding constraint; :494-498 includes the rejected 443 case and reason assertions. This agrees with the still-empty capability sets in host/services.nix:362-363, unlike the previous accepted range starting at 1. The new validator/cases remain planned; no Nix evaluation/build or privileged-port bind was performed."
+
 [[finding]]
 id = "F-7"
-status = "answered"
+status = "verified"
 severity = "minor"
 title = "Socket validation accepts endpoints hidden by the shared relay sandbox"
 detail = """
@@ -278,9 +347,14 @@ response = """
 Verified: the shared hardening includes ProtectHome tmpfs and PrivateTmp (host/services.nix 364-366). model-door.nix refuses a socket under /home, /root, /run/user, /tmp or /var/tmp, with a reason naming the masking setting; negative cases for each. The modelDoorDir option fails closed when masked, and its description says it must sit outside those trees.
 """
 
+[[finding.turn]]
+act = "verify"
+role = "raiser"
+note = "VERIFIED at design scope. design.md:92-96 supplements the lexical predicate with a refusal for all five masked trees identified in the finding, and :494-498 requires corresponding negative cases/reasons. Compared against the inherited ProtectHome=tmpfs and PrivateTmp=true in host/services.nix:364-366. design.md:252-254 also documents the same visibility constraint for configurable modelDoorDir and its fail-closed consequence. The intended /run/llm-gateway-client endpoint remains outside those trees. This is acceptance of the revised endpoint contract; no mount sandbox or new validator was executed."
+
 [[finding]]
 id = "F-8"
-status = "answered"
+status = "verified"
 severity = "minor"
 title = "The live denial leg cannot verify the claimed guest-only listener restriction"
 detail = """
@@ -304,6 +378,51 @@ role = "responder"
 disposition = "fix-now"
 response = """
 Accepted: a refusal on another port shows no listener there, not that the source filter works. sec-6's live sequence gains a leg against the same door from a non-guest source: from the slot namespace itself (source net.host) the door must refuse, with a positive control that a throwaway listener on net.host at another port in the same namespace accepts the same client, so the path is viable and the refusal is the filter. The another-port leg stays with its narrower meaning. If IP filtering is unsupported on the host, the negative leg goes red, which is the detection; the module does not try to detect eBPF support.
+"""
+
+[[finding.turn]]
+act = "verify"
+role = "raiser"
+note = "VERIFIED as a correction of the verification design. design.md:547-556 now pairs the guest success/authentication legs with a request to the SAME model door from the namespace's non-guest address, plus a throwaway-listener positive control for that client's path. It separately narrows the another-port observation to absence of a listener. Rechecked host/netns.nix:259-262 and host/services.nix:379-380: that distinction is needed because the namespace INPUT rule does not provide the unit's source filter. The response explicitly uses the live negative leg to detect unsupported eBPF filtering and does not claim an automatic module refusal. This accepts the revised evidence criterion; no eBPF, network, namespace, or authentication checks were performed."
+
+[[finding]]
+id = "F-9"
+status = "answered"
+severity = "major"
+title = "The new declared-change live test leaves an already-running door open"
+detail = """
+Revision-exposed defect: the new live criterion added by 51de6e0 (.doctrine/slice/010/design.md:567-569) says change the declaration from on to off, rebuild, then invoke capsule <n> start and observe a refused door. It does not require stopping the VM first, and sec-4:255-260 claims rendering closes the door for every front-end start.
+
+The revised mechanism only renders the bit under the record lock, releases it, and requests the VM (:269-272). It does not stop/reconcile a running relay on this start path. Only the model verb's off branch does that (:273-277,318-323). ExecCondition is evaluated during relay activation (:146), not continuously.
+
+Counterexample (source/documentation inference, not a live reproduction): take a VM and its relay both already running from declared on, with no record override. Change only the declaration to off. Both values declare the same relay and Wants graph (:132-154,195-202), and its unit text does not embed that initial value; the seed is still create-if-absent (:242-244). An ordinary rebuild therefore need not stop either active unit. The front-end start writes off, but its existing lifecycle code issues systemctl start, not restart (host/cli.nix:2106-2119; choose the normal NeedDaemonReload=no path). Starting already-active services leaves them active, so the relay does not re-run ExecCondition and continues accepting requests. See systemd's activation/no-op semantics: https://www.freedesktop.org/software/systemd/man/latest/systemd.service.html#Examples and ExecCondition documentation on the same page. The test's promised refusal does not follow, even though the command uses the front end. This is distinct from F-1's concurrent model-off race: no model command or overlapping operation is needed.
+
+Repair: either make an accepted front-end start reconcile a running relay with the rendered effective state, or explicitly require/refuse until a stopped-to-start transition and narrow the guarantee/live criterion accordingly. Include the already-running initial state when testing the chosen behavior. Naming only the bare-systemctl stale-render residual does not cover this case."""
+disposition = "design-wrong"
+route = "review"
+response = """
+Verified by reading: start's systemctl start (host/cli.nix 2106-2119) does not re-run an active unit's condition, so the render-then-start design left a running relay open after a declared on to off change. The finding stands.
+
+Design change (sec-4, sec-6). The render is gone. The relay's ExecCondition is capsule-model-door-open with two arguments: the slot's declared value and its override file. The program honours an override if there is one, and otherwise the declaration. A declared change changes the unit's text, so a NixOS switch restarts the active relay (restartIfChanged, default true), and the condition then skips it: the door closes at the switch, with no VM restart and no front-end step. The opposite change, off to on, is not relied on to open a running slot's door at the switch. It opens at the verb or the next VM start, which is fail-closed and stated in sec-8. ISS-029 no longer covers the door, and it says so.
+
+Live leg 9 is replaced. With the VM and relay up and no override, switch the declaration from on to off: the door is refused with no VM restart. Then model on opens it, and switching back to on leaves the override in charge. The switch behaviour is inference until that leg runs, and sec-8 says so.
+"""
+
+[[finding.turn]]
+act = "raise"
+role = "raiser"
+
+[[finding.turn]]
+act = "dispose"
+role = "responder"
+disposition = "design-wrong"
+route = "review"
+response = """
+Verified by reading: start's systemctl start (host/cli.nix 2106-2119) does not re-run an active unit's condition, so the render-then-start design left a running relay open after a declared on to off change. The finding stands.
+
+Design change (sec-4, sec-6). The render is gone. The relay's ExecCondition is capsule-model-door-open with two arguments: the slot's declared value and its override file. The program honours an override if there is one, and otherwise the declaration. A declared change changes the unit's text, so a NixOS switch restarts the active relay (restartIfChanged, default true), and the condition then skips it: the door closes at the switch, with no VM restart and no front-end step. The opposite change, off to on, is not relied on to open a running slot's door at the switch. It opens at the verb or the next VM start, which is fail-closed and stated in sec-8. ISS-029 no longer covers the door, and it says so.
+
+Live leg 9 is replaced. With the VM and relay up and no override, switch the declaration from on to off: the door is refused with no VM restart. Then model on opens it, and switching back to on leaves the override in charge. The switch behaviour is inference until that leg runs, and sec-8 says so.
 """
 
 # Findings are append-only `[[finding]]` tables, added by `review raise`.

@@ -14,10 +14,11 @@ points at the old policy after rebuild and reboot. `capsule <n> policy` with no
 argument then prints the new declared value (`effectivePolicy`) while the proxy
 serves the old one.
 
-SL-010's model door state file (`f`, create if absent) has the same shape. The
-design closes it for starts through the front end by re-rendering the
-effective value at `capsule <n> start`, and leaves the residual for a bare
-`systemctl start microvm@<n>`. The policy link has no re-render at all.
+SL-010 first gave its model door the same shape (a create-if-absent seed),
+then dropped it after RV-027 F-9: the door's declared value now sits in the
+relay unit's text and only an override is a file, so a switch restarts a
+changed relay. That shape is the candidate fix here too, if a link's target
+can be put in the proxy unit's text without the proxy reading the record.
 
 Candidate fix: the front end re-renders both at `start`, or an activation step
 re-renders every slot whose record holds no override. When the declared policy

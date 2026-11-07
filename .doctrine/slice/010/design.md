@@ -143,7 +143,7 @@ modelRelayServices = lib.listToAttrs (map (c: {
     bindsTo = [(netnsUnit c) (tapUnit c)];
     after   = [(netnsUnit c) (tapUnit c)];
     serviceConfig = {
-      ExecCondition = "${pkgs.gnugrep}/bin/grep -qx on ${modelDoorOf c}";   # sec-4
+      ExecCondition = "${lib.getExe modelDoorOpen} ${c.modelDoor} ${overrideOf c}";   # sec-4
       ExecStart = "${pkgs.socat}/bin/socat TCP-LISTEN:${toString net.modelDoor.port},bind=${net.host},fork,reuseaddr,nodelay UNIX-CONNECT:${net.modelDoor.socket}";
       User = cfg.owner;
       NetworkNamespacePath = netns.nsPath c.ns;
@@ -215,88 +215,102 @@ slice. The user rebuilds `~/flakes` and `/srv/fleet`; nothing here does.
 <!-- doctrine:section sec-4 -->
 ## Run-time state, the verb and status (`DEC-069`, `DEC-072`)
 
-### D-1 resolved: the unit reads one rendered bit, the front end resolves it
+### D-1 resolved: the declaration is in the unit, the override is in a file
 
 A static `wants` alone would bring an `off` slot's door back at its next VM
-start. So the decision of whether the relay *runs* is read at start, from a
-file the unit can reach — the allowlist link's arrangement
-(`host/services.nix`'s `allowlistDir`), one bit instead of a symlink:
+start. So whether the relay *runs* is decided when it activates, by its
+`ExecCondition`. The condition reads two things:
+
+- **the declared value**, in the unit's own text, as an argument;
+- **an override**, in a file the verb writes. It sits in its own directory
+  beside the allowlist links (`host/services.nix`'s `allowlistDir`), for the
+  same reason: the unit can reach it and cannot reach the record.
 
 ```
-/var/lib/capsule-model-door/            0755 owner:users   (new option modelDoorDir)
-  a                                     "on\n" | "off\n"   0644 owner:users
+/var/lib/capsule-model-door/       0755 owner:users   (new option modelDoorDir; tmpfiles d)
+  a                                "on\n" | "off\n"   0644 owner:users, only once the verb has run
+```
+
+The condition is a small shipped program, `capsule-model-door-open
+<declared> <override-file>`:
+
+```bash
+if [ -e "$2" ]; then exec grep -qx on -- "$2"; fi   # an override decides
+[ "$1" = on ]                                       # otherwise the declaration
 ```
 
 ```mermaid
 stateDiagram-v2
-  [*] --> seeded: tmpfiles f (create if absent) = declared value
-  seeded --> rendered: capsule n start / capsule n model on|off
-  rendered --> rendered: same
-  state "microvm@n starts" as boot
-  rendered --> boot
-  seeded --> boot
-  boot --> running: ExecCondition reads on
-  boot --> skipped: ExecCondition reads off, or file missing
+  state "microvm@n starts, or a switch restarts the relay" as act
+  [*] --> act
+  act --> running: override says on, or no override and declared on
+  act --> skipped: override says off, or is unreadable, or no override and declared off
 ```
 
-- **Who writes it.** tmpfiles `f <modelDoorDir>/<n> 0644 owner users - <declared>`
-  seeds it once (create-if-absent, so an override survives a reboot, as the
-  allowlist link's `L` does). After that, only the front end writes it, and
-  only through one function, `renderModelDoor <n> <value>`, always under the
-  slot's record lock. The value is the record's `model_door` override, else
-  the declared value. The function is called by `capsule <n> model on|off` and
-  at every `capsule <n> start`.
-- **Who reads it.** Only the relay's `ExecCondition`, which resolves nothing:
-  `grep -qx on`. A missing or unreadable file skips the unit, so the absent
-  path is closed. A skipped condition leaves the unit `inactive`, not `failed`,
-  and `Restart=on-failure` does not fire. The `modelDoorDir` option must sit
-  outside the trees the hardening masks (sec-2's refusal 5); if it does not,
-  the relay never runs, which is fail-closed.
-- **Why the front end also renders at start.** A seed that is create-if-absent
-  never learns that the operator changed a slot's declared value from `on` to
-  `off`. Without a re-render that slot keeps its door, which is the fail-open
-  direction. Rendering at `start` closes it for every start through the front
-  end. **Residual, stated:** a bare `systemctl start microvm@<n>` after such a
-  change, with no front-end start since, reads the stale render. The policy
-  link has the same residual today (ISS-029).
+- **Who writes the override.** Only `capsule <n> model on|off`, under the
+  slot's record lock, together with the record's `model_door` field. Nothing
+  seeds it, and `start` does not touch it.
+- **A declared change reaches a running relay.** The declared value is part
+  of the unit's text, so changing it in `capsules.nix` changes the unit, and a
+  NixOS switch restarts an active unit whose text changed (`restartIfChanged`,
+  default true). The restarted relay re-runs its condition. An `on` → `off`
+  change with no override therefore closes the door at the switch, with no VM
+  restart and no front-end step. The other direction, `off` → `on`, is not
+  relied on to start the relay at the switch. A skipped relay is inactive,
+  and whether the switch starts it is not pinned here. `capsule <n> model on`
+  or the next VM start opens it. Both claims are inference from NixOS's switch
+  behaviour, and live leg 9 checks the first.
+- **An override outlives a declared change.** That is what makes it an
+  override. The record shows it, and `capsule <n> model` prints it.
+- **Fail-closed edges.** An override that exists but cannot be read, or holds
+  anything but `on`, skips the relay. If `modelDoorDir` sits under a tree the
+  hardening masks (sec-2's refusal 5), an override cannot be seen, and the
+  declared value alone decides. That case is an option misconfiguration, and
+  the option's description says it.
 
-### Start and the verb, run at once
+**Two copies of one rule, stated.** "An override if there is one, else the
+declaration" is read twice: by the front end from the record, to print the
+effective state, and by the condition from the file. The two can agree only
+because the verb writes both under one lock, with `policy`'s
+record-and-link discipline. Resolution here means choosing between two values
+the operator and the owner each declared. No program picks a target or a slot
+from host state, which is what `POL-003` forbids (NOTES item 20). The
+condition is a program that takes as arguments the things that tie it to this
+host, so a suite runs its shipped text against a fixture file (sec-6).
 
-The owner can run `capsule <n> start` and `capsule <n> model off` at the same
-time. Neither may leave a running relay under a record that says `off`. Three
-rules ensure that:
+**ISS-029 no longer applies to the door.** A bare `systemctl start
+microvm@<n>` reads the same unit text and the same file as a front-end start.
+The policy link keeps that residual.
 
-1. **Start renders under the lock, then starts.** `start` takes the record
-   lock, renders the effective value, releases the lock, and then asks for
-   the VM. So whichever of the two commands writes the bit last under the lock
-   decides it.
-2. **`off` always stops.** It writes the bit, then runs
+### The verb and a VM start, run at once
+
+The owner can run `capsule <n> model off` while the VM is starting. That must
+not leave a running relay under a record that says `off`. `start` writes
+nothing here, so the verb is the only writer, and two rules cover it:
+
+1. **`off` always stops.** It writes the override, then runs
    `stop capsule-model-relay-<n>` whatever the VM is doing. Stopping an
    inactive unit does nothing, and stopping an activating one cancels it. So
-   `off` does not depend on reading the VM's state, and a relay that passed
-   its `ExecCondition` just before the write is stopped anyway.
-3. **`on` starts only a running VM's relay.** It writes the bit, then starts
-   the relay only when `vmmState` says the VM is `running`. Starting it
+   `off` never depends on reading the VM's state, and a relay that passed its
+   condition just before the write is stopped anyway.
+2. **`on` starts only a running VM's relay.** It writes the override, then
+   starts the relay only when `vmmState` says the VM is `running`. Starting it
    otherwise would pull its `bindsTo` tap and namespace up with no VM. If `on`
-   races a VM start, the relay may already have read the old `off` and stayed
-   down. That is fail-closed, and running `on` again fixes it.
+   races a VM start, the relay may already have read `off` and stayed down.
+   That is fail-closed, and running `on` again fixes it.
 
 ```mermaid
 sequenceDiagram
-  participant S as capsule n start
-  participant L as record lock
-  participant M as capsule n model off
+  participant V as microvm@n (starting)
   participant R as relay unit
-  S->>L: take, render (on), release
-  M->>L: take, write off, record off
-  M->>R: stop (no-op or cancels)
-  M->>L: release
-  S->>S: systemctl start microvm@n
-  Note over R: wants → ExecCondition reads off → skipped
+  participant M as capsule n model off
+  V->>R: wants → activation begins
+  R->>R: ExecCondition reads "on" (old override)
+  M->>M: lock, write override off
+  M->>R: stop (cancels the activation, or stops the running relay)
+  M->>M: write record off, unlock
+  Note over R: inactive; the next activation reads off
 ```
-
-Resolution stays the front end's act (`POL-003`); the unit only reads what it
-was told, as the proxy reads only its link.
 
 ### The verb: `capsule <n> model [on|off]` (D-2)
 
@@ -316,20 +330,31 @@ The verb's work happens in two hooks that `recordWrite` calls under the
 record's lock:
 
 - **`recordAlso`**, before the record is committed:
-  1. remember the bit's previous content, or that there was no file, and call
-     `renderModelDoor`;
+  1. remember the override's previous content, or that there was no file, and
+     write the new value;
   2. `off`: `unitDo stop capsule-model-relay-<n>`. `on`: if `vmmState` is
      `running`, `unitDo start capsule-model-relay-<n>`; otherwise done, since
-     the next start reads the bit;
+     the next start reads the override;
   3. if the unit command fails: put the previous content back (or remove the
      file if there was none) and return 1. `recordWrite` then writes no
      record, and the refusal says the door did not move. The `off` case is
      why: a record saying `off` over a running door is fail-open (NOTES item
      41's rule for the proxy).
-- **`recordUndo`** (new, optional), only when the commit fails after
-  `recordAlso` succeeded. It puts the previous bit back and stops the relay,
-  which is fail-closed whichever way the selection went. If the undo itself
-  fails, the refusal names the slot and says the door's state is unknown.
+- **`recordUndo`** (new, optional), only when the final `mv` fails after
+  `recordAlso` succeeded. It puts the previous override back, or removes the
+  file if there was none, and then stops the relay. The record still holds its
+  previous value. Outcomes by starting state:
+
+  | request | before | after a failed `mv` |
+  |---|---|---|
+  | `on` | relay down | override as before, relay down: nothing changed |
+  | `on` | relay up | override as before, relay **down**: fail-closed, and the record and the relay disagree until `on` is run again |
+  | `off` | relay up | override as before, relay down: fail-closed, the same disagreement |
+  | `off` | relay down | override as before, relay down: nothing changed |
+
+  Stopping always, rather than restoring the relay's previous state, keeps
+  the undo from ever opening a door. If the undo itself fails, the refusal
+  names the slot and says the door's state is unknown.
 
 **`recordWrite`'s order changes to make that one step** (`host/record.nix`).
 Today it calls the hook before reading and transforming the record, so a
@@ -390,18 +415,29 @@ payloads.
 
 **When a payload lands.** `$HOME` is on the volume and survives reboots
 (`vm/capsule.nix:44-46`). `capsule <n> start` runs inject, which writes a
-payload only if its `dest` is absent (`host/inject.nix:127-135`). So the key and
-`models.json` land once: at the first start on a new volume, or the first
-start after `capsule <n> volume reset-home`, which a repurpose runs. After
-that a start leaves them alone:
+payload only if its `dest` is absent (`host/inject.nix:127-135`). So each
+payload lands once, and three different events can replace it:
 
-| change on the host | how it reaches the guest |
+| event | key and `models.json` (under `$HOME`) | `.env` (outside `$HOME`) |
+|---|---|---|
+| `capsule <n> start` | kept | kept |
+| `capsule <n> setup <ref>`, a re-assignment | kept: a repurpose is not a reset (`host/cli.nix:2483-2484`) | kept |
+| `capsule <n> volume reset-home` | removed with `$HOME`, then injected fresh by the same command (`host/cli.nix:2261-2266`) | kept: the reset runs without `--scrub` (`vm/reset-home.nix:85-89`), and the inject after it skips the existing file |
+| a cloned volume's first inject | removed by the scrub the clone marker triggers (`host/cli.nix:787-806`), then injected | removed by the same scrub, then injected |
+| `capsule <n> inject <name> --force` | replaced | replaced |
+
+So a host-side change reaches the guest like this:
+
+| change on the host | what to run |
 |---|---|
-| a re-issued or rotated key | `capsule-inject gateway-key --force` for that slot |
-| a changed `models.json` (new model ids, a new port) | `capsule-inject pi-models --force` |
-| a changed `.env` | `capsule-inject env --force` |
-| a revoked key, not replaced | nothing needed: the gateway refuses it, and pi fails authentication |
-| the slot repurposed | `volume reset-home` removes all three; the next start injects fresh ones |
+| a re-issued or rotated key | `capsule <n> inject gateway-key --force` |
+| a changed `models.json` (new model ids, a new port) | `capsule <n> inject pi-models --force` |
+| a changed `.env` | `capsule <n> inject env --force` |
+| a revoked key, not replaced | nothing: the gateway refuses it, and pi fails authentication |
+
+The key stays the slot's across assignments (`DEC-073`), because a
+re-assignment keeps `$HOME`. A key that must not outlive an assignment is
+rotated by the operator.
 
 `--force` discards whatever the guest wrote to that file. For these three
 files that is intended, since the agent has no reason to edit them.
@@ -468,7 +504,8 @@ its subject and watching it go red.
 | `hostModuleUnits` | evaluates the module | over a fixture net with `modelDoor` on a nobody's socket (`/run/fixture-model-door/api.sock`) and three fixture slots — `on`, `off`, undeclared | anything at run time |
 | `modelDoorCases` (new, `model-door-cases.nix`) | eval verdicts, `builtins.tryEval` + `deepSeq`, asserted in the shell | each refusal of sec-2 and its exact reason | — |
 | `stateDirCases` | unchanged | `state-dir.nix`'s verdicts and messages after the predicate moves to `host-path.nix` | — |
-| `policyCases` (extended) | runs the shipped front end's text over a fixture pool, with `unitControl` and `vmmState` substituted | the verb's refusals in order; the record, the bit and the relay moving together; every rollback; start and the verb run at once | the real sudo grant and systemd (live) |
+| `policyCases` (extended) | runs the shipped front end's text over a fixture pool, with `unitControl` and `vmmState` substituted | the verb's refusals in order; the record, the override and the relay moving together; every rollback | the real sudo grant and systemd (live) |
+| `modelDoorOpenCases` (new, `host/model-door-open-cases.nix`) | runs the shipped condition program against fixture override files | each row of sec-4's condition table | systemd's use of the exit status (live) |
 | `wrapCases` | composition | `CAPSULE_MODEL_DOOR_DIR` survives the wrapper | — |
 | live, the user's | exercise | the wire | — |
 
@@ -477,15 +514,16 @@ its subject and watching it go red.
 - `capsule-model-relay-<on>` and `-<off>` exist; none exists for the undeclared
   slot.
 - Its `ExecStart` is exactly the one line of sec-3, with the fixture's port and
-  socket; its `ExecCondition` names `<modelDoorDir>/<n>`.
+  socket. Its `ExecCondition` is `capsule-model-door-open` with the slot's
+  declared value and `<modelDoorDir>/<n>`, so the `on` and `off` slots' units
+  differ in that argument (which is what makes a switch restart a changed one).
 - `bindsTo` and `after` are exactly `[netns tap]`, and no ordering list names
   anything else (the "names no gateway unit" pin).
 - `User = owner`, `IPAddressAllow = [guest/32]`, `IPAddressDeny = any`,
   `SuccessExitStatus = 143`, and the shared hardening keys equal the ssh relay's.
 - The `microvm@` drop-in `wants` the relay for both declaring slots and not for
   the undeclared one.
-- tmpfiles carries `d <modelDoorDir> 0755` and one `f` per declaring slot whose
-  argument is its declared value.
+- tmpfiles carries `d <modelDoorDir> 0755` and no file rule under it.
 - `ungranted` is empty: the sudoers rule holds both relay verbs per declaring
   slot, by `host/unit-command.nix`'s spelling.
 
@@ -514,30 +552,32 @@ and its `vmmState` can be told the VM is running. Rounds:
   slot that declares no door and refusal 4 on a copy with no state directory;
 - no argument prints the declared value before any override and the override
   after one;
-- **VM down:** `on` writes the record and the bit and issues no start; `off`
-  writes both and issues a stop;
-- **VM running:** `on` issues a start and `off` a stop, and record, bit and
-  log agree;
-- **unit command fails:** the bit is restored to its previous content, or
-  removed if there was none, and no record is written. This is run for `on` and
-  for `off`;
-- **commit fails after the hook** (an unwritable record directory for the
-  candidate, then a failed `mv`): a failed `on` leaves the bit and the relay as
-  they were, and a failed `off` leaves the relay stopped;
-- **start and the verb at once:** each command is paused at its lock boundary
-  and the two are interleaved in both orders, including a relay that read its
-  condition just before the `off`. No end state has record `off` with the relay
-  started and not stopped;
-- `renderModelDoor` writes the declared value when the record holds no
-  override (the function `start` calls).
+- **VM down:** `on` writes the record and the override and issues no start;
+  `off` writes both and issues a stop;
+- **VM running:** `on` issues a start and `off` a stop, and the record, the
+  override and the log agree;
+- **VM activating** (`vmmState` neither running nor stopped): `off` still
+  issues the stop; `on` issues no start;
+- **unit command fails:** the override is restored to its previous content,
+  or removed if there was none, and no record is written. This is run for `on`
+  and for `off`, from both an existing and an absent override;
+- **commit fails before the hook** (the candidate cannot be written): nothing
+  moves, so the override, the log and the record are as they were;
+- **commit fails after the hook** (the `mv` fails): each row of sec-4's undo
+  table, from its stated starting state. The relay is stopped and the
+  override is as before.
 
 **Mutation check for each:** the hook is broken on purpose and its round must
 go red. The breakages are: no restore when the stop fails; restoring `on`
-where there was no file; an `off` that skips the stop because the VM is down;
-a render outside the lock.
+where there was no file; an `off` that skips the stop because the VM is not
+running; an undo that restores the relay to up.
 
-The start verb's own `systemctl` calls have no seam, so its one call to
-`renderModelDoor` is covered by the live run, not by a case.
+### `modelDoorOpenCases`
+
+The condition program, run as shipped against files in the sandbox: declared
+`on` or `off`, each with no override, an `on` override, an `off` override, an
+override holding anything else, and an unreadable override. The exit status is
+asserted for each. Its mutation is the declared branch inverted.
 
 ### Live, the user's (`exercise`)
 
@@ -562,11 +602,13 @@ verdicts land in `docs/probes.md`, each leg in both directions (`ADR-003`):
 7. a slot with no `modelDoor` → refused on the port, status `--`;
 8. **a payload refresh.** Change the slot's key file on the host, then stop
    and start. The guest still holds the old key. Then run
-   `capsule-inject gateway-key --force`, and the guest holds the new one. This
+   `capsule <n> inject gateway-key --force`, and the guest holds the new one. This
    tells a preserved payload from a replaced one;
-9. **a declared change.** Change a slot from `on` to `off` in `capsules.nix`,
-   rebuild, then `capsule <n> start`. The door is refused, which shows the
-   start-time render.
+9. **a declared change, running VM.** With the VM and its relay up and no
+   override, change the slot from `on` to `off` in `capsules.nix` and switch.
+   The relay is restarted by the switch and skipped, and the door is refused
+   with no VM restart. Then `capsule <n> model on` opens it, and a second
+   switch back to `on` leaves the override in charge.
 
 <!-- doctrine:section sec-7 -->
 ## Contracts and governance text that moves
@@ -584,7 +626,7 @@ Same commit as the unit (`POL-002`'s rule for the boundary):
   SL-010; the room half is still open.
 - **`templates/fleet/README.md`** — a short "a model door" section beside the
   inject docs: the two declarations, the issued key, the env lines.
-- **`CLAUDE.md`** — `modelDoorCases` in the suite list.
+- **`CLAUDE.md`** — `modelDoorCases` and `modelDoorOpenCases` in the suite list.
 
 Governance readings, not edits:
 
@@ -616,9 +658,11 @@ Governance readings, not edits:
 - **Inferred, verified only live:** that `connect()` works under
   `ProtectSystem=strict`; that pi sends Bearer with `authHeader: true`; that
   `ExecCondition`'s skip leaves the `microvm@` start unaffected.
-- **The stale-render residual** (sec-4): a bare `systemctl start microvm@<n>`
-  after a declared-value change, with no front-end start between. The policy
-  link has the same residual (ISS-029).
+- **A declared `off` → `on` does not open a running slot's door at the
+  switch** (sec-4). It opens at `capsule <n> model on` or the next VM start.
+  That is fail-closed.
+- **Inferred, verified only live:** that a switch restarts an active relay
+  whose condition argument changed.
 - **Payloads do not refresh at start** (sec-5). A rotated key needs
   `--force`. Until then pi in the guest fails authentication, which is
   fail-closed.
@@ -646,15 +690,17 @@ Out of scope:
 | `model-door.nix` (new) | the four refusals; `reasons`, `value` |
 | `model-door-cases.nix` (new) | `modelDoorCases` |
 | `capsules.nix` | `recordOf` carries `modelDoor ? null` |
-| `host/services.nix` | `modelRelayServices`; shared `relayHardening`; the drop-in's `wants`; `modelDoorDir` option; tmpfiles `d` + `f`; the two grants per declaring slot; `paths` to the wrapper |
+| `host/services.nix` | `modelRelayServices`; shared `relayHardening`; the drop-in's `wants`; `modelDoorDir` option; tmpfiles `d`; the two grants per declaring slot; `paths` to the wrapper |
 | `host/unit-command.nix` (renamed from `proxy-restart.nix`) | `verb: unit:` |
-| `host/cli.nix` | the `model` verb; `effectiveModelDoor`; `renderModelDoor` and its call at `start` under the record lock; `proxyControl` → `unitControl`; the `model` status column and header |
+| `host/cli.nix` | the `model` verb; `effectiveModelDoor`; `proxyControl` → `unitControl`; the `model` status column and header |
+| `host/model-door-open.nix` (new) | `capsule-model-door-open <declared> <override-file>` |
+| `host/model-door-open-cases.nix` (new) | `modelDoorOpenCases` |
 | `host/record.nix` | `model_door` in the skeleton; the candidate is written before `recordAlso`; the optional `recordUndo` |
 | `host/wrap.nix` | `CAPSULE_MODEL_DOOR_DIR` from `paths.modelDoorDir` |
 | `host/policy-cases.nix` | the model verb's rounds; fixture slots and `net.modelDoor`; `unitControl` and `vmmState` substitutes; the policy rounds moved to `unitControl` |
 | `host/wrap-cases.nix` | the new variable survives |
 | `mkfleet.nix` | `model-door.nix`'s `value` read beside `stateDir`'s; `hostModuleUnits` fixture and cases; `ungranted`; `modelDoorCases` wiring |
-| `just/fleet.just` | `modelDoorCases` in `build` and `cases` |
+| `just/fleet.just` | `modelDoorCases` and `modelDoorOpenCases` in `build` and `cases` |
 | `justfile` | `host-path.nix`, `model-door.nix`, `model-door-cases.nix` in `nix_paths` (it lists root files by name) |
 | `fixture/default.nix` | a door on one fixture slot; the fixture's inject example |
 | `templates/fleet/net.nix`, `capsules.nix`, `setup.nix`, `README.md` | commented examples (sec-5) |
