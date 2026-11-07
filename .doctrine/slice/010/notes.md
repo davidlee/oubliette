@@ -86,6 +86,19 @@ what no design reading can settle, and each has an owner already:
   then.
 - **`IPAddressAllow` support on this host** (live leg 2's red case).
 
+## Planning findings (2026-11-08, for reconcile)
+
+- **`recordWrite`'s final `mv` becomes `mv -T`** (PHASE-04). Design sec-4 says
+  `mv`. A plain `mv` onto a directory at `assignment.json` exits 0 and buries
+  the candidate inside it (checked: GNU coreutils), so a record write is
+  silently lost today, and the "`mv` fails" undo row would be unreachable in a
+  sandbox. Hardening within the design's intent; reconcile writes it back.
+- **F-1's criterion is transcribed against the locked design** (PHASE-06
+  EX-2): its sketch paused `start` at a lock boundary, but rev 29 removed every
+  write `start` made, so the rounds drive the verb against each `vmmState`.
+- **The status column's live values are not reachable by a case**: `unitState`
+  calls `systemctl` from `runtimeInputs`, so every sandbox cell reads `--`.
+
 ## Session process notes
 
 - Quotient's allowlisted roots exclude `/home/david`. Run pi workers from

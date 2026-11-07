@@ -163,19 +163,31 @@ Cases (in `policyCases`, through the policy verb, which is the only hook user
 until PHASE-06): a malformed current record and an unwritable candidate each
 fail with the hook never called (its link unmoved, `unitDo` not logged); a
 failing `mv` after a successful hook returns non-zero with no generation
-printed. `docs/contract-assignment.md` gains `model_door`."""
+printed. `docs/contract-assignment.md` gains `model_door`.
+
+**The `mv` becomes `mv -T`.** A plain `mv` onto a directory at
+`assignment.json` exits 0 and buries the candidate inside it (checked at
+planning, GNU coreutils): today such a directory silently swallows every record
+write. `-T` makes that a failure, which is also the only sandbox-reachable way
+to fail the final `mv` after a successful candidate write in the same
+directory. The unwritable-candidate round makes the slot directory read-only
+after `.lock` exists, since the lock is opened for writing in that directory.
+
+The policy verb declares no `recordUndo`, so these rounds show only that the
+hook is or is not reached and that a failed `mv` fails the write; the undo
+being called is PHASE-06's, through the model verb."""
 entrance_criteria = [
   { id = "EN-1", text = "PHASE-03 complete and committed" },
 ]
 exit_criteria = [
-  { id = "EX-1", text = "`recordWrite` order is read, transform, candidate, `recordAlso`, `mv`; `recordUndo` runs only on a failed `mv` after a successful hook" },
+  { id = "EX-1", text = "`recordWrite` order is read, transform, candidate, `recordAlso`, `mv -T`; `recordUndo` runs only on a failed `mv` after a successful hook" },
   { id = "EX-2", text = "Every record written carries `model_door` (null unless set); `docs/contract-assignment.md` says so" },
-  { id = "EX-3", text = "RV-027 F-2 (probe, record half): cases make the current record malformed, the candidate unwritable, and the `mv` fail; the first two never call the hook, the third calls `recordUndo` and fails; each red first" },
+  { id = "EX-3", text = "RV-027 F-2 (probe, record half): through the policy verb, cases make the current record malformed, the candidate unwritable, and the `mv` fail (a directory at `assignment.json`); the first two never reach the hook (link unmoved, nothing logged), the third reaches it and fails with no generation printed; each red first" },
   { id = "EX-4", text = "Mutation recorded: moving the hook back ahead of the candidate write turns the unwritable-candidate round red" },
   { id = "EX-5", text = "Every existing `policyCases`, `volumeCases` and `roomVerbsCases` round green; `just check` and `just` green" },
 ]
 verification = [
-  { id = "VT-1", expects = "the new order and the undo hook", test_file = "host/record.nix", keywords = ["recordUndo", "recordAlso", "model_door"], waived = false },
+  { id = "VT-1", expects = "the new order and the undo hook", test_file = "host/record.nix", keywords = ["recordUndo", "recordAlso", "model_door", "mv -T"], waived = false },
   { id = "VT-2", expects = "commit-failure rounds through the policy verb", test_file = "host/policy-cases.nix", keywords = ["recordUndo", "malformed", "candidate"], waived = false },
   { id = "VT-3", expects = "the contract names the field", test_file = "docs/contract-assignment.md", keywords = ["model_door"], waived = false },
 ]
@@ -273,12 +285,12 @@ exit_criteria = [
   { id = "EX-3", text = "RV-027 F-2 (probe, verb half): a failed `mv` after the hook runs each row of sec-4's undo table from its stated starting state — override as before, relay stopped (logged `stop`), record unchanged; a failed undo reports an unknown state" },
   { id = "EX-4", text = "RV-027 F-4 (control): rounds for a failed override write (unwritable `modelDoorDir`; `on` and `off`; from an existing and an absent override) asserting no `unitDo` logged, no record, override unchanged, reason named; a failed unit command restoring or removing the override with no record; a failed candidate write moving nothing" },
   { id = "EX-5", text = "RV-027 F-4 (control) mutations, each turning its round red, recorded in the phase notes: no restore when the stop fails; restoring `on` where there was no file; an `off` that skips the stop when the VM is not running; an undo that restores the relay to up; a hook that ignores a failed override write" },
-  { id = "EX-6", text = "`capsule all status` prints the `model` column in every row; IMP-009 carries the note" },
+  { id = "EX-6", text = "`capsule all status` has a `model` header after `relay` and a cell in every row, asserted in `policyCases` by reading the cell by its header name (as the profile cell is). In a sandbox `unitState` answers `--` for every unit, since `systemctl` cannot be stubbed, so the `inactive`/`running` values are live legs 5 and 7, not a case; IMP-009 carries the note" },
   { id = "EX-7", text = "`just check` and `just` green; alejandra clean; RV-027 F-4 re-submitted to the raiser for verification against EX-4/EX-5" },
 ]
 verification = [
   { id = "VT-1", expects = "the verb, its hooks and the status column", test_file = "host/cli.nix", keywords = ["effectiveModelDoor", "recordUndo", "CAPSULE_MODEL_DOOR_DIR", "capsule-model-relay-", "declares no model door"], waived = false },
-  { id = "VT-2", expects = "the transcribed F-1/F-2/F-4 rounds", test_file = "host/policy-cases.nix", keywords = ["model on", "model off", "activating", "recordUndo", "modelDoorDir", "unitDo"], waived = false },
+  { id = "VT-2", expects = "the transcribed F-1/F-2/F-4 rounds and the status column", test_file = "host/policy-cases.nix", keywords = ["model on", "model off", "activating", "recordUndo", "modelDoorDir", "unitDo", "model"], waived = false },
   { id = "VA-1", text = "Reviewer reads each EX-2..EX-5 round against sec-4's text and the RV-027 response it transcribes, and confirms none tests a weaker property than the finding asked for" },
 ]
 specs        = []
