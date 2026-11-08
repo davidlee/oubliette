@@ -1,0 +1,46 @@
+memory_uid = "mem_01a1bb61b4507a90945047ca04c3de42"
+memory_key = "mem.fact.oubliette.pi-models-need-gateway-compat"
+schema_version = 1
+memory_type = "fact"
+status = "active"
+title = "pi behind the LiteLLM gateway needs each model's compat block"
+summary = """A bare {id} model in pi's models.json makes pi send 'store'; the gateway answers 400 "field 'store' not allowed". Carry pi's compat (supportsStore=false, …) per model."""
+created = "2026-11-08"
+updated = "2026-11-08"
+
+[scope]
+paths = ["templates/fleet/setup.nix", "fixture/default.nix"]
+globs = []
+commands = []
+tags = ["gotcha", "model-door"]
+workspace = "default"
+repo = "github.com/davidlee/oubliette"
+repo_id_kind = "remote"
+repo_id_confidence = "high"
+
+[git]
+anchor_kind = "commit"
+commit = "9c44562bae9584414a3a66706de2f55b18cd4808"
+tree = "66dc08087afa4fe07f130744f87c02691db14a73"
+ref_name = "refs/heads/main"
+checkout_state_id = ""
+base_commit = "9c44562bae9584414a3a66706de2f55b18cd4808"
+verified_sha = ""
+normalizer = ""
+
+[review]
+verification_state = "unverified"
+reviewed = ""
+review_by = ""
+
+[trust]
+trust_level = "medium"
+
+[ranking]
+severity = "none"
+weight = 0
+
+[[source]]
+kind = "slice"
+ref = "SL-010"
+

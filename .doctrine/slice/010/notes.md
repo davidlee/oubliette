@@ -6,27 +6,25 @@ disposable phase sheet (`.doctrine/state/.../phase-NN.md`) that must survive
 
 ## Harvest
 <!-- single-copy: updated in place each harvest; ids only, never restated content -->
-fresh-as-of: 2026-11-08 · ready (plan, PHASE-01 next) · 304bae1
+fresh-as-of: 2026-11-09 · closing (reconciled) · 9c44562
 
 ### Produced
-- DEC-069..DEC-073 (design run inq-1..inq-5); DEC-073 rationale corrected per RV-027 F-3
-- design locked at run rev 39 (commit e040bee); RV-027 concluded after 6 raiser rounds, F-1..F-11
-- slice-010.md scope matched to the locked design (799501b)
-- plan.toml/plan.md, PHASE-01..PHASE-08, phase sheets materialised (03cf26d, f324d60, 304bae1)
-- RSK-013, IDE-004, IMP-029, ISS-029 minted earlier; QUE-003 answered; IDE-003 widened
-- no code yet; no suite or build run this slice
+- DEC-069..DEC-073; design locked rev 39 (e040bee); RV-027 concluded
+- PHASE-01..PHASE-08 (d195704 … 9f7542d); live verdicts in docs/probes.md, "A model door on one slot, live"
+- RV-028 (audit, 9 findings, concluded); REV-010 (POL-003 table, done); reconcile 9c44562
+- ISS-030, ISS-031, CHR-019 (PHASE-08); RSK-013, IDE-004, IMP-029, ISS-029 earlier
 
 ### Learned
-- mem.pattern.oubliette.a-state-file-is-compared-by-bytes — grep -qx, $(…) and an exec'd pipeline tail each admit a forged override; cmp + exit; mv -T
+- mem.pattern.oubliette.a-state-file-is-compared-by-bytes
+- mem.fact.oubliette.pi-models-need-gateway-compat
 - research.md Thread 2 fact 4 was wrong ($HOME persists); corrected with DEC-073
 
 ### Open
-- RV-027 F-4 — control route; re-submit to the raiser once PHASE-06 EX-4/EX-5 exist
-- RV-027 F-1, F-2 — probe routes transcribed onto PHASE-04 EX-3 and PHASE-06 EX-2/EX-3
-- POL-003 table revision (net.modelDoor, modelDoor) — at reconcile, via doctrine revision (design sec-7)
-- mv -T in recordWrite — a planning hardening beyond design sec-4; reconcile writes it back (§ Planning findings)
-- fixture slot count for hostModuleUnits — PHASE-05 phase-plan decides (plan.md Notes)
-- IMP-009 — gets a note at PHASE-06; ISS-029 — residual for the policy link only
+- ISS-030 — no verb clears a model-door override (RV-028 F-1)
+- ISS-031 — relay triggered twice at one VM start
+- CHR-019 — PI_* lines against pi 0.87.1
+- IDE-003 — the room half of the model door (plan-f §2) stays open
+- IMP-009, ISS-029 — residuals as noted earlier
 
 ## Drafting concerns carried from inquiry (not represented in the run)
 

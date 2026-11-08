@@ -35,3 +35,5 @@ What differs for a slot, to settle at design:
   extra, not a target's floor (NOTES item 31). Its provider config needs the
   door's `<net.host>:<port>` as base URL, declared, never scraped from `$HOME`.
 - **Ownership** of the gateway module is still `flakes:IDE-008`'s question.
+
+**2026-11-09:** the slot half is delivered and closed by SL-010 (docs/probes.md, "A model door on one slot, live"). The room half remains open: a room has no `modelDoor` field (SL-010 design sec-2). Kept open for it.
