@@ -131,3 +131,8 @@ what no design reading can settle, and each has an owner already:
 ## Autonomy log
 - PHASE-01 · `model-door.nix`'s `reasons` is five named keys, `value` throws the first in sec-2 order · lets a round assert the one rule it breaks and that the others hold · decided
 - PHASE-01 · `perimeterOf` forces the checked door with `builtins.seq` until PHASE-05 threads it into services.nix (replace the seq then) · nothing reads the value yet, and EX-2 wants every caller's eval to refuse · decided
+
+## Review passes (implementation run)
+
+- PHASE-01 · pi implement T2a (host-path.nix, state-dir.nix, recordOf) $0.012, clean · pi implement T2b (model-door.nix, mkfleet read/force) $0.044, green first build; port message read "is neither … nor 22" for port 22 and a header rationale was invented, both fixed by hand · Sonnet capsule-worker T1 (suite + wiring, red vs stub), clean.
+- PHASE-02 · Sonnet capsule-worker T1 (suite + wiring, red vs stub), clean · pi implement T2 (the four lines + header) $0.008, green first build.
