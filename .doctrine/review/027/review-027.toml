@@ -219,7 +219,7 @@ note = "VERIFIED at refresh/design scope. Re-read sec-5's event table and named-
 
 [[finding]]
 id = "F-4"
-status = "answered"
+status = "verified"
 severity = "major"
 title = "The verification plan excludes transition and rollback branches despite an existing test seam"
 detail = """
@@ -309,6 +309,30 @@ Design change (rev 31, sec-4 recordAlso step 1): the override is published by wr
 Criterion (sec-6, policyCases): a new round "override write fails" — the fixture's modelDoorDir made unwritable — run for on and off, from an existing and an absent override, asserting no unitDo logged, no record written, the override unchanged, and the refusal's reason. Added mutation: a hook that ignores a failed override write and carries on to the unit command and commit; its round must go red (the log would show the unit command and the record would move). The commit-failure undo table is unchanged.
 
 Acknowledged: verification of a control-route finding is deferred until the obligation is transcribed onto a phase criterion after slice phases; /plan will carry these rounds and mutations onto the host phase's VT criteria.
+"""
+
+[[finding.turn]]
+act = "verify"
+role = "raiser"
+note = """
+VERIFIED for F-4's control-route obligation against HEAD 300987b9a2cab715b2b98f1885f13d0d9326553b: correctly transcribed and independently executed; this is discrimination against the named faults, not completeness or live systemd proof.
+
+Transcription: .doctrine/slice/010/plan.toml:280,284-287 explicitly carries F-1/F-2/F-4 into PHASE-06 EX-2..EX-5; VA-1 at :294 requires checking for weaker assertions. The override-write contract is .doctrine/slice/010/design.md:344-361,580-588; the retained undo table and order are :362-385,589-597.
+
+EX-4 is not an exit-status-only test. host/policy-cases.nix:734-737 makes the door directory or candidate directory unwritable; :741-762 requires exit 1, the named reason, no unknown-state claim or generation output, the exact command log, byte-identical record, unchanged generation, exact prior override bytes/absence and no temporary files. :764-779 runs on/off from the opposite existing override and from absence, separately for override, unit and candidate failures. overrideIs compares bytes or absence (:586-591); relayLog compares the entire expected log (:595-599). Thus the four override-write rounds assert no unit command, no record commit and unchanged override with the write-failure reason, as agreed. The implementation guards the remember/write/publish group before unitDo (host/cli.nix:3135-3155); recordWrite prepares the candidate before the hook and commits only after hook success (host/record.nix:147-174).
+
+Independent execution: nix build --no-link -L .#policyCases succeeded; nix build --rebuild --no-link -L .#policyCases also succeeded, actually rerunning the suite (649 ok assertions). I copied git archive HEAD under /tmp/rv027-f4-o8ru2qwu and changed only each scratch host/cli.nix, leaving this checkout untouched. Each following mutant compiled and reached policyCases, then exited 1 on the relevant behavioral assertion; none was rejected merely by shellcheck/evaluation:
+- M1: skip restore on a failed off/stop in host/cli.nix:3161. The two off unit-failure rounds rejected the wrong override at host/policy-cases.nix:759,772-774.
+- M2: restore on instead of removing a previously absent override in host/cli.nix:3121. Four absence-restoration assertions failed, in the unit-failure and commit-undo rounds (host/policy-cases.nix:759,772-774,803,815,819).
+- M3: return without stopping on off unless vmmState is running, changing host/cli.nix:3146-3147. The inactive and activating success rounds failed their required stop (host/policy-cases.nix:713-724); the inactive off undo round also rejected the missing first stop (:804,819).
+- M4: recordUndo starts instead of stops when vmmState is running, changing host/cli.nix:3192. All four running-VM undo rows rejected the command sequence and last-command outcome (host/policy-cases.nix:804-805,814,816-818); the failed-undo round rejected the two-stop sequence (:838). An additional unconditional-start undo variant was also rejected. This preserves the intended fail-closed table rather than restoring a previously up relay.
+- M5: delete only the return 1 at host/cli.nix:3143, allowing a failed override write to continue. All four override-unwritable rounds (host/policy-cases.nix:769-770) failed exit status, generation-output, exact-log, byte-identical-record and unchanged-generation assertions (:752,755-758). The override itself remained unchanged, so its own assertion correctly passed. This is the precise bad continuation: unit command and record commit after the failed write, not a red caused by an unrelated refusal. The diagnostic still named the override write, demonstrating that checking only that message would have been inadequate.
+
+The commit-failure undo table is retained: host/policy-cases.nix:789-819 drives all four requested/up-down combinations plus absent overrides, requires restoration and an exact log ending in stop; :825-840 checks failed undo reporting and unchanged commit target. The commit failure is injected by replacing assignment.json with an occupied directory (:797-799), so the asserted unchanged object is that directory, not a valid old JSON record. This is a bounded final-mv-failure instrument. host/record.nix:167-172 routes a failed final move through undo and still fails; host/cli.nix:3185-3195 restores then stops and reports unknown on failure. Failed unit-command restoration and failure of that restoration are separately checked at host/policy-cases.nix:772-774,849-868.
+
+No round is weaker than the agreed EX-4/EX-5 control obligation. Boundaries: the directory-permission fault does not independently isolate a failure of the override's final rename; the undo fault uses an occupied directory; unit outcomes are exact attempted commands through the injected stub (host/policy-cases.nix:117-143), not observations of a real relay. Safety from issuing no unit command is an inference within that seam. Actual sudo authorization, systemd transitions/cancellation and live-unit state were not exercised and are not claimed here. The named five controls discriminate, as required by .doctrine/slice/010/design.md:593-597 and .doctrine/slice/010/plan.toml:287.
+
+Independent scratch patches and execution logs are retained in /tmp/rv027-f4-o8ru2qwu (M1..M5.diff, M1..M5.log, M4-exact.log, baseline.log). Before this ledger act, git diff --quiet succeeded and all six reviewed source/design/plan/notes files were byte-identical to the HEAD archive. No source file in this checkout was edited.
 """
 
 [[finding]]
