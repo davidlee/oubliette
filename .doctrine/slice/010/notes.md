@@ -105,3 +105,27 @@ what no design reading can settle, and each has an owner already:
   `~/dev/oubliette` or `~/flakes`.
 - Do not read secret values under `~/.pi/agent/` (the harness refuses it, and
   correctly).
+
+## Implementation run (2026-11-08, /super-orchestrator seat)
+
+- **Plan approved (PHASE-01 EN-1, PHASE-02 EN-1).** The user, asked to approve
+  the plan's contents phase by phase, replied "Approve as written" this
+  session. Scope of the run: PHASE-01..PHASE-07; PHASE-08 is the user's live
+  run and is not driven; the seat halts before audit.
+- **Envelope: the super-orchestrator default**, accepted by the user. Commits
+  per phase on `main`, paths named, never pushed. Re-submitting RV-027 F-4 to
+  Codex after PHASE-06 (strong tier, `gpt-6.1-sol`, fresh thread with an
+  RV-027 brief, raiser label `raiser`) is in-envelope. Codex tiers checked
+  current at run start.
+- **pi form: the machine form, unchanged** (user: "dealer's choice"). pi has
+  `just`, `git`, `jq`, `cmp`, `bash`, network; it lacks `nix`,
+  `nix-instantiate`, `alejandra`, `shellcheck`, `socat`. So pi drafts edits
+  only; **every gate is the sub-orchestrator's, on the host**: `just check`
+  after each file, `just cases` / `nix build --no-link .#<suite>` for suites,
+  `just` at phase end. Host gate is plain `just` (devshell PATH); `just check`
+  green at 77fd63e. Run pi with `cwd` `/home/david/dev/oubliette`.
+- New files are invisible to the flake eval until `git add`.
+- Known sandbox-only failures: none identified (pi cannot run the suites at all).
+- Other writers: none expected; tree clean at 77fd63e.
+
+## Autonomy log

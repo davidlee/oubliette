@@ -1,9 +1,9 @@
 id = 10
 slug = "capsule-model-door"
 title = "A model door for a capsule: a slot reaches the host LLM gateway through its namespace, first for pi"
-status = "ready"
+status = "started"
 created = "2026-11-07"
-updated = "2026-11-07"
+updated = "2026-11-08"
 tags = []
 
 [relationships]
