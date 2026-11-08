@@ -76,7 +76,7 @@ build:
     '.#snapshotCases' '.#refreshCases' '.#observeCases' '.#baselineCases' \
     '.#profileCases' '.#gitChannelCases' '.#roomGitCases' '.#quarantineCases' '.#vmCases' \
     '.#wrapCases' \
-    '.#volumeRootCases' '.#resetHomeCases' '.#sessionCases' '.#volumeCases' '.#fleetCases' '.#stateDirCases' \
+    '.#volumeRootCases' '.#resetHomeCases' '.#sessionCases' '.#volumeCases' '.#fleetCases' '.#stateDirCases' '.#modelDoorCases' \
     '.#roomsCases' '.#fragmentsCases' '.#fabricCases' '.#roomVerbsCases' '.#roomClientCases' \
     '.#roomImages'
 
@@ -114,6 +114,7 @@ cases:
   @cat "$(nix build --no-link --print-out-paths '.#volumeCases')"
   @cat "$(nix build --no-link --print-out-paths '.#fleetCases')"
   @cat "$(nix build --no-link --print-out-paths '.#stateDirCases')"
+  @cat "$(nix build --no-link --print-out-paths '.#modelDoorCases')"
   @cat "$(nix build --no-link --print-out-paths '.#roomsCases')"
   @cat "$(nix build --no-link --print-out-paths '.#fragmentsCases')"
   @cat "$(nix build --no-link --print-out-paths '.#fabricCases')"

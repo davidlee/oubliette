@@ -134,8 +134,11 @@ let
     policy ? null,
     policies ? [],
     profile ? null,
+    # The slot's door state at start (DEC-069). It must be destructured here or
+    # `recordOf` silently drops it.
+    modelDoor ? null,
   }: {
-    inherit name index policy policies profile;
+    inherit name index policy policies profile modelDoor;
     ns = "${capLink}${name}";
     socket = socketOf name;
     uplink = {

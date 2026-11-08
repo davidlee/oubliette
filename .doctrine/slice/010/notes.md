@@ -129,3 +129,5 @@ what no design reading can settle, and each has an owner already:
 - Other writers: none expected; tree clean at 77fd63e.
 
 ## Autonomy log
+- PHASE-01 · `model-door.nix`'s `reasons` is five named keys, `value` throws the first in sec-2 order · lets a round assert the one rule it breaks and that the others hold · decided
+- PHASE-01 · `perimeterOf` forces the checked door with `builtins.seq` until PHASE-05 threads it into services.nix (replace the seq then) · nothing reads the value yet, and EX-2 wants every caller's eval to refuse · decided

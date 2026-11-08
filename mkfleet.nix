@@ -56,15 +56,29 @@
   # evaluates, which is fleet.nix's `slotImages` laziness again.
   stateDir = (import ./state-dir.nix {inherit lib;} declared.stateDir).value;
 
+  # The declared model door, checked (model-door.nix, SL-010 sec-2): `net.modelDoor`
+  # or null, since an absent one is a declaration that no slot has a door
+  # (DEC-071). It throws model-door.nix's first reason wherever it is read.
+  modelDoor =
+    (import ./model-door.nix {inherit lib;} {
+      modelDoor = net.modelDoor or null;
+      inherit (fleet) slots;
+      inherit (net) proxyPort;
+    })
+    .value;
+
   # The host module, bound once: `hostModule` imports it and `nixosModules` exports it.
   # A function of what rooms.nix decided, so `hostModule` can also evaluate the
   # same module with no rooms, which no option can take away from it.
+  #
+  # Forced on the module path, which is what every caller's eval reads, until
+  # the module reads the door itself (SL-010 PHASE-05).
   perimeterOf = decision:
-    import ./host/services.nix {
+    builtins.seq modelDoor (import ./host/services.nix {
       inherit net targets capsules policies workBranch fleetPath stateDir;
       inherit (access) injections;
       rooms = decision;
-    };
+    });
   capsulePerimeter = perimeterOf roomDecision;
 
   # The target-shaped settings that follow from each declared target
@@ -973,6 +987,13 @@
   stateDirCases = import ./state-dir-cases.nix {
     inherit pkgs lib;
     stateDir = import ./state-dir.nix;
+  };
+
+  # What `mkFleet` accepts as the model door (SL-010 sec-2, DEC-069, DEC-071),
+  # against declarations that are nobody's (model-door-cases.nix).
+  modelDoorCases = import ./model-door-cases.nix {
+    inherit pkgs lib;
+    modelDoor = import ./model-door.nix;
   };
 
   # A room declaration's verdicts (SL-005 sec-2), against fixtures that are no
@@ -1982,7 +2003,7 @@ in {
       # The checks that need no root and no host: what the module says, what the
       # guard decides, and which policy a slot resolves to.
       inherit hostModuleUnits hostModulePrograms guardCases netnsCases policyCases observeCases;
-      inherit profileCases gitChannelCases roomGitCases quarantineCases vmCases wrapCases volumeRootCases resetHomeCases sessionCases volumeCases fleetCases stateDirCases roomsCases fragmentsCases fabricCases roomVerbsCases roomClientCases;
+      inherit profileCases gitChannelCases roomGitCases quarantineCases vmCases wrapCases volumeRootCases resetHomeCases sessionCases volumeCases fleetCases stateDirCases modelDoorCases roomsCases fragmentsCases fabricCases roomVerbsCases roomClientCases;
       # Every declared room's image, checked and built (RV-014 F-7).
       inherit roomImages;
       # The rendered run-time half of every target, so a human can read what a
