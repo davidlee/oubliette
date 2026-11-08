@@ -102,7 +102,11 @@ in [
   # }
   #
   # The model ids are the consumer's and must be a subset of what the key was
-  # issued for; the gateway refuses the rest.
+  # issued for; the gateway refuses the rest. A bare `{id}` is not enough
+  # behind a LiteLLM-style gateway: each model needs pi's `compat` block, or pi
+  # sends `store` and the gateway answers 400 "field 'store' not allowed"
+  # (docs/probes.md, the model door, live). Copy a working entry from the
+  # gateway's own pi configuration (e.g. `compat = {supportsStore = false; …}`).
   #
   # {
   #   name = "pi-models";
@@ -112,7 +116,7 @@ in [
   #       --arg key "!cat ${home}/.config/llm-gateway/key" '{
   #         providers: {gateway: {
   #           baseUrl: $url, api: "openai-completions", apiKey: $key,
-  #           authHeader: true, models: [{id: "<model id>"}]
+  #           authHeader: true, models: [{id: "<model id>", compat: {supportsStore: false}}]
   #         }}
   #       }'
   #   '';

@@ -1607,6 +1607,53 @@ suspend (`ISS-014`); `/work`'s growth (`RSK-007`); the closure figure's split
 between the nixpkgs bump and the tool sets beyond the set arithmetic above, since
 no build isolated either change.
 
+## A model door on one slot, live
+
+SL-010 PHASE-08, 2026-11-08 22:00 to 2026-11-09 00:20 AEDT, on this host: slot
+`a` (doctrine) from the consumer at `719bb65` (oubliette `99b5a8d`), declaring
+`net.modelDoor = {port = 4000; socket = "/run/llm-gateway-client/api.sock";}`
+and `modelDoor = "on"` on `a` only. The agent ran the checks as the module's
+owner. The user ran the switches and every `capsule <n> stop`/`start`, which
+need a sudo password. Rung (`STD-001`): **triggered**, once, by hand. This is
+not a probe, and nothing here repeats unattended. Design sec-6's nine legs; each
+row gives the leg, its control, and the other direction.
+
+| leg | observed | control / other direction |
+| --- | --- | --- |
+| 1. the door carries, the gateway gates | guest `curl http://10.99.0.1:4000/v1/models` with the slot's key → **200** | no key → **401**, a wrong key → **401**, both the gateway's |
+| 2. guest-only admission | from `ip netns exec cap-a` (source `10.99.0.1`) the door → `000`, curl exit **28** (timeout: dropped, not refused) | in the same namespace, a throwaway `socat` listener on `10.99.0.1:4001` answers the same curl, exit 0. So `IPAddressAllow` is enforced on this host and the drop is the source filter |
+| 3. nothing else listens | guest → `10.99.0.1:4001` and `:8080` → exit **7** (refused) | leg 1's 200 on `:4000`, the same path |
+| 4. pi through the door | pi 0.87.1 in the guest completed "say ok" → `ok`. `/proc/<pid>/environ` of the pi started after `.env` landed holds `PI_OFFLINE=1`, `PI_SKIP_VERSION_CHECK=1`, `PI_TELEMETRY=0`, and `NO_PROXY` includes `10.99.0.1` | a pi started *before* `.env` landed lacked `PI_OFFLINE`: `.env` reaches only shells started after it |
+| 5. the verb, VM up | `capsule a model off` (gen 28) → relay `inactive`, port exit **7**; the user's pi → `Connection error` | `model on` (gen 29) → relay `running`, **200**, pi → `ok`; the override file is `on\n` and the record's `model_door` is `"on"` |
+| 6. restart while `off` | `model off` (gen 30), then the user's stop/start; `microvm@a` active again at 22:52:21. The relay: `Result=exec-condition`, `ConditionResult=no`, journal *Skipped due to 'exec-condition'*; port exit **7** | `model on` (gen 31) → **200** |
+| 7. a slot with no door | status shows `--` in the model column for `b`–`j`; slot `f` started by the user, guest `10.99.0.2/30` in its own namespace → `10.99.0.1:4000` exit **7** | slot `a`, same address and port in its own namespace → 200 |
+| 8. a preserved vs a replaced payload | the host's key file swapped for a dummy, then stop/start (active 23:32:38): the guest's key unchanged (sha256 prefix), still **200** | `inject gateway-key --force` → guest holds the dummy (prefix `5196bc19c99b`), **401**; restored and forced again → the real key (`21eee2e16682`), **200** |
+| 9. a declared change, VM running | override removed, `capsules.nix` `a` → `"off"`, switch: the relay stopped 00:16:26, was started 00:16:27 and skipped (`exec-condition`); port exit **7**; `microvm@a` still active since 23:32:38 | `model on` (gen 32) → **200** over the declared `off`; `capsules.nix` back to `"on"`, switch: the relay restarted 00:20:06, passed, **200**, VM untouched |
+
+Keys were identified by sha256 prefix only; no key value was read.
+
+Three findings on the way:
+
+- **pi needs `compat` behind this gateway.** The template's minimal `{id}` model
+  entry made pi send `store`, and the gateway answered 400 *field 'store' not
+  allowed*. Copying `~/flakes`' `compat` block for the model fixed it. The
+  template now says so (`templates/fleet/setup.nix`, README).
+- **No verb clears an override.** `capsule <n> model on|off` writes one, and
+  nothing returns a slot to "as declared". Leg 9's "no override" precondition
+  was reached only by deleting `/var/lib/capsule-model-door/a` by hand, and the
+  record kept `model_door: "on"` meanwhile, so status and the condition
+  disagreed for the length of the leg.
+- **The relay was triggered twice at one VM start** (leg 6: 22:52:21 and
+  22:52:35, both skipped). The second trigger's source is not established.
+
+**Not proven by any of this**: that the pi whose environ was read is the one
+that made the request (inferred from timing); the env lines' rationale for
+pi 0.87.1 (the design's evidence cites pi 1.5.0's documentation); a worker
+launched over `ssh … pi` without a login shell; the owner requirement's failure
+mode (`EACCES` behind a live unit), since the owner could open the socket; a
+door on more than one slot at once; the undo paths of the verb live (pinned by
+`policyCases`); a host suspend.
+
 ## Still unproven
 
 - ~~**Egress under netns.**~~ Proven: `probe-netns-egress`, above. ~~What is

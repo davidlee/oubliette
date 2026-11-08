@@ -85,7 +85,8 @@ llm-gateway issue capsule-<name> --models … --budget … --out "$HOME/.config/
 `setup.nix` carries the guest side, commented: `gateway-key` into the guest's
 `~/.config/llm-gateway/key`, `pi-models` into its `~/.pi/agent/models.json`,
 and `export PI_OFFLINE=1 PI_SKIP_VERSION_CHECK=1 PI_TELEMETRY=0` in the env
-entry's file.
+entry's file. Each model in `models.json` needs pi's `compat` for the gateway
+(`supportsStore = false` at least); without it the gateway answers 400.
 
 **The owner requirement.** The relay runs as the host module's `owner`
 (`cfg.owner`), so that user must be able to open the gateway's socket. If it is

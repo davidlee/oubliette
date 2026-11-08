@@ -144,6 +144,8 @@ what no design reading can settle, and each has an owner already:
 - PHASE-07 · the template's `net = import ./net.nix` is commented with the example, not live · the template's `net.nix` declares no door, so a live `net.modelDoor.port` would not evaluate; the uncommented example was evaluated, run and shellchecked in scratch instead · decided
 - PHASE-07 · the fixture's `net` moved into its `let` and is `inherit`ed, values unchanged · `access.injections`' live `pi-models` reads `net.host` and `net.modelDoor.port` without spelling them twice · decided
 - PHASE-07 · CLAUDE.md's fixture count is nineteen: `modelDoorCases` added (declarations nobody's, its header), `modelDoorOpenCases` not (it takes only its shipped store path; the override files are its own) · counted from the two headers · decided
+- PHASE-08 · the leg 9 "no override" precondition was made by deleting the override file by hand, since no verb clears one · the only way to reach the precondition the design states; ISS-030 · deferred (audit: design gap)
+- PHASE-08 · the template's pi-models example now carries `compat` · a live 400 showed the example does not work behind the gateway as written · decided
 
 ## Review passes (implementation run)
 
@@ -170,3 +172,15 @@ what no design reading can settle, and each has an owner already:
   `capsule-model-relay-a` only. The socket is `srw------- david users`, so the owner equals the socket owner.
 - Not yet in place: the `PI_*` exports. `/srv/fleet`'s env entry reads `~/.config/capsule/<slot>.env`,
   and that directory does not exist on this host.
+- Later the same evening the user created `~/.config/capsule/env` (the shared fallback) with the three `PI_*` exports.
+
+## PHASE-08 run (2026-11-08 to 2026-11-09)
+
+All nine of design sec-6's live legs are **green in both directions**. The verdicts are in `docs/probes.md`, "A model door on one slot, live" (EX-1). No leg went red, so EX-2 leaves nothing for reopen. The findings go to the backlog and the autonomy log:
+
+- **pi `compat`**: the template's bare `{id}` model made the gateway answer 400 *field 'store' not allowed*. `/srv/fleet` got `~/flakes`' compat block. The template example and README now say each model needs `compat` (this commit).
+- **ISS-030**: no verb clears an override. Leg 9's precondition was reached by deleting `/var/lib/capsule-model-door/a` by hand, and the record's `model_door` stayed `"on"`. This is a design gap: sec-2/sec-4 define `null` as "as declared", but no verb ever writes it.
+- **ISS-031**: the relay was triggered twice at one VM start (leg 6), source unknown.
+- **CHR-019**: the `PI_*` rationale rests on pi 1.5.0 docs, but the guest runs pi 0.87.1.
+- The user ran every root act (switches, stop/start), because the module's start/stop sudo grant needs a password for the agent's shell. `/srv/fleet` `capsules.nix` is back to `a … modelDoor = "on"`, uncommitted against the user's `719bb65`.
+- Slot `f` was started for leg 7 and may still be running (`capsule f stop`).
