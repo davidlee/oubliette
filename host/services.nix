@@ -34,6 +34,13 @@
   # the activation installs (host/programs.nix).
   targets,
   capsules,
+  # The declared model door, checked: mkFleet's `net.modelDoor`, `null` when the
+  # host declares none (model-door.nix, SL-010 design sec-2). Read here rather
+  # than from `net.modelDoor` so the value consumed is the one checked — the
+  # port is spliced into socat's address text and the socket into a path a unit
+  # opens, so an unchecked one is a unit that cannot start. Forced below, where
+  # `withDoor` is built, so the refusal reaches every eval of this module.
+  modelDoor,
   # What `rooms.nix` decided from the caller's `rooms` (`{reasons; instances}`):
   # guests that are not slots, so they get the per-guest units and none of the
   # per-slot ones (SL-005 design sec-4, `DEC-036`).
@@ -78,6 +85,8 @@
   netnsUnit = unitOf "capsule-netns";
   proxyUnit = unitOf "capsule-proxy";
   relayUnit = unitOf "capsule-ssh-relay";
+  # The way to a model door, one per declaring slot (SL-010 design sec-3).
+  modelRelayUnit = unitOf "capsule-model-relay";
   tapUnit = c: "microvm-tap-interfaces@${c.name}.service";
 
   egressUnit = "capsule-egress-ns.service";
@@ -126,6 +135,10 @@
   };
 
   allowlistOf = c: "${cfg.allowlistDir}/${c.name}";
+  # The file `capsule <slot> model on|off` writes and this slot's relay reads
+  # (SL-010 design sec-4 D-1). In `modelDoorDir` beside `allowlistOf`, for that
+  # option's reason: the unit can reach this and cannot reach the record.
+  overrideOf = c: "${cfg.modelDoorDir}/${c.name}";
   # Every slot's record directory is under this one (host/record.nix's `slotDir`).
   slotRoot = "${stateDir}/slot";
   policyFile = name: "${cfg.policyDir}/${policies.policies.${name}.allowlist}";
@@ -174,6 +187,12 @@
   # home, so the host keeps a key of its own (`stopKey`).
   halt = import ./halt.nix {inherit pkgs net guestSsh;};
 
+  # The relay's `ExecCondition` (SL-010 design sec-4, `D-1`): given the slot's
+  # declared value and its override file's path, may this door be open on this
+  # activation? Its own file because it is a program with a suite that runs its
+  # shipped text (host/model-door-open-cases.nix).
+  modelDoorOpen = import ./model-door-open.nix {inherit pkgs;};
+
   # A script rather than a `bash -c '…'` in the unit, and that is not a style
   # choice: a **newline inside a unit directive is unbalanced quoting**, and
   # systemd's answer is to ignore that directive *and* the rest of the drop-in
@@ -204,7 +223,7 @@
       inherit pkgs lib;
       paths = {
         inherit stateDir;
-        inherit (cfg) policyDir allowlistDir profileDir;
+        inherit (cfg) policyDir allowlistDir profileDir modelDoorDir;
       };
     })
     wrap
@@ -225,6 +244,18 @@
   # a room differs it is by having no uplink, so the difference is asked of
   # `c.uplink` and never of which list `c` came from.
   perGuest = f: lib.listToAttrs (map f guests);
+
+  # Every slot that declares a door, either value (SL-010 design sec-3). Slots
+  # and never rooms: a room record has no `modelDoor` field, so reading one with
+  # `or null` would be reading a field nobody declared.
+  #
+  # The `seq` is where this module forces the checked door, so model-door.nix's
+  # refusal is in *every* eval of the module and not only in one whose slots
+  # declare a door: a `net.modelDoor` that no slot consumes would otherwise be
+  # read by nothing and refused by nothing. It replaces the `seq` that used to
+  # sit on mkfleet.nix's import, which forced it in one caller's eval rather
+  # than in the module's own (SL-010 PHASE-01 EX-2).
+  withDoor = builtins.seq modelDoor (lib.filter (c: c.modelDoor != null) instances);
 
   proxyServices = perInstance (c: {
     name = "capsule-proxy-${c.name}";
@@ -318,6 +349,41 @@
     };
   });
 
+  # What both relays harden with, in one place (SL-010 design sec-3). Shared
+  # rather than copied, because the two units ask the same question of the same
+  # kernel: the model relay differs in what it listens on and where it connects,
+  # and in nothing else that bounds it. A key that hardened one cannot drift out
+  # of the other, and `hostModuleUnits` compares the two rendered units key by
+  # key. The ssh relay keeps its `RuntimeDirectory` outside this — the model
+  # relay listens on no socket file, so it has none.
+  relayHardening = {
+    UMask = "0077";
+    NoNewPrivileges = true;
+    CapabilityBoundingSet = [""];
+    AmbientCapabilities = [""];
+    ProtectHome = "tmpfs";
+    ProtectSystem = "strict";
+    PrivateTmp = true;
+    PrivateDevices = true;
+    RestrictNamespaces = true;
+    RestrictRealtime = true;
+    RestrictSUIDSGID = true;
+    LockPersonality = true;
+    SystemCallArchitectures = "native";
+    SystemCallFilter = ["@system-service" "~@privileged"];
+    RestrictAddressFamilies = ["AF_INET" "AF_UNIX"];
+    # socat catches SIGTERM and exits 143 itself rather than dying of it, so
+    # every ordinary stop left this unit `failed` — which spends the one
+    # signal that is supposed to mean the perimeter is wrong.
+    SuccessExitStatus = "143";
+    IPAddressAllow = ["${net.guest}/32"];
+    IPAddressDeny = "any";
+    MemoryMax = "64M";
+    TasksMax = 32;
+    Restart = "on-failure";
+    RestartSec = "3s";
+  };
+
   # The way in, and the reason `just ssh` needs no privilege: `ip netns exec`
   # wants CAP_SYS_ADMIN, but the filesystem is not namespaced, so a socket
   # inside the namespace is reachable from the human's shell. The socket path is
@@ -341,50 +407,77 @@
       # reason.
       bindsTo = [(netnsUnit c) (tapUnit c)];
       after = [(netnsUnit c) (tapUnit c)];
-      serviceConfig = {
-        # `nodelay` because socat does not set TCP_NODELAY and ssh cannot set it
-        # on a socket it did not open, so Nagle clumps keystroke echo on this leg
-        # (docs/probes.md, "keystroke echo through the relay socket"). Interactive
-        # traffic is all this socket carries, so nothing here wants coalescing.
-        ExecStart = "${pkgs.socat}/bin/socat UNIX-LISTEN:${c.socket},fork,mode=0600 TCP:${net.guest}:22,nodelay";
-        # As the human, so the socket is hers and no sudo stands between her and
-        # the guest. It carries no privilege of its own: one socket, one
-        # destination, and nothing else reachable.
-        User = cfg.owner;
-        # The socket's own directory, so the record's `socket` is the one
-        # declaration of where the door is: `capsule/<n>` for a slot,
-        # `capsule-room/<n>` for a room.
-        RuntimeDirectory = lib.removePrefix "/run/" (dirOf c.socket);
-        RuntimeDirectoryMode = "0700";
-        NetworkNamespacePath = netns.nsPath c.ns;
-        UMask = "0077";
-        NoNewPrivileges = true;
-        CapabilityBoundingSet = [""];
-        AmbientCapabilities = [""];
-        ProtectHome = "tmpfs";
-        ProtectSystem = "strict";
-        PrivateTmp = true;
-        PrivateDevices = true;
-        RestrictNamespaces = true;
-        RestrictRealtime = true;
-        RestrictSUIDSGID = true;
-        LockPersonality = true;
-        SystemCallArchitectures = "native";
-        SystemCallFilter = ["@system-service" "~@privileged"];
-        RestrictAddressFamilies = ["AF_INET" "AF_UNIX"];
-        # socat catches SIGTERM and exits 143 itself rather than dying of it, so
-        # every ordinary stop left this unit `failed` — which spends the one
-        # signal that is supposed to mean the perimeter is wrong.
-        SuccessExitStatus = "143";
-        IPAddressAllow = ["${net.guest}/32"];
-        IPAddressDeny = "any";
-        MemoryMax = "64M";
-        TasksMax = 32;
-        Restart = "on-failure";
-        RestartSec = "3s";
-      };
+      serviceConfig =
+        {
+          # `nodelay` because socat does not set TCP_NODELAY and ssh cannot set it
+          # on a socket it did not open, so Nagle clumps keystroke echo on this leg
+          # (docs/probes.md, "keystroke echo through the relay socket"). Interactive
+          # traffic is all this socket carries, so nothing here wants coalescing.
+          ExecStart = "${pkgs.socat}/bin/socat UNIX-LISTEN:${c.socket},fork,mode=0600 TCP:${net.guest}:22,nodelay";
+          # As the human, so the socket is hers and no sudo stands between her and
+          # the guest. It carries no privilege of its own: one socket, one
+          # destination, and nothing else reachable.
+          User = cfg.owner;
+          # The socket's own directory, so the record's `socket` is the one
+          # declaration of where the door is: `capsule/<n>` for a slot,
+          # `capsule-room/<n>` for a room.
+          RuntimeDirectory = lib.removePrefix "/run/" (dirOf c.socket);
+          RuntimeDirectoryMode = "0700";
+          NetworkNamespacePath = netns.nsPath c.ns;
+        }
+        // relayHardening;
     };
   });
+
+  # The way to a model door (SL-010 design sec-3, `DEC-070`), one unit per slot
+  # that declares one — either value, because whether it *runs* is the
+  # `ExecCondition`'s question and not the unit's (sec-4).
+  #
+  # The tap as well as the namespace, for the ssh relay's reason: a namespace
+  # unit stays `active exited` after a VM stops, and a relay bound to it alone
+  # outlived every stopped capsule (NOTES item 40).
+  #
+  # **No `wants`, `requires` or `after` on any gateway unit** (`DEC-070`,
+  # `POL-002`): the far end is the caller's value, in `modelDoor.socket`, and
+  # that is the only place the gateway appears in this file. `bind=${net.host}`
+  # exists once the tap's `ExecStartPost` has run, which `after` the tap
+  # guarantees; `reuseaddr` so the verb's stop-then-start is not refused by a
+  # socket in `TIME_WAIT`; `nodelay` because a model's reply streams as small
+  # chunks and socat sets no `TCP_NODELAY` — the ssh relay's measured Nagle
+  # stall (docs/probes.md).
+  #
+  # `IPAddressAllow = guest/32` in `relayHardening` is the control that bounds
+  # who reaches the listener, since the namespace's input chain accepts toward
+  # `net.host` and nft does not; it applies to `AF_INET` only, so the unix
+  # connect is unaffected. `ProtectSystem = "strict"` does not block a
+  # `connect()` on a socket inode — read-only exempts it — which is inferred
+  # from the kernel's rule and verified live in sec-6's exercise.
+  modelRelayServices = lib.listToAttrs (map (c: {
+      name = "capsule-model-relay-${c.name}";
+      value = {
+        description = "model door for capsule ${c.name}, to a host socket";
+        bindsTo = [(netnsUnit c) (tapUnit c)];
+        after = [(netnsUnit c) (tapUnit c)];
+        serviceConfig =
+          {
+            # The declared value, in the unit's own text, and the override's path:
+            # an override decides, and the declaration decides when there is none
+            # (sec-4). Deciding here is what keeps a static `wants` from bringing an
+            # `off` slot's door back at its next VM start.
+            ExecCondition = "${lib.getExe modelDoorOpen} ${c.modelDoor} ${overrideOf c}";
+            ExecStart = "${pkgs.socat}/bin/socat TCP-LISTEN:${toString modelDoor.port},bind=${net.host},fork,reuseaddr,nodelay UNIX-CONNECT:${modelDoor.socket}";
+            # As `cfg.owner`, no group and no `DynamicUser` (`DEC-070`): the only
+            # assumption is a unix socket the owner can open, the ssh relay's. An
+            # owner who is not the socket's leaves every connection `EACCES` with
+            # the unit still up — a misconfiguration that reads as a gateway refusal
+            # in the guest (sec-8).
+            User = cfg.owner;
+            NetworkNamespacePath = netns.nsPath c.ns;
+          }
+          // relayHardening;
+      };
+    })
+    withDoor);
 
   netnsServices = perGuest (c: let
     # A guest with no uplink has no link into the aggregator, so it neither
@@ -445,7 +538,17 @@
         # guest with no proxy reaches nothing, which is safe, and a capsule that
         # will not start because its proxy will not is worse than one with no
         # egress. A guest with no uplink has no proxy to want.
-        wants = lib.optional (c.uplink != null) (proxyUnit c) ++ [(relayUnit c)];
+        #
+        # A declared model door is always *wanted* — on the declaration, not on
+        # the override's state — and its `ExecCondition` decides whether it runs
+        # (SL-010 design sec-4 D-1). Independent of `uplink`, so an uplink-less
+        # slot keeps its door (`IMP-029`). Asked as membership of `withDoor`
+        # rather than as `c.modelDoor or null`, because this is `perGuest`: a
+        # room record has no such field, and must not be asked for one.
+        wants =
+          lib.optional (c.uplink != null) (proxyUnit c)
+          ++ [(relayUnit c)]
+          ++ lib.optional (lib.elem c withDoor) (modelRelayUnit c);
         serviceConfig = {
           NetworkNamespacePath = netns.nsPath c.ns;
           # Refusing to start what it cannot stop cleanly. Runs as the unit's
@@ -566,6 +669,28 @@ in {
         capsule has ever sent back. This is the one path the perimeter must read,
         so it sits where the perimeter can read it and the record does not
         (NOTES item 39).
+      '';
+    };
+
+    modelDoorDir = lib.mkOption {
+      type = lib.types.path;
+      default = "/var/lib/capsule-model-door";
+      description = ''
+        Holds one file per slot that declares `modelDoor`, named for the slot:
+        the override `capsule <slot> model on|off` writes (`on` or `off`, one
+        line), which that slot's `capsule-model-relay-<slot>` reads in its
+        `ExecCondition` at every activation. Absent, the slot's declared value
+        decides. Nothing seeds a file here; tmpfiles makes only the directory.
+
+        Its own directory, beside `allowlistDir`, for that option's reason: the
+        relay can reach this and cannot reach the record under `stateDir`.
+
+        **Do not put it under a tree the relay's hardening masks** (`/home`,
+        `/root` or `/run/user` under `ProtectHome = "tmpfs"`, or `/tmp` under
+        `PrivateTmp`). The relay would then see no override at all, so the
+        declared value alone would decide whatever the verb last wrote — a
+        door the owner closed would open again at the next VM start. Nothing
+        refuses that value; it is a misconfiguration this description names.
       '';
     };
 
@@ -731,7 +856,11 @@ in {
       # `%wheel ALL=(ALL:ALL) ALL` at that priority; it rendered after this rule,
       # matched the same command, carried no tag, and took it. The declaration was
       # present, correct and inert. `mkAfter` says what is actually meant: this
-      # grant is narrower than any blanket and outranks one.
+      # grant is narrower than any blanket and outranks one. It also carries the
+      # model door's two verbs, so a host cannot grant the proxy's restart and
+      # leave the relay's start and stop behind a prompt: the model verb starts
+      # and stops its slot's relay (SL-010 design sec-4), one literal command per
+      # verb per declaring slot and no wildcard.
       security.sudo.extraRules = lib.mkAfter [
         {
           users = [cfg.owner];
@@ -740,7 +869,13 @@ in {
               command = import ./unit-command.nix "restart" "capsule-proxy-${c.name}";
               options = ["NOPASSWD"];
             })
-            instances;
+            instances
+            ++ lib.concatMap (c:
+              map (verb: {
+                command = import ./unit-command.nix verb "capsule-model-relay-${c.name}";
+                options = ["NOPASSWD"];
+              }) ["start" "stop"])
+            withDoor;
         }
       ];
 
@@ -756,6 +891,11 @@ in {
           # which policy a slot is on, and every policy is already declared in a
           # file this repo commits.
           "d ${cfg.allowlistDir} 0755 ${cfg.owner} users -"
+          # 0755 for `allowlistDir`'s reason, and it costs as little: a reader
+          # learns only whether a slot's door is overridden. The directory only — no rule names a file in it, because
+          # an override is the verb's to write and nothing seeds one (SL-010
+          # design sec-4).
+          "d ${cfg.modelDoorDir} 0755 ${cfg.owner} users -"
           # Traversable for the same reason one layer over: a document says which
           # paths a target has and what they may grow to, and every one of them is
           # already in a file this repo commits. Owned by `owner` rather than root
@@ -989,6 +1129,7 @@ in {
         // netnsServices
         // proxyServices
         // relayServices
+        // modelRelayServices
         // vmDropins;
     }
   ]);

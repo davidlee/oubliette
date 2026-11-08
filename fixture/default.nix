@@ -81,8 +81,11 @@ in {
 
   fleet = {
     slots = {
-      alpha = slot 0 "fixture";
-      beta = slot 1 "fixture";
+      # A door on, a door off, and none declared: the three cases
+      # `hostModuleUnits` needs (SL-010 design sec-6).
+      alpha = slot 0 "fixture" // {modelDoor = "on";};
+      beta = slot 1 "fixture" // {modelDoor = "off";};
+      gamma = slot 2 "fixture";
     };
     addressing = {
       uplinkNet = "10.120.0.0/16";
@@ -155,6 +158,11 @@ in {
     prefix = 30;
     mac = "02:00:00:00:99:02";
     proxyPort = 3128;
+    # A socket nobody's, under `/run` and off every masked tree (SL-010).
+    modelDoor = {
+      port = 4000;
+      socket = "/run/fixture-model-door/api.sock";
+    };
   };
 
   flavour = {

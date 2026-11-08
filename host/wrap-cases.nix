@@ -73,6 +73,7 @@
     policyDir = "/fixture/policy";
     allowlistDir = "/fixture/allow";
     profileDir = "/fixture/profiles";
+    modelDoorDir = "/fixture/model-door";
   };
 
   # The only fixture value `escapeShellArg` does anything to — it is a no-op on a
@@ -182,10 +183,12 @@ in
     # environment is the interface, so a fifth variable — or a dropped one — is
     # a deliberate act that edits this line and writes a case, rather than four
     # generated cases quietly becoming five. It was five until SL-001 took
-    # `CAPSULE_REPO` out (`ISS-008`), which is that deliberate act.
+    # `CAPSULE_REPO` out (`ISS-008`), which is that deliberate act, and five
+    # again when SL-010 added `CAPSULE_MODEL_DOOR_DIR` (the override file the
+    # model verb writes, design sec-4), which is another.
     clean "$plain" >out 2>err
     ck "the wrapper supplies exactly these and no others" \
-      "CAPSULE_ALLOWLIST_DIR CAPSULE_POLICY_DIR CAPSULE_PROFILE_DIR CAPSULE_STATE" \
+      "CAPSULE_ALLOWLIST_DIR CAPSULE_MODEL_DOOR_DIR CAPSULE_POLICY_DIR CAPSULE_PROFILE_DIR CAPSULE_STATE" \
       "$(sed -n 's/^\(CAPSULE_[A-Z_]*\)=.*/\1/p' out | sort | tr '\n' ' ' | sed 's/ $//')"
 
     # ------------------------------------ and with nothing set, the program's own

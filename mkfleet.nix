@@ -67,18 +67,25 @@
     })
     .value;
 
+  # The model door's condition program, bound once: `modelDoorOpenCases` runs it
+  # and `hostModule` pins the unit's `ExecCondition` against it (SL-010 sec-6).
+  modelDoorOpen = import ./host/model-door-open.nix {inherit pkgs;};
+
   # The host module, bound once: `hostModule` imports it and `nixosModules` exports it.
   # A function of what rooms.nix decided, so `hostModule` can also evaluate the
   # same module with no rooms, which no option can take away from it.
   #
-  # Forced on the module path, which is what every caller's eval reads, until
-  # the module reads the door itself (SL-010 PHASE-05).
+  # The checked door is handed in rather than forced here: the module consumes
+  # it and forces it where it builds the relay units (`withDoor`), so
+  # model-door.nix's refusal is in every eval of the module instead of in
+  # whichever caller's eval this line happened to be on (SL-010 PHASE-05, which
+  # replaces the `seq` that stood here until the module read the door itself).
   perimeterOf = decision:
-    builtins.seq modelDoor (import ./host/services.nix {
-      inherit net targets capsules policies workBranch fleetPath stateDir;
+    import ./host/services.nix {
+      inherit net targets capsules policies workBranch fleetPath stateDir modelDoor;
       inherit (access) injections;
       rooms = decision;
-    });
+    };
   capsulePerimeter = perimeterOf roomDecision;
 
   # The target-shaped settings that follow from each declared target
@@ -1000,7 +1007,7 @@
   # run as shipped against override files in the sandbox.
   modelDoorOpenCases = import ./host/model-door-open-cases.nix {
     inherit pkgs lib;
-    program = import ./host/model-door-open.nix {inherit pkgs;};
+    program = modelDoorOpen;
   };
 
   # A room declaration's verdicts (SL-005 sec-2), against fixtures that are no
@@ -1277,8 +1284,10 @@
     # capsule-proxy-<slot>`, and on a host that does not permit it the verb
     # cannot finish — it now undoes the selection rather than half-applying it,
     # but a verb built to be *delegable* that always refuses is not delegable
-    # (NOTES item 41). Both halves are this module's own declarations: the
-    # proxy units it makes, and the rule it installs for them. Fourth instance
+    # (NOTES item 41) — and the same of `capsule <slot> model on|off`, which
+    # starts and stops the slot's model relay (SL-010 design sec-4). Both halves
+    # are this module's own declarations: the units it makes, and the rule it
+    # installs for them. Fourth instance
     # of the shape, after the guard's capability (item 30) and the bind's
     # traversal (item 39) — and this one earns its place twice, because nothing
     # else here reads `security.sudo.extraRules` at all, so without it a type
@@ -1291,9 +1300,72 @@
     sudoCommands =
       lib.concatMap (r: map (c: c.command or c) r.commands)
       host.config.security.sudo.extraRules;
+    # Every (verb, unit) the front end runs under sudo: a policy selection
+    # restarts the slot's proxy, and the model door's verb starts and stops its
+    # relay (SL-010 design sec-4).
+    grants =
+      map (u: {
+        verb = "restart";
+        inherit u;
+      }) (lib.filter (lib.hasPrefix "capsule-proxy-") units)
+      ++ lib.concatMap (u:
+        map (verb: {inherit verb u;}) ["start" "stop"])
+      (lib.filter (lib.hasPrefix "capsule-model-relay-") units);
     ungranted =
-      lib.filter (n: !(lib.elem (import ./host/unit-command.nix "restart" n) sudoCommands))
-      (lib.filter (lib.hasPrefix "capsule-proxy-") units);
+      map (g: "${g.verb} ${g.u}")
+      (lib.filter (g: !(lib.elem (import ./host/unit-command.nix g.verb g.u) sudoCommands)) grants);
+
+    # The model relay (SL-010 design sec-3, sec-6, `DEC-070`). Every expected
+    # value is spelled here from this file's own checked `modelDoor`, `net` and
+    # `modelDoorOpen`, never read back from services.nix's bindings, so the
+    # check cannot agree with itself. The first fault is "nothing declares a
+    # door", which keeps the rest from passing over an empty list.
+    declaring = lib.filter (c: c.modelDoor != null) (lib.attrValues capsules.instances);
+    undeclared = lib.filter (c: c.modelDoor == null) (lib.attrValues capsules.instances);
+    relayName = n: "capsule-model-relay-${n}";
+    # The ssh relay's hardening, which the model relay shares (sec-3): an
+    # explicit list, so a key both lose cannot pass as "equal".
+    sharedHardening = ["UMask" "NoNewPrivileges" "CapabilityBoundingSet" "AmbientCapabilities" "ProtectHome" "ProtectSystem" "PrivateTmp" "PrivateDevices" "RestrictNamespaces" "RestrictRealtime" "RestrictSUIDSGID" "LockPersonality" "SystemCallArchitectures" "SystemCallFilter" "RestrictAddressFamilies" "SuccessExitStatus" "IPAddressAllow" "IPAddressDeny" "MemoryMax" "TasksMax" "Restart" "RestartSec"];
+    # Every ordering and dependency list but the two it must hold, empty: a
+    # gateway unit named in any of them is `POL-002` in generic code (`DEC-070`).
+    otherDeps = ["requires" "wants" "requisite" "before" "partOf" "upholds" "wantedBy" "requiredBy" "conflicts" "onFailure" "onSuccess"];
+    relayFaultsOf = c: let
+      n = c.name;
+      u = service (relayName n);
+      sc = u.serviceConfig or {};
+      ssh = (service "capsule-ssh-relay-${n}").serviceConfig or {};
+      tie = ["capsule-netns-${n}.service" "microvm-tap-interfaces@${n}.service"];
+      said = what: ok: lib.optional (!ok) "${relayName n}: ${what}";
+    in
+      if !(lib.elem (relayName n) units)
+      then ["${relayName n}: no such unit, though slot ${n} declares modelDoor = ${c.modelDoor}"]
+      else
+        said "ExecStart is not the socat line to ${modelDoor.socket}" ((sc.ExecStart or null) == "${pkgs.socat}/bin/socat TCP-LISTEN:${toString modelDoor.port},bind=${net.host},fork,reuseaddr,nodelay UNIX-CONNECT:${modelDoor.socket}")
+        ++ said "ExecCondition is not model-door-open ${c.modelDoor} ${cfg.modelDoorDir}/${n}" ((sc.ExecCondition or null) == "${lib.getExe modelDoorOpen} ${c.modelDoor} ${cfg.modelDoorDir}/${n}")
+        ++ said "bindsTo is not exactly the namespace and the tap" ((u.bindsTo or null) == tie)
+        ++ said "after is not exactly the namespace and the tap" ((u.after or null) == tie)
+        ++ map (d: "${relayName n}: ${d} is not empty, so it names a unit beyond the namespace and the tap") (lib.filter (d: (u.${d} or []) != []) otherDeps)
+        ++ said "User is not the owner" ((sc.User or null) == cfg.owner)
+        ++ said "IPAddressAllow is not the guest alone" ((sc.IPAddressAllow or null) == ["${net.guest}/32"])
+        ++ said "IPAddressDeny is not any" ((sc.IPAddressDeny or null) == "any")
+        ++ said "SuccessExitStatus is not 143" ((sc.SuccessExitStatus or null) == "143")
+        ++ said "NetworkNamespacePath is not the ssh relay's" (sc ? NetworkNamespacePath && (sc.NetworkNamespacePath or null) == (ssh.NetworkNamespacePath or null))
+        ++ said "it has a RuntimeDirectory, though it listens on no socket file" (!(sc ? RuntimeDirectory))
+        ++ map (k: "${relayName n}: ${k} is absent or differs from the ssh relay's") (lib.filter (k: !((sc ? ${k}) && (ssh ? ${k}) && sc.${k} == ssh.${k})) sharedHardening)
+        ++ said "microvm@${n} does not want it" (lib.elem "${relayName n}.service" ((service "microvm@${n}").wants or []));
+    undeclaredFaultsOf = c:
+      lib.optional (lib.elem (relayName c.name) units) "${relayName c.name}: exists, though slot ${c.name} declares no modelDoor"
+      ++ lib.optional (lib.any (lib.hasPrefix "capsule-model-relay-") ((service "microvm@${c.name}").wants or [])) "microvm@${c.name} wants a model relay, though slot ${c.name} declares no modelDoor";
+    # tmpfiles: the override directory is the module's, made once; the files in
+    # it are the verb's, so no rule of any type may name one (design sec-4).
+    ruleTarget = rule: lib.elemAt (lib.filter (s: s != "") (lib.splitString " " rule) ++ ["" ""]) 1;
+    modelDoorDirRules = lib.filter (d: d.path == cfg.modelDoorDir) dirRules;
+    modelRelayFaults =
+      lib.optional (declaring == []) "no slot declares modelDoor, so nothing below is checked"
+      ++ lib.concatMap relayFaultsOf declaring
+      ++ lib.concatMap undeclaredFaultsOf undeclared
+      ++ lib.optional (!(lib.length modelDoorDirRules == 1 && lib.all (d: d.mode == "0755" && d.owner == cfg.owner && d.group == "users") modelDoorDirRules)) "no single tmpfiles `d ${cfg.modelDoorDir} 0755 ${cfg.owner} users`"
+      ++ map (r: "tmpfiles rule `${r}` is under ${cfg.modelDoorDir}, whose files are the verb's and not the module's") (lib.filter (r: lib.hasPrefix "${cfg.modelDoorDir}/" (ruleTarget r)) host.config.systemd.tmpfiles.rules);
 
     # The removed options — `repo` (SL-001, `DEC-013`) and `stateDir` (SL-008,
     # `DEC-054`) — which the fixture above never sets and so cannot see. A
@@ -1388,7 +1460,7 @@
         inherit pkgs lib;
         paths = {
           inherit stateDir;
-          inherit (cfg) policyDir allowlistDir profileDir;
+          inherit (cfg) policyDir allowlistDir profileDir modelDoorDir;
         };
       })
       wrap
@@ -1414,7 +1486,9 @@
       else if unparented != []
       then throw "capsule-perimeter: ${lib.concatStringsSep "; " unparented} (ISS-024)."
       else if ungranted != []
-      then throw "capsule-perimeter: no sudoers rule permits restarting ${lib.concatStringsSep ", " ungranted}, so `capsule <slot> policy <name>` cannot finish a selection for those slots and will undo it instead (NOTES item 41)."
+      then throw "capsule-perimeter: no sudoers rule permits ${lib.concatStringsSep ", " ungranted}, so `capsule <slot> policy <name>` cannot finish a selection for a proxy it restarts and will undo it instead (NOTES item 41), and the model door's verb cannot start or stop a relay (SL-010 design sec-4)."
+      else if modelRelayFaults != []
+      then throw "capsule-perimeter: ${lib.concatStringsSep "; " modelRelayFaults} (SL-010 design sec-3, sec-6; DEC-070)."
       else if !repoRemoved.readable
       then throw "capsule-perimeter: with services.capsule-perimeter.repo set, the module's options are unreadable — the removed-option shim for `repo` is gone or misnamed, so a host that still sets it fails on an unknown option instead of being told source is the profile document's `path` (SL-001)."
       else if !repoRemoved.redirected

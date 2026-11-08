@@ -4,7 +4,7 @@
 # Its own file since `ISS-004`, for the reason `host/guard.nix`'s `tools` and
 # `host/cli.nix`'s `moduleState` are: the thing tying this to a host is an
 # argument, so `wrapCases` can build the *shipped* builder against a fixture
-# instead of re-rendering four export lines that would then agree with
+# instead of re-rendering its export lines that would then agree with
 # themselves while disagreeing with `host/services.nix`.
 #
 # **Why it is wrapped at all.** These programs' own defaults are relative to
@@ -29,8 +29,8 @@
 # `quarantineOf` reads `''${CAPSULE_STATE:-…}` (host/quarantine.nix) — so this
 # file taking a value away was the only thing stopping a caller from being heard.
 #
-# **Four, and `CAPSULE_REPO` is not one of them** (SL-001, `ISS-008`). This is
-# not the exception table rejected below. Each of the four has a *baked* fallback
+# **Five, and `CAPSULE_REPO` is not one of them** (SL-001, `ISS-008`). This is
+# not the exception table rejected below. Each of the five has a *baked* fallback
 # that a program on `$PATH` would get wrong — `$PWD`-relative state, the store's
 # documents — so a default here corrects it. `capsule-provision`'s
 # `src="''${CAPSULE_REPO:-$profile_path}"` (host/git-channel.nix) falls back to a
@@ -54,13 +54,13 @@
 {
   pkgs,
   lib,
-  # Where this host keeps each of the four, from the module's own options. Not
-  # four positional arguments: they are all directories and a caller that
+  # Where this host keeps each of the five, from the module's own options. Not
+  # five positional arguments: they are all directories and a caller that
   # ordered two of them wrong would build a wrapper that ran.
   paths,
 }: let
   # The variable a program reads, and what this host defaults it to. One
-  # attribute set rather than four lines of text, so "which variables does the
+  # attribute set rather than five lines of text, so "which variables does the
   # module path supply" has a single answer that `wrapCases` reads from the
   # same place this builds from.
   defaults = {
@@ -68,6 +68,10 @@
     CAPSULE_POLICY_DIR = paths.policyDir;
     CAPSULE_ALLOWLIST_DIR = paths.allowlistDir;
     CAPSULE_PROFILE_DIR = paths.profileDir;
+    # Where `capsule <n> model on|off` writes a slot's override, which the
+    # relay's `ExecCondition` reads (SL-010 design sec-4). A default for the
+    # other four's reason: a program on `$PATH` must not derive it from `$PWD`.
+    CAPSULE_MODEL_DOOR_DIR = paths.modelDoorDir;
   };
 
   # `export V=''${V:-<default>}` and not `export V="''${V:-<default>}"`: the

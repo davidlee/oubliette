@@ -5,7 +5,8 @@
 # and `mkfleet.nix`'s `ungranted` check asserts the grant covers it. Two of the
 # three agreed and the one that mattered did not (NOTES item 44) — the rule
 # named this path and the program ran `sudo systemctl`, which is a *different
-# command* to sudoers. Today the only granted command is the proxy restart.
+# command* to sudoers. Today the granted commands are the proxy restart and
+# each declaring slot's model relay start and stop (SL-010).
 #
 # **Sudo on this host has no `secure_path`**, so it resolves an unqualified
 # command against the *caller's* `PATH` — and `writeShellApplication` prepends
