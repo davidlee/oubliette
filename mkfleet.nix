@@ -996,6 +996,13 @@
     modelDoor = import ./model-door.nix;
   };
 
+  # What the model door's condition program decides (SL-010 sec-4, sec-6),
+  # run as shipped against override files in the sandbox.
+  modelDoorOpenCases = import ./host/model-door-open-cases.nix {
+    inherit pkgs lib;
+    program = import ./host/model-door-open.nix {inherit pkgs;};
+  };
+
   # A room declaration's verdicts (SL-005 sec-2), against fixtures that are no
   # host's. Its subject is the unapplied function (rooms-cases.nix).
   roomsCases = import ./rooms-cases.nix {
@@ -2003,7 +2010,7 @@ in {
       # The checks that need no root and no host: what the module says, what the
       # guard decides, and which policy a slot resolves to.
       inherit hostModuleUnits hostModulePrograms guardCases netnsCases policyCases observeCases;
-      inherit profileCases gitChannelCases roomGitCases quarantineCases vmCases wrapCases volumeRootCases resetHomeCases sessionCases volumeCases fleetCases stateDirCases modelDoorCases roomsCases fragmentsCases fabricCases roomVerbsCases roomClientCases;
+      inherit profileCases gitChannelCases roomGitCases quarantineCases vmCases wrapCases volumeRootCases resetHomeCases sessionCases volumeCases fleetCases stateDirCases modelDoorCases modelDoorOpenCases roomsCases fragmentsCases fabricCases roomVerbsCases roomClientCases;
       # Every declared room's image, checked and built (RV-014 F-7).
       inherit roomImages;
       # The rendered run-time half of every target, so a human can read what a
