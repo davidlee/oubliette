@@ -1,0 +1,291 @@
+id    = 28
+slug  = "reconciliation-review-of-sl-010"
+title = "reconciliation review of SL-010"
+# no status — a review's status is DERIVED from its findings, so
+# it is never stored (the storage rule forbids derived data in authored files).
+
+[review]
+facet     = "reconciliation"     # scope|design|plan|phase-plan|implementation|code-review|reconciliation
+raiser    = "raiser"
+responder = "responder"
+rounds_base = 0
+contests_base = 0
+concluded = true
+
+[[review.turn]]
+act = "conclude"
+role = "raiser"
+note = """
+SL-010 PHASE-01..08 (5849fb7..9f7542d): slice conformance with all eight deltas recorded; just (build, units, every *Cases, fmt) and doctrine check gate rc 0 at 9f7542d; design sec-2/4/6/7 against the live verdicts in docs/probes.md; the autonomy log's deferred lines and notes § Planning findings.
+"""
+
+[target]                   # the outbound `reviews` edge: RV-NNN ──reviews──▶ <ref>
+ref   = "SL-010"
+
+[[finding]]
+id = "F-1"
+status = "verified"
+severity = "major"
+title = "Expected a slot can return to 'as declared' (record null, design sec-4 :409, sec-7 :655); observed no verb ever clears the override"
+detail = '''
+Design sec-4 reads `model_door` null as "as declared" and sec-7 has contract-assignment.md say the field is "written only by the verb, null meaning as declared". The verb writes only "on" / "off" and the override file `on\n` / `off\n`; no path removes the file or writes null. Once a slot has been toggled, its `capsules.nix` declaration no longer governs its door. Live, PHASE-08 leg 9: the "no override" precondition was reachable only by deleting /var/lib/capsule-model-door/a by hand, after which status (record "on") and the relay's condition (declared "off", no file) disagreed. Evidence: docs/probes.md "A model door on one slot, live"; ISS-030.
+'''
+disposition = "design-wrong"
+response = """
+The design never planned a way back: null is only the state before the verb is first used. Reconcile writes that into design.md sec-4 (beside :409) and into the contract row (docs/contract-assignment.md's `model_door`, sec-7 :655): once the verb has run, the override governs, and only deleting the file by hand returns a slot to its declaration. The verb that clears an override is new scope with its own lock, hook and undo rows, so ISS-030 owns it. Reconciliation Brief: per-slice design.md sec-4/sec-7.
+"""
+
+[[finding.turn]]
+act = "raise"
+role = "raiser"
+
+[[finding.turn]]
+act = "dispose"
+role = "responder"
+disposition = "design-wrong"
+response = """
+The design never planned a way back: null is only the state before the verb is first used. Reconcile writes that into design.md sec-4 (beside :409) and into the contract row (docs/contract-assignment.md's `model_door`, sec-7 :655): once the verb has run, the override governs, and only deleting the file by hand returns a slot to its declaration. The verb that clears an override is new scope with its own lock, hook and undo rows, so ISS-030 owns it. Reconciliation Brief: per-slice design.md sec-4/sec-7.
+"""
+
+[[finding.turn]]
+act = "verify"
+role = "raiser"
+note = "brief entry written"
+
+[[finding]]
+id = "F-2"
+status = "verified"
+severity = "minor"
+title = """Expected the template's pi-models example to work behind the gateway; observed 400 "field 'store' not allowed""""
+detail = """
+PHASE-07's commented example in templates/fleet/setup.nix carried `models: [{id: …}]`. Uncommented in /srv/fleet and used live (PHASE-08 leg 4 set-up), pi sent `store` and the gateway answered 400. pi needs per-model `compat` (`supportsStore = false`, …) behind this gateway, as ~/flakes agents/gateway.nix:115-150 already gives it. PHASE-07's seat check of the template against ~/flakes (99b5a8d) checked socket, owner and issue command, not models.json, so it missed this.
+"""
+disposition = "fix-now"
+response = """
+Fixed in 9f7542d: the example now carries `compat: {supportsStore: false}` and a comment naming the 400. The README's model-door section also says each model needs `compat`. `just check` and `just` rc 0. The README already points at the gateway's own pi config for the full block.
+"""
+
+[[finding.turn]]
+act = "raise"
+role = "raiser"
+
+[[finding.turn]]
+act = "dispose"
+role = "responder"
+disposition = "fix-now"
+response = """
+Fixed in 9f7542d: the example now carries `compat: {supportsStore: false}` and a comment naming the 400. The README's model-door section also says each model needs `compat`. `just check` and `just` rc 0. The README already points at the gateway's own pi config for the full block.
+"""
+
+[[finding.turn]]
+act = "verify"
+role = "raiser"
+
+[[finding]]
+id = "F-3"
+status = "verified"
+severity = "minor"
+title = "Expected the selector registry to match what was touched; observed host/proxy-restart.nix undelivered, host/volume-cases.nix undeclared"
+detail = """
+`doctrine slice conformance 10`: undelivered `host/proxy-restart.nix` (renamed to host/unit-command.nix in PHASE-03, which is conformant under its own selector; autonomy log PHASE-03 deferred). Undeclared `host/volume-cases.nix`: PHASE-06 moved its positional alloc reader $13→$14 for the new status column. The other undeclared paths are .doctrine/ bookkeeping (backlog, RV-027, notes), not source.
+"""
+disposition = "design-wrong"
+response = """
+Reconcile fixes the selector registry, which is what conformance reads: `doctrine slice selector rm 10 host/proxy-restart.nix` and `doctrine slice selector add 10 host/volume-cases.nix` (design-target). Design §6/the file table is the human mirror and gets the same edit. Reconciliation Brief: per-slice.
+"""
+
+[[finding.turn]]
+act = "raise"
+role = "raiser"
+
+[[finding.turn]]
+act = "dispose"
+role = "responder"
+disposition = "design-wrong"
+response = """
+Reconcile fixes the selector registry, which is what conformance reads: `doctrine slice selector rm 10 host/proxy-restart.nix` and `doctrine slice selector add 10 host/volume-cases.nix` (design-target). Design §6/the file table is the human mirror and gets the same edit. Reconciliation Brief: per-slice.
+"""
+
+[[finding.turn]]
+act = "verify"
+role = "raiser"
+note = "brief entry written"
+
+[[finding]]
+id = "F-4"
+status = "verified"
+severity = "major"
+title = "Expected POL-003's axis table to name net.modelDoor and the slot's modelDoor (design sec-7 :669); observed the policy unchanged"
+detail = """
+Design sec-7 commits to a revision of POL-003's table at reconcile, through `doctrine revision`: the addressing row's list (tap, addresses, MAC, proxy port) gains the model door (port, socket), and the slots row's list gains each slot's `modelDoor`. `doctrine policy show POL-003` still lists neither. Required policy, so the table is now incomplete as a statement of where each value lives.
+"""
+disposition = "design-wrong"
+response = """
+This is the governance change design sec-7 committed to. Reconcile raises a REV against POL-003: the addressing row adds "the model door (port, socket)", and the slots row adds "each slot's model door (on / off / absent)". Reconciliation Brief: governance REV.
+"""
+
+[[finding.turn]]
+act = "raise"
+role = "raiser"
+
+[[finding.turn]]
+act = "dispose"
+role = "responder"
+disposition = "design-wrong"
+response = """
+This is the governance change design sec-7 committed to. Reconcile raises a REV against POL-003: the addressing row adds "the model door (port, socket)", and the slots row adds "each slot's model door (on / off / absent)". Reconciliation Brief: governance REV.
+"""
+
+[[finding.turn]]
+act = "verify"
+role = "raiser"
+note = "brief entry written"
+
+[[finding]]
+id = "F-5"
+status = "verified"
+severity = "minor"
+title = "Expected design sec-4's commit to say mv; observed recordWrite's final step is mv -T"
+detail = """
+PHASE-04 hardened the final publication to `mv -T`: a plain `mv` onto a directory at assignment.json exits 0 and buries the candidate inside it (GNU coreutils), losing the record write silently and making the "mv fails" undo row unreachable. Within intent; design sec-4 (:347-385) still says `mv`. Notes § Planning findings.
+"""
+disposition = "design-wrong"
+response = """
+The implementation is right and the design text is behind it. Reconcile edits design.md sec-4 to say `mv -T` and gives the reason (a directory at the target would swallow the candidate with exit 0). Reconciliation Brief: per-slice.
+"""
+
+[[finding.turn]]
+act = "raise"
+role = "raiser"
+
+[[finding.turn]]
+act = "dispose"
+role = "responder"
+disposition = "design-wrong"
+response = """
+The implementation is right and the design text is behind it. Reconcile edits design.md sec-4 to say `mv -T` and gives the reason (a directory at the target would swallow the candidate with exit 0). Reconciliation Brief: per-slice.
+"""
+
+[[finding.turn]]
+act = "verify"
+role = "raiser"
+note = "brief entry written"
+
+[[finding]]
+id = "F-6"
+status = "verified"
+severity = "minor"
+title = "Expected the PI_* env lines' evidence to be the guest's pi; observed design D-5 cites pi 1.5.0 docs, guest runs 0.87.1"
+detail = """
+PHASE-08 leg 4 shows the three variables reach pi's environ; it does not show pi 0.87.1 honours them. PI_SKIP_VERSION_CHECK and PI_TELEMETRY were already present before .env landed (inferred: the pi package's wrapper). CHR-019.
+"""
+disposition = "follow-up"
+response = """
+The open question is whether pi 0.87.1 honours the variables, which takes a test, not a spec edit. The design's claim (set three variables in .env) holds as written. CHR-019 owns the check.
+"""
+
+[[finding.turn]]
+act = "raise"
+role = "raiser"
+
+[[finding.turn]]
+act = "dispose"
+role = "responder"
+disposition = "follow-up"
+response = """
+The open question is whether pi 0.87.1 honours the variables, which takes a test, not a spec edit. The design's claim (set three variables in .env) holds as written. CHR-019 owns the check.
+"""
+
+[[finding.turn]]
+act = "verify"
+role = "raiser"
+
+[[finding]]
+id = "F-7"
+status = "verified"
+severity = "nit"
+title = "Expected one relay start per VM start; observed two triggers at one microvm@a start (leg 6)"
+detail = """
+22:52:21 and 22:52:35, both skipped by exec-condition. Harmless while the condition holds; source of the second not established. ISS-031.
+"""
+disposition = "follow-up"
+response = """
+Harmless while the ExecCondition guards it, and leg 6 showed both triggers skipped. ISS-031 owns finding the cause.
+"""
+
+[[finding.turn]]
+act = "raise"
+role = "raiser"
+
+[[finding.turn]]
+act = "dispose"
+role = "responder"
+disposition = "follow-up"
+response = """
+Harmless while the ExecCondition guards it, and leg 6 showed both triggers skipped. ISS-031 owns finding the cause.
+"""
+
+[[finding.turn]]
+act = "verify"
+role = "raiser"
+
+[[finding]]
+id = "F-8"
+status = "verified"
+severity = "nit"
+title = "Expected the house commit style (feat/fix/doc); observed 43f0e76's subject uses refactor:"
+detail = """
+PHASE-03's commit. History is pushed and immutable.
+"""
+disposition = "tolerated"
+response = """
+The commit is pushed. Rewriting main's history to fix a subject line would cost more than it is worth; the content is correctly described. Later phases follow the house style.
+"""
+
+[[finding.turn]]
+act = "raise"
+role = "raiser"
+
+[[finding.turn]]
+act = "dispose"
+role = "responder"
+disposition = "tolerated"
+response = """
+The commit is pushed. Rewriting main's history to fix a subject line would cost more than it is worth; the content is correctly described. Later phases follow the house style.
+"""
+
+[[finding.turn]]
+act = "verify"
+role = "raiser"
+
+[[finding]]
+id = "F-9"
+status = "verified"
+severity = "minor"
+title = "Expected the status column's live values pinned by a case; observed every sandbox cell reads --"
+detail = """
+`unitState` calls systemctl from runtimeInputs, so policyCases sees only `--` (notes § Planning findings). The live values `running` / `inactive` / `--` were observed in PHASE-08 legs 5, 6, 7 and 9.
+"""
+disposition = "tolerated"
+response = """
+This is the boundary CLAUDE.md names: a suite cannot stub a program in runtimeInputs. The column's logic (record + override → effective value) is pinned by policyCases through the `cellOf` reader. Its live rendering was observed in four PHASE-08 legs, recorded in docs/probes.md. Making systemctl injectable for one column would add a seam to the front end for little gain.
+"""
+
+[[finding.turn]]
+act = "raise"
+role = "raiser"
+
+[[finding.turn]]
+act = "dispose"
+role = "responder"
+disposition = "tolerated"
+response = """
+This is the boundary CLAUDE.md names: a suite cannot stub a program in runtimeInputs. The column's logic (record + override → effective value) is pinned by policyCases through the `cellOf` reader. Its live rendering was observed in four PHASE-08 legs, recorded in docs/probes.md. Making systemctl injectable for one column would add a seam to the front end for little gain.
+"""
+
+[[finding.turn]]
+act = "verify"
+role = "raiser"
+
+# Findings are append-only `[[finding]]` tables, added by `review raise`.
+# Empty here at creation — a fresh review is Active, awaiting the raiser.
