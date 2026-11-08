@@ -79,10 +79,6 @@ selector = "model-door-cases.nix"
 intent = "design-target"
 
 [[selector]]
-selector = "host/proxy-restart.nix"
-intent = "design-target"
-
-[[selector]]
 selector = "host/unit-command.nix"
 intent = "design-target"
 
@@ -149,6 +145,11 @@ intent = "design-target"
 [[selector]]
 selector = "host/model-door-open-cases.nix"
 intent = "design-target"
+
+[[selector]]
+selector = "host/volume-cases.nix"
+intent = "design-target"
+note = "PHASE-06: alloc reader moved for the status's model column"
 
 [[relation]]
 label = "governed_by"

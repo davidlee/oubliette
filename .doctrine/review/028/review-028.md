@@ -45,3 +45,20 @@ Self-audit, conformance mode, over SL-010 PHASE-01..PHASE-08 (`5849fb7..9f7542d`
 
 ### Governance/spec (REV)
 - **F-4**: POL-003 → REV modify the axis table. The addressing row adds the model door (`net.modelDoor`: port, socket); the slots row adds each slot's `modelDoor` (`"on"` / `"off"` / absent).
+
+## Reconciliation Outcome
+
+### Direct edits applied
+- design.md sec-4: `null` is the state before the verb's first use. No verb writes it back, and `ISS-030` owns that verb. sec-7's contract bullet says the same, and so does docs/contract-assignment.md's `model_door` row (F-1).
+- Selector registry: `rm host/proxy-restart.nix`, `add host/volume-cases.nix` (design-target). The design file table mirrors both. `slice conformance 10`: 0 undelivered (F-3).
+- design.md sec-4: the final step is `mv -T`, with its reason (F-5).
+
+### REVs completed
+- REV-010 (`reconcile-sl-010`): done. POL-003's table names the model door on the addressing row and each slot's `modelDoor` on the slots row (F-4). The rationale is in revision-010.md.
+
+### Fixed in the slice / follow-up / tolerated
+- F-2: fixed in 9f7542d.
+- F-6 → CHR-019 and F-7 → ISS-031: follow-up.
+- F-8, F-9: tolerated, with rationale in their dispositions.
+
+Reconcile pass complete; handoff to /close.

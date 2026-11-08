@@ -379,7 +379,9 @@ record's lock:
 Today it calls the hook before reading and transforming the record, so a
 malformed record or a failed candidate write comes after effects that nothing
 undoes. The new order is: read the record, transform it, write the candidate,
-then call `recordAlso`, then `mv` the candidate into place. Only the `mv` can
+then call `recordAlso`, then `mv -T` the candidate into place (`-T`, because a
+plain `mv` onto a directory at the record's path exits 0 and buries the
+candidate inside it; reconciled from PHASE-04, RV-028 F-5). Only the `mv` can
 fail after the hook, and `recordUndo` covers it. The policy verb gets the same
 order without any change of its own. It declares no undo, so its exposure
 narrows from every commit step to the `mv` alone.
@@ -408,7 +410,11 @@ state directory and the grant all name `cfg.owner`.
 **The record.** `host/record.nix`'s skeleton gains
 `.model_door = (.model_door // null)`; `null` reads as `-`, "as declared".
 Like `policy`, an override outlives a re-assignment: the door belongs to the
-slot (`DEC-073`'s consequence), not to the project on it.
+slot (`DEC-073`'s consequence), not to the project on it. **`null` is only the
+state before the verb's first use**: no verb writes it back, so once a slot has
+been toggled the override governs and a change to its declaration does not
+reach its door, until the override file is removed by hand (RV-028 F-1;
+`ISS-030` owns a verb that clears it).
 
 **The wrapper.** `host/wrap.nix`'s `paths` gains `modelDoorDir`, exported as
 `CAPSULE_MODEL_DOOR_DIR`; `wrapCases` asserts it survives to the program.
@@ -652,7 +658,8 @@ Same commit as the unit (`POL-002`'s rule for the boundary):
   declared model door, on its declared port, to a socket the host operator
   names**. `:336`'s neighbouring wording follows.
 - **`docs/contract-assignment.md`** — the record's `model_door` field: `"on" |
-  "off" | null`, written only by the verb, `null` meaning as declared.
+  "off" | null`, written only by the verb, `null` meaning as declared — the
+  state before the verb's first use, since no verb returns to it (`ISS-030`).
 - **`docs/plan-f-assistant.md` §2** — annotated: the slot half of IDE-003 is
   SL-010; the room half is still open.
 - **`templates/fleet/README.md`** — a short "a model door" section beside the
@@ -730,6 +737,7 @@ Out of scope:
 | `host/wrap.nix` | `CAPSULE_MODEL_DOOR_DIR` from `paths.modelDoorDir` |
 | `host/policy-cases.nix` | the model verb's rounds; fixture slots and `net.modelDoor`; `unitControl` and `vmmState` substitutes; the policy rounds moved to `unitControl` |
 | `host/wrap-cases.nix` | the new variable survives |
+| `host/volume-cases.nix` | its positional `alloc` reader follows the new status column (reconciled, RV-028 F-3) |
 | `mkfleet.nix` | `model-door.nix`'s `value` read beside `stateDir`'s; `hostModuleUnits` fixture and cases; `ungranted`; `modelDoorCases` wiring |
 | `just/fleet.just` | `modelDoorCases` and `modelDoorOpenCases` in `build` and `cases` |
 | `justfile` | `host-path.nix`, `model-door.nix`, `model-door-cases.nix` in `nix_paths` (it lists root files by name) |
