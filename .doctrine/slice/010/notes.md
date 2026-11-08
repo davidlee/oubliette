@@ -6,27 +6,27 @@ disposable phase sheet (`.doctrine/state/.../phase-NN.md`) that must survive
 
 ## Harvest
 <!-- single-copy: updated in place each harvest; ids only, never restated content -->
-fresh-as-of: 2026-11-08 · design/reviewing (rev 28) · 29d9d63
+fresh-as-of: 2026-11-08 · ready (plan, PHASE-01 next) · 304bae1
 
 ### Produced
-- DEC-069, DEC-070, DEC-071, DEC-072, DEC-073 (design run inq-1..inq-5)
-- RSK-013, IDE-004 (OAuth credential in a capsule; gateway-held OAuth, needs IDE-003)
-- IMP-029 (optional proxy/uplink for a slot; needs SL-010)
-- QUE-003 answered (an injected credential lasts about a year, user's estimate)
-- IDE-003 widened to a capsule or room
-- design.md sec-1..sec-9 (drafted from DEC-069..DEC-073); 28 design-target selectors
-- RV-027 (GPT hostile pass; F-1..F-9; rounds 1-2 integrated)
-- ISS-029 (a moved declared default does not reach an existing render; policy link and model door)
+- DEC-069..DEC-073 (design run inq-1..inq-5); DEC-073 rationale corrected per RV-027 F-3
+- design locked at run rev 39 (commit e040bee); RV-027 concluded after 6 raiser rounds, F-1..F-11
+- slice-010.md scope matched to the locked design (799501b)
+- plan.toml/plan.md, PHASE-01..PHASE-08, phase sheets materialised (03cf26d, f324d60, 304bae1)
+- RSK-013, IDE-004, IMP-029, ISS-029 minted earlier; QUE-003 answered; IDE-003 widened
+- no code yet; no suite or build run this slice
 
 ### Learned
-- research.md Thread 2 fact 4 was wrong ($HOME persists; reset is a host verb); corrected, and DEC-073 rationale with it
-- research.md (gitignored, `.doctrine/slice/010/research/`); its ✓ rows are verified
+- mem.pattern.oubliette.a-state-file-is-compared-by-bytes — grep -qx, $(…) and an exec'd pipeline tail each admit a forged override; cmp + exit; mv -T
+- research.md Thread 2 fact 4 was wrong ($HOME persists); corrected with DEC-073
 
 ### Open
-- RV-027: F-3, F-4, F-9 answered, awaiting raiser round 3
-- Section attestations (user), review-disposed, design-accepted; review.scope (slice-010.md vs revised design) and review.selectors runbook steps
-- D-1..D-6 resolved in sections: D-1 sec-4, D-2 sec-4, D-3 sec-4, D-4 sec-2, D-5 sec-5, D-6 sec-3
-- POL-003 table revision (net + slots rows) proposed for reconcile (sec-7)
+- RV-027 F-4 — control route; re-submit to the raiser once PHASE-06 EX-4/EX-5 exist
+- RV-027 F-1, F-2 — probe routes transcribed onto PHASE-04 EX-3 and PHASE-06 EX-2/EX-3
+- POL-003 table revision (net.modelDoor, modelDoor) — at reconcile, via doctrine revision (design sec-7)
+- mv -T in recordWrite — a planning hardening beyond design sec-4; reconcile writes it back (§ Planning findings)
+- fixture slot count for hostModuleUnits — PHASE-05 phase-plan decides (plan.md Notes)
+- IMP-009 — gets a note at PHASE-06; ISS-029 — residual for the policy link only
 
 ## Drafting concerns carried from inquiry (not represented in the run)
 

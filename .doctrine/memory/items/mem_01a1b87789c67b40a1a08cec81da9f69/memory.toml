@@ -1,0 +1,46 @@
+memory_uid = "mem_01a1b87789c67b40a1a08cec81da9f69"
+memory_key = "mem.pattern.oubliette.a-state-file-is-compared-by-bytes"
+schema_version = 1
+memory_type = "pattern"
+status = "active"
+title = "A shell condition over a state file compares bytes, never searches or substitutes"
+summary = '''grep -qx admits a match among other lines, $(…) drops NULs and trailing newlines, and an exec'd pipeline tail falls through; use printf 'on\n' | cmp -s -- - "$f"; exit'''
+created = "2026-11-08"
+updated = "2026-11-08"
+
+[scope]
+paths = ["host/model-door-open.nix"]
+globs = ["host/*.nix"]
+commands = []
+tags = ["gotcha", "shell"]
+workspace = "default"
+repo = "github.com/davidlee/oubliette"
+repo_id_kind = "remote"
+repo_id_confidence = "high"
+
+[git]
+anchor_kind = "commit"
+commit = "304bae1bc2e37ad9b792b8f02b241a7049f145c7"
+tree = "b238e55d226efb6bc12ca536e50551740bef80ba"
+ref_name = "refs/heads/main"
+checkout_state_id = ""
+base_commit = "304bae1bc2e37ad9b792b8f02b241a7049f145c7"
+verified_sha = ""
+normalizer = ""
+
+[review]
+verification_state = "unverified"
+reviewed = ""
+review_by = ""
+
+[trust]
+trust_level = "high"
+
+[ranking]
+severity = "medium"
+weight = 0
+
+[[source]]
+kind = "review"
+ref = "RV-027"
+
