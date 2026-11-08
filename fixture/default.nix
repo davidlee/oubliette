@@ -62,6 +62,22 @@
     policy = "build";
     policies = policies.everything;
   };
+
+  # The host<->guest link. Platform shape rather than a host's choice: every
+  # capsule's link is identical inside its own namespace.
+  net = {
+    tap = "vm-capsule";
+    host = "10.99.0.1";
+    guest = "10.99.0.2";
+    prefix = 30;
+    mac = "02:00:00:00:99:02";
+    proxyPort = 3128;
+    # A socket nobody's, under `/run` and off every masked tree (SL-010).
+    modelDoor = {
+      port = 4000;
+      socket = "/run/fixture-model-door/api.sock";
+    };
+  };
 in {
   targets = {
     fixture = {
@@ -148,22 +164,7 @@ in {
   };
 
   inherit policies;
-
-  # The host<->guest link. Platform shape rather than a host's choice: every
-  # capsule's link is identical inside its own namespace.
-  net = {
-    tap = "vm-capsule";
-    host = "10.99.0.1";
-    guest = "10.99.0.2";
-    prefix = 30;
-    mac = "02:00:00:00:99:02";
-    proxyPort = 3128;
-    # A socket nobody's, under `/run` and off every masked tree (SL-010).
-    modelDoor = {
-      port = 4000;
-      socket = "/run/fixture-model-door/api.sock";
-    };
-  };
+  inherit net;
 
   flavour = {
     extras = ["agents" "dev-facilities"];
@@ -176,15 +177,46 @@ in {
     # A real ed25519 public key whose private half was discarded at generation,
     # so the stop-key unit parses a key that no one holds.
     stopKey = "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAICoofzFAInVftyrO13VpKn0kSQTA2I0fVmC8xCZRM4nw fixture-stop-key";
-    # One injection, outside `$HOME`, so the guest's scrub list is not vacuous
-    # (vm/capsule.nix, vm/reset-home-cases.nix).
-    injections = {volumePath}: [
+    # `fixture-env` is outside `$HOME`, so the guest's scrub list is not vacuous
+    # (vm/capsule.nix, vm/reset-home-cases.nix). The model door's guest side
+    # (SL-010 sec-5, DEC-073) is live so its shape evaluates and builds: the env
+    # line in `fixture-env`, and two payloads under `$HOME`, which the scrub list
+    # leaves to the reset.
+    injections = {volumePath}: let
+      # The agent's `$HOME` in the guest (docs/contract-target.md).
+      home = "${volumePath}/home";
+    in [
       {
         name = "fixture-env";
         dest = "${volumePath}/.env";
-        produce = "printf 'FIXTURE=1\\n'";
+        produce = ''
+          printf 'FIXTURE=1\n'
+          printf 'export PI_OFFLINE=1 PI_SKIP_VERSION_CHECK=1 PI_TELEMETRY=0\n'
+        '';
         tools = [];
         optional = true;
+      }
+      {
+        # A source no host has, so the optional skip is every build's path.
+        name = "gateway-key";
+        dest = "${home}/.config/llm-gateway/key";
+        optional = true;
+        produce = ''cat "/nonexistent/fixture-gateway/$capsule.key"'';
+        tools = [];
+      }
+      {
+        name = "pi-models";
+        dest = "${home}/.pi/agent/models.json";
+        produce = ''
+          jq -n --arg url "http://${net.host}:${toString net.modelDoor.port}/v1" \
+            --arg key "!cat ${home}/.config/llm-gateway/key" '{
+              providers: {gateway: {
+                baseUrl: $url, api: "openai-completions", apiKey: $key,
+                authHeader: true, models: [{id: "fixture-model"}]
+              }}
+            }'
+        '';
+        tools = ["jq"];
       }
     ];
   };

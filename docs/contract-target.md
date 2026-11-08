@@ -298,7 +298,7 @@ is the same for every target.
 | `$HOME` | `<volumePath>/home`, on the volume, so agent state survives reboots and dies with a fresh capsule — and a sibling of the checkout, not a parent of it, which is what lets `capsule <slot> volume reset-home` delete `$HOME` alone and leave `guestPath`, the caches and `<volumePath>/baseline` where they are |
 | `TMPDIR` | `<volumePath>/tmp`, mode 1777 — on disk, because the guest's root is tmpfs and therefore guest RAM |
 | caches | one env var per `caches` entry, pointing at a directory the seed has created and chowned |
-| egress | `HTTP(S)_PROXY`/`http(s)_proxy` at the host's allowlist proxy, `NO_PROXY` for the host and loopback. No default route and no resolver in the guest |
+| egress | `HTTP(S)_PROXY`/`http(s)_proxy` at the host's allowlist proxy, `NO_PROXY` for the host and loopback. No default route and no resolver in the guest. A slot with a declared model door also reaches `<host>:<port>` directly, the only host service besides the proxy it can address, while the door is open (`capsule <slot> model on\|off`) |
 | tools | `git`, plus `compose(floor, extras)`: the floor is this repo's — `toolsPackage` + `extraTools` — and the extras are the host operator's, from `fragments.nix`'s vocabulary (`agents`, `dev-facilities`). A target names no convenience and may rely on none ([contract-flavour.md](./contract-flavour.md), [item 31](./ledger/031-the-fragment-vocabulary.md)) |
 | git | `user.name`/`user.email` set, `init.defaultBranch` = the constant `work`, and `receive.denyCurrentBranch = updateInstead` so a provision checks out rather than moving a ref |
 | static config | every `guestConfig` entry symlinked onto the volume from the closure — a link, so a rebuild replaces it and a fresh capsule cannot start with a stale copy |
@@ -321,8 +321,11 @@ Invariants — these hold whatever runs underneath:
   the link or is in the closure. Firecracker enforces it; the confinement would
   assert it anyway, since a shared directory is a channel the perimeter does not
   mediate.
-- **There is no route out except the proxy**, and therefore no host service
-  reachable by address. A target whose tests want a database gets it inside the
+- **There is no route out except the proxy**, and the only host service
+  reachable by address is a **declared model door**: one port on the host's
+  end of the link, relayed to one socket the host operator names, for a slot
+  that declares one (`net.modelDoor`, a slot's `modelDoor`; SL-010). It is a
+  host process holding both ends, not a route. A target whose tests want a database gets it inside the
   guest closure or not at all ([item 4](./ledger/004-live-postgres.md) is this
   gap, open and unhit). What is *not* invariant is that the database cannot be
   in the closure — that is a missing capability, and

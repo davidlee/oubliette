@@ -66,6 +66,45 @@ in one slot.
 Nothing above boots a capsule. Starting one, the host module, and the host's
 own NixOS config are oubliette's README.
 
+## A model door
+
+A model door lets a slot's guest reach a model gateway on this host at
+`http://<net.host>:<port>/v1`, past the proxy. Two declarations make one:
+`modelDoor = { port; socket; }` in `net.nix`, where the door listens and the
+socket it relays to, and a slot's `modelDoor = "on" | "off"` in `capsules.nix`,
+the door's state at start. Without the first, no slot may declare the second.
+Each declaring slot gets its own relay unit, and `capsule <name> model on|off`
+overrides the declaration and opens or closes a running slot's door.
+
+The key is issued on the host, per slot:
+
+```sh
+llm-gateway issue capsule-<name> --models … --budget … --out "$HOME/.config/capsule/<name>.gateway-key"
+```
+
+`setup.nix` carries the guest side, commented: `gateway-key` into the guest's
+`~/.config/llm-gateway/key`, `pi-models` into its `~/.pi/agent/models.json`,
+and `export PI_OFFLINE=1 PI_SKIP_VERSION_CHECK=1 PI_TELEMETRY=0` in the env
+entry's file.
+
+**The owner requirement.** The relay runs as the host module's `owner`
+(`cfg.owner`), so that user must be able to open the gateway's socket. If it is
+not, every connection fails `EACCES` while the unit stays up, which reads in the
+guest as a gateway error. The module cannot check another flake's `SocketUser`.
+
+`.env` reaches interactive shells only. A launcher that runs pi without one,
+such as a worker over `ssh … pi`, must source it or set the three variables.
+
+| change on the host | what to run |
+|---|---|
+| a re-issued or rotated key | `capsule <name> inject gateway-key --force` |
+| a changed `models.json` | `capsule <name> inject pi-models --force` |
+| a changed `.env` | `capsule <name> inject env --force` |
+| a revoked key, not replaced | nothing: the gateway refuses it |
+
+Each payload lands once (write-if-absent), so a host-side change needs one of
+these; `--force` discards whatever the guest wrote to that file.
+
 ## What this template is checked for, and what not
 
 Oubliette evaluates this `flake.nix` against stub inputs on every build of its

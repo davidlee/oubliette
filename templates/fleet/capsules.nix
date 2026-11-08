@@ -23,6 +23,9 @@
     # The policy a slot starts under, and the set it may be switched among.
     policy = "build";
     policies = policies.everything;
+    # The door's state at start, `"on"` or `"off"`; `capsule <name> model on|off`
+    # overrides it. Declared only when net.nix declares `modelDoor`, else refused.
+    # modelDoor = "on";
   };
 in {
   slots = {

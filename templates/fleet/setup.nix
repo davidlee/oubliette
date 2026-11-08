@@ -40,6 +40,10 @@
   # first, then a shared file — so one host can give two capsules different
   # secrets without the declaration learning either capsule's name.
   mine = "$HOME/.config/capsule";
+  # The host's own link declaration, for the model door example's address and
+  # port, so they are not spelled twice. Commented: this template's net.nix
+  # declares no door, so a live reference would not evaluate.
+  # net = import ./net.nix;
 in [
   {
     # Environment secrets — API keys and anything else a shell in the guest
@@ -80,4 +84,46 @@ in [
   #   produce = "cat ${mine}/claude-credentials.json";
   #   tools = [];
   # }
+
+  # The model door's guest side (SL-010 sec-5, DEC-073): the gateway key, pi's
+  # `models.json`, and three lines in the env file. Commented, like
+  # `claude-credentials`: oubliette ships no guest code for these.
+  #
+  # The key, issued on the host per slot:
+  #
+  #   llm-gateway issue capsule-$capsule --models … --budget … --out "${mine}/$capsule.gateway-key"
+  #
+  # {
+  #   name = "gateway-key";
+  #   dest = "${home}/.config/llm-gateway/key";
+  #   optional = true;
+  #   produce = ''cat "${mine}/$capsule.gateway-key"'';
+  #   tools = [];
+  # }
+  #
+  # The model ids are the consumer's and must be a subset of what the key was
+  # issued for; the gateway refuses the rest.
+  #
+  # {
+  #   name = "pi-models";
+  #   dest = "${home}/.pi/agent/models.json";
+  #   produce = ''
+  #     jq -n --arg url "http://${net.host}:${toString net.modelDoor.port}/v1" \
+  #       --arg key "!cat ${home}/.config/llm-gateway/key" '{
+  #         providers: {gateway: {
+  #           baseUrl: $url, api: "openai-completions", apiKey: $key,
+  #           authHeader: true, models: [{id: "<model id>"}]
+  #         }}
+  #       }'
+  #   '';
+  #   tools = ["jq"];
+  # }
+  #
+  # The key stays the slot's across assignments, because a re-assignment keeps
+  # `$HOME`; rotate it when it must not outlive one.
+  #
+  # And in the `env` entry's file (`<volumePath>/.env`), `export` because the
+  # guest sources it with a plain `.`:
+  #
+  #   export PI_OFFLINE=1 PI_SKIP_VERSION_CHECK=1 PI_TELEMETRY=0
 ]

@@ -75,6 +75,12 @@ other. "No git egress" is then that policy's content, not a new mechanism.
 
 ### 2. The model door: a socket, never a route (`POL-001`)
 
+Annotated 2026-11-08: the slot half of `IDE-003` (a model door for a capsule or
+room) is SL-010 — a relay per declaring slot, run as the host module's owner
+rather than `DynamicUser` with a group (`DEC-070`), and the key, `models.json`
+and env lines delivered by the consumer's inject payloads (`DEC-073`). The room
+half is still open; what follows is the room's.
+
 The gateway (`flakes:SL-011`) listens on `/run/llm-gateway/api.sock` on this
 host; `~/flakes` owns the service and the socket's directory. Which repo owns
 it is open: `flakes:IDE-008` proposes moving the gateway's NixOS module here,

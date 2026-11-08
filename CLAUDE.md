@@ -48,7 +48,7 @@ evaluates). `just` (default) runs the build, units, and fmt.
 the NixOS module — what it says, including its programs, since a unit graph does
 not mention them. `guardCases`, `netnsCases`, `briefCases`, `snapshotCases`, `refreshCases`, `observeCases`,
 `baselineCases`, `policyCases`, `profileCases`, `vmCases`, `gitChannelCases`, `roomGitCases`, `quarantineCases`,
-`volumeRootCases`, `resetHomeCases`, `sessionCases`, `volumeCases`, `fleetCases`, `stateDirCases`, `roomsCases`, `fabricCases`, `fragmentsCases`, `roomClientCases` and `roomVerbsCases` *run* a
+`volumeRootCases`, `resetHomeCases`, `sessionCases`, `volumeCases`, `fleetCases`, `stateDirCases`, `modelDoorCases`, `modelDoorOpenCases`, `roomsCases`, `fabricCases`, `fragmentsCases`, `roomClientCases` and `roomVerbsCases` *run* a
 program's own text with a substitute for the one thing tying it to this host
 (`just cases`), and are the answer whenever the interesting branches are ones a
 live host can only reach destructively or expensively — the guard's by unnaming a
@@ -68,7 +68,11 @@ with no socket, a branch the host checkout lacks and a door that answers with no
 banner or, behind a fixture `sshd -i`, one that reaches authentication, the room
 client's by running `ssh -G` over the shipped bundle and by putting a fixture
 `sshd -i` behind its socket, the state root's by handing the refusal a relative,
-a traversing and a non-canonical path and one carrying shell or ssh_config syntax, the quarantine's bounded fetch by
+a traversing and a non-canonical path and one carrying shell or ssh_config syntax, the model
+door's by declaring one on the proxy's port, behind a socket the relay's
+hardening hides and for a slot on a host that declares none, its condition's by
+an override file holding `on` and then a second line, a NUL, or no read
+permission, the quarantine's bounded fetch by
 offering it a pack over the ceiling, a malformed object, a tag and a held ref lock,
 and the volume root helper's by
 deleting and overwriting a real slot's image as root, the guest's reset of
@@ -106,7 +110,7 @@ written, wired into `just cases`, and left out of `just build` for a session
 (NOTES item 51 step 3). **One suite per file, beside the program it pins** —
 `host/<name>-cases.nix`, or `vm/<name>-cases.nix` for a guest program, a function of `pkgs`, `lib` and **the store path the
 program ships**, with a short `import` in `mkfleet.nix` (NOTES item 51 step 0).
-Eighteen of them are handed a fixture instead and say so in their headers: the
+Nineteen of them are handed a fixture instead and say so in their headers: the
 guard's stubbed kernel, the namespace program's stubbed kernel and scratch
 `/etc/netns` (a build sandbox's `/etc` is read-only, and the program's path is
 fixed at build), the front end's pool that is not this host's (three times,
@@ -120,7 +124,7 @@ channel's door, a socket nobody's, since its path is fixed under `/run` and
 a fixture `sshd -i` stands behind it (`host/fixture-sshd.nix`), the room
 client's state root `/build/state` and the same sshd (`room-client-cases.nix`),
 the state root's refusal values that are nobody's (`state-dir-cases.nix`), the
-fleet's targets and slots that are nobody's (`fleet-cases.nix`), the
+model door's declarations that are nobody's (`model-door-cases.nix`), the fleet's targets and slots that are nobody's (`fleet-cases.nix`), the
 quarantine's policy vocabulary that is no host's (`quarantine-cases.nix`), the rooms and
 probe fabric that are nobody's (`rooms-cases.nix`, `fabric-cases.nix`), and the
 declared rooms and one capsule image that `fragmentsCases` is handed evaluated, to
