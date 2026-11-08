@@ -42,3 +42,12 @@ suite to inherit.
 
 Nothing is designed or built. The column list was read from `host/cli.nix` on
 2026-09-15.
+
+## Note, SL-010 PHASE-06 (2026-11-08)
+
+`SL-010` adds a `model` column after `relay` (the model-door relay's
+`unitState`; design sec-4 D-3), so the table is one column wider again, and the
+lifecycle group becomes `created vm proxy relay model door answers`. The table
+was not reshaped. `policyCases` now reads the `profile` and `model` cells by
+header name, which is the nearest thing to a suite pinning column order that a
+split view could inherit.

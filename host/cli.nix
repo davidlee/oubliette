@@ -300,7 +300,7 @@
   # one of them. Decision 3's rule: the front end's shape is not a function of
   # any target, and what a slot's document has no place for is a refusal that
   # names it.
-  ownVerbs = ["start" "stop" "created" "volume" "status" "ssh" "admin" "forget-host-key" "setup" "branches" "fetch" "record" "purpose" "policy" "unit" "handoff" "land"];
+  ownVerbs = ["start" "stop" "created" "volume" "status" "ssh" "admin" "forget-host-key" "setup" "branches" "fetch" "record" "purpose" "policy" "model" "unit" "handoff" "land"];
 
   # Verbs `all` may be applied to. A question aggregates: N answers on one screen,
   # and a failure on one capsule is a row rather than a decision. An *action* does
@@ -398,7 +398,7 @@ in
         echo "  lifecycle: start | stop | created       (start injects too)"
         echo "  volume:    <slot> volume reset | reset-home | clone-from <src> [--identity]   (name required)"
         echo "  ask:       status | branches | fetch     (these take 'all')"
-        echo "  assigned:  record | purpose [text…] | policy [<name>] | unit [<token>]"
+        echo "  assigned:  record | purpose [text…] | policy [<name>] | model [on|off] | unit [<token>]"
         echo "  in:        ssh [cmd…] | admin [cmd…] | forget-host-key"
         echo "  work:      ${lib.concatStringsSep " | " programVerbs}"
         # The three coarse verbs on their own two lines, in the order they run:
@@ -565,6 +565,28 @@ in
         esac
       }
 
+      # The door the host operator declares for a slot, and `-` for one that
+      # declares none: a slot with no `modelDoor` has no relay unit at all
+      # (host/services.nix's `withDoor`), so "nothing declared" is a different
+      # answer from "off" and the verb refuses a write for it (SL-010 design
+      # sec-2, sec-4). The `*)` branch `slotPolicy` does without is here for
+      # `slotDeclaredProfile`'s reason: `-` is the verb's token for "no door",
+      # and an empty echo would read as one.
+      #
+      # Spliced unescaped, as a policy name is: `model-door.nix` refuses any
+      # value but `on` or `off` at eval, so there is no shell in it.
+      slotModelDoor() {
+        case "$1" in
+      ${lib.concatMapStringsSep "\n" (c: "    ${c.name}) echo ${
+          if c.modelDoor == null
+          then "-"
+          else c.modelDoor
+        } ;;")
+        (builtins.attrValues capsules.instances)}
+          *) echo - ;;
+        esac
+      }
+
       # Which target the host operator says a slot is for, when nothing has
       # assigned it (capsules.nix, SL-001). A convenience, not a control: `-`
       # when the slot declares none. Escaped, because unlike a policy name it is
@@ -613,6 +635,17 @@ in
         local p
         p=$(recordField "$1" policy)
         if [ "$p" = - ]; then slotPolicy "$1"; else echo "$p"; fi
+      }
+
+      # The state this slot's model door is actually in: the record's override
+      # when one has been written, the operator's declaration when none has.
+      # The same two steps the relay's `ExecCondition` takes over the override
+      # file, one layer up — and they agree only because the verb writes both
+      # under one lock (SL-010 design sec-4 D-1). `-` is a slot with no door.
+      effectiveModelDoor() {
+        local d
+        d=$(recordField "$1" model_door)
+        if [ "$d" = - ]; then slotModelDoor "$1"; else echo "$d"; fi
       }
 
       # A unit's state in one word: `SubState` while it is active, since `running`
@@ -1336,12 +1369,12 @@ in
       # (item 51, decision 3): this is one table for N slots over M targets, so
       # a shape that were a function of any one of them would change between
       # two runs on one host, silently, with no rebuild to notice it.
-      statusFmt='%-7s %-7s %-10s %-8s %-8s %-4s %-7s %-9s %-5s %-8s %-4s %-4s %-6s %-12s %-4s %-3s %-11s %-7s %-6s %s\n'
+      statusFmt='%-7s %-7s %-10s %-8s %-8s %-8s %-4s %-7s %-9s %-5s %-8s %-4s %-4s %-6s %-12s %-4s %-3s %-11s %-7s %-6s %s\n'
 
       statusHeader() {
         # shellcheck disable=SC2059
         printf "$statusFmt" \
-          capsule created vm proxy relay door answers \
+          capsule created vm proxy relay model door answers \
           head dirty baseline age disk alloc 'mem cur/peak' refs gen profile policy unit purpose
       }
 
@@ -1480,6 +1513,7 @@ in
           "$(unitState "$(unitOf "$n")")" \
           "$(unitState "capsule-proxy-$n")" \
           "$(unitState "capsule-ssh-relay-$n")" \
+          "$(unitState "capsule-model-relay-$n")" \
           "$(yesno test -S "$(sockOf "$n")")" \
           "$ans" \
           "''${head:0:9}" "$dirty" "$baseline" "$(ageOf "$stamp")" "$disk" \
@@ -2961,6 +2995,216 @@ in
             exit 1
           }
           echo "capsule $name: policy $want, generation $gen"
+          ;;
+
+        # Whether this slot's model door is open, and the one thing that changes
+        # it: a file the relay's `ExecCondition` reads, published in the same
+        # breath as the record's `model_door` (SL-010 design sec-4; `RV-027`
+        # F-1/F-2/F-4).
+        #
+        # **Two hooks, because the commit is the step after both effects.**
+        # `recordAlso` publishes the override and runs the unit command before
+        # the document is moved into place, and that move can still fail.
+        # `recordUndo` is what puts the override back when it does — and stops
+        # the relay while it does it. Stopping always, rather than restoring the
+        # relay's own previous state, is what keeps the undo from ever opening a
+        # door: the worst a failed commit leaves is a shut door under a record
+        # that still says it should be open, which is fail-closed and fixed by
+        # running `on` again (design sec-4's undo table).
+        #
+        # **`off` always stops; `on` starts only a running VM's relay.** The
+        # owner may run `off` while the VM is starting (design sec-4, "The verb
+        # and a VM start, run at once"), so `off` never reads the VM's state:
+        # stopping an inactive unit does nothing and stopping an activating one
+        # cancels it, so a relay that passed its condition just before the write
+        # is stopped anyway. `on` is the other way round — a relay started with
+        # no VM up pulls its `bindsTo` tap and namespace up under nobody — so
+        # `on` starts it only when `vmmState` says `running`, and otherwise
+        # leaves the next VM start to read the override.
+        #
+        # Everything the hooks print goes to **stderr**: they run inside
+        # `gen=$(recordWrite …)`, so a line on stdout would be captured as part
+        # of the generation. The verb's own success line is the only thing this
+        # branch may put there.
+        model)
+          if [ "$#" -eq 0 ]; then
+            effectiveModelDoor "$name"
+            exit 0
+          fi
+          [ "$#" -eq 1 ] || {
+            echo "capsule: model takes on or off — the door's state, written as" >&2
+            echo "  one of those two words: capsule $name model on" >&2
+            exit 1
+          }
+          want="$1"
+          case "$want" in
+            on | off) ;;
+            *)
+              echo "capsule: model takes on or off, and '$want' is neither." >&2
+              exit 1
+              ;;
+          esac
+          # The declaration decides whether there is a door at all: no relay
+          # unit exists for a slot that declares none, so an override for it
+          # would be a file nothing reads.
+          if [ "$(slotModelDoor "$name")" = - ]; then
+            echo "capsule: '$name' declares no model door; that is the host operator's, in capsules.nix" >&2
+            exit 1
+          fi
+          # The module path's, as `policy`'s two directories are. Its wrap
+          # supplies this one (host/wrap.nix), and the devshell path has no
+          # relay unit, no grant and therefore no override to write.
+          if [ -z "''${CAPSULE_MODEL_DOOR_DIR:-}" ]; then
+            echo "capsule: no model door directory, so this copy cannot write the" >&2
+            echo "  override a relay reads. The verb is the module path's — run" >&2
+            echo "  /run/current-system/sw/bin/capsule $name model $want." >&2
+            exit 1
+          fi
+
+          # Where the previous bytes wait while the write is in flight, and
+          # while a failed commit may still need them back. Named for the slot
+          # rather than for this process, so the verb can find it after
+          # `recordWrite` returns.
+          modelDoorSaved() { printf '%s/.%s.prev' "$CAPSULE_MODEL_DOOR_DIR" "$1"; }
+
+          # Remember the override's previous bytes **exactly**: a copy of the
+          # file, never its value in a shell variable, because command
+          # substitution drops trailing newlines and NULs and the restore below
+          # has to put back what was there
+          # (mem.pattern.oubliette.a-state-file-is-compared-by-bytes). Absence
+          # is remembered as no copy at all. A copy that cannot be made is a
+          # write that must not be attempted, so the hook fails before anything
+          # moves.
+          rememberModelDoor() {
+            local saved
+            saved=$(modelDoorSaved "$1")
+            rm -f -- "$saved" || return 1
+            if [ -e "$CAPSULE_MODEL_DOOR_DIR/$1" ]; then
+              cp -- "$CAPSULE_MODEL_DOOR_DIR/$1" "$saved" || {
+                rm -f -- "$saved"
+                return 1
+              }
+            fi
+            return 0
+          }
+
+          # Publish a door state: move `$2` into place, or remove the override
+          # when `$2` is `-` (the slot had none). A temporary file and `mv -T`,
+          # so the condition reads the old bytes or the new ones and never a
+          # partial write; the temporary is removed on every failure path, so a
+          # refused write leaves nothing behind.
+          publishModelDoor() {
+            local slot="$1" src="$2" target
+            target="$CAPSULE_MODEL_DOOR_DIR/$slot"
+            if [ "$src" = - ]; then
+              rm -f -- "$target" && return 0
+              return 1
+            fi
+            mv -T -- "$src" "$target" && return 0
+            rm -f -- "$src"
+            return 1
+          }
+
+          # Put the remembered state back by the same publication, through a
+          # copy of it, so a restore that fails leaves the remembered bytes
+          # where they are.
+          restoreModelDoor() {
+            local slot="$1" tmp
+            tmp="$CAPSULE_MODEL_DOOR_DIR/.$slot.$$"
+            if [ -e "$(modelDoorSaved "$slot")" ]; then
+              cp -- "$(modelDoorSaved "$slot")" "$tmp" || {
+                rm -f -- "$tmp"
+                return 1
+              }
+              publishModelDoor "$slot" "$tmp"
+            else
+              publishModelDoor "$slot" -
+            fi
+          }
+
+          # Before the record is committed, and under its lock. Three steps,
+          # and each failure names which one it was: a write that fails leaves
+          # the override, the relay and the record as they were, which is the
+          # clean half of the two orders `policy`'s hook is about.
+          recordAlso() {
+            local slot="$1" unit vmm tmp
+            unit="capsule-model-relay-$1"
+            tmp="$CAPSULE_MODEL_DOOR_DIR/.$1.$$"
+            # 1. Remember, then publish. A failure in either is before any unit
+            #    command and before the document, so nothing is left to undo.
+            if ! {
+              rememberModelDoor "$slot" \
+                && printf '%s\n' "$want" > "$tmp" \
+                && publishModelDoor "$slot" "$tmp"
+            }; then
+              rm -f -- "$tmp" "$(modelDoorSaved "$slot")"
+              echo "capsule: could not write the model door override for '$slot', so" >&2
+              echo "  the override, $unit and the record are as they were." >&2
+              return 1
+            fi
+            # 2. The relay, and only what the VM's state can support.
+            if [ "$want" = off ]; then
+              unitDo stop "$unit" && return 0
+            else
+              vmm=$(vmmState "$slot")
+              if [ "$vmm" != running ]; then
+                echo "  $slot's VM is '$vmm', so $unit is left down; the next" >&2
+                echo "  start of $slot reads $want." >&2
+                return 0
+              fi
+              unitDo start "$unit" && return 0
+            fi
+            # 3. The unit command failed, so the override goes back and no
+            #    record is written: a record saying `off` over a door that is
+            #    still open is fail-open (NOTES item 41's rule for the proxy,
+            #    one file over).
+            if restoreModelDoor "$slot"; then
+              rm -f -- "$(modelDoorSaved "$slot")"
+              echo "capsule: $unit refused, so the override was put back." >&2
+              echo "  the door did not move." >&2
+              return 1
+            fi
+            rm -f -- "$(modelDoorSaved "$slot")"
+            echo "capsule: $unit refused and the override for '$slot' could not be put" >&2
+            echo "  back, so the door state is unknown for '$slot' — check every" >&2
+            echo "  file under $CAPSULE_MODEL_DOOR_DIR." >&2
+            return 1
+          }
+
+          # Only when the final `mv` fails, after the hook above succeeded. The
+          # record still holds its previous value, so the override is put back
+          # beside it — and then the relay is **stopped**, whatever was asked.
+          # That is the rule that keeps an undo from ever opening a door, and
+          # the reason an `on` whose commit failed leaves the door shut rather
+          # than open under a record that says it is not (SL-010 design sec-4's
+          # undo table; RV-027 F-2).
+          recordUndo() {
+            local slot="$1" unit saved
+            unit="capsule-model-relay-$1"
+            saved=$(modelDoorSaved "$1")
+            if ! restoreModelDoor "$slot"; then
+              rm -f -- "$saved"
+              echo "capsule: the override for '$slot' could not be put back, so the" >&2
+              echo "  door state is unknown for '$slot'." >&2
+              return 1
+            fi
+            rm -f -- "$saved"
+            unitDo stop "$unit" && return 0
+            echo "capsule: $unit would not stop, so the door state is unknown for" >&2
+            echo "  '$slot' — the override is back and the relay may still be up." >&2
+            return 1
+          }
+
+          # shellcheck disable=SC2016  # `$v` is jq's, bound by --arg below
+          gen=$(recordWrite "$name" '.model_door = $v' --arg v "$want") || {
+            rm -f -- "$(modelDoorSaved "$name")"
+            echo "capsule: '$name' keeps the door its record named, and the hook" >&2
+            echo "  above says what happened. Run 'capsule $name model $want' again" >&2
+            echo "  once that is resolved." >&2
+            exit 1
+          }
+          rm -f -- "$(modelDoorSaved "$name")"
+          echo "capsule $name: model $want, generation $gen"
           ;;
 
         # Which unit of work this slot is driving, and the only assigner-owned

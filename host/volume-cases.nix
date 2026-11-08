@@ -502,10 +502,10 @@ in
       truncate -s "$2M" "$CASE_ROOT/microvms/$1/capsule-work.img"
     }
     # The `alloc` cell of one slot's row, by position: every column before it
-    # holds a single token, so the thirteenth field is it. Reading it by column
-    # rather than by grep is what says `alloc` landed *after* `disk` and not
-    # merely somewhere on the line.
-    allocOf() { awk -v n="$1" '$1 == n { print $13 }' out; }
+    # holds a single token, so the fourteenth field is it (SL-010 put `model`
+    # after `relay`). Reading it by column rather than by grep is what says
+    # `alloc` landed *after* `disk` and not merely somewhere on the line.
+    allocOf() { awk -v n="$1" '$1 == n { print $14 }' out; }
 
     fresh
     img dst 3

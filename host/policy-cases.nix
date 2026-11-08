@@ -49,12 +49,17 @@
           index = 0;
           policy = "build";
           policies = ["build"];
+          # SL-010: the model door, declared. `one` opens it by declaration and
+          # `both` closes it, so a no-argument read can tell a declaration from
+          # a constant, and `none` declares nothing (refusal 3).
+          modelDoor = "on";
         };
         none = {index = 1;};
         both = {
           index = 2;
           policy = "sealed";
           policies = ["build" "sealed"];
+          modelDoor = "off";
         };
         # SL-001: slots that declare a profile. `dflt` names the document every
         # round starts with, `hole` one with a unit hole (written later),
@@ -113,7 +118,27 @@
       unitActive() { [ -n "''${CASE_PROXY_UP:-}" ]; }
       unitDo() {
         echo "$1 $2" >> "$CASE_PROXY_LOG"
-        [ -z "''${CASE_PROXY_FAIL:-}" ]
+        if [ -n "''${CASE_PROXY_FAIL:-}" ]; then
+          # A failure that leaves the door directory unwritable, so the hook's
+          # restore fails after its command did (SL-010 PHASE-06).
+          [ -z "''${CASE_UNIT_LOCK_DIR:-}" ] || chmod 0555 "$CASE_UNIT_LOCK_DIR"
+          return 1
+        fi
+        # The k-th and later calls *in this log* fail: a hook whose command
+        # succeeds and whose undo's fails, which `CASE_PROXY_FAIL` (every call)
+        # cannot make (SL-010 PHASE-06).
+        [ -z "''${CASE_UNIT_FAIL_FROM:-}" ] \
+          || [ "$(wc -l < "$CASE_PROXY_LOG")" -lt "$CASE_UNIT_FAIL_FROM" ]
+      }
+    '';
+    # The shipped default with one line changed: `vmmState` answers
+    # `CASE_VMM` when it is set (`running`, `inactive`, `activating`) and the
+    # shipped question otherwise, so every round that never sets it reads as
+    # before. A sandbox has no systemd to put a VM in a state.
+    volumeControl = ''
+      volumeRoot() { sudo -k ${volumeRootHelper}/bin/capsule-volume-root "$@"; }
+      vmmState() {
+        if [ -n "''${CASE_VMM:-}" ]; then echo "$CASE_VMM"; else unitState "$(unitOf "$1")"; fi
       }
     '';
     # The guest, and the same argument `unitControl` makes one field up:
@@ -268,20 +293,22 @@ in
       mv tmp.json "$CASE_STATE/slot/$1/assignment.json"
     }
 
-    # One slot's profile cell off the last `run all status`, read **by its
-    # column** — the characters under the header's `profile` label up to its
-    # `policy` label — rather than by a pattern anywhere on the row, which would
+    # One slot's cell off the last `run all status`, read **by its column** —
+    # the characters under the header's `<label>` up to the next column's
+    # `<next>` label — rather than by a pattern anywhere on the row, which would
     # match another column's text. Trustworthy because the alignment round below
     # says every value sits under its label.
-    profileOf() {
-      awk -v slot="$1" '
+    cellOf() {
+      awk -v slot="$1" -v lab="$2" -v nxt="$3" '
         /^capsule +created / {
-          h = $0; p = index(h, " profile ") + 1; q = index(h, " policy ") + 1; next
+          h = $0; p = index(h, " " lab " ") + 1; q = index(h, " " nxt " ") + 1; next
         }
         h != "" && index($0, slot " ") == 1 {
           c = substr($0, p, q - p); sub(/ +$/, "", c); print c; exit
         }' out
     }
+    profileOf() { cellOf "$1" profile policy; }
+    modelOf() { cellOf "$1" model door; }
     # Whether every value on the named slots' rows starts where a header label
     # starts. Named, because `%-Ns` is a minimum: `odd`'s long cell widens its
     # own row by design, and nothing else. Row to header only: the header's `mem cur/peak` has a word with no value
@@ -534,6 +561,330 @@ in
     ln -sfT "$wasLink" "$CAPSULE_ALLOWLIST_DIR/both"
     ckt "  (the record is restored)" cmp -s saved-record "$recFile"
     unset CASE_PROXY_UP
+
+    # ------------------------------------------- the model door (SL-010 PHASE-06)
+    #
+    # `capsule <n> model [on|off]` is `policy`'s sibling: same front end, same
+    # record, same lock, same hook shape (host/record.nix). Its hooks write an
+    # override file and start or stop the slot's relay, so the rounds are about
+    # what is left behind when a step fails. Each round primes its own start —
+    # the override file, the record's `model_door`, a clean log, a VM state —
+    # and puts its breakage back, so no round inherits another's wreckage
+    # (item 37). `CASE_VMM` stands in for the VM's state; the verb never reads
+    # it for `off`, which is the point of the rounds that vary it (RV-027 F-1).
+    door=$PWD/door
+    mkdir -p "$door"
+    export CAPSULE_MODEL_DOOR_DIR=$door
+    mrec() { printf '%s/slot/%s/assignment.json' "$CASE_STATE" "$1"; }
+    cp "$(mrec one)" model-saved-one
+    cp "$(mrec both)" model-saved-both
+    # The record's field, `null` when absent, and `unreadable` when the record is
+    # not a document (the mv-fails rounds put a directory there).
+    mfield() { jq -r '.model_door // "null"' "$(mrec "$1")" 2> /dev/null || echo unreadable; }
+    # Whether a slot's override file is exactly `on\n` / `off\n`, byte for byte,
+    # or is absent: never a grep, which says "contains" and not "is".
+    overrideIs() {
+      if [ "$2" = absent ]; then
+        [ ! -e "$door/$1" ]
+      else
+        printf '%s\n' "$2" | cmp -s - "$door/$1"
+      fi
+    }
+    # The relay commands the stub logged for a slot, exactly: `relayLog one
+    # start stop`, and `relayLog one` for none.
+    relayLog() {
+      local s="$1" v
+      shift
+      for v in "$@"; do printf '%s capsule-model-relay-%s\n' "$v" "$s"; done \
+        | cmp -s - "$CASE_PROXY_LOG"
+    }
+    # The invariant RV-027 F-1 is about, asserted after every round: a record
+    # that says `off` over a log whose last relay command is a `start` is a door
+    # the record says is shut and the host opened.
+    noLiveDoorOverOff() {
+      ! { [ "$(mfield "$1")" = off ] \
+        && [ "$({ grep -F "capsule-model-relay-$1" "$CASE_PROXY_LOG" || true; } | tail -n 1)" \
+          = "start capsule-model-relay-$1" ]; }
+    }
+    # A slot's start: the override (`on`, `off`, `absent`), the record's field
+    # (`on`, `off`, `null`), an empty log, a writable world, no seam set.
+    prime() {
+      chmod -R u+w "$door" "$CASE_STATE/slot/$1" 2> /dev/null || true
+      rm -rf "$door"
+      mkdir -p "$door"
+      [ "$2" = absent ] || printf '%s\n' "$2" > "$door/$1"
+      jq --arg v "$3" '.model_door = (if $v == "null" then null else $v end)' \
+        "$(mrec "$1")" > tmp.json
+      mv tmp.json "$(mrec "$1")"
+      : > "$CASE_PROXY_LOG"
+      unset CASE_PROXY_UP CASE_PROXY_FAIL CASE_UNIT_FAIL_FROM CASE_UNIT_LOCK_DIR CASE_VMM
+      export CAPSULE_MODEL_DOOR_DIR=$door
+    }
+    # Nothing a refusal may touch moved: the record, the override directory and
+    # the log, and the relay invariant.
+    untouched() {
+      cmp -s saved-rec "$(mrec "$1")" && [ -z "$(ls -A "$door")" ] \
+        && [ ! -s "$CASE_PROXY_LOG" ] && noLiveDoorOverOff "$1"
+    }
+
+    # ---- EX-1: what a no-argument call reads, and the refusals in order
+    prime one absent null
+    export CASE_VMM=inactive
+    run one model
+    ck "model with no argument reads the declaration" 0 "$rc"
+    ckt "  which is on for a slot declaring on" test "$(cat out)" = on
+    run both model
+    ck "  and off for a slot declaring off" 0 "$rc"
+    ckt "  exactly" test "$(cat out)" = off
+    run none model
+    ck "  and - for a slot declaring none" 0 "$rc"
+    ckt "  exactly" test "$(cat out)" = -
+    run one model off
+    ck "a model off on a slot declaring on is taken" 0 "$rc"
+    run one model
+    ck "model with no argument reads an override once there is one" 0 "$rc"
+    ckt "  which beats the declaration" test "$(cat out)" = off
+    run both model on
+    ck "an on over a declared off is taken" 0 "$rc"
+    run both model
+    ckt "  and is what reads back" test "$(cat out)" = on
+
+    # Refusal 2, before 3 and before 4: the slot that declares none and the copy
+    # with no directory both still get the usage.
+    prime one absent null
+    cp "$(mrec one)" saved-rec
+    unset CAPSULE_MODEL_DOOR_DIR
+    for args in "yes" "on off" "ON" "1"; do
+      run none model $args
+      ck "model $args refuses on a slot declaring none and a copy with no directory" 1 "$rc"
+      ckt "  saying what the verb takes" saw "model takes on or off"
+      ckt "  and not any later refusal" unsaw "declares no model door"
+      run one model $args
+      ck "model $args refuses on a declared slot" 1 "$rc"
+      ckt "  saying what the verb takes" saw "model takes on or off"
+      ckt "  and nothing was touched" untouched one
+    done
+    # Refusal 3, before 4.
+    run none model on
+    ck "a slot declaring no door refuses on a copy with no directory" 1 "$rc"
+    ckt "  naming the operator's declaration" \
+      saw "declares no model door; that is the host operator's, in capsules.nix"
+    ckt "  and not refusal 4" unsaw "no model door directory"
+    ckt "  with no record written" test ! -e "$(mrec none)"
+    export CAPSULE_MODEL_DOOR_DIR=$door
+    run none model off
+    ck "  and with a directory" 1 "$rc"
+    ckt "  by the same refusal" \
+      saw "declares no model door; that is the host operator's, in capsules.nix"
+    ckt "  with no record written" test ! -e "$(mrec none)"
+    ckt "  and no override" test -z "$(ls -A "$door")"
+    # Refusal 4: unset, and empty.
+    unset CAPSULE_MODEL_DOOR_DIR
+    run one model on
+    ck "a copy with no model door directory refuses" 1 "$rc"
+    ckt "  naming the copy that has one" saw "/run/current-system/sw/bin/capsule"
+    ckt "  and the missing directory" saw "no model door directory"
+    ckt "  and no generation is printed" unsaw "generation"
+    ckt "  and nothing was touched" untouched one
+    CAPSULE_MODEL_DOOR_DIR= run one model off
+    ck "  an empty directory is the same refusal" 1 "$rc"
+    ckt "  said the same way" saw "no model door directory"
+    ckt "  and nothing was touched" untouched one
+    export CAPSULE_MODEL_DOOR_DIR=$door
+
+    # ---- EX-2: a start, run against each state the VM can be in (RV-027 F-1)
+    #
+    # `start` writes nothing here, so the race is driven as the verb run
+    # against each `vmmState`. `off` stops whatever the VM is doing; `on`
+    # starts only a running VM's relay, since starting it otherwise would pull
+    # up its tap and namespace with no VM.
+    okRound() {
+      local vmm="$1" want="$2" opp=on g0
+      [ "$want" = on ] && opp=off
+      prime one "$opp" "$opp"
+      export CASE_VMM="$vmm"
+      g0=$(gen one)
+      run one model "$want"
+      ck "model $want with the VM $vmm is taken" 0 "$rc"
+      ckt "  printing the value and the generation it moved to" \
+        saw "capsule one: model $want, generation $((g0 + 1))"
+      ckt "  the override is exactly $want" overrideIs one "$want"
+      ckt "  the record agrees" test "$(mfield one)" = "$want"
+      if [ "$want" = off ]; then
+        ckt "  the relay was stopped" relayLog one stop
+      elif [ "$vmm" = running ]; then
+        ckt "  the relay was started" relayLog one start
+      else
+        ckt "  and no relay command was issued" relayLog one
+      fi
+      ckt "  no record says off over a started relay" noLiveDoorOverOff one
+    }
+    for vmm in inactive running activating; do
+      okRound "$vmm" off
+      okRound "$vmm" on
+    done
+
+    # ---- EX-4: each step of the hook, made to fail (RV-027 F-4)
+    #
+    # A round states what it starts from, what it breaks and puts back, and the
+    # reason the refusal gives (`-` for a refusal whose wording the verb does not
+    # fix). The VM is running throughout, so a hook that ignored the failure and
+    # went on would *log* a start or a stop. `on` starts from a record that is
+    # not `off`, so a started-then-failed relay is not mistaken for F-1's fault.
+    breakDoor() { chmod 0555 "$door"; }
+    fixDoor() { chmod 0755 "$door"; }
+    breakCandidate() { chmod a-w "$CASE_STATE/slot/one"; }
+    fixCandidate() { chmod u+w "$CASE_STATE/slot/one"; }
+    breakUnit() { export CASE_PROXY_FAIL=1; }
+    fixUnit() { unset CASE_PROXY_FAIL; }
+    # failRound <label> <want> <override before> <break> <fix> <reason> [<logged verb>…]
+    failRound() {
+      local label="$1" want="$2" before="$3" brk="$4" fix="$5" reason="$6" rb=on g0
+      shift 6
+      [ "$want" = on ] && rb=null
+      prime one "$before" "$rb"
+      export CASE_VMM=running
+      cp "$(mrec one)" saved-rec
+      g0=$(gen one)
+      "$brk"
+      run one model "$want"
+      "$fix"
+      ck "$label refuses" 1 "$rc"
+      [ "$reason" = - ] || ckt "  saying why" saw "$reason"
+      ckt "  and not that the door's state is unknown" unsaw "state is unknown"
+      ckt "  and no generation is printed" unsaw "generation"
+      ckt "  the relay commands are exactly those reached" relayLog one "$@"
+      ckt "  the record is as it was" cmp -s saved-rec "$(mrec one)"
+      ckt "  the generation did not move" test "$(gen one)" = "$g0"
+      ckt "  the override is as it was" overrideIs one "$before"
+      ckt "  no temporary file is left" test -z "$(find "$door" "$CASE_STATE/slot/one" \
+        \( -name '.one.*' -o -name '.assignment.json.*' \))"
+      ckt "  no record says off over a started relay" noLiveDoorOverOff one
+    }
+    for want in on off; do
+      opp=off
+      [ "$want" = off ] && opp=on
+      for before in "$opp" absent; do
+        # The override cannot be written: nothing was done, so nothing is undone.
+        failRound "model $want over $before, the override unwritable" \
+          "$want" "$before" breakDoor fixDoor "could not write the model door override"
+        # The unit command fails after the override was written: put it back.
+        failRound "model $want over $before, the unit command failing" \
+          "$want" "$before" breakUnit fixUnit "the door did not move" \
+          "$([ "$want" = on ] && echo start || echo stop)"
+        # The candidate cannot be written: before the hook, so before any effect.
+        failRound "model $want over $before, the candidate unwritable" \
+          "$want" "$before" breakCandidate fixCandidate -
+      done
+    done
+
+    # ---- EX-3: the mv fails after the hook succeeded (RV-027 F-2)
+    #
+    # A directory where the record should be, with a file in it: the hook is
+    # reached (the candidate was writable), and `recordUndo` then puts the
+    # override back and stops the relay, always — it never opens a door. Each
+    # row of design sec-4's undo table, from its stated starting state: the
+    # relay is "up" when the VM is running and the override is on, "down"
+    # otherwise.
+    # undoRound <label> <want> <vmm> <override before> <logged verb>…
+    undoRound() {
+      local label="$1" want="$2" vmm="$3" before="$4" rb=on
+      shift 4
+      [ "$want" = on ] && rb=null
+      prime one "$before" "$rb"
+      export CASE_VMM="$vmm"
+      cp "$(mrec one)" saved-rec
+      rm "$(mrec one)"
+      mkdir "$(mrec one)"
+      touch "$(mrec one)/occupied"
+      run one model "$want"
+      ck "$label refuses" 1 "$rc"
+      ckt "  and no generation is printed" unsaw "generation"
+      ckt "  the override is as it was" overrideIs one "$before"
+      ckt "  the relay commands are the hook's, then the undo's stop" relayLog one "$@"
+      ckt "  the last of them is a stop" test "$(tail -n 1 "$CASE_PROXY_LOG")" = "stop capsule-model-relay-one"
+      ckt "  the record is as it was: the directory and what was in it" \
+        test "$(ls -A "$(mrec one)")" = occupied
+      ckt "  no candidate is left behind" \
+        test -z "$(find "$CASE_STATE/slot/one" -name '.assignment.json.*')"
+      ckt "  no record says off over a started relay" noLiveDoorOverOff one
+      rm -rf "$(mrec one)"
+      cp saved-rec "$(mrec one)"
+    }
+    undoRound "on, the relay down (VM running, override off)" on running off start stop
+    undoRound "on, the relay down (VM down, no override)" on inactive absent stop
+    undoRound "on, the relay up (VM running, override on)" on running on start stop
+    undoRound "off, the relay up (VM running, override on)" off running on stop stop
+    undoRound "off, the relay down (VM running, override off)" off running off stop stop
+    undoRound "off, the relay down (VM down, no override)" off inactive absent stop stop
+
+    # An undo that fails too: the hook's stop is the first unit command and
+    # succeeds, the undo's is the second and does not. The override was put back
+    # first, and the refusal says the door's state is unknown and whose it is. It
+    # must not also claim that nothing moved (design sec-4).
+    prime both on on
+    export CASE_VMM=running CASE_UNIT_FAIL_FROM=2
+    cp "$(mrec both)" saved-rec
+    rm "$(mrec both)"
+    mkdir "$(mrec both)"
+    touch "$(mrec both)/occupied"
+    run both model off
+    ck "an undo whose stop fails refuses" 1 "$rc"
+    ckt "  saying the door's state is unknown" saw "state is unknown"
+    ckt "  and naming the slot" grep -qw -- both out
+    ckt "  without claiming that nothing moved" unsaw "nothing moved"
+    ckt "  nor that none of them did" unsaw "none of them moved"
+    ckt "  no generation is printed" unsaw "generation"
+    ckt "  both stops were attempted" relayLog both stop stop
+    ckt "  the override had been put back" overrideIs both on
+    ckt "  the record is as it was" test "$(ls -A "$(mrec both)")" = occupied
+    rm -rf "$(mrec both)"
+    cp saved-rec "$(mrec both)"
+
+    # A restore that fails too: the unit command fails and, as it does, the
+    # door directory stops being writable, so putting the override back fails.
+    # The hook cannot know what is on disk, and says so by the slot's name; it
+    # must not claim the door did not move. (a) had no override before, so the
+    # restore is a removal; (b) had one, so it is a copy and a rename.
+    restoreFailRound() {
+      local label="$1" before="$2" g0
+      prime one "$before" null
+      export CASE_VMM=running CASE_PROXY_FAIL=1 CASE_UNIT_LOCK_DIR="$door"
+      cp "$(mrec one)" saved-rec
+      g0=$(gen one)
+      run one model on
+      chmod 0755 "$door"
+      ck "$label refuses" 1 "$rc"
+      ckt "  saying the door's state is unknown" saw "state is unknown"
+      ckt "  and naming the slot" grep -qw -- one out
+      ckt "  and not that the door did not move" unsaw "the door did not move"
+      ckt "  no generation is printed" unsaw "generation"
+      ckt "  the unit command was attempted once" relayLog one start
+      ckt "  the record is as it was" cmp -s saved-rec "$(mrec one)"
+      ckt "  the generation did not move" test "$(gen one)" = "$g0"
+    }
+    restoreFailRound "model on over no override, the start and the restore failing" absent
+    ckt "  the new override is still there, unrestored" overrideIs one on
+    restoreFailRound "model on over an existing override, the start and the restore failing" off
+
+    # ---- EX-6: the status column
+    prime one absent null
+    run all status
+    ck "a fleet status answers with the model door" 0 "$rc"
+    ckt "  the header has a model column straight after relay" \
+      grep -qE '^capsule +created .* relay +model +door ' out
+    for s in one none both dflt hole decl; do
+      ckt "  $s has a model cell, -- with no unit loaded" test "$(modelOf "$s")" = "--"
+    done
+    ckt "  and the rows still line up with the header" aligned one none both dflt hole decl
+
+    # Put the world back for the rounds after: records as they were, no door.
+    chmod -R u+w "$door" "$CASE_STATE/slot/one" "$CASE_STATE/slot/both"
+    rm -rf "$door"
+    cp model-saved-one "$(mrec one)"
+    cp model-saved-both "$(mrec both)"
+    unset CAPSULE_MODEL_DOOR_DIR CASE_VMM CASE_PROXY_UP CASE_PROXY_FAIL CASE_UNIT_FAIL_FROM CASE_UNIT_LOCK_DIR
+    : > "$CASE_PROXY_LOG"
 
     # -------------------------------------- which target, and item 51 decision 4
     #
