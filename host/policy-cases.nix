@@ -109,14 +109,14 @@
     # proxy restarted, proxy refusing to restart — come off one store path.
     # The restart *logs* as well as returning, because "did not restart" and
     # "restarted and the message was wrong" are different failures.
-    proxyControl = ''
-      proxyActive() { [ -n "''${CASE_PROXY_UP:-}" ]; }
-      proxyRestart() {
-        echo "restarted $1" >> "$CASE_PROXY_LOG"
+    unitControl = ''
+      unitActive() { [ -n "''${CASE_PROXY_UP:-}" ]; }
+      unitDo() {
+        echo "$1 $2" >> "$CASE_PROXY_LOG"
         [ -z "''${CASE_PROXY_FAIL:-}" ]
       }
     '';
-    # The guest, and the same argument `proxyControl` makes one field up:
+    # The guest, and the same argument `unitControl` makes one field up:
     # `pkgs.openssh` is in the front end's `runtimeInputs`, so nothing in a
     # sandbox can stub `ssh` (CLAUDE.md) — and every branch item 53 is about
     # sits *downstream* of one round trip. What a live host would have to do to
@@ -429,7 +429,7 @@ in
     ckt "  and says egress is down for the length of it" \
       saw "restarting capsule-proxy-both"
     ckt "  and the proxy really was restarted" \
-      grep -qF "restarted capsule-proxy-both" "$CASE_PROXY_LOG"
+      grep -qF "restart capsule-proxy-both" "$CASE_PROXY_LOG"
 
     # The item itself. A restart that fails must leave *nothing* moved — the
     # hook's contract (host/record.nix) — because the alternative is a record

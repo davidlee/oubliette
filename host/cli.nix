@@ -116,7 +116,7 @@
   roomTrust,
   # What the volume verbs need from outside this program (SL-002 design sec-7):
   # the root step, and the state of the slot's VMM unit that gates it. An
-  # argument for `proxyControl`'s reason — `sudo` prompts and `pkgs.systemd` is
+  # argument for `unitControl`'s reason — `sudo` prompts and `pkgs.systemd` is
   # in `runtimeInputs`, so a sandbox can reach neither — and the query is here
   # rather than only the root step because every refusal before that step turns
   # on it. Which states count as stopped is the branch's text, not this one's.
@@ -138,7 +138,7 @@
   # How this front end asks a guest for its HEAD, and how it drops a stale link
   # of the chain above. The one thing tying `handoff`, `land` and the record's
   # `base.oid` to a live capsule, taken as an argument for exactly the reason
-  # `proxyControl` is: `pkgs.openssh` is in `runtimeInputs`, so a case suite
+  # `unitControl` is: `pkgs.openssh` is in `runtimeInputs`, so a case suite
   # cannot stub `ssh` by putting one in front of it (CLAUDE.md), and the
   # branches that matter here — an exhibit that lags its guest, a destination
   # whose stale ref would refuse the incoming chain — are reachable on a live
@@ -224,17 +224,17 @@
   # nor root.
   #
   # Two functions rather than two command strings, because each call needs a
-  # *result*: whether the proxy is up, and whether the bounce worked.
+  # *result*: whether a unit is active, and whether running a verb on it worked.
   #
-  # The restart is spelled by `./proxy-restart.nix` and not here, because the
+  # The restart is spelled by `./unit-command.nix` and not here, because the
   # rule permitting it is spelled in `host/services.nix`: sudo matches a command
   # by the path it resolves to, and with no `secure_path` on this host that is
   # the one `runtimeInputs` put on `PATH` — a store path, which no rule names
   # (NOTES item 44). The query beside it stays unqualified on purpose: it needs
   # no privilege, so nothing has to agree with it.
-  proxyControl ? ''
-    proxyActive() { systemctl is-active --quiet "$1"; }
-    proxyRestart() { sudo ${import ./proxy-restart.nix "\"$1\""}; }
+  unitControl ? ''
+    unitActive() { systemctl is-active --quiet "$1"; }
+    unitDo() { sudo ${import ./unit-command.nix "\"$1\"" "\"$2\""}; }
   '',
   # Which target the image a slot is *running* was built for — the one
   # observation the profile-verb refusal turns on (SL-003 design sec-4,
@@ -242,7 +242,7 @@
   # the store, so it is this host's state rather than a program choosing its own
   # target (item 20).
   #
-  # An argument for `proxyControl`'s reason, one field over: `policyCases` drives
+  # An argument for `unitControl`'s reason, one field over: `policyCases` drives
   # dozens of profile and coarse verbs to pin which *name* resolves, and what
   # image is running is beside that point, so that render substitutes this. The
   # refusal itself is pinned by a second render that keeps this default and
@@ -1230,7 +1230,7 @@ in
         esac
       }
 
-      ${proxyControl}
+      ${unitControl}
       ${guestControl}
       ${volumeControl}
       ${bootedControl}
@@ -2938,12 +2938,12 @@ in
             ln -sfT "$CAPSULE_POLICY_DIR/$(policyFile "$want")" "$link" || return 1
             # A proxy that is not running has nothing to reload: it renders its
             # config at start, so the next start is already the new policy.
-            if ! proxyActive "$proxy"; then
+            if ! unitActive "$proxy"; then
               echo "  $proxy is not running; it will render $want when it starts" >&2
               return 0
             fi
             echo "  restarting $proxy — egress is down for the length of it" >&2
-            proxyRestart "$proxy" && return 0
+            unitDo restart "$proxy" && return 0
             echo "capsule: $proxy would not restart, so the selection was undone." >&2
             echo "  It needs a privilege this program does not have; a host that" >&2
             echo "  has not granted it would otherwise leave '$name' reading" >&2

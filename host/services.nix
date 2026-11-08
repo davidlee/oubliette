@@ -679,7 +679,7 @@ in {
           shadows =
             lib.filter (e: e.i > lastGrant && covers e.line && blanket e.line) indexed;
         in {
-          # No grant at all is `unrestartable`'s finding, not this one.
+          # No grant at all is `ungranted`'s finding, not this one.
           assertion = lastGrant == -1 || shadows == [];
           message = "services.capsule-perimeter: the sudoers rule permitting `capsule <slot> policy <name>` to restart its proxy is shadowed — sudoers is last-match-wins and ${toString (lib.length shadows)} later line(s) match the same command untagged, so the grant is present and inert and the verb will undo every selection it is asked for: ${lib.concatMapStringsSep "; " (e: lib.concatStringsSep " " (words e.line)) shadows}. Order that rule before this one, or drop it if the NixOS sudo module's own `%wheel ALL=(ALL:ALL) ALL` (mkOrder 600) already covers it (NOTES item 43).";
         })
@@ -717,11 +717,11 @@ in {
       # module made, and sudoers wildcards are a classic way to permit more than
       # was meant.
       #
-      # The command is `./proxy-restart.nix`'s and is not spelled here, because
+      # The command is `./unit-command.nix`'s and is not spelled here, because
       # sudo matches by the path the *caller* resolves and this host sets no
       # `secure_path`: a rule and an invocation that merely look alike are two
       # commands (NOTES item 44). One construction, three consumers — this, the
-      # front end that runs it, and `mkfleet.nix`'s `unrestartable`.
+      # front end that runs it, and `mkfleet.nix`'s `ungranted`.
       #
       # **`mkAfter`, and it is the whole difference between granted and
       # effective** (NOTES item 43). sudoers is last-match-wins, so a narrow
@@ -737,7 +737,7 @@ in {
           users = [cfg.owner];
           commands =
             map (c: {
-              command = import ./proxy-restart.nix "capsule-proxy-${c.name}";
+              command = import ./unit-command.nix "restart" "capsule-proxy-${c.name}";
               options = ["NOPASSWD"];
             })
             instances;

@@ -1291,8 +1291,8 @@
     sudoCommands =
       lib.concatMap (r: map (c: c.command or c) r.commands)
       host.config.security.sudo.extraRules;
-    unrestartable =
-      lib.filter (n: !(lib.elem (import ./host/proxy-restart.nix n) sudoCommands))
+    ungranted =
+      lib.filter (n: !(lib.elem (import ./host/unit-command.nix "restart" n) sudoCommands))
       (lib.filter (lib.hasPrefix "capsule-proxy-") units);
 
     # The removed options — `repo` (SL-001, `DEC-013`) and `stateDir` (SL-008,
@@ -1413,8 +1413,8 @@
       then throw "capsule-perimeter: ${lib.concatStringsSep "; " unreachable} (NOTES item 39)."
       else if unparented != []
       then throw "capsule-perimeter: ${lib.concatStringsSep "; " unparented} (ISS-024)."
-      else if unrestartable != []
-      then throw "capsule-perimeter: no sudoers rule permits restarting ${lib.concatStringsSep ", " unrestartable}, so `capsule <slot> policy <name>` cannot finish a selection for those slots and will undo it instead (NOTES item 41)."
+      else if ungranted != []
+      then throw "capsule-perimeter: no sudoers rule permits restarting ${lib.concatStringsSep ", " ungranted}, so `capsule <slot> policy <name>` cannot finish a selection for those slots and will undo it instead (NOTES item 41)."
       else if !repoRemoved.readable
       then throw "capsule-perimeter: with services.capsule-perimeter.repo set, the module's options are unreadable — the removed-option shim for `repo` is gone or misnamed, so a host that still sets it fails on an unknown option instead of being told source is the profile document's `path` (SL-001)."
       else if !repoRemoved.redirected

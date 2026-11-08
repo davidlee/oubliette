@@ -1,11 +1,11 @@
-# The one spelling of "bounce a slot's egress proxy", as `sudo` will see it.
+# The one spelling of "run a `systemctl` verb on a unit", as `sudo` will see it.
 #
 # Three things have to agree about this command and they used to say it three
-# times: `host/cli.nix`'s `proxyControl` runs it, `host/services.nix` grants it,
-# and `mkfleet.nix`'s `unrestartable` check asserts the grant covers every proxy
-# unit. Two of the three agreed and the one that mattered did not (NOTES item
-# 44) — the rule named this path and the program ran `sudo systemctl`, which is
-# a *different command* to sudoers.
+# times: `host/cli.nix`'s `unitControl` runs it, `host/services.nix` grants it,
+# and `mkfleet.nix`'s `ungranted` check asserts the grant covers it. Two of the
+# three agreed and the one that mattered did not (NOTES item 44) — the rule
+# named this path and the program ran `sudo systemctl`, which is a *different
+# command* to sudoers. Today the only granted command is the proxy restart.
 #
 # **Sudo on this host has no `secure_path`**, so it resolves an unqualified
 # command against the *caller's* `PATH` — and `writeShellApplication` prepends
@@ -19,4 +19,4 @@
 # systemd build, so the grant would lapse on the next bump of an input that has
 # nothing to do with this repo — silently, and in the fail-open direction the
 # whole verb exists to close.
-unit: "/run/current-system/sw/bin/systemctl restart ${unit}"
+verb: unit: "/run/current-system/sw/bin/systemctl ${verb} ${unit}"
