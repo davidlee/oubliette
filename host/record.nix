@@ -74,13 +74,13 @@
     # into the filter**: free text like `purpose` would then be jq code, the same
     # class of mistake as a path reaching a shell as code, and `purpose` is
     # explicitly whatever a client puts in it.
-    # `recordAlso` — a hook a caller may define, run inside the slot's lock and
-    # *before* the document is written. It exists for one thing: `capsule <slot>
-    # policy` re-points that slot's allowlist symlink in the same breath as the
-    # record, because a record and a perimeter that disagree is a perimeter
-    # nobody can read (NOTES item 36). A hook rather than an argument because
-    # `recordWrite`'s trailing arguments are jq's, and every other caller leaves
-    # it undefined.
+    # `recordAlso` — a hook a caller may define, run inside the slot's lock
+    # *after the candidate is written and before it is moved into place*. It
+    # exists for one thing: `capsule <slot> policy` re-points that slot's
+    # allowlist symlink in the same breath as the record, because a record and a
+    # perimeter that disagree is a perimeter nobody can read (NOTES item 36). A
+    # hook rather than an argument because `recordWrite`'s trailing arguments are
+    # jq's, and every other caller leaves it undefined.
     #
     # Before, not after, and the ordering is the whole of what it buys. Neither
     # order is safe for both a tightening and a widening, so the one taken is the
@@ -88,8 +88,23 @@
     # nothing has changed at all. The other order's failure leaves a record
     # claiming a perimeter that was never applied.
     #
+    # Reading, transforming and writing the candidate now come first, so a
+    # malformed record or a failed candidate write fails before any effect the
+    # hook makes (SL-010 design sec-4, RV-027 F-2). Only the `mv` can fail after
+    # the hook.
+    #
     # It fails the write by exiting the locked subshell, so `recordWrite` returns
     # non-zero and prints no generation — a caller with a hook must check.
+    #
+    # `recordUndo` — a second optional hook a caller may define. It is called
+    # only when the final `mv` fails after `recordAlso` ran and succeeded, and it
+    # exists to put back the effect `recordAlso` made. `recordWrite` exits
+    # non-zero either way and prints no generation, whatever the undo returned.
+    # The policy verb declares none.
+    #
+    # The final move is `mv -T`: a plain `mv` onto a directory at
+    # `assignment.json` exits 0 and buries the candidate inside it, so a record
+    # write was silently lost; `-T` makes that a failure.
     recordWrite() {
       local n="$1" filter="$2" dir
       shift 2
@@ -97,9 +112,6 @@
       mkdir -p "$dir"
       (
         flock 9
-        if declare -F recordAlso > /dev/null; then
-          recordAlso "$n" "$dir" || exit 1
-        fi
         cur=$(cat "$dir/assignment.json" 2>/dev/null || echo '{}')
         gen=$(printf '%s' "$cur" | jq -r '.generation // 0')
         next=$((gen + 1))
@@ -114,6 +126,10 @@
         # different mechanism: `policy` on a declared set to select from, and
         # `extras` and `image` on a fragment vocabulary and a composition to
         # resolve (docs/contract-flavour.md).
+        #
+        # `model_door` is the slot's model-door override, `null` meaning as
+        # declared (SL-010); it belongs to the slot, not the project, so it
+        # outlives a re-assignment, like `policy`.
         #
         # `profile_snapshot` is **filled** since [NOTES item 52](../docs/ledger/052-the-document-leaves-the-store.md)
         # step 3 — a provision copies the document it was taken under into the
@@ -135,13 +151,26 @@
               | .extras = (.extras // [])
               | .image = (.image // null)
               | .profile_snapshot = (.profile_snapshot // null)
+              | .model_door = (.model_door // null)
               | .generation = $g
               | .schema = 1
             ' > "$tmp" || {
           rm -f "$tmp"
           exit 1
         }
-        mv "$tmp" "$dir/assignment.json" || exit 1
+        if declare -F recordAlso > /dev/null; then
+          recordAlso "$n" "$dir" || {
+            rm -f "$tmp"
+            exit 1
+          }
+        fi
+        if ! mv -T "$tmp" "$dir/assignment.json"; then
+          rm -f "$tmp"
+          if declare -F recordAlso > /dev/null && declare -F recordUndo > /dev/null; then
+            recordUndo "$n" "$dir"
+          fi
+          exit 1
+        fi
         printf '%s' "$next"
       ) 9>"$dir/.lock"
     }

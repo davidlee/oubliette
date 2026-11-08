@@ -469,6 +469,72 @@ in
     ckt "  and still names the old policy" \
       test "$(jq -r .policy "$CASE_STATE/slot/one/assignment.json")" = build
 
+    # --------------------------- the write fails before the hook, or after it
+    #
+    # SL-010 PHASE-04 (RV-027 F-2). `recordWrite` reads the record and writes the
+    # candidate *before* it calls the hook, and moves the candidate in last, so
+    # the hook (here: re-point the link, restart the proxy) is only ever reached
+    # by a write that can still land. Each round runs with the proxy up so a
+    # reached hook *logs*, and sets up its own breakage and puts it back, so the
+    # next round does not inherit wreckage (item 37). `both` is on `build`.
+    export CASE_PROXY_UP=1
+    recFile=$CASE_STATE/slot/both/assignment.json
+    recDir=$CASE_STATE/slot/both
+    wasLink=$(readlink "$CAPSULE_ALLOWLIST_DIR/both")
+    wasGen=$(gen both)
+    cp "$recFile" saved-record
+
+    # A malformed current record: the candidate cannot be built, so the hook
+    # must not have run. The refusal is `recordWrite`'s own (the verb checks the
+    # selection against the declaration, never the record), so the message is the
+    # verb's "none of them moved" and the proof is the log and the link.
+    printf '{ not json' > "$recFile"
+    : > "$CASE_PROXY_LOG"
+    run both policy sealed
+    ck "a malformed current record refuses" 1 "$rc"
+    ckt "  saying nothing moved" saw "none of them moved"
+    ckt "  and the proxy was never asked to restart" test ! -s "$CASE_PROXY_LOG"
+    ckt "  and the link is where it was" \
+      test "$(readlink "$CAPSULE_ALLOWLIST_DIR/both")" = "$wasLink"
+    ckt "  and no candidate is left behind" \
+      test -z "$(find "$recDir" -name '.assignment.json.*')"
+    cp saved-record "$recFile"
+    ckt "  (the record is restored)" cmp -s saved-record "$recFile"
+
+    # An unwritable candidate: the lock file exists, so the lock is taken, and
+    # the directory then refuses the candidate. Same bar: the hook never ran.
+    chmod a-w "$recDir"
+    : > "$CASE_PROXY_LOG"
+    run both policy sealed
+    chmod u+w "$recDir"
+    ck "a candidate that cannot be written refuses" 1 "$rc"
+    ckt "  saying nothing moved" saw "none of them moved"
+    ckt "  and the proxy was never asked to restart" test ! -s "$CASE_PROXY_LOG"
+    ckt "  and the link is where it was" \
+      test "$(readlink "$CAPSULE_ALLOWLIST_DIR/both")" = "$wasLink"
+    ckt "  and the generation did not move" test "$(gen both)" = "$wasGen"
+
+    # A failing `mv` after a hook that succeeded: a directory where the record
+    # should be. The hook *is* reached (the candidate was writable), and the
+    # failure must then be reported rather than buried inside the directory,
+    # with no generation printed. Whether the link goes back is `recordUndo`'s,
+    # which this verb does not declare — that undo is PHASE-06's, through the
+    # model verb — so the link is deliberately not asserted, and put back by
+    # hand below.
+    rm "$recFile"
+    mkdir "$recFile"
+    : > "$CASE_PROXY_LOG"
+    run both policy sealed
+    ck "a record that cannot be replaced refuses" 1 "$rc"
+    ckt "  the hook was reached first" \
+      grep -qF "restart capsule-proxy-both" "$CASE_PROXY_LOG"
+    ckt "  and no generation is printed" unsaw "generation"
+    rm -rf "$recFile"
+    cp saved-record "$recFile"
+    ln -sfT "$wasLink" "$CAPSULE_ALLOWLIST_DIR/both"
+    ckt "  (the record is restored)" cmp -s saved-record "$recFile"
+    unset CASE_PROXY_UP
+
     # -------------------------------------- which target, and item 51 decision 4
     #
     # The same shape as the policy above and a different authority: a program

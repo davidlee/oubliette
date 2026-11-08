@@ -133,9 +133,11 @@ what no design reading can settle, and each has an owner already:
 - PHASE-01 · `perimeterOf` forces the checked door with `builtins.seq` until PHASE-05 threads it into services.nix (replace the seq then) · nothing reads the value yet, and EX-2 wants every caller's eval to refuse · decided
 - PHASE-03 · the suite's `CASE_PROXY_*` variables keep their names under `unitControl` · EX-3 allows only the log spelling to change in the policy rounds; PHASE-06 adds its own · decided
 - PHASE-03 · `slice-010.toml`'s selector still names `host/proxy-restart.nix` · a scope selector, not code; reconcile moves it to `host/unit-command.nix` · deferred (audit)
+- PHASE-04 · the failing-`mv` round restores the link by hand and asserts nothing about it · the policy verb declares no `recordUndo`, so the link's fate after a failed `mv` is unpinned until PHASE-06; EX-3 asks only that the hook is reached and no generation printed · decided
 
 ## Review passes (implementation run)
 
 - PHASE-01 · pi implement T2a (host-path.nix, state-dir.nix, recordOf) $0.012, clean · pi implement T2b (model-door.nix, mkfleet read/force) $0.044, green first build; port message read "is neither … nor 22" for port 22 and a header rationale was invented, both fixed by hand · Sonnet capsule-worker T1 (suite + wiring, red vs stub), clean.
 - PHASE-02 · Sonnet capsule-worker T1 (suite + wiring, red vs stub), clean · pi implement T2 (the four lines + header) $0.008, green first build.
 - PHASE-03 · pi implement (the rename, seam, suite substitute, `ungranted`) $0.015, green first build; nothing missed. Sudoers configFile compared at 934e468 and after, from `git archive` scratch copies with `hostModule.sudoers` exposed: `cmp` identical (561 bytes). Mutation `unitDo restart`→`stop` in the policy verb: policyCases red at "and the proxy really was restarted", reverted (cmp).
+- PHASE-04 · Sonnet capsule-worker T1 (three commit-failure rounds in policyCases, red vs HEAD: rounds 1-2 hook reached, round 3 exit 0 with a generation), clean · pi implement T2 (record.nix order, `mv -T`, `recordUndo`, `model_door`, contract row) $0.010, green first build. Mutation (EX-4): hook moved back above the record read turns the malformed and unwritable-candidate rounds red (link moved, proxy restarted), reverted (cmp).
